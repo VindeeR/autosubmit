@@ -254,6 +254,7 @@ if __name__ == "__main__":
    ##should sort the jobsavail by priority Clean->post->sim
    myJobListFactory.printJobs(jobsavail)
    jobsavail=myJobListFactory.sortByStatus(jobsavail)
+   
    jobsavail.reverse()
    for job in jobsavail[0:min(available,len(jobsavail))]:
     scriptname=job.CreateJobScript(myTemplate,parameters) 

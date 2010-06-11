@@ -1,0 +1,166 @@
+#!SHELL
+# @ job_name         = JOBNAME
+# @ initialdir       = .
+# @ output           = JOBNAME_%j.out
+# @ error            = JOBNAME_%j.err
+# @ total_tasks      = 45
+# @ wall_clock_limit = WALLCLOCKLIMIT 
+#@ tasks_per_node   = 4
+
+
+# Identifiers of the job
+Myexpid=EXPID
+Mydate=DATE
+Mychunk=CHUNK
+Mymember=MEMBER
+Myjobname=JOBNAME
+# Edit the script properly to generate values for the parameters
+
+echo "Date $Mydate"
+echo "Chunk $Mychunk"
+echo "Member $Mymember"
+echo "Name of job: $Myjobname"
+Ecearth=/gpfs/projects/ecm86/ecm86503/ecearth2.1
+ScriptDir=/gpfs/projects/ecm86/ecearth/V2.1/setup
+WritingDir=/gpfs/scratch/ecm86/ecm86503/TestsResults
+PATH=${ScriptDir}:${PATH}
+
+
+IfsDir=$Ecearth
+TestDataDir=/gpfs/projects/ecm86/ecearth/V2.1/inidata
+
+# Model Configuration
+
+IFS_resolution=T159L62
+IFS_nproc=28 
+IFS_exe=$IfsDir/ifs/bin/ifsMASTER
+
+NEMO_resolution=orca1
+NEMO_config=`echo ${NEMO_resolution} | tr [a-z] [A-Z]`
+NEMO_nprocX=4
+NEMO_nprocY=4
+NEMO_nproc=$((NEMO_nprocX*NEMO_nprocY))
+NEMO_exe=${Ecearth}/nemo/nemo_build/opa_exe.${NEMO_config}_OASIS3.${NEMO_nprocX}.${NEMO_nprocY}
+
+OASIS3_oldWeights=true
+OASIS3_weightsDir=${TestDataDir}/oasis3/weights/big_endian/${IFS_resolution}_${NEMO_resolution}
+OASIS3_exe=${Ecearth}/oasis3/prism_2-5/prism/MareNostrum/bin/oasis3.MPI1.x
+
+WAM=false
+
+# Run sConfiguration
+RUN_exp=$Myexpid
+mkdir -p $WritingDir/${RUN_exp}/ || true
+mkdir -p $WritingDir/${RUN_exp}/$Mydate || true
+RUN_dir=$WritingDir/${RUN_exp}/$Mydate/member_$Mymember
+
+RUN_start_year=1990
+RUN_end_year=1991
+RUN_chunk_size=2 ##in months!!!!!!
+RUN_coupFreq=3
+Chunk_last_day_prev=PREV 
+NUMBER_OF_ChunkS=6 
+
+
+export LOCAL_DEFINITION_TEMPLATES=${Ecearth}/ifs/src/emos/local_definitions
+export MBX_SIZE=512000000
+chunk=$Mychunk
+
+case $chunk in
+	1)  RUN_days=59
+	;;
+	4) RUN_days=62
+	;; 
+	*) RUN_days=61
+	;;
+esac
+    
+Chunk_last=.FALSE.
+Chunk_length=$(( ${RUN_days} * 24 )) # In hours
+if [[ $chunk == 6 ]]; then
+ Chunk_last=.TRUE.
+fi
+    
+    
+# Run Directory Initialization
+    
+if [[ $chunk == 1 ]]; then
+ mkdir -p ${RUN_dir} || true
+ rm -fr ${RUN_dir}/*
+ echo "FIRST Chunk"
+ echo "Chunk_length: ${Chunk_length}"
+else
+ rm -f ${RUN_dir}/anaisout
+ rm -f ${RUN_dir}/mesh_zgr.nc ${RUN_dir}/mesh_hgr.nc ${RUN_dir}/mask.nc ${RUN_dir}/damping.coeff_[0-9][0-9][0-9][0-9].nc
+ echo "Chunk: ${chunk}"
+ echo "Chunk_length: ${Chunk_length}"
+fi
+cd ${RUN_dir}
+    
+EXPVER=$(setupifs.ksh -r ${IFS_resolution} -e ${Ecearth} -l  $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -o ${Chunk_last} -d ${TestDataDir} )
+
+if [[ ${OASIS3_oldWeights} = false ]]; then
+ setupoasis3.ksh -r ${IFS_resolution} -g ${NEMO_config} -e ${Ecearth} -l ${Chunk_length} -n ${IFS_nproc} -p ${NEMO_nproc} -c ${RUN_coupFreq} -d ${TestDataDir}
+else
+ setupoasis3.ksh -r ${IFS_resolution} -g ${NEMO_config} -e ${Ecearth} -l ${Chunk_length} -n ${IFS_nproc} -p ${NEMO_nproc} -c ${RUN_coupFreq} -w -W ${OASIS3_weightsDir} -d ${TestDataDir}
+fi
+
+if [[ ${Chunk_last_day_prev} != '0' ]]; then
+ setupnemo.ksh -g ${NEMO_config} -e ${Ecearth} -l $((Chunk_length+Chunk_last_day_prev)) -p ${Chunk_last_day_prev} -d ${TestDataDir}
+else
+ setupnemo.ksh -g ${NEMO_config} -e ${Ecearth} -l ${Chunk_length} -d ${TestDataDir}
+fi
+
+    
+# CPU placement (for SGI systems)
+    
+IFS_exe="${IFS_exe}"
+NEMO_exe="${NEMO_exe}"
+OASIS3_exe="${OASIS3_exe}"
+
+# Model Run
+
+export OASIS3=yes
+export OASIS3DEBUGLEVEL=2
+export DR_HOOK_IGNORE_SIGNALS='-1'
+
+#export MPI_NAP=5
+ulimit -c 1000000
+
+echo "0 ${OASIS3_exe}" > silly.conf
+echo "1-$IFS_nproc ${IFS_exe} -v ecmwf -e $EXPVER" >> silly.conf
+echo "29-44 ${NEMO_exe}" >> silly.conf
+
+
+srun -n 45 -l --multi-prog silly.conf
+
+echo "finished chunk"
+
+
+Chunk_restart_tag=`printf "%06d0000" $(( ${Chunk_last_day_prev}/24+${Chunk_length}/24 ))`
+if [[ `ls -1 guarf${Chunk_restart_tag}.[0-9][0-9][0-9][0-9]` = '0' ]]; then
+ echo "EC-EARTH RUN FAILED"
+ rm -f restart*
+ timestep=`printf "%08d" ${Chunk_last_day_prev}`
+ mv ORCA1_Restart/ORCA1_${timestep}_restart*.nc .
+ ##exit 1
+else
+ Chunk_last_day_prev=$((${Chunk_last_day_prev} + ${Chunk_length})) 
+
+# Save IFS restart files and prepare for continuation of the run
+ mkdir -p IFS_Restart_${chunk}
+ mv guarf${Chunk_restart_tag}.[0-9][0-9][0-9][0-9] gxtrarf${Chunk_restart_tag}.[0-9][0-9][0-9][0-9] \
+    srf${Chunk_restart_tag}.[0-9][0-9][0-9][0-9] surf${Chunk_restart_tag}.[0-9][0-9][0-9][0-9] \
+    tmrf${Chunk_restart_tag}.[0-9][0-9][0-9][0-9] IFS_Restart_${chunk}
+ ln -sf IFS_Restart_${chunk}/* .
+ cp rcf IFS_Restart_${chunk}
+  
+ # Prepare the output for postprocessing
+
+ output_dir="chunk_${chunk}"
+ mkdir -p ${output_dir}
+ mv ICMGGb0if+* ICMSHb0if+* ORCA1_MM_*.nc ${output_dir}
+
+ cd ${output_dir}
+ touch we_have_been_here
+fi

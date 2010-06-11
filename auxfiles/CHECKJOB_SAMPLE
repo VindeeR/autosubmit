@@ -1,0 +1,30 @@
+job 2624973
+
+AName: "hsm_tar"
+State: Running 
+Creds:  user:ecm86728  group:ecm86  account:regular  class:hsm  qos:interactive
+WallTime:   00:00:00 of 10:00:00:00
+SubmitTime: Tue Apr 20 09:23:47
+  (Time Queued  Total: 00:00:11  Eligible: 00:00:11)
+
+StartTime: Tue Apr 20 09:23:58
+Total Requested Tasks: 1
+
+Req[0]  TaskCount: 1  Partition: hsm  
+Memory >= 1M  Disk >= 1M  Swap >= 0
+Opsys:   ---  Arch: ---  Features: mx,SLES10SP2,hsm
+Dedicated Resources Per Task: PROCS: 1  THREADS: 1
+
+Allocated Nodes:
+[s41c3b05:1]
+
+
+StartCount:     1
+Partition List: ALL,slurm,reserved,interactive,hsm
+Flags:          BACKFILL
+Attr:           BACKFILL
+Variables:      bug=workaround
+Trig Variables: bug=workaround
+StartPriority:  -6380153
+Reservation '2624973' (-00:00:21 -> 9:23:59:39  Duration: 10:00:00:00)
+

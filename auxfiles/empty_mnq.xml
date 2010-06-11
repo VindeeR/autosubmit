@@ -1,0 +1,2 @@
+
+<Data><Object>queue</Object><cluster LocalActiveNodes="2504" LocalAllocProcs="0" LocalConfigNodes="2554" LocalIdleNodes="7" LocalIdleProcs="697" LocalUpNodes="2551" LocalUpProcs="10204" RemoteActiveNodes="0" RemoteAllocProcs="0" RemoteConfigNodes="0" RemoteIdleNodes="0" RemoteIdleProcs="0" RemoteUpNodes="0" RemoteUpProcs="0" time="1274260840"></cluster><queue count="0" option="active"></queue><queue count="0" option="eligible"></queue><queue count="0" option="blocked"></queue></Data>

@@ -1,0 +1,18 @@
+#!SHELL
+# @ job_name         = JOBNAME
+# @ initialdir       = INITIALDIR
+# @ output           = OUTFILE
+# @ error            = ERRFILE
+# @ total_tasks      = TOTALTASKS
+# @ wall_clock_limit = WALLCLOCKLIMIT 
+
+# Identifiers of the job
+# Useful for later use in this job script
+
+whoAmI=ASWHOAMI
+howMany=ASHOWMANY
+
+# Edit the script properly to generate values for the parameters
+
+echo "Job $whoAmI of $howMany"
+echo "Name of job: $JOBNAME"

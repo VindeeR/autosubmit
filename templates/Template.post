@@ -1,0 +1,32 @@
+#!SHELL
+# @ job_name         = JOBNAME
+# @ initialdir       = .
+# @ output           = JOBNAME_%j.out
+# @ error            = JOBNAME_%j.err
+# @ total_tasks      = 4
+# @ wall_clock_limit = 02:00:00 
+
+# Identifiers of the job
+# Useful for later use in this job script
+Myexpid=EXPID
+Mydate=DATE
+Mychunk=CHUNK
+Mymember=MEMBER
+Myjobname=JOBNAME
+MyWritingDir=/gpfs/scratch/ecm86/ecm86503/TestsResults
+
+BUILDDIR=/home/ecm86/ecm86503/Nemo_ecearth/nemo/scripts/generic
+
+RunDir=$MyWritingDir/$Myexpid/$Mydate/member_$Mymember/chunk_$Mychunk
+
+# Edit the script properly to generate values for the parameters
+
+echo "Date $Mydate"
+echo "Chunk $Mychunk"
+echo "Member $Mymember"
+echo "Name of job: $Myjobname"
+
+cd ${RunDir}
+${BUILDDIR}/rebuild `ls ORCA1_MM_*_grid_T_00*`
+mv rebuilt_file.nc MM_chunk_${Mychunk}_Temp.nc
+

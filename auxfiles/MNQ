@@ -1,0 +1,23 @@
+
+active jobs------------------------
+NAME        JOBID              USERNAME      STATE PROCS   REMAINING            STARTTIME
+
+
+0 active jobs           0 of 10204 processors in use by local jobs (0.00%)
+                      2510 of 2551 nodes active      (98.39%)
+
+eligible jobs----------------------
+NAME        JOBID              USERNAME      STATE PROCS     WCLIMIT            QUEUETIME
+
+MyTest      2650618            ecm86503  Canceling    48     3:00:00  Tue May 11 11:57:17
+
+1 eligible job    
+
+blocked jobs-----------------------
+NAME        JOBID              USERNAME      STATE PROCS     WCLIMIT            QUEUETIME
+
+
+0 blocked jobs   
+
+Total job:  1
+

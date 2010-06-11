@@ -1,0 +1,33 @@
+#!/bin/sh
+# @ class            = interactive
+# @ partition        = hsm
+# @ job_name         = JOBNAME
+# @ initialdir       = . 
+# @ error            = JOBNAME_%j.out
+# @ output           = JOBNAME_%j.err
+# @ features         = hsm
+# @ total_tasks      = 1
+# @ wall_clock_limit = 10:00:00:00
+Myexpid=EXPID
+Mydate=DATE
+Mychunk=CHUNK
+Mymember=MEMBER
+Myjobname=JOBNAME
+MyWritingDir=/gpfs/scratch/ecm86/ecm86503/TestsResults
+RunningDir=$MyWritingDir/$Myexpid/$Mydate/member_$Mymember/chunk_$Mychunk
+cd ${RunningDir}
+cd ..
+echo "we are now in $PWD"
+touch cleaning_chunk$Mychunk
+MyDestination=/HSM/ecm86/$Myexpid
+mkdir -p $MyDestination || true
+echo "where on HSM $MyDestination \n"
+tarfile=${Myexpid}_${Mydate}_member_${Mymember}_chunk_$Mychunk.tar
+echo "tarfile is $tarfile "
+#here goes your hsm job...
+#cd MyWritingdir
+tar -cvf $tarfile chunk_$Mychunk
+mv tarfile $MyDestination
+rm -rf chunk_$Mychunk
+echo "chunk_$Mychunk has been removed"
+touch clean_and_removed_chunk_$Mychunk

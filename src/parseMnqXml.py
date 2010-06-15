@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import commands, os
+import commands
 import xml.dom.minidom as xml
 
 

@@ -1,16 +1,19 @@
 #!/usr/bin/env python
 from optparse import OptionParser
-import time, os
+import time, os, sys
 import commands
-from myJob import Job
-import myparse_mnq
-import myJobListFactory
-
-# HOLA CABRON
+import parse_mnq
+import JobListFactory
+import signal
+import parseMnqXml as mnq
 
 ####################
 # Global Variables
 ####################
+
+SLEEPING_TIME = 10
+SUCCESS = 0
+FAILURE = 1
 
 # Hash with number of jobs in queues and running
 queueStatus = dict()
@@ -91,7 +94,7 @@ def updateQueueStatus():
 def submitJob(scriptName):
  jobid=0
  if not options.debug:
-  jobid=myparse_mnq.submitJob(scriptName)
+  jobid=parse_mnq.submitJob(scriptName)
  else:
   os.system('cat %s' % scriptName)
  return jobid
@@ -105,7 +108,6 @@ def generateJobParameters():
  # Which job are we working with
  whoAmI = options.alreadySubmitted
  # How many jobs there are
- howMany = options.totalJobs
  dirNumber = int(whoAmI/100)
  expid = 'test'
  
@@ -137,20 +139,19 @@ def generateJobParameters():
  # Variables specifics to the run of ECEARTH
 # parameters['ECEARTH']="/gpfs/projects/ecm86/ecm86503/ecearth2.1"
 # parameters['TESTDATADIR']="/gpfs/projects/ecm86/common/testdata"
- #parameters['SCRIPTDIR']="/gpfs/projects/ecm86/common/testrun/scripts/common"
+#parameters['SCRIPTDIR']="/gpfs/projects/ecm86/common/testrun/scripts/common"
 # parameters['WRITINGDIR']="/gpfs/scratch/ecm86/ecm86503/TestsResults/%s" % expid
-	     
- # Variables specifics to IFS
+
+# Variables specifics to IFS
 # parameters['IFS_resolution']="T159L62"
 # parameters['IFSDIR']='ECEARTH'
 # parameters['IFS_nproc']='28'
 # parameters['IFS_nprocv']='1'
  
 # parameters['IFS_EXE']='IFSDIR'+"/ifs/bin/ifsMASTER"
-	     
- # Variables specifics to NEMO
- #parameters['NEMO_nprocX']= '4'
- #parameters['NEMO_nprocY']= '4'
+# Variables specifics to NEMO
+#parameters['NEMO_nprocX']= '4'
+#parameters['NEMO_nprocY']= '4'
  
 
  # Configure the job body (what to do)
@@ -164,7 +165,7 @@ def generateJobParameters2():
  parameters = dict()
  
  # Useful variables
- expid = 'nemo_comp'
+ #expid = 'nemo_comp'
  
  # Configure jobname and shell type
  parameters['SHELL'] = "/bin/bash"
@@ -179,6 +180,40 @@ def generateJobParameters2():
 
  return parameters
 
+def handler(signum,frame):
+ if signum == signal.SIGHUP:
+  smart_stop()
+ if signum == signal.SIGINT:
+  normal_stop()
+
+def normal_stop():
+ # Must stop autosubmit cancelling all the jobs currently running.
+ jobTable = mnq.getMyJobs()
+ for key in jobTable.keys():
+  #os.system('mncancel %s' % jobTable.get(key)[0])
+  print 'mncancel %s' % jobTable.get(key)[0]
+ sys.exit(0)
+
+def smart_stop():
+ message('Stopping, and checking submitted jobs and pickle them!!!')
+ while has_jobs():
+  message('There are jobs still running!!!')
+  time.sleep(SLEEPING_TIME) 
+ sys.exit(SUCCESS)
+
+#################################
+# AUXILIARY FUNCTIONS
+#################################
+def has_jobs():
+ #output = commands.getoutput('mnq --xml')
+ output = commands.getoutput('cat mnq.xml')
+ if output.find('job') == -1:
+  return False
+ else:
+  return True
+
+def message(msg):
+ print "%s" % msg
 
 ####################
 # Main Program
@@ -186,7 +221,7 @@ def generateJobParameters2():
 if __name__ == "__main__":
  
  os.system('clear')
- 
+ signal.signal(signal.SIGHUP,handler)
  (options,args)=handle_options()
  
  log_short("Jobs to submit: %s" % options.totalJobs)
@@ -204,13 +239,13 @@ if __name__ == "__main__":
  #for a decadal run we do 10 chuncks of 1 year
  numchuncks=6 
  #initialise the job list of lenght totaljobs
- joblist=myJobListFactory.CreateJobList(dates,members,numchuncks)
- #joblist=myJobListFactory.CreateJobList2()
+ joblist=JobListFactory.CreateJobList(dates,members,numchuncks)
+ #joblist=JobListFactory.CreateJobList2()
  print "Length of joblist: ",len(joblist)
  totaljobs=len(joblist)
  log_short("New Jobs to submit: "+str(totaljobs)) 
  # Main loop. Finishing when all jobs have been submitted
- while myJobListFactory.getActive(joblist).__len__()!=0 :
+ while JobListFactory.getActive(joblist).__len__()!=0 :
   updateQueueStatus()
   waiting = getWaitingJobs()
   active = getActiveJobs()
@@ -228,34 +263,34 @@ if __name__ == "__main__":
     log_short("We can safely submit %s jobs..." % available)
   
   #get the list of jobs currently in the Queue
-  jobinqueue=myJobListFactory.getInQueue(joblist)
+  jobinqueue=JobListFactory.getInQueue(joblist)
   for job in jobinqueue:
    job.printJob()
-   status=myparse_mnq.checkjob(job.getId())
+   status=parse_mnq.checkjob(job.getId())
    if(status==5):
     job.check_completion()
    else:
     job.setStatus(status)
   ##after checking the jobs , no job should have the status "submitted"
   ##Jordi throw an exception if this happens (warning type no exit)
-  if (myJobListFactory.getReady(joblist).__len__()!=0) :
-   myJobListFactory.printJobs(myJobListFactory.getReady(joblist))
+  if (JobListFactory.getReady(joblist).__len__()!=0) :
+   JobListFactory.printJobs(JobListFactory.getReady(joblist))
    
   #update joblist
   #we only need to update the active jobs
-  activejobs=myJobListFactory.getActive(joblist)
-  myJobListFactory.updateJobList(activejobs)
+  activejobs=JobListFactory.getActive(joblist)
+  JobListFactory.updateJobList(activejobs)
   
   ## get the list of jobs READY
-  jobsavail=myJobListFactory.getReady(activejobs)
+  jobsavail=JobListFactory.getReady(activejobs)
   if (min(available,len(jobsavail)) ==0):
    print "There is no job READY or available"
    print "Number of job ready: ",len(jobsavail)
    print "Number of jobs available in queue:", available
   else: 
    ##should sort the jobsavail by priority Clean->post->sim
-   myJobListFactory.printJobs(jobsavail)
-   jobsavail=myJobListFactory.sortByStatus(jobsavail)
+   JobListFactory.printJobs(jobsavail)
+   jobsavail=JobListFactory.sortByStatus(jobsavail)
    
    jobsavail.reverse()
    for job in jobsavail[0:min(available,len(jobsavail))]:
@@ -268,17 +303,17 @@ if __name__ == "__main__":
      job.setStatus(5)
   
     if options.clean:
-     os.system("rm %s" % scriptName)
+     os.system("rm %s" % scriptname)
 
     alreadySubmitted += 1
      
    log_short("We have already submitted %s of %s jobs" % (alreadySubmitted,totalJobs))
   
-  if myJobListFactory.getActive(joblist).__len__()!=0:
+  if JobListFactory.getActive(joblist).__len__()!=0:
    goToSleep()
  
  log_short("Finished job submission")
- myJobListFactory.printJobs(joblist)
+ JobListFactory.printJobs(joblist)
  if options.verbose:
   updateQueueStatus()
   waiting = getWaitingJobs()

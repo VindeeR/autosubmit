@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import signal, os, time, sys
+import signal, time, sys
 import commands
 import parseMnqXml as mnq
 

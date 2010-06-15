@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 import pickle
-from myJob import Job
+from Job import *
+
 
 def compareStatus(job_a,job_b):
  return cmp(int(job_a.getStatus()),int(job_b.getStatus()))
@@ -212,6 +213,9 @@ if __name__ == "__main__":
  print '\nSorting by Name'.upper()
  sortJobs = sortByName(jobs)
  printJobs(sortJobs)
+ file1=open('../auxfiles/joblistbyname.pkl','w')
+ pickle.dump(sortJobs, file1)
+ file1.close()
  #print '\nSorting by Id'.upper()
  #sortJobs = sortById(jobs)
  #printJobs(sortJobs)
@@ -222,9 +226,13 @@ if __name__ == "__main__":
  #print '\nSorting by Status'.upper()
  #sortJobs = sortByStatus(jobs)
  #printJobs(sortJobs)
- #jobs[0].setStatus(Job.Status.COMPLETED)
- #updateJobList(jobs)
- #print '\nSorting by Status'.upper()
- #sortJobs = sortByStatus(jobs)
- #printJobs(sortJobs)
+ jobs[0].setStatus(Job.Status.COMPLETED)
+ updateJobList(jobs)
+ print '\nSorting by Status'.upper()
+ sortJobs = sortByStatus(jobs)
+ file2=open('../auxfiles/joblistbystatus.pkl','w')
+ pickle.dump(sortJobs, file2)
+ file2.close()
+ picjoblist=pickle.load(file('../auxfiles/joblistbystatus.pkl','r'))
+ printJobs(picjoblist)
 

@@ -109,9 +109,9 @@ class Job:
   mytemplate=template
   scriptname=self.name+'.cmd'
   splittedname=self.name.split('_')
-  procx=int(splittedname[1])
+  #procx=int(splittedname[1])
   parameters['NEMOPROCX']=splittedname[1]
-  procy=int(splittedname[2])
+  #procy=int(splittedname[2])
   parameters['NEMOPROCY']=splittedname[2]
   parameters['JOBNAME'] = self.name 
   ##update parameters
@@ -130,9 +130,9 @@ class Job:
  def CreateJobScript(self,template,parameters):
   scriptname=self.name+'.cmd'
   splittedname=scriptname.split('_')
-  date=int(splittedname[1])
+  #date=int(splittedname[1])
   parameters['DATE']=splittedname[1]
-  member=int(splittedname[2])
+  #member=int(splittedname[2])
   parameters['MEMBER']=splittedname[2]
   chunk=int(splittedname[3])
   parameters['CHUNK']=splittedname[3]
@@ -204,9 +204,6 @@ class Job:
 
 
 if __name__ == "__main__":
-
- from myJob import Job
-
  mainJob = Job('uno','1',Job.Status.READY,0)
  job1 = Job('uno','1',Job.Status.READY,0)
  job2 = Job('dos','2',Job.Status.READY,0)

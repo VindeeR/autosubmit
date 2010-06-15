@@ -12,7 +12,7 @@ import myJobListFactory
 
 # Hash with number of jobs in queues and running
 queueStatus = dict()
-
+# adding a new comment for testing
 def handle_options():
  parser = OptionParser(usage="usage: %prog [options]",version="%prog 1.0")
  parser.add_option("-m","--maxjobs",

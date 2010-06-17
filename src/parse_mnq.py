@@ -3,6 +3,8 @@
 import os, commands
 import time
 
+import Job
+
 JOB_NAME = 0
 JOB_ID = 1
 JOB_STATUS = 3
@@ -129,7 +131,7 @@ def main():
  jobid=submitJob("MonthlyRestart")
  print "just submitted job number: %s" % str(jobid)
  print "now cancelling..."
- #mncancel(jobid)
+ cancelJob(jobid)
  lines_of_jobs = mnq_preprocess()
  print 'sizeof job_lines: ', lines_of_jobs.__len__() 
  job_table = store_job(lines_of_jobs)

@@ -5,12 +5,14 @@ import commands
 import parse_mnq
 import JobListFactory
 import signal
+import pickle
 import parseMnqXml as mnq
 
 ####################
 # Global Variables
 ####################
 
+jobList = list()
 SLEEPING_TIME = 10
 SUCCESS = 0
 FAILURE = 1
@@ -62,6 +64,12 @@ def handle_options():
                    action="store_true",
 		   dest="debug",
                    help="Debug mode, display the jobs to be submitted.")
+ parser.add_option("-r","--restart",
+                   type="string",
+                   dest="joblist_pickled",
+     default="joblist.pkl",
+     help="joblist_pickled is the file containing the joblist from which autosubmit can restart.",
+     metavar="file")
  (options,args) = parser.parse_args()
  return (options,args)
 
@@ -180,7 +188,7 @@ def generateJobParameters2():
 
  return parameters
 
-def handler(signum,frame):
+def handler(signum,frame,joblist):
  if signum == signal.SIGHUP:
   smart_stop()
  if signum == signal.SIGINT:
@@ -191,14 +199,44 @@ def normal_stop():
  jobTable = mnq.getMyJobs()
  for key in jobTable.keys():
   #os.system('mncancel %s' % jobTable.get(key)[0])
-  print 'mncancel %s' % jobTable.get(key)[0]
+  jobname=jobTable.get(key)[0]
+  print 'mncancel %s' % jobname
+  if options.debug:
+   os.system('kill %s' % jobname)
+  else:
+   parse_mnq.cancelJob(jobTable.getId(jobname))
+  ##TODO: check that jobtable.get(key)[0] is the name of the job
+  
+  job=JobListFactory.getName(joblist, jobname)
+  ##TODO this should have a special status
+  job.setStatus(job.Status.FAILED)
+ completed=JobListFactory.getCompleted(joblist)
+ failed=JobListFactory.getFailed(joblist)
+ notrun=JobListFactory.getNotInQueue(joblist)
+ JobListFactory.saveJobList(completed,'joblist_completed.pkl')
+ JobListFactory.saveJobList(failed,'joblist_failed.pkl')
+ JobListFactory.saveJobList(notrun,'joblist_notrun.pkl')
  sys.exit(0)
 
 def smart_stop():
  message('Stopping, and checking submitted jobs and pickle them!!!')
- while has_jobs():
-  message('There are jobs still running!!!')
-  time.sleep(SLEEPING_TIME) 
+ queuing=JobListFactory.getQueuing(joblist)
+ JobListFactory.cancelJobList(queuing)
+ for job in queuing:
+  job.setStatus(job.Status.READY)
+ ready=JobListFactory.getReady(joblist)
+ JobListFactory.saveJobList(ready,'joblist_notrun.pkl')
+
+ runningjobs=JobListFactory.getRunning(joblist)
+ while runningjobs.__len__() !=0:
+  message('There are still jobs running!!!')
+  JobListFactory.checkjobInList(runningjobs)
+  time.sleep(SLEEPING_TIME)
+   
+ completed=JobListFactory.getCompleted(joblist)
+ failed=JobListFactory.getFailed(joblist)
+ JobListFactory.saveJobList(completed,'joblist_completed.pkl')
+ JobListFactory.saveJobList(failed,'joblist_failed.pkl')
  sys.exit(SUCCESS)
 
 #################################
@@ -221,7 +259,8 @@ def message(msg):
 if __name__ == "__main__":
  
  os.system('clear')
- signal.signal(signal.SIGHUP,handler)
+ signal.signal(signal.SIGHUP,handler)#,joblist)
+ 
  (options,args)=handle_options()
  
  log_short("Jobs to submit: %s" % options.totalJobs)
@@ -233,13 +272,18 @@ if __name__ == "__main__":
  alreadySubmitted=options.alreadySubmitted
  totalJobs=options.totalJobs 
  myTemplate=options.jobTemplate
- dates=[1990]
- members=5
- parameters = generateJobParameters2()
- #for a decadal run we do 10 chuncks of 1 year
- numchuncks=6 
- #initialise the job list of lenght totaljobs
- joblist=JobListFactory.CreateJobList(dates,members,numchuncks)
+ 
+ if options.joblist_pickled:
+  joblist=pickle.load(file(options.joblist_pickled,'r'))
+ else: 
+  dates=[1990]
+  members=5
+  parameters = generateJobParameters2()
+  #for a decadal run we do 10 chuncks of 1 year
+  numchuncks=6 
+  #initialise the job list of lenght totaljobs
+  joblist=JobListFactory.CreateJobList(dates,members,numchuncks)
+ 
  #joblist=JobListFactory.CreateJobList2()
  print "Length of joblist: ",len(joblist)
  totaljobs=len(joblist)
@@ -264,13 +308,8 @@ if __name__ == "__main__":
   
   #get the list of jobs currently in the Queue
   jobinqueue=JobListFactory.getInQueue(joblist)
-  for job in jobinqueue:
-   job.printJob()
-   status=parse_mnq.checkjob(job.getId())
-   if(status==5):
-    job.check_completion()
-   else:
-    job.setStatus(status)
+  JobListFactory.checkjobInList(jobinqueue)
+   
   ##after checking the jobs , no job should have the status "submitted"
   ##Jordi throw an exception if this happens (warning type no exit)
   if (JobListFactory.getReady(joblist).__len__()!=0) :

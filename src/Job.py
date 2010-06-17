@@ -175,31 +175,35 @@ class Job:
    #check that the simulation finished properly
    os.system('touch %s' % self.name+'COMPLETED')
    complete=True
-  if (self.jobtype==1):
+  elif (self.jobtype==1):
    #check that the postprocessing finished properly
    os.system('touch %s' % self.name+'COMPLETED')
    complete=True
-  if (self.jobtype==2):
+  elif (self.jobtype==2):
    #check that the cleaning finished properly
    os.system('touch %s' % self.name+'COMPLETED')
    complete=True
- 
+  else:
+   os.system('touch %s' % self.name+'COMPLETED')
+   complete=True
+   
   if (complete):
    self.setStatus(Job.Status.COMPLETED)
    if (self.hasChildren()!=0):
     children=self.getChildren()
-    print "number of children:" ,self.hasChildren()
+    print "Job is completed, we are now removing the dependency in his %s child/children:" % self.hasChildren()
     for child in children:
-     print "child type.......:",type(child)
-     self.printJob()
-     child.printJob()
-     print "number of Parents:",child.hasParents()
-     print "\n really???"
+     #print "child type.......:",type(child)
+     #self.printJob()
+     #child.printJob()
+     #print "number of Parents:",child.hasParents()
+     #print "\n really???"
      #for parent in child.getParents()
      # parent.printJob()
      child.deleteParent(self)
 
   else:
+   print "The checking in check_completion tell us that job %s has failed" % self.name
    self.setStatus(Job.Status.FAILED)
 
 

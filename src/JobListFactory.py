@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import pickle
+import parse_mnq
 from Job import *
 
 
@@ -21,6 +22,22 @@ def getName(jobs,name):
   if(job.getName()==name):
    return job
 
+def checkjobInList(jobs):
+ for job in jobs:
+  job.printJob()
+  status=parse_mnq.checkjob(job.getId())
+  if(status==5):
+   job.check_completion()
+  else:
+   job.setStatus(status) 
+   
+def saveJobList(jobs,filename):
+ print "Saving joblist into %s" % filename
+ pickle.dump(jobs, file(filename,'w'))
+
+def cancelJobList(jobs):
+ for job in jobs:
+  parse_mnq.cancelJob(job.getId()) 
 def printJobs(jobs):
  print "%s\t%s\t%s" % ("Job Name","Job Id","Job Status")
  for job in jobs:
@@ -55,7 +72,7 @@ def getWaiting(jobs):
  return jobl
 
 def getInQueue(jobs):
- jobl=getQueuing(jobs)+getRunning(jobs)+getReady(jobs)
+ jobl=getQueuing(jobs)+getRunning(jobs)
  return jobl
 
 def getFinished(jobs):
@@ -64,6 +81,10 @@ def getFinished(jobs):
 
 def getActive(jobs):
  jobl=getInQueue(jobs)+getWaiting(jobs)
+ return jobl
+
+def getNotInQueue(jobs):
+ jobl=getReady(jobs)+getWaiting(jobs)
  return jobl
 
 def sortById(jobs):

@@ -1,0 +1,33 @@
+#!SHELL
+# @ job_name         = JOBNAME
+# @ initialdir       = .
+# @ output           = JOBNAME_%j.out
+# @ error            = JOBNAME_%j.err
+# @ total_tasks      = 2 
+# @ wall_clock_limit = 00:10:00
+#@ tasks_per_node   = 4
+
+
+# Identifiers of the job
+Myexpid=EXPID
+Mydate=DATE
+Mychunk=CHUNK
+Mymember=MEMBER
+Myjobname=JOBNAME
+# Edit the script properly to generate values for the parameters
+
+echo "Date $Mydate"
+echo "Chunk $Mychunk"
+echo "Member $Mymember"
+echo "Name of job: $Myjobname"
+WritingDir=/gpfs/scratch/ecm86/ecm86503/TestsResults
+mkdir -p $WritingDir/${RUN_exp}/ || true
+mkdir -p $WritingDir/${RUN_exp}/$Mydate || true
+RUN_dir=$WritingDir/${RUN_exp}/$Mydate/member_$Mymember
+
+cd $Run_dir
+sleep -m 5
+touch $Myjobname
+
+touch we_have_been_here
+

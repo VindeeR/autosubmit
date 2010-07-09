@@ -26,6 +26,41 @@ def CreateJobScript2(job,parameters):
  return scriptname
 
 def CreateJobScript3(job,parameters):
+ expid='scal'
+ mytemplate="../templates/scale_coupled.sim"
+ scriptname=job.getName()+'.cmd'
+ splittedname=job.getName().split('_')
+ nemo_procx=splittedname[6]
+ nemo_procy=splittedname[7]
+ coup_freq=splittedname[9]
+ ifs_procx=splittedname[3]
+ ifs_procy=splittedname[4]
+ ifs_nproc=int(ifs_procx)*int(ifs_procy)
+ ntasks=int(nemo_procx)*int(nemo_procy)+ifs_nproc+1
+
+ parameters['EXPID']=expid
+ #procx=int(splittedname[1])
+ parameters['NEMO_NPROCX']= nemo_procx
+ parameters['NEMO_NPROCY']=nemo_procy
+ parameters['IFS_NPROC']= str(ifs_nproc)
+ parameters['IFS_NPRTRV']= ifs_procy
+ parameters['NTASKS']= str(ntasks)
+ parameters['COUP_FREQ']=coup_freq
+ parameters['JOBNAME'] = job.getName() 
+ 
+ ##update parameters
+ print "*************My Template: %s" % mytemplate
+ templateContent = file(mytemplate).read()
+ for key in parameters.keys():
+  print "KEY: %s\n" % key
+  if key in templateContent:
+   print "%s:\t%s" % (key,parameters[key])
+  templateContent = templateContent.replace(key,parameters[key])
+ 
+ file(scriptname,'w').write(templateContent)
+ return scriptname
+
+def CreateJobScript4(job,parameters):
  scriptname=job.getName()+'.cmd'
  template="../templates/dummy"
  splittedname=scriptname.split('_')
@@ -162,6 +197,28 @@ def CreateJobList2():
  JobListFactory.updateGenealogy(joblist)
  return joblist   
 
+    
+def CreateJobList3(expid):
+ joblist=list()
+ #param=dict()
+ ifs_proc_list=([4,1],[8,1],[16,1],[28,1],[32,1],[32,2],[32,4])
+ nemo_proc_list=([1,1],[2,1],[2,2],[4,2],[4,4],[8,4],[8,8])
+ coup_freq_list=[3]
+ for coup_freq in coup_freq_list:
+  for ifs_proc in ifs_proc_list:
+   for nemo_proc in nemo_proc_list:
+    print "IFS_PROC %s, NEMO_proc %s" %(ifs_proc[0]*ifs_proc[1],nemo_proc[0]*nemo_proc[1])
+    job_rootname="scalingtest_IFS_"+expid+'_'+str(ifs_proc[0])+'_'+str(ifs_proc[1])+'_NEMO_'+str(nemo_proc[0])+'_'+str(nemo_proc[1])+'_FREQ_'+str(coup_freq)
+    print job_rootname
+    job_comp = Job(job_rootname,0,Job.Status.READY,Job.JobType.SIMULATION)
+    #no parents nor children
+    job_comp.setParents([])
+    job_comp.setChildren([])
+    #JobListFactory.printJobs([job_comp])
+    joblist+=[job_comp]
+
+ JobListFactory.updateGenealogy(joblist)
+ return joblist   
 
 def generateJobParameters1(expid):
  # Table which contains all the keys to change in the template.
@@ -236,11 +293,32 @@ def generateJobParameters2():
  parameters['INITIALDIR'] = "/gpfs/projects/ecm86/ecm86503/ecearth2.1/build"
 
  return parameters
+ 
+def generateJobParameters3(expid):
+ # Table which contains all the keys to change in the template.
+ # Feel free to add new variables
+ parameters = dict()
+ 
+ # Useful variables
+ #expid = 'nemo_comp'
+ 
+ # Configure jobname and shell type
+ parameters['SHELL'] = "/bin/bash"
+ return parameters
     
 def GenerateParameter(expid):
  if expid=="yves":
   print "creatig the parameters for the experiment: %s" % expid
-  parameter=generateJobParameters1(expid)
+  parameter=generateJobParameter1(expid)
+  return parameter
+ else:
+  print "there is no defined generateparameter function for the expid : %s " % expid 
+
+ 
+def GenerateParameter(expid):
+ if expid=="yves":
+  print "creatig the parameters for the experiment: %s" % expid
+  parameter=generateJobParameter1(expid)
   return parameter
  else:
   print "there is no defined generateparameter function for the expid : %s " % expid 
@@ -250,6 +328,11 @@ def CreateJobScript(expid,job):
   print "creating the script for job: %s" % job.getName()
   parameter=generateJobParameters1(expid)
   scriptname=CreateJobScript1(job,parameter)
+  return scriptname
+ elif expid=="scal":
+  print "creating the script for job: %s" % job.getName()
+  parameter=generateJobParameters3(expid)
+  scriptname=CreateJobScript3(job,parameter)
   return scriptname
  elif expid=="yve1":
   print "creating the script for job: %s" % job.getName()
@@ -267,6 +350,10 @@ def CreateJobList(expid):
   numchuncks=6 
   joblist=CreateJobList1(dates,members,numchuncks)
   return joblist
+ elif expid=="scal":
+  print "Creating the joblist for experiment: %s" % expid
+  joblist=CreateJobList3(expid)
+  return joblist
  elif expid=="yve1":
   print "Creating the joblist for experiment: %s" % expid
   dates=[1990]
@@ -276,5 +363,14 @@ def CreateJobList(expid):
   return joblist
  else:
   print "there is no defined CreateJoblist  function for the expid: %s" % expid 
+
+if __name__ == "__main__":
+ expid='scal'
+ joblist=CreateJobList(expid)
+ joblist[0].printJob()
+ print "number of jobs: ",len(joblist)
+ parameters = dict()
+ CreateJobScript(expid,joblist[0])
+ print "done!!!"
 
 

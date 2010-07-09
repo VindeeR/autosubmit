@@ -7,7 +7,8 @@ import JobListFactory
 import signal
 import pickle
 import parseMnqXml as mnq
-
+import userdefinedfunctions
+import random
 ####################
 # Global Variables
 ####################
@@ -104,89 +105,9 @@ def submitJob(scriptName):
  if not options.debug:
   jobid=parse_mnq.submitJob(scriptName)
  else:
-  os.system('cat %s' % scriptName)
+  os.system('bash %s' % scriptName)
+  jobid=random.randrange(0,1000000)
  return jobid
-
-def generateJobParameters():
- # Table which contains all the keys to change in the template.
- # Feel free to add new variables
- parameters = dict()
- 
- # Useful variables
- # Which job are we working with
- whoAmI = options.alreadySubmitted
- # How many jobs there are
- dirNumber = int(whoAmI/100)
- expid = 'test'
- 
- # Configure jobname and shell type
- parameters['FILENAME'] = "job-exp-%s-%s.cmd" % (expid,whoAmI)
- parameters['SHELL'] = "/bin/bash"
-
- # Configure job directives...
- parameters['JOBNAME'] = "job-%s" % whoAmI
- parameters['OUTFILE'] = "outputs/dir%s/job-%s-%s.out" % (dirNumber,whoAmI,'%j')
- #parameters['ERRFILE'] = "outputs/dir%s/job-%s-%s.err" % (dirNumber,whoAmI,'%j')
- parameters['INITIALDIR'] = "."
- #parameters['TOTALTASKS'] = "1"
- parameters['WALLCLOCKLIMIT'] = "00:05:00"
- parameters['EXPID']=expid
- # Variables specific to the experiment
- #parameters['TOTALMEMBERNUM']="1"
- parameters['MEMBER']="1"
- parameters['DATES']='1990'
-# parameters['TOTALNUMSIMULATION']="1"
-# parameters['RUNLENGTH']="10"
-# parameters['CHUNKLENGTH']="1"
- parameters['CHUNK']='1'
- # Variables to identify the job itself
- #parameters['ASWHOAMI']= str(whoAmI)
- #parameters['ASHOWMANY']= str(howMany)
- #parameters['ASDIRNUMBER']= str(dirNumber)
-
- # Variables specifics to the run of ECEARTH
-# parameters['ECEARTH']="/gpfs/projects/ecm86/ecm86503/ecearth2.1"
-# parameters['TESTDATADIR']="/gpfs/projects/ecm86/common/testdata"
-#parameters['SCRIPTDIR']="/gpfs/projects/ecm86/common/testrun/scripts/common"
-# parameters['WRITINGDIR']="/gpfs/scratch/ecm86/ecm86503/TestsResults/%s" % expid
-
-# Variables specifics to IFS
-# parameters['IFS_resolution']="T159L62"
-# parameters['IFSDIR']='ECEARTH'
-# parameters['IFS_nproc']='28'
-# parameters['IFS_nprocv']='1'
- 
-# parameters['IFS_EXE']='IFSDIR'+"/ifs/bin/ifsMASTER"
-# Variables specifics to NEMO
-#parameters['NEMO_nprocX']= '4'
-#parameters['NEMO_nprocY']= '4'
- 
-
- # Configure the job body (what to do)
- parameters['BODY'] = "hostname"
-
- return parameters
- 
-def generateJobParameters2():
- # Table which contains all the keys to change in the template.
- # Feel free to add new variables
- parameters = dict()
- 
- # Useful variables
- #expid = 'nemo_comp'
- 
- # Configure jobname and shell type
- parameters['SHELL'] = "/bin/bash"
- # Variables specifics to NEMO
- parameters['NEMOPROCX']= '4'
- parameters['NEMOPROCY']= '4'
- 
-
- # Configure job directives...
- parameters['JOBNAME'] = "nemo_comp-%s-%s" % (parameters['NEMOPROCX'],parameters['NEMOPROCY'])
- parameters['INITIALDIR'] = "/gpfs/projects/ecm86/ecm86503/ecearth2.1/build"
-
- return parameters
 
 def handler(signum,frame,joblist):
  if signum == signal.SIGHUP:
@@ -262,7 +183,7 @@ if __name__ == "__main__":
  signal.signal(signal.SIGHUP,handler)#,joblist)
  
  (options,args)=handle_options()
- 
+ expid="scal" 
  log_short("Jobs to submit: %s" % options.totalJobs)
  log_short("Start with job number: %s" % options.alreadySubmitted)
  log_short("Maximum waiting jobs in queues: %s" % options.maxWaitingJobs)
@@ -273,28 +194,23 @@ if __name__ == "__main__":
  totalJobs=options.totalJobs 
  myTemplate=options.jobTemplate
  
- if options.joblist_pickled:
-  joblist=pickle.load(file(options.joblist_pickled,'r'))
- else: 
-  dates=[1990]
-  members=5
-  parameters = generateJobParameters2()
-  #for a decadal run we do 10 chuncks of 1 year
-  numchuncks=6 
-  #initialise the job list of lenght totaljobs
-  joblist=JobListFactory.CreateJobList(dates,members,numchuncks)
+# if options.joblist_pickled:
+#  joblist=pickle.load(file(options.joblist_pickled,'r'))
+# else: 
+ joblist=userdefinedfunctions.CreateJobList(expid)
  
  #joblist=JobListFactory.CreateJobList2()
  print "Length of joblist: ",len(joblist)
  totaljobs=len(joblist)
  log_short("New Jobs to submit: "+str(totaljobs)) 
  # Main loop. Finishing when all jobs have been submitted
- while JobListFactory.getActive(joblist).__len__()!=0 :
+ while JobListFactory.getNotInQueue(joblist).__len__()!=0 :
   updateQueueStatus()
   waiting = getWaitingJobs()
   active = getActiveJobs()
   available = options.maxWaitingJobs-waiting
-   
+  print "saving joblist"
+  JobListFactory.saveJobList(joblist,'../auxfiles/joblist.pkl')
   if options.verbose:
    log_short("Active jobs in queues:\t%s" % active)
    log_short("Waiting jobs in queues:\t%s" % waiting)
@@ -308,6 +224,7 @@ if __name__ == "__main__":
   
   #get the list of jobs currently in the Queue
   jobinqueue=JobListFactory.getInQueue(joblist)
+  print "number of jobs in queue :%s" % jobinqueue.__len__() 
   JobListFactory.checkjobInList(jobinqueue)
    
   ##after checking the jobs , no job should have the status "submitted"
@@ -317,11 +234,12 @@ if __name__ == "__main__":
    
   #update joblist
   #we only need to update the active jobs
+  JobListFactory.updateJobList(joblist)
   activejobs=JobListFactory.getActive(joblist)
-  JobListFactory.updateJobList(activejobs)
-  
+  print "in the factory there is %s active jobs" % activejobs.__len__()
+
   ## get the list of jobs READY
-  jobsavail=JobListFactory.getReady(activejobs)
+  jobsavail=JobListFactory.getReady(joblist)
   if (min(available,len(jobsavail)) ==0):
    print "There is no job READY or available"
    print "Number of job ready: ",len(jobsavail)
@@ -333,20 +251,18 @@ if __name__ == "__main__":
    
    jobsavail.reverse()
    for job in jobsavail[0:min(available,len(jobsavail))]:
-    scriptname=job.CreateJobScript(myTemplate,parameters) 
+    scriptname=userdefinedfunctions.CreateJobScript(expid,job) 
+    print scriptname
     jobid=submitJob(scriptname)
     job.setId(jobid)
     ##set status to "submitted"
     job.setStatus(2)
-    if options.debug:
-     job.setStatus(5)
-  
     if options.clean:
      os.system("rm %s" % scriptname)
 
     alreadySubmitted += 1
      
-   log_short("We have already submitted %s of %s jobs" % (alreadySubmitted,totalJobs))
+   log_short("We have already submitted %s of %s jobs" % (alreadySubmitted,totaljobs))
   
   if JobListFactory.getActive(joblist).__len__()!=0:
    goToSleep()

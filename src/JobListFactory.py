@@ -3,7 +3,8 @@
 import pickle
 import parse_mnq
 from Job import *
-
+import userdefinedfunctions
+import time
 
 def compareStatus(job_a,job_b):
  return cmp(int(job_a.getStatus()),int(job_b.getStatus()))
@@ -27,6 +28,7 @@ def checkjobInList(jobs):
   job.printJob()
   status=parse_mnq.checkjob(job.getId())
   if(status==5):
+   print "this job seems to have completed...checking"
    job.check_completion()
   else:
    job.setStatus(status) 
@@ -72,7 +74,7 @@ def getWaiting(jobs):
  return jobl
 
 def getInQueue(jobs):
- jobl=getQueuing(jobs)+getRunning(jobs)
+ jobl=[job for job in jobs if job.getStatus()>1 and job.getStatus()<5]
  return jobl
 
 def getFinished(jobs):
@@ -80,7 +82,7 @@ def getFinished(jobs):
  return jobl
 
 def getActive(jobs):
- jobl=getInQueue(jobs)+getWaiting(jobs)
+ jobl=getInQueue(jobs)+getReady(jobs)
  return jobl
 
 def getNotInQueue(jobs):
@@ -110,6 +112,7 @@ def updateJobList(jobs):
      child.setStatus(Job.Status.FAILED)
      child.setFailCount(4)
   elif job.getStatus()==0 and job.hasParents()==0:
+   print "job is now set to be ready: %s" % job.getName()
    job.setStatus(Job.Status.READY)
 
 def main():
@@ -163,97 +166,33 @@ def updateGenealogy(jobs):
      job.addParents(parent)
  print "after genealogy!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 
-def CreateJobList(list_of_dates, num_member,num_chunks):
- joblist=list()
- #param=dict()
- for dates in list_of_dates:
-  for mem in range(num_member):
-   for chk in range(1,num_chunks+1):
-    job_rootname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk)+'_'
-    job_sim = Job(job_rootname+'sim',0,Job.Status.WAITING,Job.JobType.SIMULATION)
-    #job_sim.CreateParametersList(parameters)
-    job_post = Job(job_rootname+'post',0,Job.Status.WAITING,Job.JobType.POSTPROCESSING)
-    #job_post.CreateParametersList(parameters)
-    job_clean = Job(job_rootname+'clean',0,Job.Status.WAITING,Job.JobType.CLEANING)
-    #job_clean.CreateParametersList(parameters)
-    #set depency of postprocessing jobs
-    job_post.setParents([job_sim.name])
-    job_post.setChildren([job_clean.name])
-    #set Parents of clean job
-    job_clean.setParents([job_post.name])
-    #set first child of sim job
-    job_sim.setChildren([job_post])
-    ##Set status of first chunk to READY
-    if (chk==1):
-     job_sim.setStatus(Job.Status.READY)
-     job_sim.setParents([])
-    if(chk>1):
-     parentname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk-1)+'_'+'sim'
-     job_sim.setParents([parentname])
-     if (chk>2):
-      parentname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk-2)+'_'+'clean'
-      job_sim.addParents(parentname)
-    if (chk<num_chunks):
-     childname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk+1)+'_'+'sim'
-     job_sim.addChildren(childname)
-    if (chk<num_chunks-1):
-     childname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk+2)+'_'+'sim'
-     job_clean.setChildren([childname])
-
-    printJobs([job_sim ,job_post ,job_clean])
-    joblist+=[job_sim ,job_post ,job_clean]
-  
- updateGenealogy(joblist)
- return joblist   
-    
-def CreateJobList2():
- joblist=list()
- #param=dict()
- proc_list=([1,1],[4,4],[2,2],[4,2],[2,4],[2,1],[1,2],[4,1],[1,4])
- for proc in proc_list:
-  print "PROC %s %s" %(proc[0],proc[1])
-  job_rootname="nemo-comp_"+str(proc[0])+'_'+str(proc[1])
-  job_comp = Job(job_rootname,0,Job.Status.READY,Job.JobType.SIMULATION)
-  #no parents nor children
-  job_comp.setParents([])
-  job_comp.setChildren([])
-  printJobs([job_comp])
-  joblist+=[job_comp]
-
- updateGenealogy(joblist)
- return joblist   
-    
 
 if __name__ == "__main__":
- #jobs = main()
- joblist1=range(1960,1975,5)
- ##jobs=CreateJobList(joblist1,1,2)
- jobs=CreateJobList2()
+ jobs = main()
+ #joblist1=range(1960,1975,5)
+ #jobs=userdefinedfunctions.CreateJobList("yves")
+ ##jobs=CreateJobList2()
  printJobs(jobs)
  ##updateGenealogy(jobs)
  print '\nSorting by Name'.upper()
  sortJobs = sortByName(jobs)
  printJobs(sortJobs)
- file1=open('../auxfiles/joblistbyname.pkl','w')
- pickle.dump(sortJobs, file1)
- file1.close()
- #print '\nSorting by Id'.upper()
- #sortJobs = sortById(jobs)
- #printJobs(sortJobs)
- #print '\nSorting by Status'.upper()
- #sortJobs = sortByStatus(jobs)
- #printJobs(sortJobs)
- #updateJobList(jobs)
- #print '\nSorting by Status'.upper()
- #sortJobs = sortByStatus(jobs)
- #printJobs(sortJobs)
- jobs[0].setStatus(Job.Status.COMPLETED)
- updateJobList(jobs)
- print '\nSorting by Status'.upper()
- sortJobs = sortByStatus(jobs)
- file2=open('../auxfiles/joblistbystatus.pkl','w')
- pickle.dump(sortJobs, file2)
- file2.close()
- picjoblist=pickle.load(file('../auxfiles/joblistbystatus.pkl','r'))
- printJobs(picjoblist)
+ file1='../auxfiles/joblistbyname.pkl'
+ saveJobList(sortJobs, file1)
+ total=jobs.__len__()
+ finished=0
+ while finished!=total:
+  for job in jobs:
+   if job.getStatus() < 5:
+    job.setStatus(job.getStatus()+1)
+  updateJobList(jobs) 
+  finished=getFinished(jobs).__len__()
+  print "%s finished jobs out of %s total" % (finished,total)
+  print '\nSorting by Status'.upper()
+  sortJobs = sortByStatus(jobs)
+  file2='../auxfiles/joblist.pkl'
+  saveJobList(sortJobs, file2)
+  time.sleep(10)
+ ##picjoblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
+ ##printJobs(picjoblist)
 

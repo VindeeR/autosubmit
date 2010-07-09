@@ -1,0 +1,97 @@
+#!SHELL
+# @ job_name         = JOBNAME
+# @ initialdir       = .
+# @ output           = scalability/JOBNAME_%j.out
+# @ error            = scalability/JOBNAME_%j.err
+# @ total_tasks      = NTASKS
+# @ wall_clock_limit = 00:20:00
+#@ tasks_per_node   = 4
+
+
+# Identifiers of the job
+Myexpid=EXPID
+Myjobname=JOBNAME
+
+# Edit the script properly to generate values for the parameters
+
+echo "Name of job: $Myjobname"
+Ecearth=/gpfs/projects/ecm86/ecm86503/ecearth2.1
+ScriptDir=/gpfs/projects/ecm86/ecearth/V2.1/setup
+WritingDir=/gpfs/scratch/ecm86/ecm86503/TestsResults
+PATH=${ScriptDir}:${PATH}
+
+IfsDir=/home/bsc99/bsc99349/ecearth2.1/v2.1
+
+TestDataDir=/gpfs/projects/ecm86/ecearth/V2.1/inidata
+
+# Model Configuration
+
+IFS_resolution=T159L62
+IFS_nproc=IFS_NPROC 
+IFS_nprtrv=IFS_NPRTRV
+IFS_exe=$IfsDir/ifs/bin/ifsMASTER
+
+NEMO_resolution=orca1
+NEMO_config=`echo ${NEMO_resolution} | tr [a-z] [A-Z]`
+NEMO_nprocX=NEMO_NPROCX
+NEMO_nprocY=NEMO_NPROCY
+NEMO_nproc=$((NEMO_nprocX*NEMO_nprocY))
+NEMO_exe=${Ecearth}/nemo/nemo_build/opa_exe.${NEMO_config}_OASIS3.${NEMO_nprocX}.${NEMO_nprocY}
+
+OASIS3_oldWeights=true
+OASIS3_weightsDir=${TestDataDir}/oasis3/weights/big_endian/${IFS_resolution}_${NEMO_resolution}
+OASIS3_exe=${Ecearth}/oasis3/prism_2-5/prism/MareNostrum/bin/oasis3.MPI1.x
+
+WAM=false
+
+# Run Configuration
+RUN_exp=$Myexpid
+mkdir -p $WritingDir/${RUN_exp}/ || true
+mkdir -p $WritingDir/${RUN_exp}/$Myjobname || true
+RUN_dir=$WritingDir/${RUN_exp}/$Myjobname
+
+RUN_start_year=1990
+RUN_coupFreq=COUP_FREQ
+
+export LOCAL_DEFINITION_TEMPLATES=${Ecearth}/ifs/src/emos/local_definitions
+export MBX_SIZE=512000000
+    
+Chunk_length=48
+Chunk_last=.TRUE.
+    
+    
+# Run Directory Initialization
+rm -fr ${RUN_dir}/*
+
+cd ${RUN_dir}
+
+EXPVER=$(setupifs.ksh -r ${IFS_resolution} -e ${Ecearth} -l  ${Chunk_length} -n ${IFS_nproc} -m ${IFS_nprtrv} -w ${WAM} -c ${RUN_coupFreq} -o ${Chunk_last} -d ${TestDataDir} )
+
+setupoasis3.ksh -r ${IFS_resolution} -g ${NEMO_config} -e ${Ecearth} -l ${Chunk_length} -n ${IFS_nproc} -p ${NEMO_nproc} -c ${RUN_coupFreq} -w -W ${OASIS3_weightsDir} -d ${TestDataDir}
+
+setupnemo.ksh -g ${NEMO_config} -e ${Ecearth} -l ${Chunk_length} -d ${TestDataDir}
+
+    
+# CPU placement (for SGI systems)
+    
+IFS_exe="${IFS_exe}"
+NEMO_exe="${NEMO_exe}"
+OASIS3_exe="${OASIS3_exe}"
+
+# Model Run
+
+export OASIS3=yes
+export OASIS3DEBUGLEVEL=2
+export DR_HOOK_IGNORE_SIGNALS='-1'
+
+#export MPI_NAP=5
+ulimit -c 1000000
+
+echo "0 ${OASIS3_exe}" > silly.conf
+echo "1-$IFS_nproc ${IFS_exe} -v ecmwf -e $EXPVER" >> silly.conf
+echo "$((IFS_nproc+1))-$((IFS_nproc+NEMO_nproc)) ${NEMO_exe}" >> silly.conf
+
+
+time srun -n NTASKS -l --multi-prog silly.conf
+
+echo "finished chunk"

@@ -104,70 +104,7 @@ class Job:
 
  def hasParents(self):
   return self.parents.__len__() 
- 
- def CreateJobScript2(self,template,parameters):
-  mytemplate=template
-  scriptname=self.name+'.cmd'
-  splittedname=self.name.split('_')
-  #procx=int(splittedname[1])
-  parameters['NEMOPROCX']=splittedname[1]
-  #procy=int(splittedname[2])
-  parameters['NEMOPROCY']=splittedname[2]
-  parameters['JOBNAME'] = self.name 
-  ##update parameters
-  print "*************My Template: %s" % mytemplate
-  templateContent = file(mytemplate).read()
-  for key in parameters.keys():
-   print "KEY: %s\n" % key
-   if key in templateContent:
-    print "%s:\t%s" % (key,parameters[key])
-    templateContent = templateContent.replace(key,parameters[key])
-  
-  file(scriptname,'w').write(templateContent)
-  return scriptname
 
-
- def CreateJobScript(self,template,parameters):
-  scriptname=self.name+'.cmd'
-  splittedname=scriptname.split('_')
-  #date=int(splittedname[1])
-  parameters['DATE']=splittedname[1]
-  #member=int(splittedname[2])
-  parameters['MEMBER']=splittedname[2]
-  chunk=int(splittedname[3])
-  parameters['CHUNK']=splittedname[3]
-  parameters['JOBNAME'] = self.name 
-  prev=[0,59,59+61,59+61*2,59+61*2+62,59+61*3+62]
-  if (self.jobtype==0):
-   print "jobType:", self.JobType
-   mytemplate=template+'.sim'
-   ##update parameters
-   parameters['WALLCLOCKLIMIT']='72:00:00'
-   parameters['PREV']=str(24*prev[chunk-1])
-
-  elif (self.jobtype==1):
-   print "jobType:", self.JobType
-   mytemplate=template+'.post'
-   ##update parameters
-   parameters['WALLCLOCKLIMIT']="02:01:00"
-  elif (self.jobtype==2):
-   print "jobType:", self.JobType
-   ##update parameters
-   mytemplate=template+'.clean'
-   parameters['WALLCLOCKLIMIT']="10:00:00"
-  else: 
-   print "Unknown Job Type"
-   
-  print "*************My Template: %s" % mytemplate
-  templateContent = file(mytemplate).read()
-  for key in parameters.keys():
-   print "KEY: %s\n" % key
-   if key in templateContent:
-    print "%s:\t%s" % (key,parameters[key])
-    templateContent = templateContent.replace(key,parameters[key])
-  
-  file(scriptname,'w').write(templateContent)
-  return scriptname
 
  def check_completion(self):
   complete=False
@@ -196,10 +133,10 @@ class Job:
      #print "child type.......:",type(child)
      #self.printJob()
      #child.printJob()
-     #print "number of Parents:",child.hasParents()
-     #print "\n really???"
-     #for parent in child.getParents()
-     # parent.printJob()
+     print "number of Parents:",child.hasParents()
+     print "\n really???"
+     for parent in child.getParents():
+      parent.printJob()
      child.deleteParent(self)
 
   else:

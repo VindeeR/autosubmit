@@ -1,0 +1,183 @@
+#!/bin/ksh
+###############################################################################
+#                              RUN EC_EARTH
+###############################################################################
+#
+#@ job_name         = JOBNAME
+#@ wall_clock_limit = 12:00:00
+#@ output           = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.out
+#@ error            = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.err
+#@ total_tasks      = 45
+#@ initialdir       = INITIALDIR 
+#@ tasks_per_node   = 4
+#@ tracing          = 1
+set -exuv
+date
+#
+# Basic Definitions
+#
+Myversion= VERSION
+Mymember=MEMBER
+Myexpid=EXPID
+START_date=SDATE
+case $Myversion in
+     v2.1) ECEARTH=/gpfs/projects/ecm86/ecm86503/ecearth2.1
+           SCRIPTDIR=/gpfs/projects/ecm86/ecearth/V2.1/setup
+           TESTDATADIR=/gpfs/projects/ecm86/ecearth/V2.1/inidata
+     ;;
+     v2.2) ECEARTH=/gpfs/projects/ecm86/ecm86010/ecearth/v2.2_01
+           SCRIPTDIR=/gpfs/projects/ecm86/ecearth/v2.2/setup
+           TESTDATADIR=/gpfs/projects/ecm86/ecearth/v2.2/inidata
+     ;;
+esac
+
+#
+# Model Configuration
+#
+PATH=${SCRIPTDIR}:${PATH}
+WRITINGDIR=/gpfs/scratch/ecm86/${USER}/${Myexpid}
+RUN_dir=${WRITINGDIR}/${START_date}/fc${Mymember}
+
+#
+# setupifs.ksh with Myexpid and setupnemo.ksh with start dates passed are 
+# copied from the PATHCO directory, but it should actually
+# come from SCRIPTDIR
+#
+PATHCO=/gpfs/projects/ecm86/ecm86998/intercomparison
+#
+IFS_resolution=T159L62
+IFS_nproc=28 
+NPROMA=40
+LFASTRES=.FALSE.
+IFSDIR=${ECEARTH}
+IFS_exe=${IFSDIR}/ifs/bin/ifsMASTER
+NEMO_resolution=orca1
+NEMO_config=`echo ${NEMO_resolution} | tr [a-z] [A-Z]`
+NEMO_nprocX=4
+NEMO_nprocY=4
+NEMO_nproc=$((NEMO_nprocX*NEMO_nprocY))
+NEMO_exe=${ECEARTH}/nemo/nemo_build/opa_exe.${NEMO_config}_OASIS3.${NEMO_nprocX}.${NEMO_nprocY}
+OASIS3_oldWeights=true
+OASIS3_weightsDir=${TESTDATADIR}/oasis3/weights/big_endian/${IFS_resolution}_${NEMO_resolution}
+OASIS3_exe=${ECEARTH}/oasis3/prism_2-5/prism/MareNostrum/bin/oasis3.MPI1.x
+WAM=false
+#
+export OASIS3=yes
+export OASIS3DEBUGLEVEL=2
+export DR_HOOK_IGNORE_SIGNALS='-1'
+#export MPI_NAP=5
+ulimit -c 1000000
+export LOCAL_DEFINITION_TEMPLATES=${ECEARTH}/ifs/src/emos/local_definitions
+export MBX_SIZE=512000000
+
+RUN_coupFreq=3
+
+##########
+#Here we assume all initial conditions has been copied or linked to the RUN_dir
+#############
+
+
+#
+# Chunk management
+#
+chunk=CHUNK
+CHUNK_last_day_prev= CHUNK_LAST_DAY_PREV 
+
+#in days
+Chunk_start_date= CHUNK_START_DATE
+Chunk_end_date= CHUNK_END_DATE
+RUN_days= RUN_DAYS
+# in hours
+CHUNK_length=$(( ${RUN_days} * 24 )) # In hours
+
+CHUNK_last=CHUNK_LAST
+
+# Run Directory Initialization
+# 
+if [[ $chunk == 1 ]]; then
+ echo "FIRST CHUNK"
+ echo "CHUNK_length: ${CHUNK_length}"
+ LFASTRES=.FALSE.
+else
+ rm -f ${RUN_dir}/anaisout
+ rm -f ${RUN_dir}/mesh_zgr.nc ${RUN_dir}/mesh_hgr.nc ${RUN_dir}/mask.nc ${RUN_dir}/damping.coeff_[0-9][0-9][0-9][0-9].nc
+ echo "CHUNK: ${chunk}"
+ echo "CHUNK_length: ${CHUNK_length}"
+ LFASTRES=.TRUE.
+fi
+
+case $Myversion in
+     v2.1) EXPVER=$(${PATHCO}/setupifs_${Myversion}.ksh -r ${IFS_resolution} -e ${ECEARTH} -l $((CHUNK_last_day_prev+CHUNK_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -o ${CHUNK_last} -1 ${RUN_dir} -2 ${Myexpid})
+     ;;
+     v2.2) EXPVER=$(${PATHCO}/setupifs_${Myversion}.ksh -r ${IFS_resolution} -e ${ECEARTH} -d ${CHUNK_last_day_prev} -l $((CHUNK_last_day_prev+CHUNK_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -p $NPROMA -o ${CHUNK_last} -1 ${RUN_dir} -2 ${Myexpid} -3 $LFASTRES)
+     ;;
+esac
+
+if [[ ${OASIS3_oldWeights} = false ]]; then
+ ${PATHCO}/setupoasis3.ksh -r ${IFS_resolution} -g ${NEMO_config} -e ${ECEARTH} -l ${CHUNK_length} -n ${IFS_nproc} -p ${NEMO_nproc} -c ${RUN_coupFreq} -0 ${RUN_dir}
+else
+ ${PATHCO}/setupoasis3.ksh -r ${IFS_resolution} -g ${NEMO_config} -e ${ECEARTH} -l ${CHUNK_length} -n ${IFS_nproc} -p ${NEMO_nproc} -c ${RUN_coupFreq} -w -W ${OASIS3_weightsDir} -0 ${RUN_dir}
+fi
+#
+if [[ ${CHUNK_last_day_prev} != '0' ]]; then
+ ${PATHCO}/setupnemo.ksh -g ${NEMO_config} -e ${ECEARTH} -l $((CHUNK_length+CHUNK_last_day_prev)) -p ${CHUNK_last_day_prev} -d ${RUN_dir} -s ${START_date}
+ else
+ ${PATHCO}/setupnemo.ksh -g ${NEMO_config} -e ${ECEARTH} -l ${CHUNK_length} -d ${RUN_dir} -s ${START_date}
+fi
+
+#
+# Location of the executables
+# 
+IFS_exe="${IFS_exe}"
+NEMO_exe="${NEMO_exe}"
+OASIS3_exe="${OASIS3_exe}"
+#
+# Model Run
+#
+echo "0 ${OASIS3_exe}" > silly.conf
+echo "1-$IFS_nproc ${IFS_exe} -v ecmwf -e $EXPVER" >> silly.conf
+echo "29-44 ${NEMO_exe}" >> silly.conf
+date
+#
+# set +e is required because there are random errors at the end
+# of each chunk
+#
+set +e
+time srun -n 45 -l --multi-prog silly.conf
+set -e
+echo "finished chunk"
+date
+
+#
+# Preparing restart
+# The NEMO restarts are not saved yet, they are created in a different part of the script
+# Save IFS restart files and prepare for continuation of the run
+#
+
+CHUNK_end=$((CHUNK_length+CHUNK_last_day_prev))
+CHUNK_restart_tag=`printf "%06d0000" $(( ${CHUNK_last_day_prev}/24+${CHUNK_length}/24 ))`
+
+if [[ `ls -1 guarf${CHUNK_restart_tag}.[0-9][0-9][0-9][0-9]` = '0' ]]; then
+ echo "EC-Earth RUN FAILED"
+ exit 1
+fi
+
+CHUNK_last_day_prev=$((${CHUNK_last_day_prev} + ${CHUNK_length}))
+echo "CHUNK_last_day_prev: ${CHUNK_last_day_prev}"
+
+mkdir -p IFS_Restart_${chunk}
+mv guarf${CHUNK_restart_tag}.[0-9][0-9][0-9][0-9] gxtrarf${CHUNK_restart_tag}.[0-9][0-9][0-9][0-9] \
+srf${CHUNK_restart_tag}.[0-9][0-9][0-9][0-9] surf${CHUNK_restart_tag}.[0-9][0-9][0-9][0-9] \
+ tmrf${CHUNK_restart_tag}.[0-9][0-9][0-9][0-9] IFS_Restart_${chunk}
+ln -sf IFS_Restart_${chunk}/* .
+cp rcf IFS_Restart_${chunk}
+
+#  
+# Move the output for postprocessing
+#
+
+output_dir="Output_${chunk}"
+mkdir -p ${output_dir}
+mv ICMGG${Myexpid}+* ICMSH${Myexpid}+* ORCA1_MM_*.nc ${output_dir}/.
+
+touch INITIALDIR/JOBNAME_Completed

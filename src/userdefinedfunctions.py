@@ -60,15 +60,14 @@ def CreateJobScript3(job,parameters):
  file(scriptname,'w').write(templateContent)
  return scriptname
 
-def CreateJobScript4(job,parameters):
+def CreateJobScript_dum(job,parameters):
  scriptname=job.getName()+'.cmd'
  template="../templates/dummy"
- splittedname=scriptname.split('_')
+ splittedname=job.getName().split('_')
  #date=int(splittedname[1])
  parameters['DATE']=splittedname[1]
  #member=int(splittedname[2])
  parameters['MEMBER']=splittedname[2]
- chunk=int(splittedname[3])
  parameters['CHUNK']=splittedname[3]
  parameters['JOBNAME'] = job.getName() 
  if (job.getJobType()==0):
@@ -100,7 +99,7 @@ def CreateJobScript4(job,parameters):
 def CreateJobScript1(job,parameters):
  scriptname=job.getName()+'.cmd'
  template="Template"
- splittedname=scriptname.split('_')
+ splittedname=job.getName().split('_')
  #date=int(splittedname[1])
  parameters['DATE']=splittedname[1]
  #member=int(splittedname[2])
@@ -108,6 +107,54 @@ def CreateJobScript1(job,parameters):
  chunk=int(splittedname[3])
  parameters['CHUNK']=splittedname[3]
  parameters['JOBNAME'] = job.getName() 
+ prev=[0,59,59+61,59+61*2,59+61*2+62,59+61*3+62]
+ if (job.getJobType()==0):
+  print "jobType:", job.getJobType()
+  mytemplate=template+'.sim'
+  ##update parameters
+  parameters['WALLCLOCKLIMIT']='72:00:00'
+  parameters['PREV']=str(24*prev[chunk-1])
+ elif (job.getJobType()==1):
+  print "jobType:", job.getJobType()
+  mytemplate=template+'.post'
+  ##update parameters
+  parameters['WALLCLOCKLIMIT']="02:01:00"
+ elif (job.getJobType()==2):
+  print "jobType:", job.getJobType()
+  ##update parameters
+  mytemplate=template+'.clean'
+  parameters['WALLCLOCKLIMIT']="10:00:00"
+ else: 
+  print "Unknown Job Type"
+  
+ print "*************My Template: %s" % mytemplate
+ templateContent = file(mytemplate).read()
+ for key in parameters.keys():
+  print "KEY: %s\n" % key
+  if key in templateContent:
+   print "%s:\t%s" % (key,parameters[key])
+   templateContent = templateContent.replace(key,parameters[key])
+  
+ file(scriptname,'w').write(templateContent)
+ return scriptname
+
+def CreateJobScript4(job,parameters):
+ scriptname=job.getName()+'.cmd'
+ template="MyTemplate"
+ splittedname=job.getName().split('_')
+ starting_date=int(splittedname[1])
+ parameters['SDATE']=splittedname[1]
+ parameters['INITIALDIR']='.'
+ #member=int(splittedname[2])
+ parameters['MEMBER']=splittedname[2]
+ chunk=int(splittedname[3])
+ parameters['CHUNK']=splittedname[3]
+ parameters['JOBNAME'] = job.getName() 
+ chunk_start_date=0
+ chunk_end_date=0
+ parameters['CHUNK_START_DATE']=str(chunk_start_date)
+ parameters['CHUNK_END_DATE']=str(chunk_end_date)
+ parameters['RUN_DAYS']=str(chunk_end_date-chunk_start_date)
  prev=[0,59,59+61,59+61*2,59+61*2+62,59+61*3+62]
  if (job.getJobType()==0):
   print "jobType:", job.getJobType()
@@ -161,6 +208,49 @@ def CreateJobList1(list_of_dates, num_member,num_chunks):
     if (chk==1):
      job_sim.setStatus(Job.Status.READY)
      job_sim.setParents([])
+    if(chk>1):
+     parentname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk-1)+'_'+'sim'
+     job_sim.setParents([parentname])
+     if (chk>2):
+      parentname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk-2)+'_'+'clean'
+      job_sim.addParents(parentname)
+    if (chk<num_chunks):
+     childname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk+1)+'_'+'sim'
+     job_sim.addChildren(childname)
+    if (chk<num_chunks-1):
+     childname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk+2)+'_'+'sim'
+     job_clean.setChildren([childname])
+
+    JobListFactory.printJobs([job_sim ,job_post ,job_clean])
+    joblist+=[job_sim ,job_post ,job_clean]
+  
+ JobListFactory.updateGenealogy(joblist)
+ return joblist   
+ 
+def CreateJobList4(list_of_dates, num_member,num_chunks):
+ joblist=list()
+ #param=dict()
+ for dates in list_of_dates:
+  for mem in range(num_member):
+   for chk in range(1,num_chunks+1):
+    job_rootname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk)+'_'
+    job_sim = Job(job_rootname+'sim',0,Job.Status.WAITING,Job.JobType.SIMULATION)
+    job_post = Job(job_rootname+'post',0,Job.Status.WAITING,Job.JobType.POSTPROCESSING)
+    job_clean = Job(job_rootname+'clean',0,Job.Status.WAITING,Job.JobType.CLEANING)
+    #set depency of postprocessing jobs
+    job_post.setParents([job_sim.name])
+    job_post.setChildren([job_clean.name])
+    #set Parents of clean job
+    job_clean.setParents([job_post.name])
+    #set first child of sim job
+    job_sim.setChildren([job_post.name])
+    ##Set status of first chunk to READY
+    if (chk==1):
+     job_ini = Job(job_rootname+'ini',0,Job.Status.READY,Job.JobType.INITIALISATION)
+     job_ini.setChildren([job_sim.name])
+     job_ini.setParents([])
+     job_sim.setParents([job_ini.name])
+     joblist+=[job_ini]
     if(chk>1):
      parentname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk-1)+'_'+'sim'
      job_sim.setParents([parentname])
@@ -306,19 +396,24 @@ def generateJobParameters3(expid):
  parameters['SHELL'] = "/bin/bash"
  return parameters
     
-def GenerateParameter(expid):
- if expid=="yves":
-  print "creatig the parameters for the experiment: %s" % expid
-  parameter=generateJobParameter1(expid)
-  return parameter
- else:
-  print "there is no defined generateparameter function for the expid : %s " % expid 
-
+def generateJobParameters4(expid):
+ # Table which contains all the keys to change in the template.
+ # Feel free to add new variables
+ parameters = dict()
  
+ # Useful variables
+ #expid = 'nemo_comp'
+ 
+ # Configure jobname and shell type
+ parameters['SHELL'] = "/bin/ksh"
+ parameters['CHUNK_NUMBERS']='2'
+ 
+ return parameters
+
 def GenerateParameter(expid):
  if expid=="yves":
   print "creatig the parameters for the experiment: %s" % expid
-  parameter=generateJobParameter1(expid)
+  parameter=generateJobParameters1(expid)
   return parameter
  else:
   print "there is no defined generateparameter function for the expid : %s " % expid 
@@ -338,6 +433,11 @@ def CreateJobScript(expid,job):
   print "creating the script for job: %s" % job.getName()
   parameter=generateJobParameters1(expid)
   scriptname=CreateJobScript3(job,parameter)
+  return scriptname
+ elif expid=="yve2":
+  print "creating the script for job: %s" % job.getName()
+  parameter=generateJobParameters4(expid)
+  scriptname=CreateJobScript4(job,parameter)
   return scriptname
  else:
   print "there is no defined CreateJobScript function for the expid: %s" % expid 
@@ -361,11 +461,18 @@ def CreateJobList(expid):
   numchuncks=10 
   joblist=CreateJobList1(dates,members,numchuncks)
   return joblist
+ elif expid=="yve2":
+  print "Creating the joblist for experiment: %s" % expid
+  dates=[1960]
+  members=2
+  numchuncks=2 
+  joblist=CreateJobList4(dates,members,numchuncks)
+  return joblist
  else:
   print "there is no defined CreateJoblist  function for the expid: %s" % expid 
 
 if __name__ == "__main__":
- expid='scal'
+ expid='yve2'
  joblist=CreateJobList(expid)
  joblist[0].printJob()
  print "number of jobs: ",len(joblist)

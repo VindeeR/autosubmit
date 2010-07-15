@@ -183,7 +183,8 @@ if __name__ == "__main__":
  signal.signal(signal.SIGHUP,handler)#,joblist)
  
  (options,args)=handle_options()
- expid="scal" 
+ expid="yve1" 
+## expid="scal" 
  log_short("Jobs to submit: %s" % options.totalJobs)
  log_short("Start with job number: %s" % options.alreadySubmitted)
  log_short("Maximum waiting jobs in queues: %s" % options.maxWaitingJobs)

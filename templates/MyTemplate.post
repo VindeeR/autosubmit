@@ -5,8 +5,10 @@
 #
 #@ job_name         = JOBNAME
 #@ wall_clock_limit = 8:00:00
-#@ output           = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.out
-#@ error            = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.err
+# @ output           = JOBNAME_%j.out
+# @ error            = JOBNAME_%j.err
+##@ output           = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.out
+##@ error            = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.err
 #@ total_tasks      = 2
 #@ initialdir       = INITIALDIR
 #@ tracing          = 1

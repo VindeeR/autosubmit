@@ -83,7 +83,7 @@ RUN_coupFreq=3
 # Chunk management
 #
 chunk=CHUNK
-CHUNK_last_day_prev= CHUNK_LAST_DAY_PREV 
+day_prev= PREV 
 
 #in days
 Chunk_start_date= CHUNK_START_DATE
@@ -91,7 +91,7 @@ Chunk_end_date= CHUNK_END_DATE
 RUN_days= RUN_DAYS
 # in hours
 CHUNK_length=$(( ${RUN_days} * 24 )) # In hours
-
+CHUNK_last_day_prev= $(( ${day_prev} * 24 )) # In hours
 CHUNK_last=CHUNK_LAST
 
 # Run Directory Initialization

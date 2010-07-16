@@ -140,21 +140,22 @@ def CreateJobScript1(job,parameters):
 
 def CreateJobScript4(job,parameters):
  scriptname=job.getName()+'.cmd'
- template="MyTemplate"
+ template="../templates/MyTemplate"
  splittedname=job.getName().split('_')
  starting_date=int(splittedname[1])
  parameters['SDATE']=splittedname[1]
- parameters['INITIALDIR']='.'
- #member=int(splittedname[2])
+  #member=int(splittedname[2])
  parameters['MEMBER']=splittedname[2]
  chunk=int(splittedname[3])
+ chunk_length=int(parameters['CHUNK_LENGTH'])
  parameters['CHUNK']=splittedname[3]
  parameters['JOBNAME'] = job.getName() 
- chunk_start_date=0
- chunk_end_date=0
+ chunk_start_date=starting_date+(chunk-1)*chunk_length
+ chunk_end_date=chunk_start_date+chunk_length
  parameters['CHUNK_START_DATE']=str(chunk_start_date)
  parameters['CHUNK_END_DATE']=str(chunk_end_date)
  parameters['RUN_DAYS']=str(chunk_end_date-chunk_start_date)
+ parameters['VERSION']='v2.2'
  prev=[0,59,59+61,59+61*2,59+61*2+62,59+61*3+62]
  if (job.getJobType()==0):
   print "jobType:", job.getJobType()
@@ -171,6 +172,11 @@ def CreateJobScript4(job,parameters):
   print "jobType:", job.getJobType()
   ##update parameters
   mytemplate=template+'.clean'
+  parameters['WALLCLOCKLIMIT']="10:00:00"
+ elif (job.getJobType()==3):
+  print "jobType:", job.getJobType()
+  ##update parameters
+  mytemplate=template+'.ini'
   parameters['WALLCLOCKLIMIT']="10:00:00"
  else: 
   print "Unknown Job Type"
@@ -407,7 +413,10 @@ def generateJobParameters4(expid):
  # Configure jobname and shell type
  parameters['SHELL'] = "/bin/ksh"
  parameters['CHUNK_NUMBERS']='2'
- 
+ parameters['SDATE']='19600101'
+ parameters['INITIALDIR']='.'
+ parameters['CHUNK_LENGTH']='1'
+ parameters['EXPID']='yve2'
  return parameters
 
 def GenerateParameter(expid):
@@ -476,8 +485,11 @@ if __name__ == "__main__":
  joblist=CreateJobList(expid)
  joblist[0].printJob()
  print "number of jobs: ",len(joblist)
- parameters = dict()
- CreateJobScript(expid,joblist[0])
+ print "number of jobs ready", len(JobListFactory.getReady(joblist))
+ JobListFactory.getReady(joblist)[0].printJob()
+ #parameters = dict()
+ for job in joblist:
+  CreateJobScript(expid,job)
  print "done!!!"
 
 

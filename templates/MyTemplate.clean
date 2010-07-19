@@ -28,21 +28,21 @@ RUN_dir=${WRITINGDIR}/${START_date}/fc${Mymember}
 # Chunk management
 #
 chunk=CHUNK
-CHUNK_last= CHUNK_LAST 
+Chunk_last= Chunk_LAST 
 
-Chunk_start_date= CHUNK_START_DATE
-Chunk_end_date= CHUNK_END_DATE
-nyearini= CHUNK_START_YEAR
-nmonthini= CHUNK_START_MONTH
+Chunk_start_date= Chunk_START_DATE
+Chunk_end_date= Chunk_END_DATE
+nyearini= Chunk_START_YEAR
+nmonthini= Chunk_START_MONTH
 
 #in days
 RUN_days= RUN_DAYS
 
 # in hours
-CHUNK_length=$(( ${RUN_days} * 24 )) # In hours
+Chunk_length=$(( ${RUN_days} * 24 )) # In hours
 
 #in month
-RUN_chunk_size= CHUNK_SIZE_MONTH
+RUN_chunk_size= Chunk_SIZE_MONTH
 #
 # Output path on HSM
 #
@@ -76,7 +76,7 @@ for REST in RESTA RESTO ; do
          ;;
          RESTO) PATHSU=""
 #               PATHSU="/ORCA1_Restart"
-                FILEPREF="ORCA1_${CHUNK_length}_restart"
+                FILEPREF="ORCA1_${Chunk_length}_restart"
          ;;
     esac
 #
@@ -202,7 +202,7 @@ if [[ -a outo_$chunk && -a outa_$chunk ]] ; then
         rm -rf ${output_dir}
 fi
 
-if[[CHUNK_LAST]]; then
+if[[Chunk_LAST]]; then
     cd $WRITINDIR
     echo "We are now removing ${RUN_dir}"
     rm -rf ${RUN_dir}

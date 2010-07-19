@@ -1,0 +1,17 @@
+#!SHELL
+# @ job_name         = JOBNAME
+# @ initialdir       = LOGDIR
+# @ output           = JOBNAME_%j.out
+# @ error            = JOBNAME_%j.err
+# @ total_tasks      = TOTALTASKS
+# @ wall_clock_limit = WALLCLOCKLIMIT 
+#@ tasks_per_node   = 4
+
+
+# Identifiers of the job
+Myexpid=EXPID
+Mydate=DATE
+Mychunk=CHUNK
+Mymember=MEMBER
+Myjobname=JOBNAME
+# Edit the script properly to generate values for the parameters

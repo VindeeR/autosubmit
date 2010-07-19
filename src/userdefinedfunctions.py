@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import JobListFactory
+import chunk_date_lib
 from Job import *
 
 
@@ -142,27 +143,39 @@ def CreateJobScript4(job,parameters):
  scriptname=job.getName()+'.cmd'
  template="../templates/MyTemplate"
  splittedname=job.getName().split('_')
- starting_date=int(splittedname[1])
  parameters['SDATE']=splittedname[1]
+ string_date=splittedname[1]
   #member=int(splittedname[2])
  parameters['MEMBER']=splittedname[2]
+ total_chunk=int(parameters['Chunk_NUMBERS'])
  chunk=int(splittedname[3])
- chunk_length=int(parameters['CHUNK_LENGTH'])
+ chunk_length_in_month=int(parameters['Chunk_SIZE_MONTH'])
  parameters['CHUNK']=splittedname[3]
  parameters['JOBNAME'] = job.getName() 
- chunk_start_date=starting_date+(chunk-1)*chunk_length
- chunk_end_date=chunk_start_date+chunk_length
- parameters['CHUNK_START_DATE']=str(chunk_start_date)
- parameters['CHUNK_END_DATE']=str(chunk_end_date)
- parameters['RUN_DAYS']=str(chunk_end_date-chunk_start_date)
- parameters['VERSION']='v2.2'
- prev=[0,59,59+61,59+61*2,59+61*2+62,59+61*3+62]
+ chunk_start_date=chunk_date_lib.chunk_start_date(string_date,chunk,chunk_length_in_month)
+ chunk_end_date=chunk_date_lib.chunk_end_date(chunk_start_date,chunk_length_in_month)
+ run_days=chunk_date_lib.running_days(chunk_start_date,chunk_end_date)
+ prev_days=chunk_date_lib.previous_days(string_date,chunk_start_date)
+ parameters['Chunk_START_DATE']=chunk_start_date
+ parameters['Chunk_END_DATE']=chunk_end_date
+ parameters['RUN_DAYS']=str(run_days)
+ 
+ chunk_start_month=chunk_date_lib.chunk_start_month(string_date)
+ chunk_start_year=chunk_date_lib.chunk_start_year(string_date)
+ 
+ parameters['Chunk_START_YEAR']=str(chunk_start_year)
+ parameters['Chunk_START_MONTH']=str(chunk_start_month)
+ if total_chunk==chunk:
+  parameters['Chunk_LAST']='.TRUE.'
+ else:
+  parameters['Chunk_LAST']='.FALSE.'
+  
  if (job.getJobType()==0):
   print "jobType:", job.getJobType()
   mytemplate=template+'.sim'
   ##update parameters
   parameters['WALLCLOCKLIMIT']='72:00:00'
-  parameters['PREV']=str(24*prev[chunk-1])
+  parameters['PREV']=str(prev_days)
  elif (job.getJobType()==1):
   print "jobType:", job.getJobType()
   mytemplate=template+'.post'
@@ -339,7 +352,7 @@ def generateJobParameters1(expid):
  parameters['DATES']='1990'
 # parameters['TOTALNUMSIMULATION']="1"
 # parameters['RUNLENGTH']="10"
-# parameters['CHUNKLENGTH']="1"
+# parameters['ChunkLENGTH']="1"
  parameters['CHUNK']='1'
  # Variables to identify the job itself
  #parameters['ASWHOAMI']= str(whoAmI)
@@ -405,18 +418,18 @@ def generateJobParameters3(expid):
 def generateJobParameters4(expid):
  # Table which contains all the keys to change in the template.
  # Feel free to add new variables
- parameters = dict()
- 
- # Useful variables
+ parameters= dict()
+  # Useful variables
  #expid = 'nemo_comp'
  
  # Configure jobname and shell type
  parameters['SHELL'] = "/bin/ksh"
- parameters['CHUNK_NUMBERS']='2'
+ parameters['Chunk_NUMBERS']='2'
+ parameters['Chunk_SIZE_MONTH']='1'
  parameters['SDATE']='19600101'
  parameters['INITIALDIR']='.'
- parameters['CHUNK_LENGTH']='1'
- parameters['EXPID']='yve2'
+ parameters['EXPID']=expid
+ parameters['VERSION']='v2.2'
  return parameters
 
 def GenerateParameter(expid):
@@ -472,7 +485,7 @@ def CreateJobList(expid):
   return joblist
  elif expid=="yve2":
   print "Creating the joblist for experiment: %s" % expid
-  dates=[1960]
+  dates=[19601101]
   members=2
   numchuncks=2 
   joblist=CreateJobList4(dates,members,numchuncks)

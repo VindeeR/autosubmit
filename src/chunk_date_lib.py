@@ -40,6 +40,16 @@ def previous_days(string_date,start_date):
  print start_date
  return subs_dates(string_date,start_date)
 
+def chunk_start_month(string_date):
+ date = time.strptime(string_date,'%Y%m%d')
+ result=date.tm_mon
+ return result
+
+def chunk_start_year(string_date):
+ date = time.strptime(string_date,'%Y%m%d')
+ result=date.tm_year
+ return result
+
 if __name__ == "__main__":
  start_date = chunk_start_date(string_date,5,12)
  print start_date
@@ -48,3 +58,5 @@ if __name__ == "__main__":
  print running_days(start_date,end_date)
  print running_days(string_date,end_date)
  print previous_days(string_date,start_date)
+ print "year: ", chunk_start_year(string_date)
+ print "month: ", chunk_start_month(string_date)

@@ -183,7 +183,7 @@ if __name__ == "__main__":
  signal.signal(signal.SIGHUP,handler)#,joblist)
  
  (options,args)=handle_options()
- expid="yve1" 
+ expid="b012" 
 ## expid="scal" 
  log_short("Jobs to submit: %s" % options.totalJobs)
  log_short("Start with job number: %s" % options.alreadySubmitted)

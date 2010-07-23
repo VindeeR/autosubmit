@@ -40,6 +40,15 @@ def previous_days(string_date,start_date):
  print start_date
  return subs_dates(string_date,start_date)
 
+def previous_day(string_date):
+ print string_date
+ st_date = time.strptime(string_date,'%Y%m%d')
+ st_date_datetime = datetime.date(st_date.tm_year,st_date.tm_mon,st_date.tm_mday)
+ oneday = datetime.timedelta(days=1)
+ date_1 = st_date_datetime-oneday
+ string_date_1="%s%02d%02d" % (date_1.year,date_1.month,date_1.day)
+ return string_date_1
+ 
 def chunk_start_month(string_date):
  date = time.strptime(string_date,'%Y%m%d')
  result=date.tm_mon
@@ -60,3 +69,4 @@ if __name__ == "__main__":
  print previous_days(string_date,start_date)
  print "year: ", chunk_start_year(string_date)
  print "month: ", chunk_start_month(string_date)
+ print "yesterday: %s " % previous_day(string_date)

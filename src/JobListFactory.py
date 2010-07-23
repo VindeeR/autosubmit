@@ -100,6 +100,7 @@ def updateJobList(jobs):
  for job in jobs:
   if (job.getStatus()==-1):
    count=job.getFailCount()
+   job.printJob()
    job.setFailCount(count+1)
    if (job.getFailCount()<4):
     job.setStatus(Job.Status.READY)
@@ -168,12 +169,17 @@ def updateGenealogy(jobs):
 
 
 if __name__ == "__main__":
- jobs = main()
+ ##jobs = main()
+ jobs=pickle.load(file('../auxfiles/joblist.pkl','r'))
  #joblist1=range(1960,1975,5)
  #jobs=userdefinedfunctions.CreateJobList("yves")
  ##jobs=CreateJobList2()
  printJobs(jobs)
  ##updateGenealogy(jobs)
+ for job in jobs:
+  if job.getJobType()==3:
+   job.setStatus(5)
+   job.check_completion()
  print '\nSorting by Name'.upper()
  sortJobs = sortByName(jobs)
  printJobs(sortJobs)
@@ -181,18 +187,19 @@ if __name__ == "__main__":
  saveJobList(sortJobs, file1)
  total=jobs.__len__()
  finished=0
- while finished!=total:
-  for job in jobs:
-   if job.getStatus() < 5:
-    job.setStatus(job.getStatus()+1)
-  updateJobList(jobs) 
-  finished=getFinished(jobs).__len__()
-  print "%s finished jobs out of %s total" % (finished,total)
-  print '\nSorting by Status'.upper()
-  sortJobs = sortByStatus(jobs)
-  file2='../auxfiles/joblist.pkl'
-  saveJobList(sortJobs, file2)
-  time.sleep(10)
+ updateJobList(jobs)
+# while finished!=total:
+#  for job in jobs:
+#   if job.getStatus() < 5:
+#    job.setStatus(job.getStatus()+1)
+#  updateJobList(jobs) 
+#  finished=getFinished(jobs).__len__()
+#  print "%s finished jobs out of %s total" % (finished,total)
+#  print '\nSorting by Status'.upper()
+#  sortJobs = sortByStatus(jobs)
+#  file2='../auxfiles/joblist.pkl'
+#  saveJobList(sortJobs, file2)
+#  time.sleep(10)
  ##picjoblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  ##printJobs(picjoblist)
-
+ print "finished"

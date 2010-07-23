@@ -156,19 +156,25 @@ def CreateJobScript4(job,parameters):
  chunk_end_date=chunk_date_lib.chunk_end_date(chunk_start_date,chunk_length_in_month)
  run_days=chunk_date_lib.running_days(chunk_start_date,chunk_end_date)
  prev_days=chunk_date_lib.previous_days(string_date,chunk_start_date)
+ chunk_end_days=chunk_date_lib.previous_days(string_date,chunk_end_date)
+ day_before=chunk_date_lib.previous_day(string_date)
+ chunk_end_date_1=chunk_date_lib.previous_day(chunk_end_date)
+ parameters['DAY_BEFORE']=day_before
  parameters['Chunk_START_DATE']=chunk_start_date
- parameters['Chunk_END_DATE']=chunk_end_date
+ parameters['Chunk_END_DATE']=chunk_end_date_1
  parameters['RUN_DAYS']=str(run_days)
+ parameters['Chunk_End_IN_DAYS']=str(chunk_end_days)
+
+ chunk_start_month=chunk_date_lib.chunk_start_month(chunk_start_date)
+ chunk_start_year=chunk_date_lib.chunk_start_year(chunk_start_date)
  
- chunk_start_month=chunk_date_lib.chunk_start_month(string_date)
- chunk_start_year=chunk_date_lib.chunk_start_year(string_date)
- 
+  
  parameters['Chunk_START_YEAR']=str(chunk_start_year)
  parameters['Chunk_START_MONTH']=str(chunk_start_month)
  if total_chunk==chunk:
-  parameters['Chunk_LAST']='.TRUE.'
+  parameters['Chunk_LAST']='1'
  else:
-  parameters['Chunk_LAST']='.FALSE.'
+  parameters['Chunk_LAST']='0'
   
  if (job.getJobType()==0):
   print "jobType:", job.getJobType()
@@ -180,6 +186,10 @@ def CreateJobScript4(job,parameters):
   print "jobType:", job.getJobType()
   mytemplate=template+'.post'
   ##update parameters
+  starting_date_year=chunk_date_lib.chunk_start_year(string_date)
+  starting_date_month=chunk_date_lib.chunk_start_month(string_date)
+  parameters['Starting_DATE_YEAR']=str(starting_date_year)
+  parameters['Starting_DATE_MONTH']=str(starting_date_month)
   parameters['WALLCLOCKLIMIT']="02:01:00"
  elif (job.getJobType()==2):
   print "jobType:", job.getJobType()
@@ -427,7 +437,8 @@ def generateJobParameters4(expid):
  parameters['Chunk_NUMBERS']='2'
  parameters['Chunk_SIZE_MONTH']='1'
  parameters['SDATE']='19600101'
- parameters['INITIALDIR']='.'
+ parameters['INITIALDIR']='/home/ecm86/ecm86503/autosub_vanilla/src/mylogs'
+ parameters['LOGDIR']='/home/ecm86/ecm86503/autosub_vanilla/src/mylogs'
  parameters['EXPID']=expid
  parameters['VERSION']='v2.2'
  return parameters

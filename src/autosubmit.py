@@ -66,14 +66,14 @@ def handle_options():
 		   dest="debug",
                    help="Debug mode, display the jobs to be submitted.")
  parser.add_option("-r","--restart",
-                   type="string",
-                   dest="joblist_pickled",
-     default="joblist.pkl",
-     help="joblist_pickled is the file containing the joblist from which autosubmit can restart.",
-     metavar="file")
+                   action="store_true",
+		   dest="restart",
+                   help="restart from joblist pickled")
  (options,args) = parser.parse_args()
  return (options,args)
 
+##TODO add an option to pass the expid on the command line.
+## TODO pass jobtemplate as an optional argument to CreateJobScript
 
 def log_long(message):
  print "[%s] %s" % (time.asctime(),message)
@@ -183,7 +183,7 @@ if __name__ == "__main__":
  signal.signal(signal.SIGHUP,handler)#,joblist)
  
  (options,args)=handle_options()
- expid="b012" 
+ expid="yve2" 
 ## expid="scal" 
  log_short("Jobs to submit: %s" % options.totalJobs)
  log_short("Start with job number: %s" % options.alreadySubmitted)
@@ -195,10 +195,10 @@ if __name__ == "__main__":
  totalJobs=options.totalJobs 
  myTemplate=options.jobTemplate
  
-# if options.joblist_pickled:
-#  joblist=pickle.load(file(options.joblist_pickled,'r'))
-# else: 
- joblist=userdefinedfunctions.CreateJobList(expid)
+ if options.restart:
+  joblist=pickle.load(file('../auxfiles/joblistbyname.pkl','r'))
+ else: 
+  joblist=userdefinedfunctions.CreateJobList(expid)
  
  #joblist=JobListFactory.CreateJobList2()
  print "Length of joblist: ",len(joblist)

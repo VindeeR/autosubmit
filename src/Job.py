@@ -83,7 +83,7 @@ class Job:
  def setChildren(self,newChildren):
   self.children = newChildren
  
- def sefFailCount(self,newfailcount):
+ def setFailCount(self,newfailcount):
   self.failcount=newfailcount
  
  def addParents(self,newParents):
@@ -109,21 +109,13 @@ class Job:
 
  def check_completion(self):
   complete=False
-  if (self.jobtype==0):
-   #check that the simulation finished properly
-   os.system('touch %s' % self.name+'COMPLETED')
+  logname='mylogs/'+self.name+'_COMPLETED'
+  if  (os.path.exists(logname)):
    complete=True
-  elif (self.jobtype==1):
-   #check that the postprocessing finished properly
-   os.system('touch %s' % self.name+'COMPLETED')
-   complete=True
-  elif (self.jobtype==2):
-   #check that the cleaning finished properly
-   os.system('touch %s' % self.name+'COMPLETED')
-   complete=True
+   os.system('touch %s' % self.name+'Checked')
   else:
-   os.system('touch %s' % self.name+'COMPLETED')
-   complete=True
+   print "Job: %s has failed!!!" % self.name
+   os.system('touch %s' % self.name+'Failed')
    
   if (complete):
    self.setStatus(Job.Status.COMPLETED)

@@ -434,9 +434,8 @@ def generateJobParameters4(expid):
  
  # Configure jobname and shell type
  parameters['SHELL'] = "/bin/ksh"
- parameters['Chunk_NUMBERS']='2'
- parameters['Chunk_SIZE_MONTH']='1'
- parameters['SDATE']='19600101'
+ parameters['Chunk_NUMBERS']='5'
+ parameters['Chunk_SIZE_MONTH']='12'
  parameters['INITIALDIR']='/home/ecm86/ecm86503/autosub_vanilla/src/mylogs'
  parameters['LOGDIR']='/home/ecm86/ecm86503/autosub_vanilla/src/mylogs'
  parameters['EXPID']=expid
@@ -496,9 +495,9 @@ def CreateJobList(expid):
   return joblist
  elif expid=="yve2":
   print "Creating the joblist for experiment: %s" % expid
-  dates=[19601101]
-  members=2
-  numchuncks=2 
+  dates=[19601101,19651101]
+  members=5
+  numchuncks=5 
   joblist=CreateJobList4(dates,members,numchuncks)
   return joblist
  else:

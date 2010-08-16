@@ -49,14 +49,14 @@ class Job:
  
  def getAllChildren(self):
   print self.name
-  name_list = list()
+  job_list = list()
   if self.hasChildren():
    for job in self.children:
-    name_list.append(job.getName())
-    print name_list
+    job_list.append(job)
+    print job.getName()
     result_list = job.getAllChildren()
-    name_list = name_list+result_list
-  return name_list
+    job_list = job_list+result_list
+  return job_list
 
  def printJob(self):
   print "%s\t%s\t%s" % ("Job Name","Job Id","Job Status")

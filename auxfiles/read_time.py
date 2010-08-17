@@ -35,7 +35,7 @@ labels = '3h-coupling','6h-coupling'
 pylab.plot(ntasks_list,three_hourly,'r')
 pylab.plot(ntasks_list2,six_hourly,'b')
 pylab.title('Scalability', bbox={'facecolor':'0.8', 'pad':5})
-fig.savefig('scalability333.png')
+fig.savefig('scalability.png')
 print ntasks_list
 print three_hourly
 print ntasks_list2

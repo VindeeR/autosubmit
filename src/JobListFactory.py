@@ -9,6 +9,10 @@ import time
 def compareStatus(job_a,job_b):
  return cmp(int(job_a.getStatus()),int(job_b.getStatus()))
 
+def compareType(job_a,job_b):
+ return cmp(int(job_a.getJobType()),int(job_b.getJobType()))
+
+
 def compareId(job_a,job_b):
  return cmp(int(job_a.getId()),int(job_b.getId()))
 
@@ -95,6 +99,9 @@ def sortById(jobs):
 def sortByStatus(jobs):
  return sorted(jobs,compareStatus)
 
+def sortByType(jobs):
+ return sorted(jobs,compareType)
+
 def updateJobList(jobs):
  print "*******************UPDATING THE LIST****************************"
  for job in jobs:
@@ -177,17 +184,20 @@ if __name__ == "__main__":
  printJobs(jobs)
  ##updateGenealogy(jobs)
  for job in jobs:
-  if job.getJobType()==3:
+  if job.getJobType()==-1:
    job.setStatus(5)
-   job.check_completion()
+   #job.check_completion()
+  if job.getName()=='job_19601101_1_1_sim' or job.getName()=='job_19601101_0_1_sim':
+   job.setId(0)
+   job.setStatus(1) 
  print '\nSorting by Name'.upper()
  sortJobs = sortByName(jobs)
  printJobs(sortJobs)
- file1='../auxfiles/joblistbyname.pkl'
- saveJobList(sortJobs, file1)
- total=jobs.__len__()
- finished=0
- updateJobList(jobs)
+ #file1='../auxfiles/joblistbyname.pkl'
+ #saveJobList(sortJobs, file1)
+ #total=jobs.__len__()
+ #finished=0
+ #updateJobList(jobs)
 # while finished!=total:
 #  for job in jobs:
 #   if job.getStatus() < 5:
@@ -197,8 +207,8 @@ if __name__ == "__main__":
 #  print "%s finished jobs out of %s total" % (finished,total)
 #  print '\nSorting by Status'.upper()
 #  sortJobs = sortByStatus(jobs)
-#  file2='../auxfiles/joblist.pkl'
-#  saveJobList(sortJobs, file2)
+ file2='../auxfiles/joblist.pkl'
+ saveJobList(sortJobs, file2)
 #  time.sleep(10)
  ##picjoblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  ##printJobs(picjoblist)

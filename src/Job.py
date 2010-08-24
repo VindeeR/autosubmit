@@ -17,7 +17,7 @@ class Job:
   SIMULATION = 0
   POSTPROCESSING = 1
   CLEANING = 2
-  INITIALISATION = 3
+  INITIALISATION = -1
   
  def __init__(self,name,id,status,jobtype):
   self.name = name

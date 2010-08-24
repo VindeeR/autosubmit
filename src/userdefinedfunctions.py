@@ -508,5 +508,5 @@ if __name__ == "__main__":
  #for job in joblist:
  # CreateJobScript(expid,job)
  print "done!!!"
-
+ JobListFactory.printJobs(joblist)
 

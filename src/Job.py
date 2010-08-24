@@ -3,8 +3,13 @@
 import os
 
 class Job:
- """Class to handle all the tasks with Jobs at HPC"""
+ """Class to handle all the tasks with Jobs at HPC.
+    A job is created by default with a name, a jobid, a status and a type.
+    It can have children and parents. The inheritance reflects the dependency between jobs.
+    If Job2 must wait until Job1 is completed then Job2 is a 'child of Job1. Inversely Job1 is a parent of Job2 """
+    
  class Status:
+  """Class to handle the status of a job"""
   WAITING = 0
   READY = 1
   SUBMITTED = 2 
@@ -14,6 +19,12 @@ class Job:
   FAILED = -1
 
  class JobType:
+  """Class to handle the type of a job.
+      At the moment contains only 4 types:
+      SIMULATION are for multiprocessor jobs
+      POSTPROCESSING are single processor jobs
+      ClEANING are archiving job---> dealing with large transfer of data on tape
+      INITIALISATION are jobs which transfer data from tape to disk"""
   SIMULATION = 0
   POSTPROCESSING = 1
   CLEANING = 2

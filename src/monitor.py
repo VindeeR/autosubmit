@@ -9,7 +9,6 @@ import parseMnqXml as mnq
 import time
 import matplotlib.pyplot as plt
 
-
 def pie_chart(completed,failed,ready,running,queuing,count):
  
  # make a square figure and axes
@@ -47,15 +46,42 @@ def CreateTree(expid,dates,members,chunks):
   # graph.add_edge(edge3)
  
  graph.write_png('myexample3_graph.png')
-  
-   
-if __name__ == "__main__":
- filename='../auxfiles/joblist.pkl'
- file1=open(filename,'r')
- total=10
- finished=0
+
+def ColorStatus(status):
+ color='white'
+ if status==0:
+   color='blue'
+ elif status==1:
+   color='navy'
+ elif status==2:
+   color='purple'
+ elif status==3:
+   color='yellow'
+ elif status==4:
+   color='orange'
+ elif status==5:
+   color='green'
+ elif status==-1:
+   color='red'
+ return color
+
+def CreateTreeList(expid,joblist):
+ graph=pydot.Dot(graph_type='digraph')
+ for job in joblist:
+  node_job = pydot.Node(job.getName(),shape='box', style="filled", fillcolor=ColorStatus(job.getStatus()))
+  graph.add_node(node_job)
+  #graph.set_node_style(node_job,shape='box', style="filled", fillcolor=ColorStatus(job.getStatus()))
+  if job.hasChildren()!=0:
+   for child in job.getChildren():
+    node_child=pydot.Node(child.getName() ,shape='box', style="filled", fillcolor=ColorStatus(job.getStatus()))
+    graph.add_node(node_child)
+    #graph.set_node_style(node_child,shape='box', style="filled", fillcolor=ColorStatus(job.getStatus()))
+    graph.add_edge(pydot.Edge(node_job, node_child))
+ graph.write_png('list_graph2.png') 
+ graph.write_pdf('list_graph2.pdf') 
+ 
+def dummy_list(jobs):
  count=0
- jobs=pickle.load(file(filename,'r'))
  total=jobs.__len__()
  completed=JobListFactory.getCompleted(jobs).__len__()
  finished=JobListFactory.getFinished(jobs).__len__()
@@ -85,5 +111,12 @@ if __name__ == "__main__":
   submitted=status_list[2]
   ready=status_list[1]
   waiting=status_list[0]
-  finished=JobListFactory.getFinished(jobs).__len__() 
+  finished=JobListFactory.getFinished(jobs).__len__()    
+
+if __name__ == "__main__":
+ filename='../auxfiles/joblist.pkl'
+ file1=open(filename,'r')
+ jobs=pickle.load(file(filename,'r'))
+ #dummy_list(jobs)
+ CreateTreeList('Heyy',jobs)
  file1.close()

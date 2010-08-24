@@ -31,6 +31,10 @@ case $Myversion in
            SCRIPTDIR=/gpfs/projects/ecm86/ecearth/v2.2/setup
            TESTDATADIR=/gpfs/projects/ecm86/ecearth/v2.2/inidata
      ;;
+     v2.2.1) ECEARTH=/gpfs/projects/ecm86/ecearth/v2.2.1
+             SCRIPTDIR=/gpfs/projects/ecm86/ecearth/v2.2.1/setup
+             TESTDATADIR=/gpfs/projects/ecm86/ecearth/v2.2.1/inidata
+     ;;
 esac
 
 #
@@ -43,27 +47,31 @@ RUN_dir=${WRITINGDIR}/${START_date}/fc${Mymember}
 mkdir -p $RUN_dir
 cd $RUN_dir
 #
-# setupifs.ksh with Myexpid and setupnemo.ksh with start dates passed are 
-# copied from the PATHCO directory, but it should actually
-# come from SCRIPTDIR
-#
-PATHCO=/gpfs/projects/ecm86/ecm86998/intercomparison
+# IFS
 #
 IFS_resolution=T159L62
 IFS_nproc=28 
 NPROMA=40
 LFASTRES=.FALSE.
 IFSDIR=${ECEARTH}
-IFS_exe=${IFSDIR}/ifs/bin/ifsMASTER
+IFS_exe=${IFSDIR}/bin/ifsMASTER
+
+#
+# NEMO 
+#
 NEMO_resolution=orca1
 NEMO_config=`echo ${NEMO_resolution} | tr [a-z] [A-Z]`
 NEMO_nprocX=4
 NEMO_nprocY=4
 NEMO_nproc=$((NEMO_nprocX*NEMO_nprocY))
-NEMO_exe=${ECEARTH}/nemo/nemo_build/opa_exe.${NEMO_config}_OASIS3.${NEMO_nprocX}.${NEMO_nprocY}
+NEMO_exe=${ECEARTH}/bin/opa_exe.${NEMO_config}_OASIS3.${NEMO_nprocX}.${NEMO_nprocY}
+
+#
+# OASIS
+#
 OASIS3_oldWeights=true
 OASIS3_weightsDir=${TESTDATADIR}/oasis3/weights/big_endian/${IFS_resolution}_${NEMO_resolution}
-OASIS3_exe=${ECEARTH}/oasis3/prism_2-5/prism/MareNostrum/bin/oasis3.MPI1.x
+OASIS3_exe=${ECEARTH}/bin/oasis3.MPI1.x
 WAM=false
 #
 export OASIS3=yes
@@ -75,6 +83,19 @@ export LOCAL_DEFINITION_TEMPLATES=${ECEARTH}/ifs/src/emos/local_definitions
 export MBX_SIZE=512000000
 
 RUN_coupFreq=3
+
+NFRP=6 # Frequency of postprocessing in hours
+ADVSCH=cen2 # Ocean advection scheme
+CMIP5=true
+if [[ $CMIP5 = .TRUE. ]] ; then
+   cp -r /gpfs/projects/ecm86/ecearth/data/cmip5/postins ${RUN_dir}/ifs/${IFS_resolution}/.
+   cp /gpfs/projects/ecm86/ecearth/data/cmip5/dirlist ${RUN_dir}/ifs/${IFS_resolution}/.
+   NFRP=3 # Frequency of postprocessing in hours
+   RUN_coupFreq=3 # Becomes NFRCO
+   WAM=false
+   ADVSCH=tvd # Ocean advection scheme
+fi
+
 
 ##########
 #Here we assume all initial conditions has been copied or linked to the RUN_dir
@@ -113,24 +134,34 @@ else
 fi
 
 case $Myversion in
-     v2.1) EXPVER=$(${PATHCO}/setupifs_${Myversion}.ksh -r ${IFS_resolution} -e ${ECEARTH} -l $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -o ${Chunk_last} -1 ${RUN_dir} -2 ${Myexpid})
+     v2.1) EXPVER=$(${SCRIPTDIR}/setupifs_${Myversion}.ksh -r ${IFS_resolution} -e ${ECEARTH} -l $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -o ${Chunk_last} -1 ${RUN_dir} -2 ${Myexpid})
      ;;
-     v2.2) EXPVER=$(${PATHCO}/setupifs_${Myversion}.ksh -r ${IFS_resolution} -e ${ECEARTH} -d ${Chunk_last_day_prev} -l $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -p $NPROMA -o ${Chunk_last} -1 ${RUN_dir} -2 ${Myexpid} -3 $LFASTRES)
+     v2.2) EXPVER=$(${SCRIPTDIR}/setupifs_${Myversion}.ksh -r ${IFS_resolution} -e ${ECEARTH} -d ${Chunk_last_day_prev} -l $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -p $NPROMA -o ${Chunk_last} -1 ${RUN_dir} -2 ${Myexpid} -3 $LFASTRES)
      ;;
+     v2.2.1) EXPVER=$(${SCRIPTDIR}/setupifs.ksh -r ${IFS_resolution} -e ${ECEARTH} -d ${Chunk_last_day_prev} -l $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -p $NPROMA -o ${Chunk_last} -1 ${RUN_dir} -2 ${Myexpid} -3 $LFASTRES -4 $NFRP)
+     ;;
+
 esac
 
 if [[ ${OASIS3_oldWeights} == false ]]; then
- ${PATHCO}/setupoasis3.ksh -r ${IFS_resolution} -g ${NEMO_config} -e ${ECEARTH} -l ${Chunk_length} -n ${IFS_nproc} -p ${NEMO_nproc} -c ${RUN_coupFreq} -0 ${RUN_dir}
+ ${SCRIPTDIR}/setupoasis3.ksh -r ${IFS_resolution} -g ${NEMO_config} -e ${ECEARTH} -l ${Chunk_length} -n ${IFS_nproc} -p ${NEMO_nproc} -c ${RUN_coupFreq} -0 ${RUN_dir}
 else
- ${PATHCO}/setupoasis3.ksh -r ${IFS_resolution} -g ${NEMO_config} -e ${ECEARTH} -l ${Chunk_length} -n ${IFS_nproc} -p ${NEMO_nproc} -c ${RUN_coupFreq} -w -W ${OASIS3_weightsDir} -0 ${RUN_dir}
+ ${SCRIPTDIR}/setupoasis3.ksh -r ${IFS_resolution} -g ${NEMO_config} -e ${ECEARTH} -l ${Chunk_length} -n ${IFS_nproc} -p ${NEMO_nproc} -c ${RUN_coupFreq} -w -W ${OASIS3_weightsDir} -0 ${RUN_dir}
 fi
 #
-if [[ ${Chunk_last_day_prev} != '0' ]]; then
- ${PATHCO}/setupnemo.ksh -g ${NEMO_config} -e ${ECEARTH} -l $((Chunk_length+Chunk_last_day_prev)) -p ${Chunk_last_day_prev} -d ${RUN_dir} -s ${START_date}
- else
- ${PATHCO}/setupnemo.ksh -g ${NEMO_config} -e ${ECEARTH} -l ${Chunk_length} -d ${RUN_dir} -s ${START_date}
-fi
-
+if [[ $Myversion = v2.2.1 || $Myversion = v2.2.0 ]] ; then
+       if [[ ${Chunk_last_day_prev} != '0' ]]; then
+          setupnemo.ksh -g ${NEMO_config} -e ${ECEARTH} -l $((Chunk_length+Chunk_last_day_prev)) -p ${Chunk_last_day_prev} -0 ${RUN_dir} -1 ${START_date} -2 ${ADVSCH}
+       else
+          setupnemo.ksh -g ${NEMO_config} -e ${ECEARTH} -l ${Chunk_length} -0 ${RUN_dir} -1 ${START_date} -2 ${ADVSCH}
+       fi
+else
+       if [[ ${Chunk_last_day_prev} != '0' ]]; then
+          setupnemo.ksh -g ${NEMO_config} -e ${ECEARTH} -l $((Chunk_length+Chunk_last_day_prev)) -p ${Chunk_last_day_prev} -0 ${RUN_dir} -1 ${START_date}
+       else
+          setupnemo.ksh -g ${NEMO_config} -e ${ECEARTH} -l ${CHunk_length} -0 ${RUN_dir} -1 ${START_date}
+       fi
+    fi
 #
 # Location of the executables
 # 

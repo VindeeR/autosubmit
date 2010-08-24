@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
 import commands
+import pydot
 import parse_mnq
 import JobListFactory
 import pickle
 import parseMnqXml as mnq
 import time
 import matplotlib.pyplot as plt
+
 
 def pie_chart(completed,failed,ready,running,queuing,count):
  
@@ -28,7 +30,25 @@ def show_serie():
  for a in x:
   pie_chart(1+a,2,3,4,5)
   time.sleep(10)
+
+def CreateTree(expid,dates,members,chunks):
+ graph=pydot.Dot(graph_type='digraph')
+ ndate=list()
+ node_a = pydot.Node(expid, style="filled", fillcolor="red")
+
+ for date in dates:
+  newnode=pydot.Node(str(date), style="filled", fillcolor="green")
+  ndate+=[newnode]
+  graph.add_edge(pydot.Edge(node_a, newnode))
+  #for mem in range(members):
+  # edge2=pydot.Edge(str(date),str(mem))
+  # graph.add_edge(edge2)
+  # edge3=pydot.Edge(str(mem),'ini')
+  # graph.add_edge(edge3)
+ 
+ graph.write_png('myexample3_graph.png')
   
+   
 if __name__ == "__main__":
  filename='../auxfiles/joblist.pkl'
  file1=open(filename,'r')

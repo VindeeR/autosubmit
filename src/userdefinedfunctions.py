@@ -3,7 +3,7 @@
 import JobListFactory
 import chunk_date_lib
 from Job import *
-import monitor
+
 
 def CreateJobScript2(job,parameters):
  mytemplate="template"
@@ -196,7 +196,7 @@ def CreateJobScript4(job,parameters):
   ##update parameters
   mytemplate=template+'.clean'
   parameters['WALLCLOCKLIMIT']="10:00:00"
- elif (job.getJobType()==3):
+ elif (job.getJobType()==-1):
   print "jobType:", job.getJobType()
   ##update parameters
   mytemplate=template+'.ini'
@@ -253,6 +253,7 @@ def CreateJobList1(list_of_dates, num_member,num_chunks):
     JobListFactory.printJobs([job_sim ,job_post ,job_clean])
     joblist+=[job_sim ,job_post ,job_clean]
   
+ JobListFactory.updateGenealogy(joblist)
  return joblist   
  
 def CreateJobList4(list_of_dates, num_member,num_chunks):
@@ -295,6 +296,7 @@ def CreateJobList4(list_of_dates, num_member,num_chunks):
     JobListFactory.printJobs([job_sim ,job_post ,job_clean])
     joblist+=[job_sim ,job_post ,job_clean]
   
+ JobListFactory.updateGenealogy(joblist)
  return joblist   
     
 def CreateJobList2():
@@ -311,6 +313,7 @@ def CreateJobList2():
   JobListFactory.printJobs([job_comp])
   joblist+=[job_comp]
 
+ JobListFactory.updateGenealogy(joblist)
  return joblist   
 
     
@@ -332,6 +335,8 @@ def CreateJobList3(expid):
     job_comp.setChildren([])
     #JobListFactory.printJobs([job_comp])
     joblist+=[job_comp]
+
+ JobListFactory.updateGenealogy(joblist)
  return joblist   
 
 def generateJobParameters1(expid):
@@ -429,12 +434,12 @@ def generateJobParameters4(expid):
  
  # Configure jobname and shell type
  parameters['SHELL'] = "/bin/ksh"
- parameters['Chunk_NUMBERS']='5'
- parameters['Chunk_SIZE_MONTH']='12'
+ parameters['Chunk_NUMBERS']='15'
+ parameters['Chunk_SIZE_MONTH']='4'
  parameters['INITIALDIR']='/home/ecm86/ecm86503/autosub_vanilla/src/mylogs'
  parameters['LOGDIR']='/home/ecm86/ecm86503/autosub_vanilla/src/mylogs'
  parameters['EXPID']=expid
- parameters['VERSION']='v2.2'
+ parameters['VERSION']='v2.2.1'
  return parameters
 
 def GenerateParameter(expid):
@@ -476,26 +481,27 @@ def CreateJobList(expid):
   members=5
   numchuncks=6 
   joblist=CreateJobList1(dates,members,numchuncks)
+  return joblist
  elif expid=="scal":
   print "Creating the joblist for experiment: %s" % expid
   joblist=CreateJobList3(expid)
+  return joblist
  elif expid=="yve1":
   print "Creating the joblist for experiment: %s" % expid
   dates=[1990]
   members=5
   numchuncks=10 
   joblist=CreateJobList1(dates,members,numchuncks)
+  return joblist
  elif expid=="yve2":
   print "Creating the joblist for experiment: %s" % expid
-  dates=[19601101,19651101]
-  members=5
-  numchuncks=5 
+  dates=[19601101]
+  members=2
+  numchuncks=15 
   joblist=CreateJobList4(dates,members,numchuncks)
+  return joblist
  else:
   print "there is no defined CreateJoblist  function for the expid: %s" % expid 
- JobListFactory.updateGenealogy(joblist)
- monitor.CreateTree(expid,dates,members,numchuncks)
- return joblist
 
 if __name__ == "__main__":
  expid='yve2'
@@ -504,9 +510,11 @@ if __name__ == "__main__":
  print "number of jobs: ",len(joblist)
  print "number of jobs ready", len(JobListFactory.getReady(joblist))
  JobListFactory.getReady(joblist)[0].printJob()
+ sortedlist=JobListFactory.sortByType(joblist)
+ JobListFactory.printJobs(sortedlist)
  #parameters = dict()
  #for job in joblist:
  # CreateJobScript(expid,job)
  print "done!!!"
- JobListFactory.printJobs(joblist)
+
 

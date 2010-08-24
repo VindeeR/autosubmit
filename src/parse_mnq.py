@@ -121,9 +121,10 @@ def get_name(job_id):
 def submitJob(jobname):
  output=commands.getoutput('mnsubmit %s ' % jobname)
  print output
- print output.split(":")[1]
- print output.split(":")[1].strip().split()[3]
- job_id=output.split(":")[1].strip().split()[3]
+ print output.split(" ")[3]
+ #print output.split(":")[1].strip().split()[3]
+ job_id=output.split(" ")[3]
+ #.strip().split()[3]
  return int(job_id)
 
 def cancelJob(job_id):

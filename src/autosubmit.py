@@ -196,7 +196,7 @@ if __name__ == "__main__":
  myTemplate=options.jobTemplate
  
  if options.restart:
-  joblist=pickle.load(file('../auxfiles/joblistbyname.pkl','r'))
+  joblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  else: 
   joblist=userdefinedfunctions.CreateJobList(expid)
  
@@ -246,9 +246,9 @@ if __name__ == "__main__":
    print "Number of job ready: ",len(jobsavail)
    print "Number of jobs available in queue:", available
   else: 
-   ##should sort the jobsavail by priority Clean->post->sim
+   ##should sort the jobsavail by priority Clean->post->sim>ini
    JobListFactory.printJobs(jobsavail)
-   jobsavail=JobListFactory.sortByStatus(jobsavail)
+   jobsavail=JobListFactory.sortByType(jobsavail)
    
    jobsavail.reverse()
    for job in jobsavail[0:min(available,len(jobsavail))]:

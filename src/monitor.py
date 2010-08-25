@@ -77,8 +77,10 @@ def CreateTreeList(expid,joblist):
     graph.add_node(node_child)
     #graph.set_node_style(node_child,shape='box', style="filled", fillcolor=ColorStatus(job.getStatus()))
     graph.add_edge(pydot.Edge(node_job, node_child))
- graph.write_png('list_graph2.png') 
- graph.write_pdf('list_graph2.pdf') 
+ pngfile=expid+'_graph.png'
+ pdffile=expid+'_graph.pdf'
+ graph.write_png(pngfile) 
+ graph.write_pdf(pdffile) 
  
 def dummy_list(jobs):
  count=0

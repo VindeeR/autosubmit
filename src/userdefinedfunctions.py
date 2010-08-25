@@ -5,7 +5,7 @@ import chunk_date_lib
 from Job import *
 import monitor
 
-def CreateJobScript2(job,parameters):
+def CreateJobScript_yve1(job,parameters):
  mytemplate="template"
  scriptname=job.getName()+'.cmd'
  splittedname=job.getName().split('_')
@@ -26,7 +26,7 @@ def CreateJobScript2(job,parameters):
  file(scriptname,'w').write(templateContent)
  return scriptname
 
-def CreateJobScript3(job,parameters):
+def CreateJobScript_scal(job,parameters):
  expid='scal'
  mytemplate="../templates/scale_coupled.sim"
  scriptname=job.getName()+'.cmd'
@@ -97,7 +97,7 @@ def CreateJobScript_dum(job,parameters):
  file(scriptname,'w').write(templateContent)
  return scriptname
 
-def CreateJobScript1(job,parameters):
+def CreateJobScript_yves(job,parameters):
  scriptname=job.getName()+'.cmd'
  template="Template"
  splittedname=job.getName().split('_')
@@ -139,7 +139,7 @@ def CreateJobScript1(job,parameters):
  file(scriptname,'w').write(templateContent)
  return scriptname
 
-def CreateJobScript4(job,parameters):
+def CreateJobScript_yve2(job,parameters):
  scriptname=job.getName()+'.cmd'
  template="../templates/MyTemplate"
  splittedname=job.getName().split('_')
@@ -216,7 +216,7 @@ def CreateJobScript4(job,parameters):
  return scriptname
 
 
-def CreateJobList1(list_of_dates, num_member,num_chunks):
+def CreateJobList_yves(list_of_dates, num_member,num_chunks):
  joblist=list()
  #param=dict()
  for dates in list_of_dates:
@@ -254,8 +254,12 @@ def CreateJobList1(list_of_dates, num_member,num_chunks):
     joblist+=[job_sim ,job_post ,job_clean]
   
  return joblist   
- 
-def CreateJobList4(list_of_dates, num_member,num_chunks):
+
+def CreateJobList_yve1(list_of_dates, num_member,num_chunks):
+ joblist=CreateJobList_yves(list_of_dates, num_member,num_chunks)
+ return joblist
+
+def CreateJobList_yve2(list_of_dates, num_member,num_chunks):
  joblist=list()
  #param=dict()
  for dates in list_of_dates:
@@ -298,6 +302,7 @@ def CreateJobList4(list_of_dates, num_member,num_chunks):
  return joblist   
     
 def CreateJobList2():
+ """Create JobList for multiple compilation"""
  joblist=list()
  #param=dict()
  proc_list=([1,1],[4,4],[2,2],[4,2],[2,4],[2,1],[1,2],[4,1],[1,4])
@@ -314,7 +319,7 @@ def CreateJobList2():
  return joblist   
 
     
-def CreateJobList3(expid):
+def CreateJobList_scal(expid):
  joblist=list()
  #param=dict()
  ifs_proc_list=([4,1],[8,1],[16,1],[28,1],[32,1],[32,2],[32,4])
@@ -334,7 +339,7 @@ def CreateJobList3(expid):
     joblist+=[job_comp]
  return joblist   
 
-def generateJobParameters1(expid):
+def generateJobParameters_yves(expid):
  # Table which contains all the keys to change in the template.
  # Feel free to add new variables
  parameters = dict()
@@ -408,7 +413,7 @@ def generateJobParameters2():
 
  return parameters
  
-def generateJobParameters3(expid):
+def generateJobParameters_yve1(expid):
  # Table which contains all the keys to change in the template.
  # Feel free to add new variables
  parameters = dict()
@@ -420,7 +425,7 @@ def generateJobParameters3(expid):
  parameters['SHELL'] = "/bin/bash"
  return parameters
     
-def generateJobParameters4(expid):
+def generateJobParameters_yve2(expid):
  # Table which contains all the keys to change in the template.
  # Feel free to add new variables
  parameters= dict()
@@ -440,7 +445,7 @@ def generateJobParameters4(expid):
 def GenerateParameter(expid):
  if expid=="yves":
   print "creatig the parameters for the experiment: %s" % expid
-  parameter=generateJobParameters1(expid)
+  parameter=generateJobParameters_yves(expid)
   return parameter
  else:
   print "there is no defined generateparameter function for the expid : %s " % expid 
@@ -448,23 +453,23 @@ def GenerateParameter(expid):
 def CreateJobScript(expid,job):
  if expid=="yves":
   print "creating the script for job: %s" % job.getName()
-  parameter=generateJobParameters1(expid)
-  scriptname=CreateJobScript1(job,parameter)
+  parameter=generateJobParameters_yves(expid)
+  scriptname=CreateJobScript_yves(job,parameter)
   return scriptname
  elif expid=="scal":
   print "creating the script for job: %s" % job.getName()
-  parameter=generateJobParameters3(expid)
-  scriptname=CreateJobScript3(job,parameter)
+  parameter=generateJobParameters_scal(expid)
+  scriptname=CreateJobScript_scal(job,parameter)
   return scriptname
  elif expid=="yve1":
   print "creating the script for job: %s" % job.getName()
-  parameter=generateJobParameters1(expid)
-  scriptname=CreateJobScript3(job,parameter)
+  parameter=generateJobParameters_yves(expid)
+  scriptname=CreateJobScript_yve1(job,parameter)
   return scriptname
  elif expid=="yve2":
   print "creating the script for job: %s" % job.getName()
-  parameter=generateJobParameters4(expid)
-  scriptname=CreateJobScript4(job,parameter)
+  parameter=generateJobParameters_yve2(expid)
+  scriptname=CreateJobScript_yve2(job,parameter)
   return scriptname
  else:
   print "there is no defined CreateJobScript function for the expid: %s" % expid 
@@ -475,38 +480,38 @@ def CreateJobList(expid):
   dates=[1990]
   members=5
   numchuncks=6 
-  joblist=CreateJobList1(dates,members,numchuncks)
+  joblist=CreateJobList_yves(dates,members,numchuncks)
  elif expid=="scal":
   print "Creating the joblist for experiment: %s" % expid
-  joblist=CreateJobList3(expid)
+  joblist=CreateJobList_scal(expid)
  elif expid=="yve1":
   print "Creating the joblist for experiment: %s" % expid
   dates=[1990]
   members=5
   numchuncks=10 
-  joblist=CreateJobList1(dates,members,numchuncks)
+  joblist=CreateJobList_yve1(dates,members,numchuncks)
  elif expid=="yve2":
   print "Creating the joblist for experiment: %s" % expid
   dates=[19601101]
   members=2
   numchuncks=15 
-  joblist=CreateJobList4(dates,members,numchuncks)
+  joblist=CreateJobList_yve2(dates,members,numchuncks)
  else:
   print "there is no defined CreateJoblist  function for the expid: %s" % expid 
  JobListFactory.updateGenealogy(joblist)
- monitor.CreateTree(expid,dates,members,numchuncks)
+ monitor.CreateTreeList(expid,joblist)
  return joblist
 
 if __name__ == "__main__":
- expid='yve2'
- joblist=CreateJobList(expid)
- joblist[0].printJob()
- print "number of jobs: ",len(joblist)
- print "number of jobs ready", len(JobListFactory.getReady(joblist))
- JobListFactory.getReady(joblist)[0].printJob()
- #parameters = dict()
- #for job in joblist:
- # CreateJobScript(expid,job)
- print "done!!!"
- JobListFactory.printJobs(joblist)
-
+ expidlist=('yves','scal','yve1','yve2')
+ for expid in expidlist:
+  joblist=CreateJobList(expid)
+  joblist[0].printJob()
+  print "number of jobs: ",len(joblist)
+  print "number of jobs ready", len(JobListFactory.getReady(joblist))
+  JobListFactory.getReady(joblist)[0].printJob()
+  #parameters = dict()
+  #for job in joblist:
+  # CreateJobScript(expid,job)
+  print "done!!!"
+  #JobListFactory.printJobs(joblist)

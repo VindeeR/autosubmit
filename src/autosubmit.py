@@ -53,6 +53,11 @@ def handle_options():
 		   default="jobtemplate.cmd",
 		   help="jobTemplate is the template for the jobs to be submitted.",
 		   metavar="file")
+ parser.add_option("-x","--expid",
+                   type="string",
+                   dest="expid",
+     default="truc",
+     help="Experiment ID to be run (needed for the creation of Joblist and scripts.")
  parser.add_option("-c","--clean",
                    action="store_true",
 		   dest="clean",
@@ -118,6 +123,7 @@ def handler(signum,frame,joblist):
 def normal_stop():
  # Must stop autosubmit cancelling all the jobs currently running.
  jobTable = mnq.getMyJobs()
+ joblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  for key in jobTable.keys():
   #os.system('mncancel %s' % jobTable.get(key)[0])
   jobname=jobTable.get(key)[0]
@@ -141,6 +147,7 @@ def normal_stop():
 
 def smart_stop():
  message('Stopping, and checking submitted jobs and pickle them!!!')
+ joblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  queuing=JobListFactory.getQueuing(joblist)
  JobListFactory.cancelJobList(queuing)
  for job in queuing:
@@ -194,9 +201,13 @@ if __name__ == "__main__":
  alreadySubmitted=options.alreadySubmitted
  totalJobs=options.totalJobs 
  myTemplate=options.jobTemplate
+ expid=options.expid
+ print "My template name is: %s" % myTemplate
+ print "The Experiment name is: %s" % expid
  
  if options.restart:
   joblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
+  log_short("Restarting from joblist pickled in ../auxfiles/joblist.pkl")
  else: 
   joblist=userdefinedfunctions.CreateJobList(expid)
  

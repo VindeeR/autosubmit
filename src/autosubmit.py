@@ -123,6 +123,7 @@ def handler(signum,frame,joblist):
 def normal_stop():
  # Must stop autosubmit cancelling all the jobs currently running.
  jobTable = mnq.getMyJobs()
+ joblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  for key in jobTable.keys():
   #os.system('mncancel %s' % jobTable.get(key)[0])
   jobname=jobTable.get(key)[0]
@@ -146,6 +147,7 @@ def normal_stop():
 
 def smart_stop():
  message('Stopping, and checking submitted jobs and pickle them!!!')
+ joblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  queuing=JobListFactory.getQueuing(joblist)
  JobListFactory.cancelJobList(queuing)
  for job in queuing:
@@ -203,7 +205,6 @@ if __name__ == "__main__":
  print "My template name is: %s" % myTemplate
  print "The Experiment name is: %s" % expid
  
-
  if options.restart:
   joblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
   log_short("Restarting from joblist pickled in ../auxfiles/joblist.pkl")

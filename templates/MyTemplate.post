@@ -4,7 +4,7 @@
 ###############################################################################
 #
 #@ job_name         = JOBNAME
-#@ wall_clock_limit = 8:00:00
+#@ wall_clock_limit = 06:00:00
 #@ output           = LOGDIR/JOBNAME_%j.out
 #@ error            = LOGDIR/JOBNAME_%j.err
 ##@ output           = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.out
@@ -61,21 +61,22 @@ rebuild_tool=/gpfs/projects/ecm86/ecearth/${Myversion}/sources/nemo/modipsl/mode
 interval=MM
 prefix=ORCA1_${interval}_${Chunk_start_date}_${Chunk_end_date}
 grid_types="grid_W grid_T grid_U grid_V icemod"
-for grid_type in ${grid_types}; do
-    output_file=${prefix}_${grid_type}.nc
+#for grid_type in ${grid_types}; do
+#    output_file=${prefix}_${grid_type}.nc
 #   ${rebuild_tool} -v -o ${output_file} ${prefix}_${grid_type}_00[01][0-9].nc
-    ${rebuild_tool} -o ${output_file} ${prefix}_${grid_type}_00[01][0-9].nc
-    gzip -9 ${output_file}
-    rm -f ${prefix}_${grid_type}_00[01][0-9].nc
-done
+#    ${rebuild_tool} -o ${output_file} ${prefix}_${grid_type}_00[01][0-9].nc
+#    gzip -9 ${output_file}
+#    rm -f ${prefix}_${grid_type}_00[01][0-9].nc
+#done
 
-touch JOBNAME.opost
+#touch JOBNAME.opost
 
 #
 # Compute atmospheric monthly means
 #
 cdo="/gpfs/apps/CDO/1.1.1/64/bin/cdo"
-#
+PATHGRIBAPI=/gpfs/apps/GRIB/1.8.0/bin
+
 nmon=1
 year=${nyearini}
 while [[ $nmon -le $RUN_chunk_size ]] ; do
@@ -87,17 +88,37 @@ while [[ $nmon -le $RUN_chunk_size ]] ; do
       for type in SH GG ; do
           prefix=ICM${type}${Myexpid}
           file=${prefix}+${year}${month}
-          ${cdo} -R -r -t ecmwf -f nc splitvar ${file} ${file}_
+          cp ${file} ${file}.tmp
+          for PAR in `${PATHGRIBAPI}/grib_ls ${file} | head -n -3 | tr -s ' ' | cut -f3 -d' ' |  sort -n | uniq | grep ^[0-9]` ; do
+              if [[ $PAR = 152.128 || $PAR = 133.128 || $PAR = 246.128 || $PAR = 247.128 || $PAR = 248.128 ]] ; then
+                 rm -f ${PAR}.grb
+                 ${PATHGRIBAPI}/grib_copy -w param=${PAR} ${file}.tmp ${PAR}.grb
+                 if [[ $PAR = 152.128 ]] ; then
+                    rm -f ${PAR}.grb
+                 fi
+                 mv ${file}.tmp ${file}.tmp2
+                 ${PATHGRIBAPI}/grib_copy -w param!=${PAR} ${file}.tmp2 ${file}.tmp
+              fi
+          done
+          for PAR in 133.128 246.128 247.128 248.128 ; do
+              if [[ -a ${PAR}.grb ]] ; then
+                 ${cdo} -R -r -t ecmwf -f nc splitvar ${PAR}.grb ${file}_
+                 rm -f ${PAR}.grb
+              fi
+          done
+          ${cdo} -R -r -t ecmwf -f nc splitvar ${file}.tmp ${file}_
+	  rm -f ${file}.tmp ${file}.tmp2
 #
-          for infile in `ls ${prefix}+${year}${month}_*.nc` ; do
+          date
+          for infile in `ls ${file}_*.nc` ; do
               name=`basename $infile .nc`
               quant=`echo $name | sed s/${prefix}+${year}${month}_//`
               outfile=IM_${quant}_${year}${month}
               ${cdo} -f nc -r -monmean ${prefix}+${year}${month}_${quant}.nc ${outfile}_mm.nc  # needed because last timestep=01 jan 00:00 hours
               rm -f ${prefix}+${year}${month}_${quant}.nc
           done
-          ${cdo} -f nc -r -merge IM_*_${year}${month}_mm.nc MMA_${Myexpid}_${type}_${year}${month}_mm.nc
-          gzip -9 MMA_${Myexpid}_${type}_${year}${month}_mm.nc
+          ${cdo} -f nc -r -merge IM_*_${year}${month}_mm.nc MMA_${Myexpid}_${type}_${year}${month}.nc
+          gzip -9 MMA_${Myexpid}_${type}_${year}${month}.nc
           rm -f IM_*_${year}${month}_mm.nc
  	  mv ${file} ${file}.grb
       done

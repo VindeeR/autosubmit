@@ -4,7 +4,7 @@
 ###############################################################################
 #
 #@ job_name         = JOBNAME
-#@ wall_clock_limit = 24:00:00
+#@ wall_clock_limit = 06:00:00
 #@ output           = LOGDIR/JOBNAME_%j.out
 #@ error            = LOGDIR/JOBNAME_%j.err
 ##@ output           = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.out
@@ -27,9 +27,9 @@ case $Myversion in
            SCRIPTDIR=/gpfs/projects/ecm86/ecearth/V2.1/setup
            TESTDATADIR=/gpfs/projects/ecm86/ecearth/V2.1/inidata
      ;;
-     v2.2) ECEARTH=/gpfs/projects/ecm86/ecm86010/ecearth/v2.2_01
-           SCRIPTDIR=/gpfs/projects/ecm86/ecearth/v2.2/setup
-           TESTDATADIR=/gpfs/projects/ecm86/ecearth/v2.2/inidata
+     v2.2.0) ECEARTH=/gpfs/projects/ecm86/ecearth/v2.2.0
+           SCRIPTDIR=/gpfs/projects/ecm86/ecearth/v2.2.0/setup
+           TESTDATADIR=/gpfs/projects/ecm86/ecearth/v2.2.0/inidata
      ;;
      v2.2.1) ECEARTH=/gpfs/projects/ecm86/ecearth/v2.2.1
              SCRIPTDIR=/gpfs/projects/ecm86/ecearth/v2.2.1/setup
@@ -79,23 +79,13 @@ export OASIS3DEBUGLEVEL=2
 export DR_HOOK_IGNORE_SIGNALS='-1'
 #export MPI_NAP=5
 ulimit -c 1000000
-export LOCAL_DEFINITION_TEMPLATES=${ECEARTH}/ifs/src/emos/local_definitions
+export LOCAL_DEFINITION_TEMPLATES=${ECEARTH}/sources/ifs/src/emos/local_definitions
 export MBX_SIZE=512000000
 
 RUN_coupFreq=3
 
 NFRP=6 # Frequency of postprocessing in hours
 ADVSCH=cen2 # Ocean advection scheme
-CMIP5=true
-if [[ $CMIP5 = .TRUE. ]] ; then
-   cp -r /gpfs/projects/ecm86/ecearth/data/cmip5/postins ${RUN_dir}/ifs/${IFS_resolution}/.
-   cp /gpfs/projects/ecm86/ecearth/data/cmip5/dirlist ${RUN_dir}/ifs/${IFS_resolution}/.
-   NFRP=3 # Frequency of postprocessing in hours
-   RUN_coupFreq=3 # Becomes NFRCO
-   WAM=false
-   ADVSCH=tvd # Ocean advection scheme
-fi
-
 
 ##########
 #Here we assume all initial conditions has been copied or linked to the RUN_dir
@@ -133,12 +123,21 @@ else
  LFASTRES=.TRUE.
 fi
 
+CMIP5=.TRUE.
+if [[ $CMIP5 = .TRUE. ]] ; then
+   NFRP=3 # Frequency of postprocessing in hours
+   RUN_coupFreq=3 # Becomes NFRCO
+   WAM=false
+   ADVSCH=tvd # Ocean advection scheme
+fi
+
+
 case $Myversion in
      v2.1) EXPVER=$(${SCRIPTDIR}/setupifs_${Myversion}.ksh -r ${IFS_resolution} -e ${ECEARTH} -l $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -o ${Chunk_last} -1 ${RUN_dir} -2 ${Myexpid})
      ;;
-     v2.2) EXPVER=$(${SCRIPTDIR}/setupifs_${Myversion}.ksh -r ${IFS_resolution} -e ${ECEARTH} -d ${Chunk_last_day_prev} -l $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -p $NPROMA -o ${Chunk_last} -1 ${RUN_dir} -2 ${Myexpid} -3 $LFASTRES)
+     v2.2.0) EXPVER=$(${SCRIPTDIR}/setupifs.ksh -r ${IFS_resolution} -e ${ECEARTH} -d ${Chunk_last_day_prev} -l $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -p $NPROMA -o ${Chunk_last} -0 ${RUN_dir} -2 ${Myexpid} -3 $LFASTRES)
      ;;
-     v2.2.1) EXPVER=$(${SCRIPTDIR}/setupifs.ksh -r ${IFS_resolution} -e ${ECEARTH} -d ${Chunk_last_day_prev} -l $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -p $NPROMA -o ${Chunk_last} -1 ${RUN_dir} -2 ${Myexpid} -3 $LFASTRES -4 $NFRP)
+     v2.2.1) EXPVER=$(${SCRIPTDIR}/setupifs.ksh -r ${IFS_resolution} -e ${ECEARTH} -d ${Chunk_last_day_prev} -l $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -p $NPROMA -o ${Chunk_last} -0 ${RUN_dir} -2 ${Myexpid} -3 $LFASTRES -4 $NFRP)
      ;;
 
 esac

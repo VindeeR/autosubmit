@@ -190,8 +190,7 @@ if __name__ == "__main__":
  signal.signal(signal.SIGHUP,handler)#,joblist)
  
  (options,args)=handle_options()
- expid="yve2" 
-## expid="scal" 
+ ## expid="scal" 
  log_short("Jobs to submit: %s" % options.totalJobs)
  log_short("Start with job number: %s" % options.alreadySubmitted)
  log_short("Maximum waiting jobs in queues: %s" % options.maxWaitingJobs)
@@ -223,6 +222,11 @@ if __name__ == "__main__":
   available = options.maxWaitingJobs-waiting
   print "saving joblist"
   JobListFactory.saveJobList(joblist,'../auxfiles/joblist.pkl')
+  graphname=joblist[0].getExpid()+'_graph.png'
+  if  (os.path.exists(graphname)):
+   pathname='/gpfs/projects/ecm86/common/db'
+   if  (os.path.exists(pathname)):
+    os.system('cp %s %s' % (graphname,pathname))
   if options.verbose:
    log_short("Active jobs in queues:\t%s" % active)
    log_short("Waiting jobs in queues:\t%s" % waiting)
@@ -263,7 +267,7 @@ if __name__ == "__main__":
    
    jobsavail.reverse()
    for job in jobsavail[0:min(available,len(jobsavail))]:
-    scriptname=userdefinedfunctions.CreateJobScript(expid,job) 
+    scriptname=userdefinedfunctions.CreateJobScript(job) 
     print scriptname
     jobid=submitJob(scriptname)
     job.setId(jobid)

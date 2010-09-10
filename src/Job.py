@@ -38,6 +38,7 @@ class Job:
   self.parents = list()
   self.children = list()
   self.failcount=0
+  self.expid = 'truc'
  #self.parameters = dict()
   
  def getName(self):
@@ -52,6 +53,9 @@ class Job:
  def getJobType(self):
   return self.jobtype
 
+ def getExpid(self):
+  return self.expid
+ 
  def getParents(self):
   return self.parents
 
@@ -84,6 +88,9 @@ class Job:
  
  def setStatus(self,newStatus):
   self.status = newStatus
+  
+ def setExpid(self,newexpid):
+  self.expid = newexpid
 
  def setJobType(self,newtype):
   self.jobtype = newtype

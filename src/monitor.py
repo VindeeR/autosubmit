@@ -65,8 +65,9 @@ def ColorStatus(status):
    color='red'
  return color
 
-def CreateTreeList(expid,joblist):
+def CreateTreeList(joblist):
  graph=pydot.Dot(graph_type='digraph')
+ expid=joblist[0].getExpid()
  for job in joblist:
   node_job = pydot.Node(job.getName(),shape='box', style="filled", fillcolor=ColorStatus(job.getStatus()))
   graph.add_node(node_job)

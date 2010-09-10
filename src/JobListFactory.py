@@ -5,6 +5,7 @@ import parse_mnq
 from Job import *
 import userdefinedfunctions
 import time
+import monitor
 
 def compareStatus(job_a,job_b):
  return cmp(int(job_a.getStatus()),int(job_b.getStatus()))
@@ -38,8 +39,12 @@ def checkjobInList(jobs):
    job.setStatus(status) 
    
 def saveJobList(jobs,filename):
- print "Saving joblist into %s" % filename
- pickle.dump(jobs, file(filename,'w'))
+ expid=job[0].getExpid()
+ newfilename=filename.split('.pkl')[0]
+ newfilename+='_'+expid+'.pkl'
+ print "Saving joblist into %s" % newfilename
+ pickle.dump(jobs, file(newfilename,'w'))
+ monitor.CreateTreeList(joblist)
 
 def cancelJobList(jobs):
  for job in jobs:

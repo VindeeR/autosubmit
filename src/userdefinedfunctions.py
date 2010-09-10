@@ -27,7 +27,7 @@ def CreateJobScript_yve1(job,parameters):
  return scriptname
 
 def CreateJobScript_scal(job,parameters):
- expid='scal'
+ expid=job.getExpid()
  mytemplate="../templates/scale_coupled.sim"
  scriptname=job.getName()+'.cmd'
  splittedname=job.getName().split('_')
@@ -335,6 +335,7 @@ def CreateJobList_scal(expid):
     #no parents nor children
     job_comp.setParents([])
     job_comp.setChildren([])
+    job_comp.setExpid()
     #JobListFactory.printJobs([job_comp])
     joblist+=[job_comp]
  return joblist   
@@ -450,7 +451,8 @@ def GenerateParameter(expid):
  else:
   print "there is no defined generateparameter function for the expid : %s " % expid 
 
-def CreateJobScript(expid,job):
+def CreateJobScript(job):
+ expid=job.getExpid()
  if expid=="yves":
   print "creating the script for job: %s" % job.getName()
   parameter=generateJobParameters_yves(expid)
@@ -500,6 +502,8 @@ def CreateJobList(expid):
   print "there is no defined CreateJoblist  function for the expid: %s" % expid 
  JobListFactory.updateGenealogy(joblist)
  monitor.CreateTreeList(expid,joblist)
+ for job in joblist:
+  job.setExpid(expid)
  return joblist
 
 if __name__ == "__main__":

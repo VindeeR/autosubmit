@@ -163,7 +163,7 @@ tarfile="MMA_${Myexpid}_${START_date}_fc${Mymember}_${Chunk_start_date}-${Chunk_
 #
 # Copying the monthly means (atmospheric daily data are in GRIB files)
 #
-tar -cvf ../$tarfile MMA_${Myexpid}_*_mm.nc.gz
+tar -cvf ../$tarfile MMA_${Myexpid}_*.nc.gz
 cp ../$tarfile $PATHOUT_OUT
 #
 rm -f ${RUN_dir}/outa_${chunk}
@@ -177,6 +177,7 @@ else
    exit 1
 fi
 date
+cd $RUN_dir
 
 if [[ -a outo_$chunk && -a outa_$chunk ]] ; then
 	echo "We are now removing ${output_dir}"
@@ -184,12 +185,13 @@ if [[ -a outo_$chunk && -a outa_$chunk ]] ; then
 fi
 
 chmod 775 -R ${PATHOUT}
-
-if[[ Chunk_LAST ]]; then
+clast=Chunk_LAST
+if [[ "$clast" == ".TRUE." ]] ; then
     cd $WRITINDIR
     echo "We are now removing ${RUN_dir}"
     rm -rf ${RUN_dir}
     touch dir_${Myexpid}_${Start_date}_fc{Mymember}.REMOVED
+    touch /gpfs/projects/ecm86/common/db/logs/${Myexpid}/${Myexpid}_${Start_date}_fc{Mymember}_READY
 fi
 
 touch LOGDIR/JOBNAME_COMPLETED

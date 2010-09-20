@@ -205,8 +205,9 @@ if __name__ == "__main__":
  print "The Experiment name is: %s" % expid
  
  if options.restart:
-  joblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
-  log_short("Restarting from joblist pickled in ../auxfiles/joblist.pkl")
+  filename='../auxfiles/joblist_'+expid+'.pkl'
+  joblist=pickle.load(file(filename,'r'))
+  log_short("Restarting from joblist pickled in %s " % filename)
  else: 
   joblist=userdefinedfunctions.CreateJobList(expid)
  

@@ -172,9 +172,9 @@ def CreateJobScript_yve2(job,parameters):
  parameters['Chunk_START_YEAR']=str(chunk_start_year)
  parameters['Chunk_START_MONTH']=str(chunk_start_month)
  if total_chunk==chunk:
-  parameters['Chunk_LAST']='1'
+  parameters['Chunk_LAST']='.TRUE.'
  else:
-  parameters['Chunk_LAST']='0'
+  parameters['Chunk_LAST']='.FALSE.'
   
  if (job.getJobType()==0):
   print "jobType:", job.getJobType()
@@ -494,8 +494,8 @@ def CreateJobList(expid):
   joblist=CreateJobList_yve1(dates,members,numchuncks)
  elif expid=="yve2":
   print "Creating the joblist for experiment: %s" % expid
-  dates=[19601101]
-  members=2
+  dates=[19601101,19651101,19701101]
+  members=5
   numchuncks=15 
   joblist=CreateJobList_yve2(dates,members,numchuncks)
  else:

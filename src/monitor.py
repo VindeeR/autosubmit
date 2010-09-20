@@ -8,7 +8,6 @@ import pickle
 import parseMnqXml as mnq
 import time
 import matplotlib.pyplot as plt
-#import pycallgraph
 
 def pie_chart(completed,failed,ready,running,queuing,count):
  
@@ -75,14 +74,15 @@ def CreateTreeList(joblist):
   #graph.set_node_style(node_job,shape='box', style="filled", fillcolor=ColorStatus(job.getStatus()))
   if job.hasChildren()!=0:
    for child in job.getChildren():
-    node_child=pydot.Node(child.getName() ,shape='box', style="filled", fillcolor=ColorStatus(job.getStatus()))
+    node_child=pydot.Node(child.getName() ,shape='box', style="filled", fillcolor=ColorStatus(child.getStatus()))
     graph.add_node(node_child)
     #graph.set_node_style(node_child,shape='box', style="filled", fillcolor=ColorStatus(job.getStatus()))
     graph.add_edge(pydot.Edge(node_job, node_child))
  pngfile=expid+'_graph.png'
  pdffile=expid+'_graph.pdf'
+ graph.set_graphviz_executables({'dot': '/gpfs/apps/GRAPHVIZ/2.26.3/bin/dot'})
  graph.write_png(pngfile) 
- graph.write_pdf(pdffile) 
+ #graph.write_pdf(pdffile) 
  
 def dummy_list(jobs):
  count=0
@@ -118,14 +118,11 @@ def dummy_list(jobs):
   finished=JobListFactory.getFinished(jobs).__len__()    
 
 if __name__ == "__main__":
- #pycallgraph.start_trace()
  filename='../auxfiles/joblist.pkl'
  file1=open(filename,'r')
  jobs=pickle.load(file(filename,'r'))
+ #dummy_list(jobs)
  for job in jobs:
   job.setExpid('ploum')
- #dummy_list(jobs)
  CreateTreeList(jobs)
  file1.close()
- #pycallgraph.stop_trace()
- #pycallgraph.make_dot_graph('test.png')

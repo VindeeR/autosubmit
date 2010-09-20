@@ -4,7 +4,7 @@
 ###############################################################################
 #
 #@ job_name         = JOBNAME
-#@ wall_clock_limit = 06:00:00
+#@ wall_clock_limit = 05:00:00
 #@ output           = LOGDIR/JOBNAME_%j.out
 #@ error            = LOGDIR/JOBNAME_%j.err
 ##@ output           = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.out
@@ -61,15 +61,15 @@ rebuild_tool=/gpfs/projects/ecm86/ecearth/${Myversion}/sources/nemo/modipsl/mode
 interval=MM
 prefix=ORCA1_${interval}_${Chunk_start_date}_${Chunk_end_date}
 grid_types="grid_W grid_T grid_U grid_V icemod"
-#for grid_type in ${grid_types}; do
-#    output_file=${prefix}_${grid_type}.nc
-#   ${rebuild_tool} -v -o ${output_file} ${prefix}_${grid_type}_00[01][0-9].nc
-#    ${rebuild_tool} -o ${output_file} ${prefix}_${grid_type}_00[01][0-9].nc
-#    gzip -9 ${output_file}
-#    rm -f ${prefix}_${grid_type}_00[01][0-9].nc
-#done
+for grid_type in ${grid_types}; do
+    output_file=${prefix}_${grid_type}.nc
+   ${rebuild_tool} -v -o ${output_file} ${prefix}_${grid_type}_00[01][0-9].nc
+    ${rebuild_tool} -o ${output_file} ${prefix}_${grid_type}_00[01][0-9].nc
+    gzip -9 ${output_file}
+    rm -f ${prefix}_${grid_type}_00[01][0-9].nc
+done
 
-#touch JOBNAME.opost
+touch JOBNAME.opost
 
 #
 # Compute atmospheric monthly means

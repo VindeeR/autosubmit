@@ -145,10 +145,8 @@ class Job:
      #self.printJob()
      #child.printJob()
      print "number of Parents:",child.hasParents()
-     print "\n really???"
-     for parent in child.getParents():
-      parent.printJob()
-     child.deleteParent(self)
+     if child.getParents().__contains__(self):
+      child.deleteParent(self)
 
   else:
    print "The checking in check_completion tell us that job %s has failed" % self.name

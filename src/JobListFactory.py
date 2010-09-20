@@ -120,7 +120,7 @@ def updateJobList(jobs):
     print "Job %s has failed 4 times" % job.getName()
     children=job.getAllChildren()
     print " Now failing all of its heirs..."
-    printJobs(children)
+    #printJobs(children)
     for child in children:
      child.setStatus(Job.Status.FAILED)
      child.setFailCount(4)
@@ -182,23 +182,61 @@ def updateGenealogy(jobs):
 
 if __name__ == "__main__":
  ##jobs = main()
- jobs=pickle.load(file('../auxfiles/joblist.pkl','r'))
+ #manual_list=('job_19701101_0_1_clean','job_19701101_1_1_clean','job_19701101_2_1_clean','job_19701101_3_1_clean','job_19701101_4_1_clean','job_19651101_0_1_clean','job_19651101_1_1_clean','job_19651101_2_1_clean','job_19651101_3_1_clean','job_19651101_4_1_clean')
+ jobs=pickle.load(file('../auxfiles/joblist_yve2.pkl','r'))
  #joblist1=range(1960,1975,5)
  #jobs=userdefinedfunctions.CreateJobList("yves")
  ##jobs=CreateJobList2()
- printJobs(jobs)
+ #printJobs(jobs)
+ #for job in jobs:
+ # if manual_list.__contains__(job.getName()):
+ #  job.setStatus(5)
+ #  print "setting complete: %s" %job.getName()
+
+ completed=getCompleted(jobs)
+ #print "COMPLETED!!!!"
+ #printJobs(completed)
+ #ready=getReady(jobs)
+ #print 'READY'
+ #printJobs(ready)
+ failed=getFailed(jobs)
+ #printJobs(failed)
+ print 'FAILED!!! ', failed.__len__()
  ##updateGenealogy(jobs)
- for job in jobs:
-  if job.getJobType()==-1:
-   job.setStatus(5)
+ #for job in failed:
+  #job.setStatus(0)
+  #job.setFailCount(0)
    #job.check_completion()
-  if job.getName()=='job_19601101_1_1_sim' or job.getName()=='job_19601101_0_1_sim':
-   job.setId(0)
-   job.setStatus(1) 
- print '\nSorting by Name'.upper()
- sortJobs = sortByName(jobs)
- printJobs(sortJobs)
- #file1='../auxfiles/joblistbyname.pkl'
+  #if job.getName()=='job_19601101_1_1_sim' or job.getName()=='job_19601101_0_1_sim':
+  # job.setId(0)
+  # job.setStatus(1) 
+ #print '\nSorting by Name'.upper()
+ for job in jobs:
+  if job.getStatus() > 1:
+   job.check_completion()
+ 
+ completed=getCompleted(jobs)
+ print "COMPLETED!!!!",completed.__len__()
+ printJobs(sortByType(completed))
+ ready=getReady(jobs)
+ print 'READY ', ready.__len__()
+## printJobs(ready)
+ print 'FAILED!!!'
+ failed=getFailed(jobs)
+ printJobs(failed)
+
+ updateJobList(jobs)
+ sortJobs = sortByStatus(jobs)
+ #printJobs(sortJobs)
+
+ ready=getReady(jobs)
+ print 'READY', ready.__len__()
+ #printJobs(ready)
+ completed=getCompleted(jobs)
+ print "COMPLETED!!!!",completed.__len__()
+ #printJobs(sortByType(completed))
+
+  #file1='../auxfiles/joblistbyname.pkl'
  #saveJobList(sortJobs, file1)
  #total=jobs.__len__()
  #finished=0
@@ -213,7 +251,7 @@ if __name__ == "__main__":
 #  print '\nSorting by Status'.upper()
 #  sortJobs = sortByStatus(jobs)
  file2='../auxfiles/joblist.pkl'
- saveJobList(sortJobs, file2)
+ saveJobList(jobs, file2)
 #  time.sleep(10)
  ##picjoblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  ##printJobs(picjoblist)

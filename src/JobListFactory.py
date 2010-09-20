@@ -39,12 +39,12 @@ def checkjobInList(jobs):
    job.setStatus(status) 
    
 def saveJobList(jobs,filename):
- expid=job[0].getExpid()
+ expid=jobs[0].getExpid()
  newfilename=filename.split('.pkl')[0]
  newfilename+='_'+expid+'.pkl'
  print "Saving joblist into %s" % newfilename
  pickle.dump(jobs, file(newfilename,'w'))
- monitor.CreateTreeList(joblist)
+ monitor.CreateTreeList(jobs)
 
 def cancelJobList(jobs):
  for job in jobs:

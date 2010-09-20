@@ -8,6 +8,7 @@ import pickle
 import parseMnqXml as mnq
 import time
 import matplotlib.pyplot as plt
+import pycallgraph
 
 def pie_chart(completed,failed,ready,running,queuing,count):
  
@@ -117,9 +118,14 @@ def dummy_list(jobs):
   finished=JobListFactory.getFinished(jobs).__len__()    
 
 if __name__ == "__main__":
+ pycallgraph.start_trace()
  filename='../auxfiles/joblist.pkl'
  file1=open(filename,'r')
  jobs=pickle.load(file(filename,'r'))
+ for job in jobs:
+  job.setExpid('ploum')
  #dummy_list(jobs)
- CreateTreeList('Heyy',jobs)
+ CreateTreeList(jobs)
  file1.close()
+ pycallgraph.stop_trace()
+ pycallgraph.make_dot_graph('test.png')

@@ -335,7 +335,7 @@ def CreateJobList_scal(expid):
     #no parents nor children
     job_comp.setParents([])
     job_comp.setChildren([])
-    job_comp.setExpid()
+    job_comp.setExpid(expid)
     #JobListFactory.printJobs([job_comp])
     joblist+=[job_comp]
  return joblist   
@@ -501,7 +501,7 @@ def CreateJobList(expid):
  else:
   print "there is no defined CreateJoblist  function for the expid: %s" % expid 
  JobListFactory.updateGenealogy(joblist)
- monitor.CreateTreeList(expid,joblist)
+ monitor.CreateTreeList(joblist)
  for job in joblist:
   job.setExpid(expid)
  return joblist
@@ -514,6 +514,7 @@ if __name__ == "__main__":
   print "number of jobs: ",len(joblist)
   print "number of jobs ready", len(JobListFactory.getReady(joblist))
   JobListFactory.getReady(joblist)[0].printJob()
+  JobListFactory.saveJobList(joblist,'../auxfiles/joblist.pkl')
   #parameters = dict()
   #for job in joblist:
   # CreateJobScript(expid,job)

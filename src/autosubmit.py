@@ -262,6 +262,7 @@ if __name__ == "__main__":
    print "Number of job ready: ",len(jobsavail)
    print "Number of jobs available in queue:", available
   else: 
+   print "We are gonna submit: ", min(available,len(jobsavail))
    ##should sort the jobsavail by priority Clean->post->sim>ini
    JobListFactory.printJobs(jobsavail)
    jobsavail=JobListFactory.sortByType(jobsavail)

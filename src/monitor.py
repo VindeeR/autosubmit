@@ -118,11 +118,11 @@ def dummy_list(jobs):
   finished=JobListFactory.getFinished(jobs).__len__()    
 
 if __name__ == "__main__":
- filename='../auxfiles/joblist.pkl'
+ filename='../auxfiles/joblist_yve2.pkl'
  file1=open(filename,'r')
  jobs=pickle.load(file(filename,'r'))
  #dummy_list(jobs)
- for job in jobs:
-  job.setExpid('ploum')
+ #for job in jobs:
+ # job.setExpid('ploum')
  CreateTreeList(jobs)
  file1.close()

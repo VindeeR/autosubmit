@@ -63,12 +63,12 @@ class Job:
   return self.children
  
  def getAllChildren(self):
-  print self.name
+  #print self.name
   job_list = list()
   if self.hasChildren():
    for job in self.children:
     job_list.append(job)
-    print job.getName()
+    #print job.getName()
     result_list = job.getAllChildren()
     job_list = job_list+result_list
   return job_list

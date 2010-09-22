@@ -6,6 +6,7 @@ from Job import *
 import userdefinedfunctions
 import time
 import monitor
+import commands
 
 def compareStatus(job_a,job_b):
  return cmp(int(job_a.getStatus()),int(job_b.getStatus()))
@@ -44,7 +45,7 @@ def saveJobList(jobs,filename):
  newfilename+='_'+expid+'.pkl'
  print "Saving joblist into %s" % newfilename
  pickle.dump(jobs, file(newfilename,'w'))
- monitor.CreateTreeList(jobs)
+ #monitor.CreateTreeList(jobs)
 
 def cancelJobList(jobs):
  for job in jobs:
@@ -116,14 +117,16 @@ def updateJobList(jobs):
    job.setFailCount(count+1)
    if (job.getFailCount()<4):
     job.setStatus(Job.Status.READY)
-   else:
+   elif job.getFailCount()==4:
     print "Job %s has failed 4 times" % job.getName()
     children=job.getAllChildren()
     print " Now failing all of its heirs..."
     #printJobs(children)
     for child in children:
      child.setStatus(Job.Status.FAILED)
-     child.setFailCount(4)
+     child.setFailCount(5)
+   elif job.getFailCount()>=5:
+     print "Job %s has already been canceled!!!!" % job.getName()
   elif job.getStatus()==0 and job.hasParents()==0:
    print "job is now set to be ready: %s" % job.getName()
    job.setStatus(Job.Status.READY)
@@ -182,18 +185,41 @@ def updateGenealogy(jobs):
 
 if __name__ == "__main__":
  ##jobs = main()
- #manual_list=('job_19701101_0_1_clean','job_19701101_1_1_clean','job_19701101_2_1_clean','job_19701101_3_1_clean','job_19701101_4_1_clean','job_19651101_0_1_clean','job_19651101_1_1_clean','job_19651101_2_1_clean','job_19651101_3_1_clean','job_19651101_4_1_clean')
+ manual_list=[]
+ checklist=[]
+ filelist=commands.getoutput('ls mylogs |grep COMPLETED').split()
+ filechecked=commands.getoutput('ls *Checked').split()
+ for name in filelist:
+  manual_list+=[name.split('_COMPLETE')[0]]
+ for name in filechecked:
+  checklist+=[name.split('Checke')[0]]
+ crosslist=[]
+ 
+ for name in manual_list:
+  if not (checklist.__contains__(name)):
+   crosslist+=[name]
+ #('job_19701101_1_4_sim','job_19701101_2_4_sim','job_19701101_2_1_clean','job_19701101_0_3_clean','job_19701101_1_3_clean','job_19651101_3_3_clean')
  jobs=pickle.load(file('../auxfiles/joblist_yve2.pkl','r'))
+ print crosslist
  #joblist1=range(1960,1975,5)
  #jobs=userdefinedfunctions.CreateJobList("yves")
  ##jobs=CreateJobList2()
  #printJobs(jobs)
- #for job in jobs:
- # if manual_list.__contains__(job.getName()):
- #  job.setStatus(5)
- #  print "setting complete: %s" %job.getName()
+ for job in jobs:
+  if crosslist.__contains__(job.getName()):
+   job.setStatus(5)
+   print "setting complete: %s" %job.getName()
+   job.check_completion()
+  if job.getName()=='job_19651101_3_4_post':
+   job.setStatus(5)
+   print "setting complete: %s" %job.getName()
+   job.check_completion()
+  if job.getName()=='job_19651101_4_2_sim':
+   job.setStatus(-1)
+   print "failing %s" %job.getName()
 
- completed=getCompleted(jobs)
+ updateJobList(jobs)
+ #completed=getCompleted(jobs)
  #print "COMPLETED!!!!"
  #printJobs(completed)
  #ready=getReady(jobs)
@@ -211,9 +237,9 @@ if __name__ == "__main__":
   # job.setId(0)
   # job.setStatus(1) 
  #print '\nSorting by Name'.upper()
- for job in jobs:
-  if job.getStatus() > 1:
-   job.check_completion()
+ #for job in jobs:
+ # if job.getStatus() > 1:
+ #  job.check_completion()
  
  completed=getCompleted(jobs)
  print "COMPLETED!!!!",completed.__len__()
@@ -225,8 +251,8 @@ if __name__ == "__main__":
  failed=getFailed(jobs)
  printJobs(failed)
 
- updateJobList(jobs)
- sortJobs = sortByStatus(jobs)
+ #updateJobList(jobs)
+ #sortJobs = sortByStatus(jobs)
  #printJobs(sortJobs)
 
  ready=getReady(jobs)
@@ -235,8 +261,25 @@ if __name__ == "__main__":
  completed=getCompleted(jobs)
  print "COMPLETED!!!!",completed.__len__()
  #printJobs(sortByType(completed))
-
-  #file1='../auxfiles/joblistbyname.pkl'
+ running=getRunning(jobs)
+ print "RUNNING!!",running.__len__()
+ printJobs(running)
+ waiting=getWaiting(jobs)
+ print "WAITING!!",waiting.__len__()
+ queuing=getQueuing(jobs)
+ print "queuing!!", queuing.__len__()
+ printJobs(queuing)
+ submitted=getSubmitted(jobs)
+ print "submitted",submitted.__len__()
+ 
+ inqueue=getInQueue(jobs)
+ print "InQueue!!", inqueue.__len__()
+ printJobs(inqueue)
+ #monitor.CreateTreeList(jobs)
+ #print crosslist,crosslist.__len__()
+ #print checklist,checklist.__len__()
+ #print manual_list, manual_list.__len__() 
+ #file1='../auxfiles/joblistbyname.pkl'
  #saveJobList(sortJobs, file1)
  #total=jobs.__len__()
  #finished=0
@@ -250,8 +293,8 @@ if __name__ == "__main__":
 #  print "%s finished jobs out of %s total" % (finished,total)
 #  print '\nSorting by Status'.upper()
 #  sortJobs = sortByStatus(jobs)
- file2='../auxfiles/joblist.pkl'
- saveJobList(jobs, file2)
+# file2='../auxfiles/joblist.pkl'
+# saveJobList(jobs, file2)
 #  time.sleep(10)
  ##picjoblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  ##printJobs(picjoblist)

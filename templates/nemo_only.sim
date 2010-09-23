@@ -1,0 +1,122 @@
+#!/bin/ksh
+###############################################################################
+#                              RUN EC_EARTH
+###############################################################################
+#
+#@ job_name         = JOBNAME
+#@ wall_clock_limit = 20:00:00
+#@ output           = LOGDIR/JOBNAME_%j.out
+#@ error            = LOGDIR/JOBNAME_%j.err
+##@ output           = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.out
+##@ error            = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.err
+#@ total_tasks      = 16
+#@ initialdir       = INITIALDIR 
+#@ tasks_per_node   = 4
+#@ tracing          = 1
+set -exuv
+date
+# General settings
+
+set -xuv
+#
+#Myversion=VERSION
+#Mymember=MEMBER
+Myexpid=EXPID
+START_date=SDATE
+
+
+HP=/gpfs/projects/ecm86/
+NEMODIR=$HP/$USER/nemoonly
+ECEARTH=$HP/ecm86010/nemoonly
+SCRIPTDIR=$NEMODIR/scripts
+PATH=${SCRIPTDIR}:${PATH}
+TESTDATADIR=$ECEARTH/testdata
+WRITINGDIR=/gpfs/scratch/ecm86/$USER/nemoonly/testrun
+RUN_dir=$WRITINGDIR/run_nemoonly_$SLURM_JOBID
+mkdir -p $RUN_dir
+mkdir -p $WRITINGDIR
+
+#
+# NEMO 
+#
+NEMO_nprocX=4
+NEMO_nprocY=4
+NEMO_nproc=$((NEMO_nprocX*NEMO_nprocY))
+NEMO_exe=/gpfs/projects/ecm86/ecm86133/nemoonly/nemo_build/opa_exe.ORCA1_OASIS3.${NEMO_nprocX}.${NEMO_nprocY}
+
+##########
+#Here we assume all initial conditions has been copied or linked to the RUN_dir
+#############
+
+
+#
+# Chunk management
+#
+chunk=CHUNK
+day_prev=PREV 
+
+#in days
+Chunk_start_date=Chunk_START_DATE
+Chunk_end_date=Chunk_END_DATE
+RUN_days=RUN_DAYS
+# in hours
+Chunk_length=$(( ${RUN_days} * 24 )) # In hours
+Chunk_last_day_prev=$(( ${day_prev} * 24 )) # In hours
+Chunk_last=Chunk_LAST
+
+# Run Directory Initialization
+# 
+if [[ $chunk == 1 ]]; then
+ rm -f ${RUN_dir}/anaisout
+ rm -f ${RUN_dir}/mesh_*.nc ${RUN_dir}/mask*.nc ${RUN_dir}/damping.coeff_[0-9][0-9][0-9][0-9].nc
+ echo "FIRST Chunk"
+ echo "Chunk_length: ${Chunk_length}"
+ LFASTRES=.FALSE.
+else
+ rm -f ${RUN_dir}/anaisout
+ rm -f ${RUN_dir}/mesh_zgr.nc ${RUN_dir}/mesh_hgr.nc ${RUN_dir}/mask.nc ${RUN_dir}/damping.coeff_[0-9][0-9][0-9][0-9].nc
+ echo "Chunk: ${chunk}"
+ echo "Chunk_length: ${Chunk_length}"
+ LFASTRES=.TRUE.
+fi
+
+if [[ ${Chunk_last_day_prev} != '0' ]]; then
+  setupnemoonly.ksh -g ${NEMO_config} -e ${ECEARTH} -l $((Chunk_length+Chunk_last_day_prev)) -p ${Chunk_last_day_prev} 
+else
+  setupnemoonly.ksh -g ${NEMO_config} -e ${ECEARTH} -l ${Chunk_length}
+fi
+
+
+
+export MBX_SIZE=512000000
+
+# Execution
+
+export OASIS3=simulate
+export OASIS3DEBUGLEVEL=3
+export DR_HOOK_IGNORE_SIGNALS='-1'
+
+ulimit -c 1000000
+set +e
+time srun -n $NEMO_nproc -l ${NEMOEXE} 
+
+set -e
+echo "finished chunk"
+date
+
+#
+# Preparing restart
+# The NEMO restarts are not saved yet, they are created in a different part of the script
+#  
+# Move the output for postprocessing
+#
+
+output_dir="Output_${chunk}"
+mkdir -p ${output_dir}
+mv ORCA1_MM_*.nc ${output_dir}/.
+
+
+find ${RUN_dir}/. -type d | xargs chmod 775 
+find ${RUN_dir}/. -type f | xargs chmod 775 
+
+touch LOGDIR/JOBNAME_COMPLETED

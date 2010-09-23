@@ -139,6 +139,54 @@ def CreateJobScript_yves(job,parameters):
  file(scriptname,'w').write(templateContent)
  return scriptname
 
+def CreateJobScript_nemo(job,parameters):
+ scriptname=job.getName()+'.cmd'
+ splittedname=job.getName().split('chk')
+ schunk=splittedname[1].split('_')[0]
+# parameters['SDATE']=splittedname[1]
+ string_date=parameters['SDATE']
+
+ total_chunk=int(parameters['Chunk_NUMBERS'])
+ chunk=int(schunk)
+ chunk_length_in_month=int(parameters['Chunk_SIZE_MONTH'])
+ parameters['JOBNAME'] = job.getName() 
+ 
+ chunk_start_date=chunk_date_lib.chunk_start_date(string_date,chunk,chunk_length_in_month)
+ chunk_end_date=chunk_date_lib.chunk_end_date(chunk_start_date,chunk_length_in_month)
+ run_days=chunk_date_lib.running_days(chunk_start_date,chunk_end_date)
+ prev_days=chunk_date_lib.previous_days(string_date,chunk_start_date)
+ chunk_end_days=chunk_date_lib.previous_days(string_date,chunk_end_date)
+ day_before=chunk_date_lib.previous_day(string_date)
+ chunk_end_date_1=chunk_date_lib.previous_day(chunk_end_date)
+ parameters['DAY_BEFORE']=day_before
+ parameters['Chunk_START_DATE']=chunk_start_date
+ parameters['Chunk_END_DATE']=chunk_end_date_1
+ parameters['RUN_DAYS']=str(run_days)
+ parameters['Chunk_End_IN_DAYS']=str(chunk_end_days)
+
+ if total_chunk==schunk:
+  parameters['Chunk_LAST']='.TRUE.'
+ else:
+  parameters['Chunk_LAST']='.FALSE.'
+  
+
+
+ parameters['CHUNK']=schunk
+ parameters['PREV']=str(prev_days)
+ 
+
+ mytemplate="../templates/nemo_only.sim"
+ print "*************My Template: %s" % mytemplate
+ templateContent = file(mytemplate).read()
+ for key in parameters.keys():
+  print "KEY: %s\n" % key
+  if key in templateContent:
+   print "%s:\t%s" % (key,parameters[key])
+   templateContent = templateContent.replace(key,parameters[key])
+
+ file(scriptname,'w').write(templateContent)
+ return scriptname
+
 def CreateJobScript_yve2(job,parameters):
  scriptname=job.getName()+'.cmd'
  template="../templates/MyTemplate"
@@ -214,6 +262,44 @@ def CreateJobScript_yve2(job,parameters):
   
  file(scriptname,'w').write(templateContent)
  return scriptname
+
+def CreateJobList_nemo(num_chunks):
+ joblist=list()
+ #param=dict()
+ for chk in range(1,num_chunks+1):
+  job_rootname="job_chk"+str(chk)+'_'
+  job_sim = Job(job_rootname+'sim',0,Job.Status.WAITING,Job.JobType.SIMULATION)
+  #job_post = Job(job_rootname+'post',0,Job.Status.WAITING,Job.JobType.POSTPROCESSING)
+  #job_clean = Job(job_rootname+'clean',0,Job.Status.WAITING,Job.JobType.CLEANING)
+   #set depency of postprocessing jobs
+  #  job_post.setParents([job_sim.name])
+  #  job_post.setChildren([job_clean.name])
+    #set Parents of clean job
+  #  job_clean.setParents([job_post.name])
+    #set first child of sim job
+  #  job_sim.setChildren([job_post])
+    ##Set status of first chunk to READY
+  if (chk==1):
+   job_sim.setStatus(Job.Status.READY)
+   job_sim.setParents([])
+  if(chk>1):
+   parentname="job_chk"+str(chk-1)+'_'+'sim'
+   job_sim.setParents([parentname])
+   #if (chk>2):
+   #   parentname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk-2)+'_'+'clean'
+   #   job_sim.addParents(parentname)
+  if (chk<num_chunks):
+   childname="job_chk"+str(chk+1)+'_'+'sim'
+   job_sim.addChildren(childname)
+  #if (chk<num_chunks-1):
+  # childname="job_chk"+str(chk+2)+'_'+'sim'
+  # job_clean.setChildren([childname])
+
+  JobListFactory.printJobs([job_sim ])
+  joblist+=[job_sim]
+  
+ return joblist   
+
 
 
 def CreateJobList_yves(list_of_dates, num_member,num_chunks):
@@ -393,6 +479,24 @@ def generateJobParameters_yves(expid):
 
  return parameters
  
+def generateJobParameters_nemo(expid):
+ # Table which contains all the keys to change in the template.
+ # Feel free to add new variables
+ parameters= dict()
+  # Useful variables
+ #expid = 'nemo_comp'
+
+ # Configure jobname and shell type
+ parameters['SHELL'] = "/bin/ksh"
+ parameters['Chunk_NUMBERS']='8'
+ parameters['Chunk_SIZE_MONTH']='3'
+ parameters['INITIALDIR']='/home/ecm86/ecm86133/autosub_vanilla/src/mylogs' #huo
+ parameters['LOGDIR']='/home/ecm86/ecm86503/autosub_vanilla/src/mylogs'
+ parameters['EXPID']=expid
+ #parameters['VERSION']='v2.2.1'
+ parameters['SDATE']='19890101'
+ return parameters
+
 def generateJobParameters2():
  # Table which contains all the keys to change in the template.
  # Feel free to add new variables
@@ -473,6 +577,11 @@ def CreateJobScript(job):
   parameter=generateJobParameters_yve2(expid)
   scriptname=CreateJobScript_yve2(job,parameter)
   return scriptname
+ elif expid=="nemo":
+  print "creating the script for job: %s" % job.getName()
+  parameter=generateJobParameters_nemo(expid)
+  scriptname=CreateJobScript_nemo(job,parameter)
+  return scriptname
  else:
   print "there is no defined CreateJobScript function for the expid: %s" % expid 
 
@@ -498,21 +607,29 @@ def CreateJobList(expid):
   members=5
   numchuncks=15 
   joblist=CreateJobList_yve2(dates,members,numchuncks)
+ elif expid=="nemo":
+  print "Creating the joblist for experiment: %s" % expid
+  numchuncks=8 
+  joblist=CreateJobList_nemo(numchuncks)
  else:
   print "there is no defined CreateJoblist  function for the expid: %s" % expid 
  JobListFactory.updateGenealogy(joblist)
- monitor.CreateTreeList(joblist)
+ #monitor.CreateTreeList(joblist)
  for job in joblist:
   job.setExpid(expid)
  return joblist
 
 if __name__ == "__main__":
- expidlist=('yves','scal','yve1','yve2')
+# expidlist=('yves','scal','yve1','yve2')
+ expidlist=['nemo']
  for expid in expidlist:
+  print expid
+  print "HELLLOOOOOO"
   joblist=CreateJobList(expid)
   joblist[0].printJob()
   print "number of jobs: ",len(joblist)
   print "number of jobs ready", len(JobListFactory.getReady(joblist))
+  CreateJobScript(joblist[0])
   JobListFactory.getReady(joblist)[0].printJob()
   JobListFactory.saveJobList(joblist,'../auxfiles/joblist.pkl')
   #parameters = dict()

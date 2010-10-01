@@ -101,9 +101,14 @@ def goToSleep():
 def updateQueueStatus():
  output = commands.getoutput('mnq | grep -E "eligible job|blocked job|active job" | grep -v "\-.*"').split('\n')
  for line in output:
-  numberOfJobs = line.split()[0]
-  typeOfJobs = line.split()[1]
-  queueStatus[typeOfJobs] = numberOfJobs
+  if line.split().__len__() >=1:
+   numberOfJobs = line.split()[0]
+   typeOfJobs = line.split()[1]
+   queueStatus[typeOfJobs] = numberOfJobs
+  else:
+   print "Not expected output from mnq go to sleep"
+   goToSleep()
+   updateQueueStatus()
 
 def submitJob(scriptName):
  jobid=0
@@ -114,7 +119,7 @@ def submitJob(scriptName):
   jobid=random.randrange(0,1000000)
  return jobid
 
-def handler(signum,frame,joblist):
+def handler(signum,frame):
  if signum == signal.SIGHUP:
   smart_stop()
  if signum == signal.SIGINT:
@@ -187,7 +192,7 @@ def message(msg):
 if __name__ == "__main__":
  
  os.system('clear')
- signal.signal(signal.SIGHUP,handler)#,joblist)
+ #signal.signal(signal.SIGHUP,handler)#,joblist)
  
  (options,args)=handle_options()
  ## expid="scal" 
@@ -261,7 +266,7 @@ if __name__ == "__main__":
    print "There is no job READY or available"
    print "Number of job ready: ",len(jobsavail)
    print "Number of jobs available in queue:", available
-  else: 
+  elif (min(available,len(jobsavail)) > 0): 
    print "We are gonna submit: ", min(available,len(jobsavail))
    ##should sort the jobsavail by priority Clean->post->sim>ini
    JobListFactory.printJobs(jobsavail)

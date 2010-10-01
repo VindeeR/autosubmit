@@ -74,39 +74,46 @@ for REST in RESTA RESTO ; do
          RESTA) PATHSU="/IFS_Restart_${chunk}"
                 FILEPREF=""
          ;;
-         RESTO) PATHSU=""
-#               PATHSU="/ORCA1_Restart"
+         RESTO) PATHSU="/NEMO_Restart_${chunk}"
+#               PATHSU="/NEMO_Restart_${chunk}"
                 FILEPREF="ORCA1_${Chunk_length}_restart"
          ;;
     esac
-#
-    Basedir="${RUN_dir}${PATHSU}"
-    if [[ -d ${Basedir} ]] ; then
+# 
+    if [[ ! -a ${REST}_${chunk} ]] ; then
+     Basedir="${RUN_dir}${PATHSU}"
+     if [[ -d ${Basedir} ]] ; then
        ls -l ${Basedir}/${FILEPREF}*
-    else
+     else
        exit 1
-    fi
+     fi
 #
 # Create and copy tar file
 #
-    tarfile="${REST}_${Myexpid}_${START_date}_fc${Mymember}_${Chunk_start_date}-${Chunk_end_date}.tar"
-    tar -cvf $tarfile ${Basedir}/${FILEPREF}*
-    cp $tarfile $PATHOUT_RES
+     tarfile="${REST}_${Myexpid}_${START_date}_fc${Mymember}_${Chunk_start_date}-${Chunk_end_date}.tar"
+     tar -cvf $tarfile ${Basedir}/${FILEPREF}*
+     cp $tarfile $PATHOUT_RES
 #
 # Check target file
 #
-    locfile=`md5sum ${tarfile}|cut -d" " -f1`
-    remfile=`md5sum ${PATHOUT_RES}/${tarfile}|cut -d" " -f1`
-    rm -f ${RUN_dir}/rest_${chunk}
-    if [[ "$locfile" == "$remfile" ]] ; then
+     locfile=`md5sum ${tarfile}|cut -d" " -f1`
+     remfile=`md5sum ${PATHOUT_RES}/${tarfile}|cut -d" " -f1`
+#    rm -f ${RUN_dir}/rest_${chunk}
+     if [[ "$locfile" == "$remfile" ]] ; then
        echo "The file has been correctly stored"
-       touch ${RUN_dir}/rest_${chunk}
+       touch ${RUN_dir}/${REST}_${chunk}
        rm -f $tarfile
-    else
+     else
        exit 1
+     fi
+     date
     fi
-    date
 done
+
+if [[ -a RESTA_${chunk} && -a RESTO_${chunk} ]] ; then
+touch ${RUN_dir}/rest_${chunk}
+fi
+
 
 
 if [[ -d ${output_dir} ]] ; then
@@ -184,7 +191,17 @@ if [[ -a outo_$chunk && -a outa_$chunk ]] ; then
         rm -rf ${output_dir}
 fi
 
-chmod 775 -R ${PATHOUT}
+if [[ -a rest_$((chunk-1)) ]] ; then
+	echo "We are now removing IFS_Restart_$((chunk-1))"
+        rm -rf IFS_Restart_$((chunk-1))
+fi
+
+
+
+
+find ${PATHOUT}/. -type d | xargs chmod 775 
+find ${PATHOUT}/. -type f | xargs chmod 664 
+
 clast=Chunk_LAST
 if [[ "$clast" == ".TRUE." ]] ; then
     cd $WRITINDIR

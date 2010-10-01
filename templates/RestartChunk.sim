@@ -22,6 +22,8 @@ Myversion=VERSION
 Mymember=MEMBER
 Myexpid=EXPID
 START_date=SDATE
+EXPINI=b07n
+
 case $Myversion in
      v2.1) ECEARTH=/gpfs/projects/ecm86/ecm86503/ecearth2.1
            SCRIPTDIR=/gpfs/projects/ecm86/ecearth/V2.1/setup
@@ -37,16 +39,21 @@ case $Myversion in
      ;;
 esac
 
-#
-# Model Configuration
-#
-PATH=${SCRIPTDIR}:${PATH}
-WRITINGDIR=/gpfs/scratch/ecm86/${USER}/${Myexpid}
-RUN_dir=${WRITINGDIR}/${START_date}/fc${Mymember}
 
-mkdir -p $RUN_dir
-cd $RUN_dir
-INIPATH=${RUN_dir}/inidata
+chunk=CHUNK
+day_prev=PREV 
+
+#in days
+### WARNING in the 2 following variable should be set the start
+###and end of the previous chunk!!!
+Chunk_start_date=Chunk_START_DATE
+Chunk_end_date=Chunk_END_DATE
+RUN_days=RUN_DAYS
+# in hours
+Chunk_length=$(( ${RUN_days} * 24 )) # In hours
+Chunk_last_day_prev=$(( ${day_prev} * 24 )) # In hours
+Chunk_last=Chunk_LAST
+
 
 #
 # IFS
@@ -57,6 +64,80 @@ NPROMA=40
 LFASTRES=.FALSE.
 IFSDIR=${ECEARTH}
 IFS_exe=${IFSDIR}/bin/ifsMASTER
+
+
+
+#
+# Model Configuration
+#
+PATH=${SCRIPTDIR}:${PATH}
+WRITINGDIR=/gpfs/scratch/ecm86/${USER}/${Myexpid}
+RUN_dir=${WRITINGDIR}/${START_date}/fc${Mymember}_restarted_chunk_${chunk}
+
+mkdir -p $RUN_dir
+cd $RUN_dir
+INIPATH=${RUN_dir}/inidata
+HSMPATH=/HSM/ecm86/ecearth/${Myexpid}/${START_date}/fc${Mymember}/restarts
+mkdir -p $INIPATH
+
+CMIP5=.TRUE.
+if [[ $CMIP5 = .TRUE. ]] ; then
+   cp -r /gpfs/projects/ecm86/ecearth/data/cmip5/postins ${INIPATH}/
+   cp /gpfs/projects/ecm86/ecearth/data/cmip5/dirlist  ${INIPATH}/
+fi
+
+scp login6:/HSM/ecm86/ecearth/ic/atmos/${EXPINI}/${EXPINI}_initial_an0_fc0_${START_date}00.tar ${INIPATH}
+cd ${INIPATH}
+tar xvf ${EXPINI}_initial_an0_fc0_${START_date}00.tar
+rm -f ${EXPINI}_initial_an0_fc0_${START_date}00.tar
+#
+# Rename the initial conditions
+#
+case $Myversion in
+     v2.1) PREFIX_LST="CL GG SH"
+     ;;
+     v2.2) PREFIX_LST="GG SH"
+           cp ${TESTDATADIR}/ifs/${IFS_resolution}/ICMCLb0ifINIT ICMCL${Myexpid}INIT
+     ;;
+     v2.2.1) PREFIX_LST="GG SH"
+           cp ${TESTDATADIR}/ifs/${IFS_resolution}/ICMCLb0ifINIT ICMCL${Myexpid}INIT
+     ;;
+
+esac
+for PREFIX in $PREFIX_LST ; do
+    mv ${EXPINI}_initial_an0_fc0_${START_date}00/ICM${PREFIX}${EXPINI}INIT ICM${PREFIX}${Myexpid}INIT
+done
+mv ${EXPINI}_initial_an0_fc0_${START_date}00/ICMGG${EXPINI}INIUA ICMGG${Myexpid}INIUA
+cd $RUN_dir
+
+
+
+for REST in RESTA RESTO ; do
+     case ${REST} in
+         RESTA) PATHSU="IFS_Restart_$((chunk-1))"
+	        PATHDR="IFS_Restart_$((chunk-1))/"
+         ;;
+         RESTO) PATHSU="NEMO_Restart_$((chunk-1))"
+	        PATHDR=""
+         ;;
+     esac	 
+     
+     tarfile="${REST}_${Myexpid}_${START_date}_fc${Mymember}_${Chunk_start_date}-${Chunk_end_date}.tar"
+     scp login6:${HSMPATH}/$tarfile ${RUN_dir}/
+     if [[ -d $PATHSU ]] ; then
+      rm -r $PATHSU
+     fi 
+     mkdir $PATHSU
+     tar -xvf $tarfile  
+     mv gpfs/scratch/ecm86/${USER}/${Myexpid}/${START_date}/fc${Mymember}/${PATHDR}* ${PATHSU}/
+     rm -f $tarfile
+     
+     rm -r gpfs/
+     cp ${PATHSU}/* ${RUN_dir}
+done
+
+ln -sf ${TESTDATADIR}/ifs/${IFS_resolution}/* .
+ln -sf ${INIPATH}/* .
 
 #
 # NEMO 
@@ -94,36 +175,13 @@ ADVSCH=cen2 # Ocean advection scheme
 #############
 
 
-#
-# Chunk management
-#
-chunk=CHUNK
-day_prev=PREV 
-
-#in days
-Chunk_start_date=Chunk_START_DATE
-Chunk_end_date=Chunk_END_DATE
-RUN_days=RUN_DAYS
-# in hours
-Chunk_length=$(( ${RUN_days} * 24 )) # In hours
-Chunk_last_day_prev=$(( ${day_prev} * 24 )) # In hours
-Chunk_last=Chunk_LAST
-
 # Run Directory Initialization
 # 
-if [[ $chunk == 1 ]]; then
- rm -f ${RUN_dir}/anaisout
- rm -f ${RUN_dir}/mesh_*.nc ${RUN_dir}/mask*.nc ${RUN_dir}/damping.coeff_[0-9][0-9][0-9][0-9].nc
- echo "FIRST Chunk"
- echo "Chunk_length: ${Chunk_length}"
- LFASTRES=.FALSE.
-else
  rm -f ${RUN_dir}/anaisout
  rm -f ${RUN_dir}/mesh_zgr.nc ${RUN_dir}/mesh_hgr.nc ${RUN_dir}/mask.nc ${RUN_dir}/damping.coeff_[0-9][0-9][0-9][0-9].nc
  echo "Chunk: ${chunk}"
  echo "Chunk_length: ${Chunk_length}"
  LFASTRES=.TRUE.
-fi
 
 CMIP5=.TRUE.
 if [[ $CMIP5 = .TRUE. ]] ; then
@@ -133,7 +191,6 @@ if [[ $CMIP5 = .TRUE. ]] ; then
    ADVSCH=tvd # Ocean advection scheme
 fi
 
-if [[ ! -a finished_chunk_${chunk} ]] ; then
 
  case $Myversion in
      v2.1) EXPVER=$(${SCRIPTDIR}/setupifs_${Myversion}.ksh -r ${IFS_resolution} -e ${ECEARTH} -l $((Chunk_last_day_prev+Chunk_length)) -n ${IFS_nproc} -w ${WAM} -c ${RUN_coupFreq} -o ${Chunk_last} -1 ${TESTDATADIR} -2 ${Myexpid})
@@ -165,14 +222,11 @@ if [[ ! -a finished_chunk_${chunk} ]] ; then
        fi
     fi
 
- if [[ $chunk == 1 ]]; then
-  rm -f rcf
-  rm -f *f00000000*
-  rm -f postins 
-  rm -f dirlist
-  rm -f ICM*
-  ln -sf ${INIPATH}/* .
- fi
+ rm -f rcf
+ rm -f *f00000000*
+ rm -f postins 
+ rm -f dirlist
+ ln -sf ${INIPATH}/* .
 
  ls -l
 #
@@ -198,7 +252,7 @@ if [[ ! -a finished_chunk_${chunk} ]] ; then
  echo "finished chunk"
  touch finished_chunk_${chunk}
  date
-fi
+
 
 #
 # Copy the ocean restarts to a directory.
@@ -213,9 +267,6 @@ if [[ $chunk > 1 ]] ; then
    ldp=`printf '%08d' ${Chunk_last_day_prev}`
    rm -f ORCA1_${ldp}_restart*nc
    rm -f ORCA1_Restart/*
-   if [[ -a ${RUN_dir}/rest_$((chunk-1)) ]] ; then
-      rm -rf ${RUN_dir}/NEMO_Restart_$((chunk-1))
-   fi
 fi
 
 #
@@ -248,8 +299,8 @@ output_dir="Output_${chunk}"
 mkdir -p ${output_dir}
 mv ICMGG${Myexpid}+* ICMSH${Myexpid}+* ORCA1_MM_*.nc ${output_dir}/.
 
-chmod 775 -R ${RUN_dir}/
-#find ${RUN_dir}/. -type d | xargs chmod 775 
-#find ${RUN_dir}/. -type f | xargs chmod 664 
+
+find ${RUN_dir}/. -type d | xargs chmod 775 
+find ${RUN_dir}/. -type f | xargs chmod 664 
 
 touch LOGDIR/JOBNAME_COMPLETED

@@ -205,19 +205,44 @@ if __name__ == "__main__":
  #jobs=userdefinedfunctions.CreateJobList("yves")
  ##jobs=CreateJobList2()
  #printJobs(jobs)
- for job in jobs:
-  if crosslist.__contains__(job.getName()):
+ #otherlist=('job_19601101_4_3_post','job_19651101_3_5_post','job_19701101_0_5_post','job_19701101_1_6_post','job_19651101_4_2_sim')
+ jobcrosslist=[job for job in jobs if crosslist.__contains__(job.getName())]
+ for job in jobcrosslist:
    job.setStatus(5)
    print "setting complete: %s" %job.getName()
-   job.check_completion()
-  if job.getName()=='job_19651101_3_4_post':
-   job.setStatus(5)
-   print "setting complete: %s" %job.getName()
-   job.check_completion()
-  if job.getName()=='job_19651101_4_2_sim':
-   job.setStatus(-1)
-   print "failing %s" %job.getName()
+   job.check_completion() 
+   children=job.getAllChildren()
+   for child in children:
+    child.setStatus(0)
+    child.setFailCount(0)
 
+ #otherlist=[job for job in jobs if ((job.getName()=='job_19651101_1_12_post') or (job.getName()=='job_19701101_0_15_post'))] 
+ #for job in otherlist:
+ #  job.setStatus(4)
+ #  print "setting complete: %s" %job.getName()
+ #  job.check_completion() 
+
+# failed=getFailed(jobs)
+# for job in failed:
+#  if job.getId()>0:
+#   job.setStatus(1)
+#   job.setFailCount(0)
+#  else:
+#   job.setStatus(0)
+#   job.setFailCount(0)
+ 
+ # if job.getName()=='job_19701101_2_8_sim':
+ #  job.setStatus(1)
+ #  print "setting ready: %s" %job.getName()
+ # if otherlist.__contains__(job.getName()):
+ #  job.setStatus(5)
+ #  print "setting complete: %s" %job.getName()
+ #  job.check_completion()
+ #  children=job.getAllChildren()
+ #  for child in children:
+ #   child.setStatus(0)
+ #   child.setFailCount(0)
+    
  updateJobList(jobs)
  #completed=getCompleted(jobs)
  #print "COMPLETED!!!!"
@@ -275,7 +300,7 @@ if __name__ == "__main__":
  inqueue=getInQueue(jobs)
  print "InQueue!!", inqueue.__len__()
  printJobs(inqueue)
- #monitor.CreateTreeList(jobs)
+ monitor.CreateTreeList(jobs)
  #print crosslist,crosslist.__len__()
  #print checklist,checklist.__len__()
  #print manual_list, manual_list.__len__() 
@@ -293,9 +318,9 @@ if __name__ == "__main__":
 #  print "%s finished jobs out of %s total" % (finished,total)
 #  print '\nSorting by Status'.upper()
 #  sortJobs = sortByStatus(jobs)
-# file2='../auxfiles/joblist.pkl'
-# saveJobList(jobs, file2)
-#  time.sleep(10)
+ file2='../auxfiles/joblist.pkl'
+ saveJobList(jobs, file2)
+ #time.sleep(10)
  ##picjoblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  ##printJobs(picjoblist)
  print "finished"

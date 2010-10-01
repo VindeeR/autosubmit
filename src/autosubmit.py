@@ -266,6 +266,9 @@ if __name__ == "__main__":
    print "There is no job READY or available"
    print "Number of job ready: ",len(jobsavail)
    print "Number of jobs available in queue:", available
+  elif (min(available,len(jobsavail)) < 0):
+    print "Number of job ready: ",len(jobsavail)
+    print "there must be more jobs  in queue than the maximum set:", available
   elif (min(available,len(jobsavail)) > 0): 
    print "We are gonna submit: ", min(available,len(jobsavail))
    ##should sort the jobsavail by priority Clean->post->sim>ini

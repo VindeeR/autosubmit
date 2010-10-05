@@ -122,7 +122,8 @@ def updateJobList(jobs):
  newlistname+='_'+expid+'.pkl'
  if (os.path.exists(newlistname)):
   failed=loadJobList(newlistname)
- 
+  os.system('rm %s' % newlistname)
+  
  for job in jobs:
   if (job.getStatus()==-1):
    count=job.getFailCount()
@@ -141,7 +142,7 @@ def updateJobList(jobs):
      child.setStatus(Job.Status.FAILED)
      child.setFailCount(5)
      failed+=[child]
-     if jobs.__contains__(chid):
+     if jobs.__contains__(child):
       jobs.remove(child)
    elif job.getFailCount()>=5:
      print "Job %s has already been canceled!!!!" % job.getName()

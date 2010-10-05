@@ -7,10 +7,11 @@ import JobListFactory
 import pickle
 import parseMnqXml as mnq
 import time
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.use('Agg')
 
 def pie_chart(completed,failed,ready,running,queuing,count):
- 
  # make a square figure and axes
  fig=plt.figure(1, figsize=(6,6))
  fig.clear()

@@ -2,11 +2,11 @@
 from optparse import OptionParser
 import time, os, sys
 import commands
-import parse_mnq
+import newparse_mnq as parse_mnq
 import JobListFactory
 import signal
 import pickle
-import parseMnqXml as mnq
+import newparseMnqXml as mnq
 import userdefinedfunctions
 import random
 ####################
@@ -88,27 +88,15 @@ def log_short(message):
  date = "%04d-%02d-%02d %02d:%02d:%02d" % (d[0],d[1],d[2],d[3],d[4],d[5])
  print "[%s] %s" % (date,message)
 
-def getActiveJobs():
+def getActiveJobs(queueStatus):
  return queueStatus.get('active')
 
-def getWaitingJobs():
+def getWaitingJobs(queueStatus):
  return int(queueStatus.get('eligible'))+int(queueStatus.get('blocked'))
 
 def goToSleep():
  log_short("Going to sleep (%s seconds) before retry..." % options.safetySleep)
  time.sleep(options.safetySleep)
-
-def updateQueueStatus():
- output = commands.getoutput('mnq | grep -E "eligible job|blocked job|active job" | grep -v "\-.*"').split('\n')
- for line in output:
-  if line.split().__len__() >=1:
-   numberOfJobs = line.split()[0]
-   typeOfJobs = line.split()[1]
-   queueStatus[typeOfJobs] = numberOfJobs
-  else:
-   print "Not expected output from mnq go to sleep"
-   goToSleep()
-   updateQueueStatus()
 
 def submitJob(scriptName):
  jobid=0
@@ -216,16 +204,24 @@ if __name__ == "__main__":
  else: 
   joblist=userdefinedfunctions.CreateJobList(expid)
  
+ newlistname='../auxfiles/joblist_'+expid+'2Bupdated.pkl'
  #joblist=JobListFactory.CreateJobList2()
  print "Length of joblist: ",len(joblist)
  totaljobs=len(joblist)
  log_short("New Jobs to submit: "+str(totaljobs)) 
  # Main loop. Finishing when all jobs have been submitted
  while JobListFactory.getNotInQueue(joblist).__len__()!=0 :
-  updateQueueStatus()
-  waiting = getWaitingJobs()
-  active = getActiveJobs()
+  queueStatus=parse_mnq.updateQueueStatus(queueStatus)
+  waiting = getWaitingJobs(queueStatus)
+  active = getActiveJobs(queueStatus)
   available = options.maxWaitingJobs-waiting
+  if (os.path.exists(newlistname)):
+   d = time.localtime()
+   date = "%04d-%02d-%02d %02d:%02d:%02d" % (d[0],d[1],d[2],d[3],d[4],d[5])
+   newlist=pickle.load(file(newlistname,'r'))
+   joblist+=newlist
+   os.system('mv %s %s' % (newlistname,newlistname+'_'+date))
+
   print "saving joblist"
   JobListFactory.saveJobList(joblist,'../auxfiles/joblist.pkl')
   graphname=joblist[0].getExpid()+'_graph.png'
@@ -266,9 +262,6 @@ if __name__ == "__main__":
    print "There is no job READY or available"
    print "Number of job ready: ",len(jobsavail)
    print "Number of jobs available in queue:", available
-  elif (min(available,len(jobsavail)) < 0):
-    print "Number of job ready: ",len(jobsavail)
-    print "there must be more jobs  in queue than the maximum set:", available
   elif (min(available,len(jobsavail)) > 0): 
    print "We are gonna submit: ", min(available,len(jobsavail))
    ##should sort the jobsavail by priority Clean->post->sim>ini
@@ -294,11 +287,12 @@ if __name__ == "__main__":
    goToSleep()
  
  log_short("Finished job submission")
+ JobListFactory.updateJobList(joblist)
  JobListFactory.printJobs(joblist)
  if options.verbose:
-  updateQueueStatus()
-  waiting = getWaitingJobs()
-  active = getActiveJobs()
+  queueStatus=parse_mnq.updateQueueStatus(queueStatus)
+  waiting = getWaitingJobs(queueStatus)
+  active = getActiveJobs(queueStatus)
   log_short("Active jobs in queues:\t%s" % active)
   log_short("Waiting jobs in queues:\t%s" % waiting)
 

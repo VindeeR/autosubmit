@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-
+import newparse_mnq as parse_mnq 
 class Job:
  """Class to handle all the tasks with Jobs at HPC.
     A job is created by default with a name, a jobid, a status and a type.
@@ -127,6 +127,7 @@ class Job:
 
  def check_completion(self):
   complete=False
+  parse_mnq.collect()
   logname='mylogs/'+self.name+'_COMPLETED'
   if  (os.path.exists(logname)):
    complete=True

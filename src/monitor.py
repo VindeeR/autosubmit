@@ -80,7 +80,7 @@ def CreateTreeList(joblist):
     graph.add_edge(pydot.Edge(node_job, node_child))
  pngfile=expid+'_graph.png'
  pdffile=expid+'_graph.pdf'
- graph.set_graphviz_executables({'dot': '/gpfs/apps/GRAPHVIZ/2.26.3/bin/dot'})
+ #graph.set_graphviz_executables({'dot': '/gpfs/apps/GRAPHVIZ/2.26.3/bin/dot'})
  graph.write_png(pngfile) 
  #graph.write_pdf(pdffile) 
  

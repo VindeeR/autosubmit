@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 import pickle
-import parse_mnq
+import newparse_mnq as parse_mnq
 from Job import *
 import userdefinedfunctions
-import time
-import monitor
+import time, os
+#import monitor
 import commands
 
 def compareStatus(job_a,job_b):
@@ -38,13 +38,18 @@ def checkjobInList(jobs):
    job.check_completion()
   else:
    job.setStatus(status) 
-   
+
+def loadJobList(newfilename):
+ print "Loading joblist  %s" % newfilename
+ jobs=pickle.load(file(newfilename,'r'))
+ return jobs
+
 def saveJobList(jobs,filename):
  expid=jobs[0].getExpid()
  newfilename=filename.split('.pkl')[0]
  newfilename+='_'+expid+'.pkl'
  print "Saving joblist into %s" % newfilename
- pickle.dump(jobs, file(newfilename,'w'))
+ pickle.dump(jobs,file(newfilename,'w'))
  #monitor.CreateTreeList(jobs)
 
 def cancelJobList(jobs):
@@ -110,6 +115,14 @@ def sortByType(jobs):
 
 def updateJobList(jobs):
  print "*******************UPDATING THE LIST****************************"
+ failed=[]
+ filename='../auxfiles/failed_joblist.pkl'
+ expid=jobs[0].getExpid()
+ newlistname=filename.split('.pkl')[0]
+ newlistname+='_'+expid+'.pkl'
+ if (os.path.exists(newlistname)):
+  failed=loadJobList(newlistname)
+ 
  for job in jobs:
   if (job.getStatus()==-1):
    count=job.getFailCount()
@@ -120,16 +133,25 @@ def updateJobList(jobs):
    elif job.getFailCount()==4:
     print "Job %s has failed 4 times" % job.getName()
     children=job.getAllChildren()
+    failed+=[job]
+    jobs.remove(job)
     print " Now failing all of its heirs..."
     #printJobs(children)
     for child in children:
      child.setStatus(Job.Status.FAILED)
      child.setFailCount(5)
+     failed+=[child]
+     if jobs.__contains__(chid):
+      jobs.remove(child)
    elif job.getFailCount()>=5:
      print "Job %s has already been canceled!!!!" % job.getName()
   elif job.getStatus()==0 and job.hasParents()==0:
    print "job is now set to be ready: %s" % job.getName()
    job.setStatus(Job.Status.READY)
+ 
+ if failed.__len__()>0:
+  saveJobList(failed,filename)
+ saveJobList(jobs,'../auxfiles/joblist.pkl') 
 
 def main():
  job1 = Job('one','1',Job.Status.RUNNING,0)
@@ -216,9 +238,10 @@ if __name__ == "__main__":
     child.setStatus(0)
     child.setFailCount(0)
 
- #otherlist=[job for job in jobs if ((job.getName()=='job_19651101_1_12_post') or (job.getName()=='job_19701101_0_15_post'))] 
- #for job in otherlist:
- #  job.setStatus(4)
+ otherlist=[job for job in jobs if job.getName()=='job_19751101_4_1_sim'] 
+ for job in otherlist:
+   job.setStatus(4)
+   job.setId(2905679)
  #  print "setting complete: %s" %job.getName()
  #  job.check_completion() 
 
@@ -300,7 +323,7 @@ if __name__ == "__main__":
  inqueue=getInQueue(jobs)
  print "InQueue!!", inqueue.__len__()
  printJobs(inqueue)
- monitor.CreateTreeList(jobs)
+ #monitor.CreateTreeList(jobs)
  #print crosslist,crosslist.__len__()
  #print checklist,checklist.__len__()
  #print manual_list, manual_list.__len__() 

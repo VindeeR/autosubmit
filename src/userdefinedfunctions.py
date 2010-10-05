@@ -3,7 +3,7 @@
 import JobListFactory
 import chunk_date_lib
 from Job import *
-import monitor
+#import monitor
 
 def CreateJobScript_yve1(job,parameters):
  mytemplate="template"
@@ -541,8 +541,8 @@ def generateJobParameters_yve2(expid):
  parameters['SHELL'] = "/bin/ksh"
  parameters['Chunk_NUMBERS']='15'
  parameters['Chunk_SIZE_MONTH']='4'
- parameters['INITIALDIR']='/home/ecm86/ecm86503/autosub_vanilla/src/mylogs'
- parameters['LOGDIR']='/home/ecm86/ecm86503/autosub_vanilla/src/mylogs'
+ parameters['INITIALDIR']='/home/ecm86/ecm86503/LOG_'+expid
+ parameters['LOGDIR']='/home/ecm86/ecm86503/LOG_'+expid
  parameters['EXPID']=expid
  parameters['VERSION']='v2.2.1'
  return parameters
@@ -603,7 +603,7 @@ def CreateJobList(expid):
   joblist=CreateJobList_yve1(dates,members,numchuncks)
  elif expid=="yve2":
   print "Creating the joblist for experiment: %s" % expid
-  dates=[19601101,19651101,19701101]
+  dates=[19751101]
   members=5
   numchuncks=15 
   joblist=CreateJobList_yve2(dates,members,numchuncks)

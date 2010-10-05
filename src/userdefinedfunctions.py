@@ -564,7 +564,7 @@ def CreateJobScript(job):
   return scriptname
  elif expid=="scal":
   print "creating the script for job: %s" % job.getName()
-  parameter=generateJobParameters_scal(expid)
+  parameter= dict()
   scriptname=CreateJobScript_scal(job,parameter)
   return scriptname
  elif expid=="yve1":

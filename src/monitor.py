@@ -8,8 +8,8 @@ import pickle
 import parseMnqXml as mnq
 import time
 import matplotlib
-import matplotlib.pyplot as plt
 matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 def pie_chart(completed,failed,ready,running,queuing,count):
  # make a square figure and axes

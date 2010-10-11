@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 
+import logging
 import os
 import newparse_mnq as parse_mnq 
+
+job_logger = logging.getLogger("AutoLog.Job")
+
+
 class Job:
  """Class to handle all the tasks with Jobs at HPC.
     A job is created by default with a name, a jobid, a status and a type.
@@ -74,8 +79,8 @@ class Job:
   return job_list
 
  def printJob(self):
-  print "%s\t%s\t%s" % ("Job Name","Job Id","Job Status")
-  print "%s\t\t%s\t%s" % (self.name,self.id,self.status)
+  job_logger.info("%s\t%s\t%s" % ("Job Name","Job Id","Job Status"))
+  job_logger.info("%s\t\t%s\t%s" % (self.name,self.id,self.status))
 
  def getFailCount(self):
   return self.failcount
@@ -128,29 +133,29 @@ class Job:
  def check_completion(self):
   complete=False
   parse_mnq.collect()
-  logname='mylogs/'+self.name+'_COMPLETED'
+  logname='../tmp/'+self.name+'_COMPLETED'
   if  (os.path.exists(logname)):
    complete=True
-   os.system('touch %s' % self.name+'Checked')
+   os.system('touch ../tmp/%s' % self.name+'Checked')
   else:
-   print "Job: %s has failed!!!" % self.name
-   os.system('touch %s' % self.name+'Failed')
+   job_logger.info("Job: %s has failed!!!" % self.name)
+   os.system('touch ../tmp/%s' % self.name+'Failed')
    
   if (complete):
    self.setStatus(Job.Status.COMPLETED)
    if (self.hasChildren()!=0):
     children=self.getChildren()
-    print "Job is completed, we are now removing the dependency in his %s child/children:" % self.hasChildren()
+    job_logger.info("Job is completed, we are now removing the dependency in his %s child/children:" % self.hasChildren())
     for child in children:
      #print "child type.......:",type(child)
      #self.printJob()
      #child.printJob()
-     print "number of Parents:",child.hasParents()
+     job_logger.debug("number of Parents:",child.hasParents())
      if child.getParents().__contains__(self):
       child.deleteParent(self)
 
   else:
-   print "The checking in check_completion tell us that job %s has failed" % self.name
+   job_logger.info("The checking in check_completion tell us that job %s has failed" % self.name)
    self.setStatus(Job.Status.FAILED)
 
 

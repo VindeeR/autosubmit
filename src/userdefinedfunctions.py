@@ -4,6 +4,9 @@ import JobListFactory
 import chunk_date_lib
 from Job import *
 #import monitor
+import logging
+
+udef_logger = logging.getLogger("AutoLog.userdef")
 
 def CreateJobScript_yve1(job,parameters):
  mytemplate="template"
@@ -15,15 +18,15 @@ def CreateJobScript_yve1(job,parameters):
  parameters['NEMOPROCY']=splittedname[2]
  parameters['JOBNAME'] = job.getName() 
  ##update parameters
- print "*************My Template: %s" % mytemplate
+ udef_logger.info("My Template: %s" % mytemplate)
  templateContent = file(mytemplate).read()
  for key in parameters.keys():
-  print "KEY: %s\n" % key
+  udef_logger.debug("KEY: %s\n" % key)
   if key in templateContent:
-   print "%s:\t%s" % (key,parameters[key])
+   udef_logger.debug("%s:\t%s" % (key,parameters[key]))
   templateContent = templateContent.replace(key,parameters[key])
  
- file(scriptname,'w').write(templateContent)
+ file('../tmp/'+scriptname,'w').write(templateContent)
  return scriptname
 
 def CreateJobScript_scal(job,parameters):
@@ -50,15 +53,15 @@ def CreateJobScript_scal(job,parameters):
  parameters['JOBNAME'] = job.getName() 
  
  ##update parameters
- print "*************My Template: %s" % mytemplate
+ udef_logger.info("My Template: %s" % mytemplate)
  templateContent = file(mytemplate).read()
  for key in parameters.keys():
-  print "KEY: %s\n" % key
+  udef_logger.debug("KEY: %s\n" % key)
   if key in templateContent:
-   print "%s:\t%s" % (key,parameters[key])
+   udef_logger.debug("%s:\t%s" % (key,parameters[key]))
   templateContent = templateContent.replace(key,parameters[key])
  
- file(scriptname,'w').write(templateContent)
+ file('../tmp/'+scriptname,'w').write(templateContent)
  return scriptname
 
 def CreateJobScript_dum(job,parameters):
@@ -72,29 +75,29 @@ def CreateJobScript_dum(job,parameters):
  parameters['CHUNK']=splittedname[3]
  parameters['JOBNAME'] = job.getName() 
  if (job.getJobType()==0):
-  print "jobType:", job.getJobType()
+  udef_logger.debug("jobType:", job.getJobType())
   mytemplate=template+'.sim'
   ##update parameters
  elif (job.getJobType()==1):
-  print "jobType:", job.getJobType()
+  udef_logger.debug("jobType:", job.getJobType())
   mytemplate=template+'.post'
   ##update parameters
  elif (job.getJobType()==2):
-  print "jobType:", job.getJobType()
+  udef_logger.debug("jobType:", job.getJobType())
   ##update parameters
   mytemplate=template+'.clean'
  else: 
-  print "Unknown Job Type"
+  udef_logger.warning("Unknown Job Type")
   
- print "*************My Template: %s" % mytemplate
+ udef_logger.debug("My Template: %s" % mytemplate)
  templateContent = file(mytemplate).read()
  for key in parameters.keys():
-  print "KEY: %s\n" % key
+  udef_logger.debug("KEY: %s\n" % key)
   if key in templateContent:
-   print "%s:\t%s" % (key,parameters[key])
+   udef_logger.debug("%s:\t%s" % (key,parameters[key]))
    templateContent = templateContent.replace(key,parameters[key])
   
- file(scriptname,'w').write(templateContent)
+ file('../tmp/'+scriptname,'w').write(templateContent)
  return scriptname
 
 def CreateJobScript_yves(job,parameters):
@@ -110,33 +113,33 @@ def CreateJobScript_yves(job,parameters):
  parameters['JOBNAME'] = job.getName() 
  prev=[0,59,59+61,59+61*2,59+61*2+62,59+61*3+62]
  if (job.getJobType()==0):
-  print "jobType:", job.getJobType()
+  udef_logger.debug("jobType:", job.getJobType())
   mytemplate=template+'.sim'
   ##update parameters
   parameters['WALLCLOCKLIMIT']='72:00:00'
   parameters['PREV']=str(24*prev[chunk-1])
  elif (job.getJobType()==1):
-  print "jobType:", job.getJobType()
+  udef_logger.debug("jobType:", job.getJobType())
   mytemplate=template+'.post'
   ##update parameters
   parameters['WALLCLOCKLIMIT']="02:01:00"
  elif (job.getJobType()==2):
-  print "jobType:", job.getJobType()
+  udef_logger.debug("jobType:", job.getJobType())
   ##update parameters
   mytemplate=template+'.clean'
   parameters['WALLCLOCKLIMIT']="10:00:00"
  else: 
-  print "Unknown Job Type"
+  udef_logger.warning("Unknown Job Type")
   
- print "*************My Template: %s" % mytemplate
+ udef_logger.debug("My Template: %s" % mytemplate)
  templateContent = file(mytemplate).read()
  for key in parameters.keys():
-  print "KEY: %s\n" % key
+  udef_logger.debug("KEY: %s\n" % key)
   if key in templateContent:
-   print "%s:\t%s" % (key,parameters[key])
+   udef_logger.debug("%s:\t%s" % (key,parameters[key]))
    templateContent = templateContent.replace(key,parameters[key])
   
- file(scriptname,'w').write(templateContent)
+ file('../tmp/'+scriptname,'w').write(templateContent)
  return scriptname
 
 def CreateJobScript_nemo(job,parameters):
@@ -176,15 +179,15 @@ def CreateJobScript_nemo(job,parameters):
  
 
  mytemplate="../templates/nemo_only.sim"
- print "*************My Template: %s" % mytemplate
+ udef_logger.debug("My Template: %s" % mytemplate)
  templateContent = file(mytemplate).read()
  for key in parameters.keys():
-  print "KEY: %s\n" % key
+  udef_logger.debug("KEY: %s\n" % key)
   if key in templateContent:
-   print "%s:\t%s" % (key,parameters[key])
+   udef_logger.debug("%s:\t%s" % (key,parameters[key]))
    templateContent = templateContent.replace(key,parameters[key])
 
- file(scriptname,'w').write(templateContent)
+ file('../tmp/'+scriptname,'w').write(templateContent)
  return scriptname
 
 def CreateJobScript_yve2(job,parameters):
@@ -225,13 +228,13 @@ def CreateJobScript_yve2(job,parameters):
   parameters['Chunk_LAST']='.FALSE.'
   
  if (job.getJobType()==0):
-  print "jobType:", job.getJobType()
+  udef_logger.debug("jobType:", job.getJobType())
   mytemplate=template+'.sim'
   ##update parameters
   parameters['WALLCLOCKLIMIT']='72:00:00'
   parameters['PREV']=str(prev_days)
  elif (job.getJobType()==1):
-  print "jobType:", job.getJobType()
+  udef_logger.debug("jobType:", job.getJobType())
   mytemplate=template+'.post'
   ##update parameters
   starting_date_year=chunk_date_lib.chunk_start_year(string_date)
@@ -240,27 +243,27 @@ def CreateJobScript_yve2(job,parameters):
   parameters['Starting_DATE_MONTH']=str(starting_date_month)
   parameters['WALLCLOCKLIMIT']="02:01:00"
  elif (job.getJobType()==2):
-  print "jobType:", job.getJobType()
+  udef_logger.debug("jobType:", job.getJobType())
   ##update parameters
   mytemplate=template+'.clean'
   parameters['WALLCLOCKLIMIT']="10:00:00"
  elif (job.getJobType()==-1):
-  print "jobType:", job.getJobType()
+  udef_logger.debug("jobType:", job.getJobType())
   ##update parameters
   mytemplate=template+'.ini'
   parameters['WALLCLOCKLIMIT']="10:00:00"
  else: 
-  print "Unknown Job Type"
+  udef_logger.warning("Unknown Job Type")
   
- print "*************My Template: %s" % mytemplate
+ udef_logger.debug("My Template: %s" % mytemplate)
  templateContent = file(mytemplate).read()
  for key in parameters.keys():
-  print "KEY: %s\n" % key
+  udef_logger.debug("KEY: %s\n" % key)
   if key in templateContent:
-   print "%s:\t%s" % (key,parameters[key])
+   udef_logger.debug("%s:\t%s" % (key,parameters[key]))
    templateContent = templateContent.replace(key,parameters[key])
   
- file(scriptname,'w').write(templateContent)
+ file('../tmp/'+scriptname,'w').write(templateContent)
  return scriptname
 
 def CreateJobList_nemo(num_chunks):
@@ -393,7 +396,7 @@ def CreateJobList2():
  #param=dict()
  proc_list=([1,1],[4,4],[2,2],[4,2],[2,4],[2,1],[1,2],[4,1],[1,4])
  for proc in proc_list:
-  print "PROC %s %s" %(proc[0],proc[1])
+  udef_logger.debug("PROC %s %s" %(proc[0],proc[1]))
   job_rootname="nemo-comp_"+str(proc[0])+'_'+str(proc[1])
   job_comp = Job(job_rootname,0,Job.Status.READY,Job.JobType.SIMULATION)
   #no parents nor children
@@ -414,9 +417,9 @@ def CreateJobList_scal(expid):
  for coup_freq in coup_freq_list:
   for ifs_proc in ifs_proc_list:
    for nemo_proc in nemo_proc_list:
-    print "IFS_PROC %s, NEMO_proc %s" %(ifs_proc[0]*ifs_proc[1],nemo_proc[0]*nemo_proc[1])
+    udef_logger.debug("IFS_PROC %s, NEMO_proc %s" %(ifs_proc[0]*ifs_proc[1],nemo_proc[0]*nemo_proc[1]))
     job_rootname="scalingtest_IFS_"+expid+'_'+str(ifs_proc[0])+'_'+str(ifs_proc[1])+'_NEMO_'+str(nemo_proc[0])+'_'+str(nemo_proc[1])+'_FREQ_'+str(coup_freq)
-    print job_rootname
+    udef_logger.debug(job_rootname)
     job_comp = Job(job_rootname,0,Job.Status.READY,Job.JobType.SIMULATION)
     #no parents nor children
     job_comp.setParents([])
@@ -549,70 +552,62 @@ def generateJobParameters_yve2(expid):
 
 def GenerateParameter(expid):
  if expid=="yves":
-  print "creatig the parameters for the experiment: %s" % expid
+  udef_logger.info("creating the parameters for the experiment: %s" % expid)
   parameter=generateJobParameters_yves(expid)
   return parameter
  else:
-  print "there is no defined generateparameter function for the expid : %s " % expid 
+  udef_logger.warning("there is no defined generateparameter function for the expid : %s " % expid) 
 
 def CreateJobScript(job):
  expid=job.getExpid()
+ udef_logger.info("creating the script for job: %s" % job.getName())
  if expid=="yves":
-  print "creating the script for job: %s" % job.getName()
   parameter=generateJobParameters_yves(expid)
   scriptname=CreateJobScript_yves(job,parameter)
   return scriptname
  elif expid=="scal":
-  print "creating the script for job: %s" % job.getName()
   parameter= dict()
   scriptname=CreateJobScript_scal(job,parameter)
   return scriptname
  elif expid=="yve1":
-  print "creating the script for job: %s" % job.getName()
   parameter=generateJobParameters_yves(expid)
   scriptname=CreateJobScript_yve1(job,parameter)
   return scriptname
  elif expid=="yve2":
-  print "creating the script for job: %s" % job.getName()
   parameter=generateJobParameters_yve2(expid)
   scriptname=CreateJobScript_yve2(job,parameter)
   return scriptname
  elif expid=="nemo":
-  print "creating the script for job: %s" % job.getName()
   parameter=generateJobParameters_nemo(expid)
   scriptname=CreateJobScript_nemo(job,parameter)
   return scriptname
  else:
-  print "there is no defined CreateJobScript function for the expid: %s" % expid 
+  udef_logger.warning("there is no defined CreateJobScript function for the expid: %s" % expid) 
 
 def CreateJobList(expid):
+ udef_logger.info("Creating the joblist for experiment: %s" % expid)
  if expid=="yves":
-  print "Creating the joblist for experiment: %s" % expid
   dates=[1990]
   members=5
   numchuncks=6 
   joblist=CreateJobList_yves(dates,members,numchuncks)
  elif expid=="scal":
-  print "Creating the joblist for experiment: %s" % expid
   joblist=CreateJobList_scal(expid)
  elif expid=="yve1":
-  print "Creating the joblist for experiment: %s" % expid
   dates=[1990]
   members=5
   numchuncks=10 
   joblist=CreateJobList_yve1(dates,members,numchuncks)
  elif expid=="yve2":
-  print "Creating the joblist for experiment: %s" % expid
   dates=[19751101]
   members=5
   numchuncks=15 
   joblist=CreateJobList_yve2(dates,members,numchuncks)
  elif expid=="nemo":
-  print "Creating the joblist for experiment: %s" % expid
   numchuncks=8 
   joblist=CreateJobList_nemo(numchuncks)
  else:
-  print "there is no defined CreateJoblist  function for the expid: %s" % expid 
+  udef_logger.warning("there is no defined CreateJoblist  function for the expid: %s" % expid) 
  JobListFactory.updateGenealogy(joblist)
  #monitor.CreateTreeList(joblist)
  for job in joblist:

@@ -2,7 +2,7 @@
 
 import os, commands
 import time
-
+import logging
 import Job
 
 JOB_NAME = 0
@@ -11,6 +11,8 @@ JOB_STATUS = 3
 JOB_PROCS = 4
 JOB_REMAINING_TIME = 5
 JOB_START_TIME = 6
+
+job_logger = logging.getLogger("AutoLog.parse_mnq")
 
 def mnq_preprocess():
  #calling mnq and output it in MNQ...

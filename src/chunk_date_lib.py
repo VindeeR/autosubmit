@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
 import datetime, time
+import logging
 from dateutil.relativedelta import *
 
 string_date='19600101'
+job_logger = logging.getLogger("AutoLog.chunk_date_lib")
 
 def add_months(string_date,number_of_months):
  date = time.strptime(string_date,'%Y%m%d')

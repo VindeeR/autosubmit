@@ -10,6 +10,9 @@ import time
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import logging
+
+job_logger = logging.getLogger("AutoLog.monitor")
 
 def pie_chart(completed,failed,ready,running,queuing,count):
  # make a square figure and axes

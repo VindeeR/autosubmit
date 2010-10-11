@@ -2,6 +2,7 @@
 
 import os, commands
 import time
+import logging
 
 JOB_NAME = 0
 JOB_ID = 1
@@ -9,6 +10,8 @@ JOB_STATUS = 3
 JOB_PROCS = 4
 JOB_REMAINING_TIME = 5
 JOB_START_TIME = 6
+
+parse_logger = logging.getLogger("AutoLog.newparse_mnq")
 
 def mnq_preprocess():
  #calling mnq and output it in MNQ...
@@ -39,7 +42,7 @@ def mnq_preprocess():
  jobs_lines = list() 
  for index in range(len(list_start_index)):
   jobs_lines.append(commands.getoutput("cat MNQ | sed -n -e '%d,%dp' | grep -v '^$' | tr -s ' '" % (list_start_index[index],list_end_index[index])))
-  print commands.getoutput("cat MNQ | sed -n -e '%d,%dp' | grep -v '^$' | tr -s ' '" % (list_start_index[index],list_end_index[index]))
+  parse_logger.debug(commands.getoutput("cat MNQ | sed -n -e '%d,%dp' | grep -v '^$' | tr -s ' '" % (list_start_index[index],list_end_index[index])))
  return jobs_lines
  
 def store_job(jobs_lines):
@@ -79,18 +82,17 @@ def checkjobs(job_dict,job_ids):
 def checkjob(job_id):
  stat_num=0
  if type(job_id) is not int:
-  print 'The argument %s is not an integer!!!' % job_id
-  return
+   parse_logger.critical('The argument %s is not an integer!!!' % job_id)
+   return
  state=""
  while state.split(':').__len__()!=2:
   output = commands.getoutput('ssh mn "checkjob %s"' % str(job_id))
   #output = commands.getoutput('cat CHECKJOB_SAMPLE')
   state = output[output.find('State'):output.find('\n',output.find('State'))].strip()
-  print "Getting the status of %s !" % str(job_id) 
-  print state
+  parse_logger.info("The status of %s is : %s" % (str(job_id),state)) 
   ## if state is still empty , we need to give it more time
   if state.split(':').__len__()!=2:
-   print "we will retry in 5 sec"
+   parse_logger.warning("Cannot get status, we will retry in 5 sec")
    time.sleep(5)
  
  status=state.split(':')[1].strip()
@@ -103,13 +105,13 @@ def checkjob(job_id):
  elif (status.upper()=='FAILED' or status.upper()=='NODE_FAIL' or status.upper()=='TIMEOUT'):
   stat_num=-1
  else:
-  print 'UNKNOWN STATUS: %s' % status
+  parse_logger.error('UNKNOWN STATUS: %s' % status)
  
  return stat_num 
 
 def get_name(job_id):
  if type(job_id) is not int:
-  print 'The argument %s is not an integer!!!' % job_id
+  parse_logger.critical('The argument %s is not an integer!!!' % job_id)
   return
  output = commands.getoutput('ssh mn "checkjob %s"' % str(job_id))
  #output = commands.getoutput('cat CHECKJOB_SAMPLE')
@@ -124,7 +126,7 @@ def updateQueueStatus(queueStatus):
    typeOfJobs = line.split()[1]
    queueStatus[typeOfJobs] = numberOfJobs
   else:
-   print "Not expected output from mnq go to sleep"
+   parse_logger.warning("Trying to update the queue status but received unexpected output from mnq so go to sleep 60 sec. and retry")
    time.sleep(60)
    updateQueueStatus(queueStatus)
  return queueStatus
@@ -135,8 +137,8 @@ def collect():
 def submitJob(jobname):
  os.system('scp %s mn:LOG_yve2/' % jobname)
  output=commands.getoutput('ssh mn "mnsubmit LOG_yve2/%s"' % jobname)
- print output
- print output.split(" ")[3]
+ parse_logger.debug(output)
+ parse_logger.debug(output.split(" ")[3])
  #print output.split(":")[1].strip().split()[3]
  job_id=output.split(" ")[3]
  #.strip().split()[3]
@@ -146,13 +148,13 @@ def cancelJob(job_id):
  os.system('ssh mn "mncancel %s"' % str(job_id))
 
 def main():
- print 'HELLO we are calling MNQ_preprocess....'
+ parse_logger.debug('HELLO we are calling MNQ_preprocess....')
  #jobid=submitJob("MonthlyRestart")
  #print "just submitted job number: %s" % str(jobid)
  #print "now cancelling..."
  #cancelJob(jobid)
  lines_of_jobs = mnq_preprocess()
- print 'sizeof job_lines: ', lines_of_jobs.__len__() 
+ parse_logger.debug('sizeof job_lines: ', lines_of_jobs.__len__()) 
  job_table = store_job(lines_of_jobs)
  for item in job_table.keys():
   print type(item)

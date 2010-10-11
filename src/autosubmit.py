@@ -9,6 +9,7 @@ import pickle
 import newparseMnqXml as mnq
 import userdefinedfunctions
 import random
+import logging
 ####################
 # Global Variables
 ####################
@@ -18,6 +19,12 @@ SLEEPING_TIME = 10
 SUCCESS = 0
 FAILURE = 1
 
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(name)s %(levelname)s %(message)s',
+                    datefmt='%a, %d %b %Y %H:%M:%S',
+                    filename='../tmp/myauyto.log',
+                    filemode='w')
+logger = logging.getLogger("AutoLog")
 # Hash with number of jobs in queues and running
 queueStatus = dict()
 # adding a new comment for testing
@@ -95,7 +102,7 @@ def getWaitingJobs(queueStatus):
  return int(queueStatus.get('eligible'))+int(queueStatus.get('blocked'))
 
 def goToSleep():
- log_short("Going to sleep (%s seconds) before retry..." % options.safetySleep)
+ logger.info("Going to sleep (%s seconds) before retry..." % options.safetySleep)
  time.sleep(options.safetySleep)
 
 def submitJob(scriptName):
@@ -120,7 +127,7 @@ def normal_stop():
  for key in jobTable.keys():
   #os.system('mncancel %s' % jobTable.get(key)[0])
   jobname=jobTable.get(key)[0]
-  print 'mncancel %s' % jobname
+  logger.info('mncancel %s' % jobname)
   if options.debug:
    os.system('kill %s' % jobname)
   else:
@@ -184,31 +191,31 @@ if __name__ == "__main__":
  
  (options,args)=handle_options()
  ## expid="scal" 
- log_short("Jobs to submit: %s" % options.totalJobs)
- log_short("Start with job number: %s" % options.alreadySubmitted)
- log_short("Maximum waiting jobs in queues: %s" % options.maxWaitingJobs)
- log_short("Sleep: %s" % options.safetySleep)
- log_short("Starting job submission...")
+ logger.info("Jobs to submit: %s" % options.totalJobs)
+ logger.info("Start with job number: %s" % options.alreadySubmitted)
+ logger.info("Maximum waiting jobs in queues: %s" % options.maxWaitingJobs)
+ logger.info("Sleep: %s" % options.safetySleep)
+ logger.info("Starting job submission...")
  
  alreadySubmitted=options.alreadySubmitted
  totalJobs=options.totalJobs 
  myTemplate=options.jobTemplate
  expid=options.expid
- print "My template name is: %s" % myTemplate
- print "The Experiment name is: %s" % expid
+ logger.debug("My template name is: %s" % myTemplate)
+ logger.debug("The Experiment name is: %s" % expid)
  
  if options.restart:
   filename='../auxfiles/joblist_'+expid+'.pkl'
   joblist=pickle.load(file(filename,'r'))
-  log_short("Restarting from joblist pickled in %s " % filename)
+  logger.info("Restarting from joblist pickled in %s " % filename)
  else: 
   joblist=userdefinedfunctions.CreateJobList(expid)
  
  newlistname='../auxfiles/joblist_'+expid+'2Bupdated.pkl'
  #joblist=JobListFactory.CreateJobList2()
- print "Length of joblist: ",len(joblist)
+ logger.debug("Length of joblist: ",len(joblist))
  totaljobs=len(joblist)
- log_short("New Jobs to submit: "+str(totaljobs)) 
+ logger.info("New Jobs to submit: "+str(totaljobs)) 
  # Main loop. Finishing when all jobs have been submitted
  while JobListFactory.getNotInQueue(joblist).__len__()!=0 :
   queueStatus=parse_mnq.updateQueueStatus(queueStatus)
@@ -222,7 +229,7 @@ if __name__ == "__main__":
    joblist+=newlist
    os.system('mv %s %s' % (newlistname,newlistname+'_'+date))
 
-  print "saving joblist"
+  logger.info("saving joblist")
   JobListFactory.saveJobList(joblist,'../auxfiles/joblist.pkl')
   graphname=joblist[0].getExpid()+'_graph.png'
   if  (os.path.exists(graphname)):
@@ -230,19 +237,19 @@ if __name__ == "__main__":
    if  (os.path.exists(pathname)):
     os.system('cp %s %s' % (graphname,pathname))
   if options.verbose:
-   log_short("Active jobs in queues:\t%s" % active)
-   log_short("Waiting jobs in queues:\t%s" % waiting)
+   logger.info("Active jobs in queues:\t%s" % active)
+   logger.info("Waiting jobs in queues:\t%s" % waiting)
 
   if available == 0:
    if options.verbose:
-    log_short("There's no room for more jobs...")
+    logger.info("There's no room for more jobs...")
   else:
    if options.verbose:
-    log_short("We can safely submit %s jobs..." % available)
+    logger.info("We can safely submit %s jobs..." % available)
   
   #get the list of jobs currently in the Queue
   jobinqueue=JobListFactory.getInQueue(joblist)
-  print "number of jobs in queue :%s" % jobinqueue.__len__() 
+  logger.info("number of jobs in queue :%s" % jobinqueue.__len__()) 
   JobListFactory.checkjobInList(jobinqueue)
    
   ##after checking the jobs , no job should have the status "submitted"
@@ -254,16 +261,16 @@ if __name__ == "__main__":
   #we only need to update the active jobs
   JobListFactory.updateJobList(joblist)
   activejobs=JobListFactory.getActive(joblist)
-  print "in the factory there is %s active jobs" % activejobs.__len__()
+  logger.info("in the factory there is %s active jobs" % activejobs.__len__())
 
   ## get the list of jobs READY
   jobsavail=JobListFactory.getReady(joblist)
   if (min(available,len(jobsavail)) ==0):
-   print "There is no job READY or available"
-   print "Number of job ready: ",len(jobsavail)
-   print "Number of jobs available in queue:", available
+   logger.info("There is no job READY or available")
+   logger.info("Number of job ready: ",len(jobsavail))
+   logger.info("Number of jobs available in queue:", available)
   elif (min(available,len(jobsavail)) > 0): 
-   print "We are gonna submit: ", min(available,len(jobsavail))
+   logger.info("We are gonna submit: ", min(available,len(jobsavail)))
    ##should sort the jobsavail by priority Clean->post->sim>ini
    JobListFactory.printJobs(jobsavail)
    jobsavail=JobListFactory.sortByType(jobsavail)
@@ -280,19 +287,19 @@ if __name__ == "__main__":
      os.system("rm %s" % scriptname)
 
     alreadySubmitted += 1
-     
-   log_short("We have already submitted %s of %s jobs" % (alreadySubmitted,totaljobs))
+    
+   logger.info("We have already submitted %s of %s jobs" % (alreadySubmitted,totaljobs))
   
   if JobListFactory.getActive(joblist).__len__()!=0:
    goToSleep()
  
- log_short("Finished job submission")
+ logger.info("Finished job submission")
  JobListFactory.updateJobList(joblist)
  JobListFactory.printJobs(joblist)
  if options.verbose:
   queueStatus=parse_mnq.updateQueueStatus(queueStatus)
   waiting = getWaitingJobs(queueStatus)
   active = getActiveJobs(queueStatus)
-  log_short("Active jobs in queues:\t%s" % active)
-  log_short("Waiting jobs in queues:\t%s" % waiting)
+  logger.info("Active jobs in queues:\t%s" % active)
+  logger.info("Waiting jobs in queues:\t%s" % waiting)
 

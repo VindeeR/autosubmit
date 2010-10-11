@@ -226,9 +226,136 @@ if __name__ == "__main__":
  filelist=commands.getoutput('ls mylogs |grep COMPLETED').split()
  filechecked=commands.getoutput('ls *Checked').split()
  jobs=pickle.load(file('../auxfiles/joblist.pkl','r'))
+ for name in manual_list:
+  if not (checklist.__contains__(name)):
+   crosslist+=[name]
+ #('job_19701101_1_4_sim','job_19701101_2_4_sim','job_19701101_2_1_clean','job_19701101_0_3_clean','job_19701101_1_3_clean','job_19651101_3_3_clean')
+ jobs=pickle.load(file('../auxfiles/joblist_yve2.pkl','r'))
+ print crosslist
+ #joblist1=range(1960,1975,5)
+ #jobs=userdefinedfunctions.CreateJobList("yves")
+ ##jobs=CreateJobList2()
+ #printJobs(jobs)
+ #otherlist=('job_19601101_4_3_post','job_19651101_3_5_post','job_19701101_0_5_post','job_19701101_1_6_post','job_19651101_4_2_sim')
+ jobcrosslist=[job for job in jobs if crosslist.__contains__(job.getName())]
+ for job in jobcrosslist:
+   job.setStatus(5)
+   print "setting complete: %s" %job.getName()
+   job.check_completion() 
+   children=job.getAllChildren()
+   for child in children:
+    child.setStatus(0)
+    child.setFailCount(0)
+
+ #otherlist=[job for job in jobs if job.getName()=='job_19751101_4_1_sim'] 
+ #for job in otherlist:
+ #  job.setStatus(4)
+ #  job.setId(2905679)
+ #  print "setting complete: %s" %job.getName()
+ #  job.check_completion() 
+
+# failed=getFailed(jobs)
+# for job in failed:
+#  if job.getId()>0:
+#   job.setStatus(1)
+#   job.setFailCount(0)
+#  else:
+#   job.setStatus(0)
+#   job.setFailCount(0)
  
- for job in jobs:
-   logger2.info('Job %s has status: %s' % (job.getName(),job.getStatus()))
+ # if job.getName()=='job_19701101_2_8_sim':
+ #  job.setStatus(1)
+ #  print "setting ready: %s" %job.getName()
+ # if otherlist.__contains__(job.getName()):
+ #  job.setStatus(5)
+ #  print "setting complete: %s" %job.getName()
+ #  job.check_completion()
+ #  children=job.getAllChildren()
+ #  for child in children:
+ #   child.setStatus(0)
+ #   child.setFailCount(0)
+ inqueue=getInQueue(jobs)
+ for job in inqueue:
+  job.setStatus(1)
+ updateJobList(jobs)
+
+ #completed=getCompleted(jobs)
+ #print "COMPLETED!!!!"
+ #printJobs(completed)
+ #ready=getReady(jobs)
+ #print 'READY'
+ #printJobs(ready)
+ failed=getFailed(jobs)
+ #printJobs(failed)
+ print 'FAILED!!! ', failed.__len__()
+ ##updateGenealogy(jobs)
+ #for job in failed:
+  #job.setStatus(0)
+  #job.setFailCount(0)
+   #job.check_completion()
+  #if job.getName()=='job_19601101_1_1_sim' or job.getName()=='job_19601101_0_1_sim':
+  # job.setId(0)
+  # job.setStatus(1) 
+ #print '\nSorting by Name'.upper()
+ #for job in jobs:
+ # if job.getStatus() > 1:
+ #  job.check_completion()
+ 
+ completed=getCompleted(jobs)
+ print "COMPLETED!!!!",completed.__len__()
+ printJobs(sortByType(completed))
+ ready=getReady(jobs)
+ print 'READY ', ready.__len__()
+## printJobs(ready)
+ print 'FAILED!!!'
+ failed=getFailed(jobs)
+ printJobs(failed)
+
+ #updateJobList(jobs)
+ #sortJobs = sortByStatus(jobs)
+ #printJobs(sortJobs)
+
+ ready=getReady(jobs)
+ print 'READY', ready.__len__()
+ #printJobs(ready)
+ completed=getCompleted(jobs)
+ print "COMPLETED!!!!",completed.__len__()
+ #printJobs(sortByType(completed))
+ running=getRunning(jobs)
+ print "RUNNING!!",running.__len__()
+ printJobs(running)
+ waiting=getWaiting(jobs)
+ print "WAITING!!",waiting.__len__()
+ queuing=getQueuing(jobs)
+ print "queuing!!", queuing.__len__()
+ printJobs(queuing)
+ submitted=getSubmitted(jobs)
+ print "submitted",submitted.__len__()
+ 
+ inqueue=getInQueue(jobs)
+ print "InQueue!!", inqueue.__len__()
+ printJobs(inqueue)
+ #monitor.CreateTreeList(jobs)
+ #print crosslist,crosslist.__len__()
+ #print checklist,checklist.__len__()
+ #print manual_list, manual_list.__len__() 
+ #file1='../auxfiles/joblistbyname.pkl'
+ #saveJobList(sortJobs, file1)
+ #total=jobs.__len__()
+ #finished=0
+ #updateJobList(jobs)
+# while finished!=total:
+#  for job in jobs:
+#   if job.getStatus() < 5:
+#    job.setStatus(job.getStatus()+1)
+#  updateJobList(jobs) 
+#  finished=getFinished(jobs).__len__()
+#  print "%s finished jobs out of %s total" % (finished,total)
+#  print '\nSorting by Status'.upper()
+#  sortJobs = sortByStatus(jobs)
+ file2='../auxfiles/joblist.pkl'
+ saveJobList(jobs, file2)
+ #time.sleep(10)
+ ##picjoblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
+ ##printJobs(picjoblist)
  print "finished"       
-               
- 

@@ -118,7 +118,7 @@ def sortByStatus(jobs):
 def sortByType(jobs):
  return sorted(jobs,compareType)
 
-def updateJobList(jobs):
+def updateJobList(jobs,save=1):
  joblist_logger.info("*******************UPDATING THE LIST****************************")
  failed=[]
  filename='../auxfiles/failed_joblist.pkl'
@@ -128,7 +128,8 @@ def updateJobList(jobs):
  if (os.path.exists(newlistname)):
   failed=loadJobList(newlistname)
   os.system('rm %s' % newlistname)
-  
+  print "removing %s" % newlistname
+
  for job in jobs:
   if (job.getStatus()==-1):
    count=job.getFailCount()
@@ -156,8 +157,10 @@ def updateJobList(jobs):
    job.setStatus(Job.Status.READY)
  
  if failed.__len__()>0:
-  saveJobList(failed,filename)
- saveJobList(jobs,'../auxfiles/joblist.pkl') 
+  if save:
+   saveJobList(failed,filename)
+ if save:
+  saveJobList(jobs,'../auxfiles/joblist.pkl') 
 
 def main():
  job1 = Job('one','1',Job.Status.RUNNING,0)
@@ -223,46 +226,41 @@ if __name__ == "__main__":
  logger2.warning('A shot across the bows')
  manual_list=[]
  checklist=[]
- filelist=commands.getoutput('ls mylogs |grep COMPLETED').split()
- filechecked=commands.getoutput('ls *Checked').split()
- jobs=pickle.load(file('../auxfiles/joblist.pkl','r'))
+ filelist=commands.getoutput('ls ../tmp |grep COMPLETED').split()
+ filechecked=commands.getoutput('ls ../tmp/*Checked').split()
+ crosslist=[]
  for name in manual_list:
   if not (checklist.__contains__(name)):
    crosslist+=[name]
  #('job_19701101_1_4_sim','job_19701101_2_4_sim','job_19701101_2_1_clean','job_19701101_0_3_clean','job_19701101_1_3_clean','job_19651101_3_3_clean')
  jobs=pickle.load(file('../auxfiles/joblist_yve2.pkl','r'))
  print crosslist
- #joblist1=range(1960,1975,5)
- #jobs=userdefinedfunctions.CreateJobList("yves")
- ##jobs=CreateJobList2()
- #printJobs(jobs)
- #otherlist=('job_19601101_4_3_post','job_19651101_3_5_post','job_19701101_0_5_post','job_19701101_1_6_post','job_19651101_4_2_sim')
+ jobsfailed=[]
+ if os.path.exists('../auxfiles/failed_joblist_yve2.pkl'):
+  jobsfailed=pickle.load(file('../auxfiles/failed_joblist_yve2.pkl','r'))
+ print 'FAILED joblist!!! ', jobsfailed.__len__()
+ 
+ for job in jobsfailed:
+   if job.getId()>0:
+    job.setStatus(1)
+    job.setFailCount(0)
+   else:
+    job.setStatus(0)
+    job.setFailCount(0)
+ #updateJobList(jobsfailed,save=0)
+
+ 
  jobcrosslist=[job for job in jobs if crosslist.__contains__(job.getName())]
  for job in jobcrosslist:
    job.setStatus(5)
    print "setting complete: %s" %job.getName()
-   job.check_completion() 
+   job.check_completion(touched=0) 
    children=job.getAllChildren()
    for child in children:
     child.setStatus(0)
     child.setFailCount(0)
 
- #otherlist=[job for job in jobs if job.getName()=='job_19751101_4_1_sim'] 
- #for job in otherlist:
- #  job.setStatus(4)
- #  job.setId(2905679)
- #  print "setting complete: %s" %job.getName()
- #  job.check_completion() 
-
-# failed=getFailed(jobs)
-# for job in failed:
-#  if job.getId()>0:
-#   job.setStatus(1)
-#   job.setFailCount(0)
-#  else:
-#   job.setStatus(0)
-#   job.setFailCount(0)
- 
+ jobs+=jobsfailed   
  # if job.getName()=='job_19701101_2_8_sim':
  #  job.setStatus(1)
  #  print "setting ready: %s" %job.getName()
@@ -273,11 +271,15 @@ if __name__ == "__main__":
  #  children=job.getAllChildren()
  #  for child in children:
  #   child.setStatus(0)
- #   child.setFailCount(0)
+ #   child.setFailCount(0) 
+ failed=getFailed(jobs)
+ printJobs(failed)
+ print 'FAILED!!! ', failed.__len__()
+
  inqueue=getInQueue(jobs)
  for job in inqueue:
   job.setStatus(1)
- updateJobList(jobs)
+ updateJobList(jobs,save=0)
 
  #completed=getCompleted(jobs)
  #print "COMPLETED!!!!"
@@ -285,9 +287,6 @@ if __name__ == "__main__":
  #ready=getReady(jobs)
  #print 'READY'
  #printJobs(ready)
- failed=getFailed(jobs)
- #printJobs(failed)
- print 'FAILED!!! ', failed.__len__()
  ##updateGenealogy(jobs)
  #for job in failed:
   #job.setStatus(0)
@@ -353,8 +352,14 @@ if __name__ == "__main__":
 #  print "%s finished jobs out of %s total" % (finished,total)
 #  print '\nSorting by Status'.upper()
 #  sortJobs = sortByStatus(jobs)
- file2='../auxfiles/joblist.pkl'
- saveJobList(jobs, file2)
+ file2='../auxfiles/newjoblist.pkl'
+ #removing duplicate:
+ jobs_bis=[]
+ for job in jobs:
+  if job not in jobs_bis:
+   jobs_bis.append(job)
+   
+ saveJobList(jobs_bis, file2)
  #time.sleep(10)
  ##picjoblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  ##printJobs(picjoblist)

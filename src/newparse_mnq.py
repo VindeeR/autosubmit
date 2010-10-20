@@ -132,10 +132,10 @@ def updateQueueStatus(queueStatus):
  return queueStatus
 
 def collect():
- os.system('rsync mn:LOG_yve2/*COMPLETED mylogs/')
+ os.system('rsync mn:LOG_yve2/*COMPLETED ../tmp/')
 
 def submitJob(jobname):
- os.system('scp %s mn:LOG_yve2/' % jobname)
+ os.system('scp ../tmp/%s mn:LOG_yve2/' % jobname)
  output=commands.getoutput('ssh mn "mnsubmit LOG_yve2/%s"' % jobname)
  parse_logger.debug(output)
  parse_logger.debug(output.split(" ")[3])

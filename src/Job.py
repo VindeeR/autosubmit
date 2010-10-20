@@ -130,16 +130,18 @@ class Job:
   return self.parents.__len__() 
 
 
- def check_completion(self):
+ def check_completion(self, touched=1):
   complete=False
   parse_mnq.collect()
   logname='../tmp/'+self.name+'_COMPLETED'
   if  (os.path.exists(logname)):
    complete=True
-   os.system('touch ../tmp/%s' % self.name+'Checked')
+   if touched:
+    os.system('touch ../tmp/%s' % self.name+'Checked')
   else:
    job_logger.info("Job: %s has failed!!!" % self.name)
-   os.system('touch ../tmp/%s' % self.name+'Failed')
+   if touched:
+    os.system('touch ../tmp/%s' % self.name+'Failed')
    
   if (complete):
    self.setStatus(Job.Status.COMPLETED)

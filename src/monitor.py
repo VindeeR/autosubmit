@@ -11,6 +11,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import logging
+import sys
 
 job_logger = logging.getLogger("AutoLog.monitor")
 
@@ -122,7 +123,12 @@ def dummy_list(jobs):
   finished=JobListFactory.getFinished(jobs).__len__()    
 
 if __name__ == "__main__":
- filename='../auxfiles/newjoblist_yve2.pkl'
+ if not len(sys.argv)>0:
+  print "please give an expid... "
+  sys.exit()
+ else:  
+  expid=sys.argv[1]
+ filename='../auxfiles/joblist_'+expid+'.pkl'
  file1=open(filename,'r')
  jobs=pickle.load(file(filename,'r'))
  #dummy_list(jobs)

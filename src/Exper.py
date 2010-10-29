@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+
+import logging
+import os
+import sys
+from ConfigParser import SafeConfigParser
+import cfuConfigParser
+
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(name)s %(levelname)s %(message)s',
+                    datefmt='%a, %d %b %Y %H:%M:%S',
+                    filename='exper.log',
+                    filemode='w')
+
+exper_logger = logging.getLogger("ExperLog")
+
+
+class Exper:
+ """Class to handle all the tasks with Experiments."""
+    
+ class Status:
+  """Class to handle the status of a Experiment"""
+  NOTCREATED = -1
+  BUILDING =0
+  EXISTS = 1
+  COMPLETED = 2 
+
+ class ExpType:
+  """Class to handle the type of a Expver.
+      A the moment contains only 1 type:
+      ECEARTH experiments consisting in multiple start dates, members and chunks."""
+  ECEARTH=1
+
+ def __init__(self,name,expid,status,exptype):
+  self.longname = name
+  self.expid = expid
+  self.status = status
+  self.Exptype = exptype
+  self.joblist = list()
+  self.parser = SafeConfigParser()
+
+ def getName(self):
+  return self.longname
+ 
+ def getId(self):
+  return self.expid
+ 
+ def getStatus(self):
+  return self.status
+ 
+ def getExpType(self):
+  return self.Exptype
+
+ def getExpid(self):
+  return self.expid
+ 
+ def getParser(self):
+  return self.parser
+
+
+ 
+ def printExper(self):
+  exper_logger.info("%s\t%s\t%s" % ("Expid Name","ExpId","Exp Status"))
+  exper_logger.info("%s\t\t%s\t%s" % (self.longname,self.expid,self.status))
+ 
+ def setName(self,newName):
+  self.longname = newName
+ 
+ def setId(self,newId):
+  self.expid = newId
+ 
+ def setStatus(self,newStatus):
+  self.status = newStatus
+  
+ def setExpid(self,newexpid):
+  self.expid = newexpid
+
+ def setParser(self,newparser):
+  self.parser = newparser
+
+
+ def setExpType(self,newtype):
+  self.exptype = newtype
+ 
+if __name__ == "__main__":
+ mainExper = Exper('uno','0001',Exper.Status.BUILDING,Exper.ExpType.ECEARTH)
+ mainExper.printExper()
+ print mainExper.getName()
+ print mainExper.getExpid()
+ print mainExper.getStatus()
+ parser = SafeConfigParser()
+ if(len(sys.argv) != 2):
+  print "Error missing config file"
+ else:
+  parser=cfuConfigParser.cfuConfigParser(sys.argv[1])
+ 
+ mainExper.setParser(parser)
+ print mainExper.getParser().get('config','hpcarch')

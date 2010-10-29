@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from optparse import OptionParser
+from ConfigParser import SafeConfigParser
 import time, os, sys
 import commands
 import newparse_mnq as parse_mnq
@@ -10,6 +11,8 @@ import newparseMnqXml as mnq
 import userdefinedfunctions
 import random
 import logging
+import cfuConfigParser
+
 ####################
 # Global Variables
 ####################
@@ -187,23 +190,27 @@ def message(msg):
 if __name__ == "__main__":
  
  os.system('clear')
- #signal.signal(signal.SIGHUP,handler)#,joblist)
+ parser = SafeConfigParser()
+ if(len(sys.argv) != 2):
+  print "Error missing config file"
+ else:
+  parser=cfuConfigParser.cfuConfigParser(sys.argv[1])
  
  (options,args)=handle_options()
  ## expid="scal" 
- logger.info("Jobs to submit: %s" % options.totalJobs)
- logger.info("Start with job number: %s" % options.alreadySubmitted)
- logger.info("Maximum waiting jobs in queues: %s" % options.maxWaitingJobs)
- logger.info("Sleep: %s" % options.safetySleep)
- logger.info("Starting job submission...")
  
- alreadySubmitted=options.alreadySubmitted
- totalJobs=options.totalJobs 
- myTemplate=options.jobTemplate
- expid=options.expid
+ alreadySubmitted=parser.get('config','alreadysubmitted')
+ totalJobs=parser.get('config','totaljobs')
+ myTemplate=parser.get('config','jobtemplate')
+ expid=parser.get('config','expid')
  logger.debug("My template name is: %s" % myTemplate)
  logger.debug("The Experiment name is: %s" % expid)
- 
+ logger.info("Jobs to submit: %s" % totalJobs)
+ logger.info("Start with job number: %s" % alreadySubmitted)
+ logger.info("Maximum waiting jobs in queues: %s" % parser.get('config','maxwaitingjobs'))
+ logger.info("Sleep: %s" % parser.get('config','safetysleeptime'))
+ logger.info("Starting job submission...")
+
  if options.restart:
   filename='../auxfiles/joblist_'+expid+'.pkl'
   joblist=pickle.load(file(filename,'r'))

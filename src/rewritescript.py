@@ -65,10 +65,19 @@ def restarting_script(name):
 
 if __name__ == "__main__":
  #joblist=pickle.load(file('../auxfiles/joblist_yve2.pkl','r'))
- namelist=['resjob_19651101_1_7_sim','resjob_19601101_1_4_sim']
- #job=[j for j in joblist if j.getName()=='job_19701101_4_10_sim']
- #par=udf.generateJobParameters_yve2('yve2')
- for name in namelist:
-  scriptname= restarting_script(name)
-  #=udf.CreateJobScript_yve2(job[0], par)
-  print scriptname
+ namelist=['job_19751101_0_1_ini','job_19751101_0_1_sim','job_19751101_0_1_post']
+ #jobs=[j for j in joblist if namelist.__contains__(j.getName())]
+ parameters= dict()
+ parameters['Chunk_NUMBERS']='1'
+ parameters['Chunk_SIZE_MONTH']='4'
+ parameters['INITIALDIR']='/home/ecm86/ecm86503/testpatch'
+ parameters['LOGDIR']='/home/ecm86/ecm86503/testpatch'
+ parameters['EXPID']='yve2'
+ parameters['VERSION']='v2.2.2'
+ joblist=udf.CreateJobList('testpatch')
+ for job in joblist:
+  name=udf.CreateJobScript_yve2(job,parameters)
+  print name
+ #for name in namelist:
+ # scriptname= restarting_script(name)
+ # print scriptname

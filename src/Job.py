@@ -45,7 +45,18 @@ class Job:
   self.failcount=0
   self.expid = 'truc'
  #self.parameters = dict()
-  
+ 
+ def Print(self):
+  print 'NAME: %s' %self.name 
+  print 'JOBID: %s' %self.id 
+  print 'STATUS: %s' %self.status
+  print 'TYPE: %s' %self.jobtype
+  print 'PARENTS: %s' %self.parents
+  print 'CHILDREN: %s' %self.children
+  print 'FAILCOUNTS: %s' %self.failcount
+  print 'EXPID: %s' %self.expid 
+ 
+ 
  def getName(self):
   return self.name
  
@@ -66,21 +77,22 @@ class Job:
 
  def getChildren(self):
   return self.children
- 
- def getAllChildren(self):
-  #print self.name
-  job_list = list()
-  if self.hasChildren():
-   for job in self.children:
-    job_list.append(job)
-    #print job.getName()
-    result_list = job.getAllChildren()
-    job_list = job_list+result_list
-  return job_list
 
  def printJob(self):
   job_logger.info("%s\t%s\t%s" % ("Job Name","Job Id","Job Status"))
   job_logger.info("%s\t\t%s\t%s" % (self.name,self.id,self.status))
+
+ def getAllChildren(self):
+  print self.name
+  job_list = list()
+  if self.hasChildren():
+   for job in self.children:
+    #job.printJob()
+    job_list.append(job)
+    print job.getName()
+    result_list = job.getAllChildren()
+    job_list = job_list+result_list
+  return job_list
 
  def getFailCount(self):
   return self.failcount

@@ -128,7 +128,14 @@ if __name__ == "__main__":
   sys.exit()
  else:  
   expid=sys.argv[1]
- filename='../auxfiles/joblist_'+expid+'.pkl'
+ 
+ if not len(sys.argv)>1:
+  print "please give a root name for the pickle... "
+  sys.exit()
+ else:  
+  rootname=sys.argv[2]
+ 
+ filename='../auxfiles/'+rootname+'_'+expid+'.pkl'
  file1=open(filename,'r')
  jobs=pickle.load(file(filename,'r'))
  #dummy_list(jobs)

@@ -8,7 +8,7 @@ import userdefinedfunctions
 import time, os
 #import monitor
 import commands
-
+import types
 
 
 joblist_logger = logging.getLogger("AutoLog.JobList")
@@ -127,8 +127,9 @@ def updateJobList(jobs,save=1):
  newlistname+='_'+expid+'.pkl'
  if (os.path.exists(newlistname)):
   failed=loadJobList(newlistname)
-  os.system('rm %s' % newlistname)
-  print "removing %s" % newlistname
+  if save:
+   os.system('rm %s' % newlistname)
+   print "removing %s" % newlistname
 
  for job in jobs:
   if (job.getStatus()==-1):
@@ -189,11 +190,11 @@ def updateGenealogy(jobs):
    for child in children:
     if isinstance(child,str):
      jobchild=getName(jobs,child)
-     ##print "childname %s has type:" % child, type(jobchild)
+     print "childname %s has type:" % child, type(jobchild)
      job.addChildren(jobchild)
     else:
-     ##print "surely child has already the type job:",child
-     child.printJob()
+     print "surely child has already the type job:",child
+     #child.printJob()
      job.addChildren(child)
    
   if(job.hasParents()!=0):
@@ -209,8 +210,9 @@ def updateGenealogy(jobs):
      job.addParents(jobparent)
     else:
      ##print "surely parent has already a type job",parent
-     parent.printJob()
+     #parent.printJob()
      job.addParents(parent)
+ return jobs
  joblist_logger.debug("after genealogy!")
 
 
@@ -224,114 +226,146 @@ if __name__ == "__main__":
  logger2.debug('A debug message')
  logger2.info('Some information')
  logger2.warning('A shot across the bows')
- manual_list=[]
+ parse_mnq.collect()
  checklist=[]
  filelist=commands.getoutput('ls ../tmp |grep COMPLETED').split()
- filechecked=commands.getoutput('ls ../tmp/*Checked').split()
+ filechecked=commands.getoutput('ls ../tmp |grep Checked').split()
+ for name in filechecked:
+  checklist+=[name.split('Check')[0]]
+
  crosslist=[]
- for name in manual_list:
-  if not (checklist.__contains__(name)):
-   crosslist+=[name]
+ for name in filelist:
+  shortname=name.split('_COMPLETE')[0]
+  #if not (checklist.__contains__(shortname)):
+  crosslist+=[shortname]
  #('job_19701101_1_4_sim','job_19701101_2_4_sim','job_19701101_2_1_clean','job_19701101_0_3_clean','job_19701101_1_3_clean','job_19651101_3_3_clean')
- jobs=pickle.load(file('../auxfiles/joblist_yve2.pkl','r'))
- print crosslist
- jobsfailed=[]
+ jobl=pickle.load(file('../auxfiles/joblist_yve2.pkl','r'))
+ joblname=[]
+ for j in jobl:
+  joblname+=[j.getName()]
+ print len(crosslist)
+ specialp=getName(jobl,'job_19801101_3_10_post')
+ specialc=getName(jobl,'job_19801101_3_12_sim')
  if os.path.exists('../auxfiles/failed_joblist_yve2.pkl'):
   jobsfailed=pickle.load(file('../auxfiles/failed_joblist_yve2.pkl','r'))
- print 'FAILED joblist!!! ', jobsfailed.__len__()
- 
- for job in jobsfailed:
-   if job.getId()>0:
-    job.setStatus(1)
-    job.setFailCount(0)
-   else:
-    job.setStatus(0)
-    job.setFailCount(0)
- #updateJobList(jobsfailed,save=0)
+  print 'FAILED joblist!!! ', jobsfailed.__len__()
+  for job in jobsfailed:
+   if job.getName()=='job_19801101_3_10_clean':
+    specialj=job
+    print specialj.hasParents()
+    if specialj.hasParents():
+     for p in specialj.getParents():
+      print 'parent: %s' %p.getName()
+    else:
+     print 'adding parent %s' %specialp.getName()
+     specialj.setParents([specialp])
+    print specialj.haschildren()
+    if specialj.hasChildren():
+     for c in specialj.getChildren():
+      print 'child: %s' %c.getName()
+    else:
+     print 'adding child: %s' % specialc.getName()
+     specialj.setChildren([specialc])
+ if joblname.__contains__('job_19801101_3_10_clean'):
+  print 'already has the special job resetting...'
+  specialj=getName(jobl,'job_19801101_3_10_clean')
+  specialj.setStatus(0)
+  specialj.setParents([specialp])
+  specialj.setChildren([specialc])
+ else:
+  jobl+=[specialj]
+ manual_job_list=[]
+ manual_list=["job_19801101_3_3_sim","job_19851101_0_3_sim","job_19851101_2_3_sim",'job_19851101_3_3_sim','job_19901101_4_3_sim','job_19901101_2_3_sim','job_19901101_1_4_sim','job_19851101_4_3_sim']
+ for job in jobl:
+  if manual_list.__contains__(job.getName()):
+    manual_job_list+=[job]
+    job.setStatus(Job.Status.READY)
 
- 
- jobcrosslist=[job for job in jobs if crosslist.__contains__(job.getName())]
- for job in jobcrosslist:
-   job.setStatus(5)
-   print "setting complete: %s" %job.getName()
-   job.check_completion(touched=0) 
-   children=job.getAllChildren()
-   for child in children:
-    child.setStatus(0)
-    child.setFailCount(0)
-
- jobs+=jobsfailed   
- # if job.getName()=='job_19701101_2_8_sim':
- #  job.setStatus(1)
- #  print "setting ready: %s" %job.getName()
- # if otherlist.__contains__(job.getName()):
+ #listtoadd=[]
+ #newlistyve2=userdefinedfunctions.CreateJobList('yve2')
+ #printJobs(newlistyve2)
+ #updateJobList(newlistyve2,save=0)
+ #print "newlistyve2 has %s jobs" % newlistyve2.__len__()
+ #for job in newlistyve2:
+ # if manual_list.__contains__(job.getName()):
+ #  job.printJob()
+ #  job.setStatus(Job.Status.READY)
+ #  print job.getName()
+ #  print job.hasChildren()
+ #  for child in job.getChildren():
+ #   print type(child)
+ #   print child.getName()
+ #  toto=job.getAllChildren()
+ #  logger2.info('Adding new jobs')
+ #  printJobs(toto)
+ #  listtoadd+=[job]
+ #  listtoadd+=toto
+ #print "NEW JOB to ADD ",listtoadd.__len__()
+# jobsfailed=[]
+ #jobcrosslist=[job for job in jobl if crosslist.__contains__(job.getName())]
+ #for job in manual_job_list:
  #  job.setStatus(5)
  #  print "setting complete: %s" %job.getName()
- #  job.check_completion()
- #  children=job.getAllChildren()
- #  for child in children:
- #   child.setStatus(0)
- #   child.setFailCount(0) 
- failed=getFailed(jobs)
- printJobs(failed)
- print 'FAILED!!! ', failed.__len__()
+ #  job.check_completion(touched=0) 
+   #children=job.getAllChildren()
+   #for child in children:
+   # child.setStatus(0)
+   # child.setFailCount(0)
+ #jobcrosslist2=[]
+ #jobcrosslist2=[job for job in jobsfailed if not jobs.__contains__(job)]
 
- inqueue=getInQueue(jobs)
- for job in inqueue:
-  job.setStatus(1)
- updateJobList(jobs,save=0)
-
- #completed=getCompleted(jobs)
- #print "COMPLETED!!!!"
- #printJobs(completed)
- #ready=getReady(jobs)
- #print 'READY'
- #printJobs(ready)
- ##updateGenealogy(jobs)
- #for job in failed:
-  #job.setStatus(0)
-  #job.setFailCount(0)
-   #job.check_completion()
-  #if job.getName()=='job_19601101_1_1_sim' or job.getName()=='job_19601101_0_1_sim':
-  # job.setId(0)
-  # job.setStatus(1) 
- #print '\nSorting by Name'.upper()
- #for job in jobs:
- # if job.getStatus() > 1:
- #  job.check_completion()
  
- completed=getCompleted(jobs)
+ updateJobList(jobl,save=0)
+ #jobs+= listtoadd  
+ failed=getFailed(jobl)
+ #printJobs(failed)
+ for j in failed:
+  print 'FAILED: %s' %j.getName()
+  if j.getName()=='job_19801101_3_10_clean':
+   print "What the hell is going on here?"
+  else:
+   j.setStatus(1)
+   j.setFailCount(0)
+ print 'FAILED!!! ', failed.__len__()
+ inqueue=getInQueue(jobl)
+ #for job in inqueue:
+ # job.setStatus(1)
+ 
+ completed=getCompleted(jobl)
+ 
  print "COMPLETED!!!!",completed.__len__()
+ #for job in completed:
+ # job.check_completion(touched=0) 
+ 
  printJobs(sortByType(completed))
- ready=getReady(jobs)
+ ready=getReady(jobl)
  print 'READY ', ready.__len__()
-## printJobs(ready)
  print 'FAILED!!!'
- failed=getFailed(jobs)
+ failed=getFailed(jobl)
  printJobs(failed)
 
  #updateJobList(jobs)
  #sortJobs = sortByStatus(jobs)
  #printJobs(sortJobs)
 
- ready=getReady(jobs)
+ ready=getReady(jobl)
  print 'READY', ready.__len__()
  #printJobs(ready)
- completed=getCompleted(jobs)
+ completed=getCompleted(jobl)
  print "COMPLETED!!!!",completed.__len__()
  #printJobs(sortByType(completed))
- running=getRunning(jobs)
+ running=getRunning(jobl)
  print "RUNNING!!",running.__len__()
  printJobs(running)
- waiting=getWaiting(jobs)
+ waiting=getWaiting(jobl)
  print "WAITING!!",waiting.__len__()
- queuing=getQueuing(jobs)
+ queuing=getQueuing(jobl)
  print "queuing!!", queuing.__len__()
  printJobs(queuing)
- submitted=getSubmitted(jobs)
+ submitted=getSubmitted(jobl)
  print "submitted",submitted.__len__()
  
- inqueue=getInQueue(jobs)
+ inqueue=getInQueue(jobl)
  print "InQueue!!", inqueue.__len__()
  printJobs(inqueue)
  #monitor.CreateTreeList(jobs)
@@ -354,12 +388,12 @@ if __name__ == "__main__":
 #  sortJobs = sortByStatus(jobs)
  file2='../auxfiles/newjoblist.pkl'
  #removing duplicate:
- jobs_bis=[]
- for job in jobs:
-  if job not in jobs_bis:
-   jobs_bis.append(job)
+ #jobs_bis=[]
+ #for job in jobs:
+ # if job not in jobs_bis:
+ #  jobs_bis.append(job)
    
- saveJobList(jobs_bis, file2)
+ saveJobList(jobl, file2)
  #time.sleep(10)
  ##picjoblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
  ##printJobs(picjoblist)

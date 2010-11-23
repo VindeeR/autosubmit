@@ -354,7 +354,7 @@ def CreateJobList_yve2(list_of_dates, num_member,num_chunks):
  for dates in list_of_dates:
   for mem in range(num_member):
    for chk in range(1,num_chunks+1):
-    job_rootname="yve2_"+str(dates)+'_'+str(mem)+'_'+str(chk)+'_'
+    job_rootname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk)+'_'
     job_sim = Job(job_rootname+'sim',0,Job.Status.WAITING,Job.JobType.SIMULATION)
     job_post = Job(job_rootname+'post',0,Job.Status.WAITING,Job.JobType.POSTPROCESSING)
     job_clean = Job(job_rootname+'clean',0,Job.Status.WAITING,Job.JobType.CLEANING)
@@ -373,16 +373,16 @@ def CreateJobList_yve2(list_of_dates, num_member,num_chunks):
      job_sim.setParents([job_ini.name])
      joblist+=[job_ini]
     if(chk>1):
-     parentname="yve2_"+str(dates)+'_'+str(mem)+'_'+str(chk-1)+'_'+'sim'
+     parentname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk-1)+'_'+'sim'
      job_sim.setParents([parentname])
      if (chk>2):
-      parentname="yve2_"+str(dates)+'_'+str(mem)+'_'+str(chk-2)+'_'+'clean'
+      parentname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk-2)+'_'+'clean'
       job_sim.addParents(parentname)
     if (chk<num_chunks):
-     childname="yve2_"+str(dates)+'_'+str(mem)+'_'+str(chk+1)+'_'+'sim'
+     childname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk+1)+'_'+'sim'
      job_sim.addChildren(childname)
     if (chk<num_chunks-1):
-     childname="yve2_"+str(dates)+'_'+str(mem)+'_'+str(chk+2)+'_'+'sim'
+     childname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk+2)+'_'+'sim'
      job_clean.setChildren([childname])
 
     JobListFactory.printJobs([job_sim ,job_post ,job_clean])
@@ -599,16 +599,21 @@ def CreateJobList(expid):
   numchuncks=10 
   joblist=CreateJobList_yve1(dates,members,numchuncks)
  elif expid=="yve2":
-  dates=[19751101]
+  dates=[19801101,19851101,19901101,19951101]
   members=5
   numchuncks=15 
+  joblist=CreateJobList_yve2(dates,members,numchuncks)
+ elif expid=="testpatch":
+  dates=[19751101]
+  members=1
+  numchuncks=1 
   joblist=CreateJobList_yve2(dates,members,numchuncks)
  elif expid=="nemo":
   numchuncks=8 
   joblist=CreateJobList_nemo(numchuncks)
  else:
   udef_logger.warning("there is no defined CreateJoblist  function for the expid: %s" % expid) 
- JobListFactory.updateGenealogy(joblist)
+ joblist=JobListFactory.updateGenealogy(joblist)
  #monitor.CreateTreeList(joblist)
  for job in joblist:
   job.setExpid(expid)

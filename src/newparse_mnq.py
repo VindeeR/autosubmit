@@ -85,7 +85,9 @@ def checkjob(job_id):
    parse_logger.critical('The argument %s is not an integer!!!' % job_id)
    return
  state=""
- while state.split(':').__len__()!=2:
+ count=0
+ while state.split(':').__len__()!=2 and count <10:
+ #while count <10: 
   output = commands.getoutput('ssh mn "checkjob %s"' % str(job_id))
   #output = commands.getoutput('cat CHECKJOB_SAMPLE')
   state = output[output.find('State'):output.find('\n',output.find('State'))].strip()
@@ -94,19 +96,23 @@ def checkjob(job_id):
   if state.split(':').__len__()!=2:
    parse_logger.warning("Cannot get status, we will retry in 5 sec")
    time.sleep(5)
+   count+=1
  
- status=state.split(':')[1].strip()
- if (status.upper()=='COMPLETED'):
-  stat_num=5
- elif (status.upper()=='RUNNING'):
-  stat_num=4
- elif (status.upper()=='PENDING' or status.upper()=='IDLE') or status.upper()=='BLOCKED':
-  stat_num=3
- elif (status.upper()=='FAILED' or status.upper()=='NODE_FAIL' or status.upper()=='TIMEOUT'):
-  stat_num=-1
+ if  count <10:
+  status=state.split(':')[1].strip()
+  if (status.upper()=='COMPLETED'):
+   stat_num=5
+  elif (status.upper()=='RUNNING'):
+   stat_num=4
+  elif (status.upper()=='PENDING' or status.upper()=='IDLE') or status.upper()=='BLOCKED':
+   stat_num=3
+  elif (status.upper()=='FAILED' or status.upper()=='NODE_FAIL' or status.upper()=='TIMEOUT'):
+   stat_num=-1
+  else:
+   parse_logger.error('UNKNOWN STATUS: %s' % status)
  else:
-  parse_logger.error('UNKNOWN STATUS: %s' % status)
- 
+  stat_num=5
+
  return stat_num 
 
 def get_name(job_id):

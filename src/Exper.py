@@ -31,7 +31,8 @@ class Exper:
       A the moment contains only 1 type:
       ECEARTH experiments consisting in multiple start dates, members and chunks."""
   ECEARTH=1
-
+  DUMMY=0
+ 
  def __init__(self,name,expid,status,exptype):
   self.longname = name
   self.expid = expid
@@ -60,10 +61,14 @@ class Exper:
 
 
  
- def printExper(self):
-  exper_logger.info("%s\t%s\t%s" % ("Expid Name","ExpId","Exp Status"))
-  exper_logger.info("%s\t\t%s\t%s" % (self.longname,self.expid,self.status))
- 
+ def printExper(self,log=0):
+  if log:
+   exper_logger.info("%s\t%s\t%s" % ("Expid Name","ExpId","Exp Status"))
+   exper_logger.info("%s\t\t%s\t%s" % (self.longname,self.expid,self.status))
+  else:
+   print "%s\t%s\t%s" % ("Expid Name","ExpId","Exp Status"))
+   print "%s\t\t%s\t%s" % (self.longname,self.expid,self.status)
+
  def setName(self,newName):
   self.longname = newName
  
@@ -82,7 +87,13 @@ class Exper:
 
  def setExpType(self,newtype):
   self.exptype = newtype
- 
+
+##TODO
+# Load/save experiment from pickle first then database
+# Copy experiment and assign new expid (see jordi's functions)
+# Rules to modify exp (once completed, it cannot be modified!)
+# Rules to include it in the database: requirement of an experiment description, user etc.
+
 if __name__ == "__main__":
  mainExper = Exper('uno','0001',Exper.Status.BUILDING,Exper.ExpType.ECEARTH)
  mainExper.printExper()

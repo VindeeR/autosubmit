@@ -6,7 +6,6 @@ import commands
 import newparse_mnq as parse_mnq
 import JobListFactory
 import signal
-import pickle
 import newparseMnqXml as mnq
 import userdefinedfunctions
 import random
@@ -31,61 +30,6 @@ logger = logging.getLogger("AutoLog")
 # Hash with number of jobs in queues and running
 queueStatus = dict()
 # adding a new comment for testing
-def handle_options():
- parser = OptionParser(usage="usage: %prog [options]",version="%prog 1.0")
- parser.add_option("-m","--maxjobs",
-                   type="int",
-                   dest="maxWaitingJobs",
-		   default=50,
-		   help="Keep always the number of jobs in queues lower than maxWaitingJobs.",
-		   metavar="jobs")
- parser.add_option("-t","--totaljobs",
-                   type="int",
-                   dest="totalJobs",
-		   default=1000,
-		   help="Submit totalJobs jobs.",
-		   metavar="jobs")
- parser.add_option("-n","--startingjobs",
-                   type="int",
-                   dest="alreadySubmitted",
-		   default=0,
-		   help="Submit jobs starting from startNumber.",
-		   metavar="jobs")
- parser.add_option("-s","--sleeptime",
-                   type="int",
-                   dest="safetySleep",
-		   default=120,
-		   help="Wait sleepTime seconds between trials.",
-		   metavar="time")
- parser.add_option("-j","--jobtemplate",
-                   type="string",
-                   dest="jobTemplate",
-		   default="jobtemplate.cmd",
-		   help="jobTemplate is the template for the jobs to be submitted.",
-		   metavar="file")
- parser.add_option("-x","--expid",
-                   type="string",
-                   dest="expid",
-     default="truc",
-     help="Experiment ID to be run (needed for the creation of Joblist and scripts.")
- parser.add_option("-c","--clean",
-                   action="store_true",
-		   dest="clean",
-                   help="Clean generated jobscript files when submitted.")
- parser.add_option("-v","--verbose",
-                   action="store_true",
-		   dest="verbose",
-                   help="Verbose mode.")
- parser.add_option("-d","--debug",
-                   action="store_true",
-		   dest="debug",
-                   help="Debug mode, display the jobs to be submitted.")
- parser.add_option("-r","--restart",
-                   action="store_true",
-		   dest="restart",
-                   help="restart from joblist pickled")
- (options,args) = parser.parse_args()
- return (options,args)
 
 ##TODO add an option to pass the expid on the command line.
 ## TODO pass jobtemplate as an optional argument to CreateJobScript
@@ -104,13 +48,13 @@ def getActiveJobs(queueStatus):
 def getWaitingJobs(queueStatus):
  return int(queueStatus.get('eligible'))+int(queueStatus.get('blocked'))
 
-def goToSleep():
- logger.info("Going to sleep (%s seconds) before retry..." % options.safetySleep)
- time.sleep(options.safetySleep)
+def goToSleep(value):
+ logger.info("Going to sleep (%s seconds) before retry..." % value)
+ time.sleep(value)
 
-def submitJob(scriptName):
+def submitJob(scriptName, debug=0):
  jobid=0
- if not options.debug:
+ if not debug:
   jobid=parse_mnq.submitJob(scriptName)
  else:
   os.system('bash %s' % scriptName)
@@ -123,15 +67,16 @@ def handler(signum,frame):
  if signum == signal.SIGINT:
   normal_stop()
 
-def normal_stop():
+def normal_stop(debug=0):
  # Must stop autosubmit cancelling all the jobs currently running.
  jobTable = mnq.getMyJobs()
- joblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
+ filename='../auxfiles/joblist.pkl'
+ joblist=JobListFactory.loadJobList(filename)
  for key in jobTable.keys():
   #os.system('mncancel %s' % jobTable.get(key)[0])
   jobname=jobTable.get(key)[0]
   logger.info('mncancel %s' % jobname)
-  if options.debug:
+  if debug:
    os.system('kill %s' % jobname)
   else:
    parse_mnq.cancelJob(jobTable.getId(jobname))
@@ -150,7 +95,8 @@ def normal_stop():
 
 def smart_stop():
  message('Stopping, and checking submitted jobs and pickle them!!!')
- joblist=pickle.load(file('../auxfiles/joblist.pkl','r'))
+ filename='../auxfiles/joblist.pkl'
+ joblist=JobListFactory.loadJobList(filename)
  queuing=JobListFactory.getQueuing(joblist)
  JobListFactory.cancelJobList(queuing)
  for job in queuing:
@@ -196,24 +142,23 @@ if __name__ == "__main__":
  else:
   parser=cfuConfigParser.cfuConfigParser(sys.argv[1])
  
- (options,args)=handle_options()
- ## expid="scal" 
- 
  alreadySubmitted=parser.get('config','alreadysubmitted')
  totalJobs=parser.get('config','totaljobs')
  myTemplate=parser.get('config','jobtemplate')
  expid=parser.get('config','expid')
+ maxWaitingJobs=int(parser.get('config','maxwaitingjobs'))
+ safetysleeptime=int(parser.get('config','safetysleeptime'))
  logger.debug("My template name is: %s" % myTemplate)
  logger.debug("The Experiment name is: %s" % expid)
  logger.info("Jobs to submit: %s" % totalJobs)
  logger.info("Start with job number: %s" % alreadySubmitted)
- logger.info("Maximum waiting jobs in queues: %s" % parser.get('config','maxwaitingjobs'))
- logger.info("Sleep: %s" % parser.get('config','safetysleeptime'))
+ logger.info("Maximum waiting jobs in queues: %s" % maxWaitingJobs)
+ logger.info("Sleep: %s" % 
  logger.info("Starting job submission...")
 
- if options.restart:
+ if parser.get('congig','restart').lower()=='true':
   filename='../auxfiles/joblist_'+expid+'.pkl'
-  joblist=pickle.load(file(filename,'r'))
+  joblist= JobListFactory.loadJobList(filename)
   logger.info("Restarting from joblist pickled in %s " % filename)
  else: 
   joblist=userdefinedfunctions.CreateJobList(expid)
@@ -228,11 +173,11 @@ if __name__ == "__main__":
   queueStatus=parse_mnq.updateQueueStatus(queueStatus)
   waiting = getWaitingJobs(queueStatus)
   active = getActiveJobs(queueStatus)
-  available = options.maxWaitingJobs-waiting
+  available = maxWaitingJobs-waiting
   if (os.path.exists(newlistname)):
    d = time.localtime()
    date = "%04d-%02d-%02d %02d:%02d:%02d" % (d[0],d[1],d[2],d[3],d[4],d[5])
-   newlist=pickle.load(file(newlistname,'r'))
+   newlist=JobListFactory.loadJobList(newlistname)
    joblist+=newlist
    os.system('mv %s %s' % (newlistname,newlistname+'_'+date))
 
@@ -243,15 +188,15 @@ if __name__ == "__main__":
    pathname='/gpfs/projects/ecm86/common/db'
    if  (os.path.exists(pathname)):
     os.system('cp %s %s' % (graphname,pathname))
-  if options.verbose:
+  if parser.get('congig','verbose').lower()=='true':
    logger.info("Active jobs in queues:\t%s" % active)
    logger.info("Waiting jobs in queues:\t%s" % waiting)
 
   if available == 0:
-   if options.verbose:
+   if  parser.get('congig','verbose').lower()=='true':
     logger.info("There's no room for more jobs...")
   else:
-   if options.verbose:
+   if  parser.get('congig','verbose').lower()=='true':
     logger.info("We can safely submit %s jobs..." % available)
   
   #get the list of jobs currently in the Queue
@@ -290,7 +235,7 @@ if __name__ == "__main__":
     job.setId(jobid)
     ##set status to "submitted"
     job.setStatus(2)
-    if options.clean:
+    if  parser.get('congig','clean').lower()=='true':
      os.system("rm %s" % scriptname)
 
     alreadySubmitted += 1
@@ -298,12 +243,12 @@ if __name__ == "__main__":
    logger.info("We have already submitted %s of %s jobs" % (alreadySubmitted,totaljobs))
   
   if JobListFactory.getActive(joblist).__len__()!=0:
-   goToSleep()
+   goToSleep(safetysleeptime)
  
  logger.info("Finished job submission")
  JobListFactory.updateJobList(joblist)
  JobListFactory.printJobs(joblist)
- if options.verbose:
+ if  parser.get('congig','verbose').lower()=='true':
   queueStatus=parse_mnq.updateQueueStatus(queueStatus)
   waiting = getWaitingJobs(queueStatus)
   active = getActiveJobs(queueStatus)

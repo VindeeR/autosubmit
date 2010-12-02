@@ -215,10 +215,21 @@ def CreateJobScript_yve2(job,parameters):
  parameters['Chunk_END_DATE']=chunk_end_date_1
  parameters['RUN_DAYS']=str(run_days)
  parameters['Chunk_End_IN_DAYS']=str(chunk_end_days)
+ version=parameters['VERSION']
+ if version=='v2.2.2':
+  yy=2005
+ else: 
+  yy=1999
 
  chunk_start_month=chunk_date_lib.chunk_start_month(chunk_start_date)
  chunk_start_year=chunk_date_lib.chunk_start_year(chunk_start_date)
- 
+
+ lrcp='FALSE'
+ if chunk_start_year > yy:
+  lrcp='TRUE'
+
+ parameters['RCP']='4.5'
+ parameters['LRCP']=lrcp
   
  parameters['Chunk_START_YEAR']=str(chunk_start_year)
  parameters['Chunk_START_MONTH']=str(chunk_start_month)
@@ -601,8 +612,8 @@ def CreateJobList(expid):
  elif expid=="yve2":
   dates=[19801101,19851101,19901101,19951101]
   members=5
-  numchuncks=15 
-  joblist=CreateJobList_yve2(dates,members,numchuncks)
+  numchunks=15 
+  joblist=CreateJobList_yve2(dates,members,numchunks)
  elif expid=="testpatch":
   dates=[19751101]
   members=1

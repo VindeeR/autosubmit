@@ -33,11 +33,11 @@ class Exper:
   ECEARTH=1
   DUMMY=0
  
- def __init__(self,name,expid,status,exptype):
-  self.longname = name
+ def __init__(self,expid,exptype):
+  self.longname = 'long name not defined'
   self.expid = expid
-  self.status = status
-  self.Exptype = exptype
+  self.status = 0
+  self.Exptype = 1
   self.joblist = list()
   self.parser = SafeConfigParser()
 
@@ -58,7 +58,9 @@ class Exper:
  
  def getParser(self):
   return self.parser
-
+ 
+ def getJobList(self):
+  return self.joblist
 
  
  def printExper(self,log=0):
@@ -93,6 +95,9 @@ class Exper:
 # Copy experiment and assign new expid (see jordi's functions)
 # Rules to modify exp (once completed, it cannot be modified!)
 # Rules to include it in the database: requirement of an experiment description, user etc.
+ def setup(self):
+  pass
+
 
 if __name__ == "__main__":
  mainExper = Exper('uno','0001',Exper.Status.BUILDING,Exper.ExpType.ECEARTH)
@@ -108,3 +113,6 @@ if __name__ == "__main__":
  
  mainExper.setParser(parser)
  print mainExper.getParser().get('config','hpcarch')
+
+
+

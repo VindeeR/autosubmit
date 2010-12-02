@@ -11,6 +11,7 @@ import userdefinedfunctions
 import random
 import logging
 import cfuConfigParser
+import Exper
 
 ####################
 # Global Variables
@@ -158,10 +159,23 @@ if __name__ == "__main__":
 
  if parser.get('congig','restart').lower()=='true':
   filename='../auxfiles/joblist_'+expid+'.pkl'
-  joblist= JobListFactory.loadJobList(filename)
-  logger.info("Restarting from joblist pickled in %s " % filename)
+  if (os.path.exists(filename)):
+   joblist= JobListFactory.loadJobList(filename)
+   logger.info("Restarting from joblist pickled in %s " % filename)
+  else:
+   logger.error("The pickle file %s necessary for restart is not present!" % filename)
+   sys.exit()
  else: 
-  joblist=userdefinedfunctions.CreateJobList(expid)
+  #get the experiment from the database!
+  #exper=Exper.getfromdatabase(expid)
+  #joblist=.Exper.getJoblist()
+  ##Creating the Exper object from scratch
+  exper=Exper(expid,1) 
+  exp_parser_name='expdef_'+expid+'.file'
+  expparser=cfuConfigParser.experConfigParser(exp_parser_name)
+  exper.setParser(expparser)
+  exper.setup()
+  #joblist=userdefinedfunctions.CreateJobList(expid)
  
  newlistname='../auxfiles/joblist_'+expid+'2Bupdated.pkl'
  #joblist=JobListFactory.CreateJobList2()
@@ -176,7 +190,7 @@ if __name__ == "__main__":
   available = maxWaitingJobs-waiting
   if (os.path.exists(newlistname)):
    d = time.localtime()
-   date = "%04d-%02d-%02d %02d:%02d:%02d" % (d[0],d[1],d[2],d[3],d[4],d[5])
+   date = "%04d-%02d-%02d_%02d:%02d:%02d" % (d[0],d[1],d[2],d[3],d[4],d[5])
    newlist=JobListFactory.loadJobList(newlistname)
    joblist+=newlist
    os.system('mv %s %s' % (newlistname,newlistname+'_'+date))

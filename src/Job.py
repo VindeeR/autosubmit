@@ -3,6 +3,7 @@
 import logging
 import os
 import newparse_mnq as parse_mnq 
+import JobListFactory as jlf
 
 job_logger = logging.getLogger("AutoLog.Job")
 
@@ -92,6 +93,7 @@ class Job:
     print job.getName()
     result_list = job.getAllChildren()
     job_list = job_list+result_list
+  job_list=jlf.remove_duplicate(job_list) 
   return job_list
 
  def getFailCount(self):

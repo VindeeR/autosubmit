@@ -72,6 +72,22 @@ def cfuConfigParser(file):
 		print "\nConfig file OK"
 	return parser
 
+
+def experConfigParser(file):
+	# default value in case this options does not exist on config file
+	default = ({'EXPID' : 'dumi', 'TYPE': '1', 'STATUS': '0', 'LONGNAME': 'Just a test')
+
+	# check file existance
+	if(not os.path.isfile(file)):
+		print "File does not exist"
+		sys.exit()
+
+	# load default values
+	parser = SafeConfigParser(default)
+	parser.read(file)
+	print parser.items('expdef')
+	return parser
+
 if __name__ == "__main__":
 	if(len(sys.argv) != 2):
 		print "Error missing config file"

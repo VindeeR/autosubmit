@@ -118,6 +118,22 @@ def sortByStatus(jobs):
 def sortByType(jobs):
  return sorted(jobs,compareType)
 
+def remove_duplicate(jobs):
+ namejobs=[]
+ newjobs=[]
+ for j in jobs:
+  jname=j.getName()
+  if not jname in namejobs:
+   namejobs+=[jname]
+   newjobs+=[j]
+ return newjobs  
+
+def getListOfNames(jobs):
+ listofnames=[]
+ for j in jobs:
+  listofnames+=[j.getName()]
+ return listofnames 
+
 def updateJobList(jobs,save=1):
  joblist_logger.info("*******************UPDATING THE LIST****************************")
  failed=[]
@@ -130,6 +146,10 @@ def updateJobList(jobs,save=1):
   if save:
    os.system('rm %s' % newlistname)
    print "removing %s" % newlistname
+   for j in failed:
+     if j.getName() in namelist:
+      joblist_logger.info("Job %s is present in the joblist AND in the failed one" % j.getName())
+      failed.remove(j)
 
  for job in jobs:
   if (job.getStatus()==-1):

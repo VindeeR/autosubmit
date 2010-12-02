@@ -11,6 +11,8 @@ import userdefinedfunctions
 import random
 import logging
 import cfuConfigParser
+import ItQueue
+import MnQueue
 import Exper
 
 ####################
@@ -53,83 +55,15 @@ def goToSleep(value):
  logger.info("Going to sleep (%s seconds) before retry..." % value)
  time.sleep(value)
 
-def submitJob(scriptName, debug=0):
+def submitJob(scriptName, queue, debug=0):
  jobid=0
  if not debug:
-  jobid=parse_mnq.submitJob(scriptName)
+  jobid=queue.submit_job(scriptName)
  else:
   os.system('bash %s' % scriptName)
   jobid=random.randrange(0,1000000)
  return jobid
 
-def handler(signum,frame):
- if signum == signal.SIGHUP:
-  smart_stop()
- if signum == signal.SIGINT:
-  normal_stop()
-
-def normal_stop(debug=0):
- # Must stop autosubmit cancelling all the jobs currently running.
- jobTable = mnq.getMyJobs()
- filename='../auxfiles/joblist.pkl'
- joblist=JobListFactory.loadJobList(filename)
- for key in jobTable.keys():
-  #os.system('mncancel %s' % jobTable.get(key)[0])
-  jobname=jobTable.get(key)[0]
-  logger.info('mncancel %s' % jobname)
-  if debug:
-   os.system('kill %s' % jobname)
-  else:
-   parse_mnq.cancelJob(jobTable.getId(jobname))
-  ##TODO: check that jobtable.get(key)[0] is the name of the job
-  
-  job=JobListFactory.getName(joblist, jobname)
-  ##TODO this should have a special status
-  job.setStatus(job.Status.FAILED)
- completed=JobListFactory.getCompleted(joblist)
- failed=JobListFactory.getFailed(joblist)
- notrun=JobListFactory.getNotInQueue(joblist)
- JobListFactory.saveJobList(completed,'joblist_completed.pkl')
- JobListFactory.saveJobList(failed,'joblist_failed.pkl')
- JobListFactory.saveJobList(notrun,'joblist_notrun.pkl')
- sys.exit(0)
-
-def smart_stop():
- message('Stopping, and checking submitted jobs and pickle them!!!')
- filename='../auxfiles/joblist.pkl'
- joblist=JobListFactory.loadJobList(filename)
- queuing=JobListFactory.getQueuing(joblist)
- JobListFactory.cancelJobList(queuing)
- for job in queuing:
-  job.setStatus(job.Status.READY)
- ready=JobListFactory.getReady(joblist)
- JobListFactory.saveJobList(ready,'joblist_notrun.pkl')
-
- runningjobs=JobListFactory.getRunning(joblist)
- while runningjobs.__len__() !=0:
-  message('There are still jobs running!!!')
-  JobListFactory.checkjobInList(runningjobs)
-  time.sleep(SLEEPING_TIME)
-   
- completed=JobListFactory.getCompleted(joblist)
- failed=JobListFactory.getFailed(joblist)
- JobListFactory.saveJobList(completed,'joblist_completed.pkl')
- JobListFactory.saveJobList(failed,'joblist_failed.pkl')
- sys.exit(SUCCESS)
-
-#################################
-# AUXILIARY FUNCTIONS
-#################################
-def has_jobs():
- #output = commands.getoutput('mnq --xml')
- output = commands.getoutput('cat mnq.xml')
- if output.find('job') == -1:
-  return False
- else:
-  return True
-
-def message(msg):
- print "%s" % msg
 
 ####################
 # Main Program
@@ -149,15 +83,19 @@ if __name__ == "__main__":
  expid=parser.get('config','expid')
  maxWaitingJobs=int(parser.get('config','maxwaitingjobs'))
  safetysleeptime=int(parser.get('config','safetysleeptime'))
+ if(parser.get('config', hpc) == "marenostrum"):
+	 queue = MnQueue()
+ elif(parser.get('config', hpc) == "ithaca"):
+ 	queue = ItQueue()
  logger.debug("My template name is: %s" % myTemplate)
  logger.debug("The Experiment name is: %s" % expid)
  logger.info("Jobs to submit: %s" % totalJobs)
  logger.info("Start with job number: %s" % alreadySubmitted)
  logger.info("Maximum waiting jobs in queues: %s" % maxWaitingJobs)
- logger.info("Sleep: %s" % 
+ logger.info("Sleep: %s" % safetysleeptime)
  logger.info("Starting job submission...")
 
- if parser.get('congig','restart').lower()=='true':
+ if parser.get('config','restart').lower()=='true':
   filename='../auxfiles/joblist_'+expid+'.pkl'
   if (os.path.exists(filename)):
    joblist= JobListFactory.loadJobList(filename)
@@ -184,9 +122,11 @@ if __name__ == "__main__":
  logger.info("New Jobs to submit: "+str(totaljobs)) 
  # Main loop. Finishing when all jobs have been submitted
  while JobListFactory.getNotInQueue(joblist).__len__()!=0 :
-  queueStatus=parse_mnq.updateQueueStatus(queueStatus)
-  waiting = getWaitingJobs(queueStatus)
-  active = getActiveJobs(queueStatus)
+  #queueStatus=parse_mnq.updateQueueStatus(queueStatus)
+  #waiting = getWaitingJobs(queueStatus)
+  #active = getActiveJobs(queueStatus)
+  active = JobListFactory.getRunning(joblist)
+  waiting = JobListFactory.getSubmitted(joblist) + JobListFactory.getQueuing(joblist)
   available = maxWaitingJobs-waiting
   if (os.path.exists(newlistname)):
    d = time.localtime()
@@ -216,7 +156,15 @@ if __name__ == "__main__":
   #get the list of jobs currently in the Queue
   jobinqueue=JobListFactory.getInQueue(joblist)
   logger.info("number of jobs in queue :%s" % jobinqueue.__len__()) 
-  JobListFactory.checkjobInList(jobinqueue)
+  #JobListFactory.checkjobInList(jobinqueue)
+  for job in jobinqueue:
+   job.print_job()
+   status=queue.check_job(job.get_id())
+   if(status==5):
+    joblist_logger.debug("this job seems to have completed...checking")
+    job.check_completion()
+   else:
+    job.set_status(status) 
    
   ##after checking the jobs , no job should have the status "submitted"
   ##Jordi throw an exception if this happens (warning type no exit)
@@ -245,7 +193,7 @@ if __name__ == "__main__":
    for job in jobsavail[0:min(available,len(jobsavail))]:
     scriptname=userdefinedfunctions.CreateJobScript(job) 
     print scriptname
-    jobid=submitJob(scriptname)
+    jobid=submitJob(scriptname, queue)
     job.setId(jobid)
     ##set status to "submitted"
     job.setStatus(2)
@@ -263,9 +211,11 @@ if __name__ == "__main__":
  JobListFactory.updateJobList(joblist)
  JobListFactory.printJobs(joblist)
  if  parser.get('congig','verbose').lower()=='true':
-  queueStatus=parse_mnq.updateQueueStatus(queueStatus)
-  waiting = getWaitingJobs(queueStatus)
-  active = getActiveJobs(queueStatus)
+  #queueStatus=parse_mnq.updateQueueStatus(queueStatus)
+  #waiting = getWaitingJobs(queueStatus)
+  #active = getActiveJobs(queueStatus)
+  active = JobListFactory.getRunning(joblist)
+  waiting = JobListFactory.getSubmitted(joblist) + JobListFactory.getQueuing(joblist)
   logger.info("Active jobs in queues:\t%s" % active)
   logger.info("Waiting jobs in queues:\t%s" % waiting)
 

@@ -96,6 +96,15 @@ class Exper:
 # Rules to modify exp (once completed, it cannot be modified!)
 # Rules to include it in the database: requirement of an experiment description, user etc.
  def setup(self):
+  #from parser set list of dates, members and chunks
+  #dates=[]
+  #members=[]
+  #chunks=[]
+  #from JobListFactory create the joblist
+  #joblist=jlf.CreateJobList(dates,members,chunks)
+
+
+  #
   pass
 
 

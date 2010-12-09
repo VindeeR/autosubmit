@@ -46,7 +46,10 @@ class Job:
   self.failcount=0
   self.expid = 'truc'
  #self.parameters = dict()
- 
+
+ def __eq__(self,other):
+  return (self.name==other.name)
+
  def Print(self):
   print 'NAME: %s' %self.name 
   print 'JOBID: %s' %self.id 

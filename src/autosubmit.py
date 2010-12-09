@@ -109,11 +109,11 @@ if __name__ == "__main__":
   #joblist=.Exper.getJoblist()
   ##Creating the Exper object from scratch
   exper=Exper(expid,1) 
-  exp_parser_name='expdef_'+expid+'.file'
+  exp_parser_name='../auxfiles/expdef_'+expid+'.file'
   expparser=cfuConfigParser.experConfigParser(exp_parser_name)
   exper.setParser(expparser)
   exper.setup()
-  #joblist=userdefinedfunctions.CreateJobList(expid)
+  joblist=userdefinedfunctions.CreateJobList(expid)
  
  newlistname='../auxfiles/joblist_'+expid+'2Bupdated.pkl'
  #joblist=JobListFactory.CreateJobList2()

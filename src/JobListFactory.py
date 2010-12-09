@@ -209,11 +209,11 @@ def updateGenealogy(jobs):
    for child in children:
     if isinstance(child,str):
      jobchild=get_name(jobs,child)
-     print "childname %s has type:" % child, type(jobchild)
+     ##print "childname %s has type:" % child, type(jobchild)
      job.add_children(jobchild)
     else:
-     print "surely child has already the type job:",child
-     #child.printJob()
+     ##print "surely child has already the type job:",child
+     child.printJob()
      job.add_children(child)
    
   if(job.has_parents()!=0):

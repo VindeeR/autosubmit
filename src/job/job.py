@@ -30,7 +30,9 @@ class Job:
 		print 'FAILCOUNTS: %s' %self._failcount
 		print 'EXPID: %s' %self._expid 
  
- 
+	def __eq__(self,other):
+		return (self._name==other._name)
+
 	def get_name(self):
 		return self._name
  

@@ -163,6 +163,7 @@ if __name__ == "__main__":
    if(status==5):
     joblist_logger.debug("this job seems to have completed...checking")
     job.check_completion()
+    job.remove_dependencies()
    else:
     job.set_status(status) 
    

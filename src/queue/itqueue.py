@@ -5,7 +5,7 @@ from hpcqueue import HPCQueue
 from time import sleep
 
 class ItQueue(HPCQueue):
-	def __init__(self):
+	def __init__(self,expid):
 		self._host = "sun-login"
 		self._cancel_cmd = "qdel"
 		self._checkjob_cmd = "qstat -xml -j"
@@ -15,7 +15,8 @@ class ItQueue(HPCQueue):
 		self._job_status['RUNNING'] = ['128']
 		self._job_status['QUEUING'] = []
 		self._job_status['FAILED'] = []
-	
+		self._pathdir = "\$HOME/LOG_"+expid
+		
 	def parse_job_output(self, output):
 		dom = parseString(output)
 		job_xml = dom.getElementsByTagName("JAT_status")

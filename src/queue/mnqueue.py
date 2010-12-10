@@ -5,7 +5,7 @@ from hpcqueue import HPCQueue
 from time import sleep
 
 class MnQueue(Queue):
-	def __init__(self):
+	def __init__(self,expid):
 		self._host = "mn1.bsc.es"
 		self._cancel_cmd = "mncancel"
 		self._checkjob_cmd = "checkjob -xml"
@@ -14,6 +14,7 @@ class MnQueue(Queue):
 		self._job_status['RUNNING'] = ['Running']
 		self._job_status['QUEUING'] = ['Pending', 'Idle', 'Blocked']
 		self._job_status['FAILED'] = ['Failed', 'Node_fail', 'Timeout']
+		self._pathdir = "\$HOME/LOG_"+expid
 	
 	def parse_job_output(self, output):
 		dom = parseString(output)

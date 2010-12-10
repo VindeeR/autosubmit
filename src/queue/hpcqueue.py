@@ -48,7 +48,7 @@ class HPCQueue:
 		return job_status
 
 	def submit_job(self, job_script):
-		(status, output) = getstatusoutput('ssh '+self._host+' "'+self._submit_cmd+' ' + str(job_script) + '"')
+		(status, output) = getstatusoutput('ssh '+self._host+' "'+self._submit_cmd+' ' + self._pathdir+'/'+str(job_script) + '"')
 
 		if(status == 0):
 			job_id = self.get_submitted_job_id(output)

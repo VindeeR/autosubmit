@@ -84,9 +84,9 @@ if __name__ == "__main__":
  maxWaitingJobs=int(parser.get('config','maxwaitingjobs'))
  safetysleeptime=int(parser.get('config','safetysleeptime'))
  if(parser.get('config', hpc) == "marenostrum"):
-	 queue = MnQueue()
+	 queue = MnQueue(expid)
  elif(parser.get('config', hpc) == "ithaca"):
- 	queue = ItQueue()
+ 	queue = ItQueue(expid)
  logger.debug("My template name is: %s" % myTemplate)
  logger.debug("The Experiment name is: %s" % expid)
  logger.info("Jobs to submit: %s" % totalJobs)

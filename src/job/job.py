@@ -30,28 +30,32 @@ class Job:
 		print 'FAILCOUNTS: %s' %self._failcount
 		print 'EXPID: %s' %self._expid 
  
-	def __eq__(self,other):
-		return (self._name==other._name)
-
+ 
 	def get_name(self):
+		"""Returns the job name"""
 		return self._name
  
 	def get_id(self):
+		"""Returns the job id"""
 		return self._id
  
 	def get_status(self):
-	  return self._status
+		"""Returns the job status"""
+		return self._status
  
 	def get_type(self):
+		"""Returns the job type"""
 		return self._type
 
 	def get_expid(self):
 		return self._expid
  
 	def get_parents(self):
+		"""Returns a list with job's parents"""
 		return self._parents
 
 	def get_children(self):
+		"""Returns a list with job's childrens"""
 		return self._children
 
 	def log_job(self):
@@ -59,6 +63,7 @@ class Job:
 		job_logger.info("%s\t\t%s\t%s" % (self.name,self.id,self.status))
 
 	def get_all_children(self):
+		"""Returns a list with job's childrens and all it's descendents"""
 		job_list = list()
 		for job in self._children:
 			job_list.append(job)

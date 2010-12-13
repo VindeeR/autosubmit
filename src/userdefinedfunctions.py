@@ -192,7 +192,7 @@ def CreateJobScript_nemo(job,parameters):
 
 def CreateJobScript_yve2(job,parameters):
  scriptname=job.getName()+'.cmd'
- template="../templates/MyTemplate"
+ template="../templates/MyTemplate_yve2"
  splittedname=job.getName().split('_')
  parameters['SDATE']=splittedname[1]
  string_date=splittedname[1]

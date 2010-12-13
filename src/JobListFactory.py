@@ -9,6 +9,8 @@ import time, os
 #import monitor
 import commands
 import types
+import sys
+sys.path.append('job')
 from job_common import Status
 from job_common import Type
 
@@ -182,19 +184,6 @@ def updateJobList(jobs,save=1):
  if save:
   saveJobList(jobs,'../auxfiles/joblist.pkl') 
 
-def main():
- job1 = Job('one','1',.RUNNING,0)
- job2 = Job('two','2',.READY,0)
- job3 = Job('three','3',.COMPLETED,0)
- job4 = Job('four','4',.READY,0)
- job5 = Job('five','5',.READY,0)
- job6 = Job('six','6',.READY,0)
- job7 = Job('seven','7',.WAITING,0)
- job8 = Job('eight','8',.WAITING,0)
- job1.set_children([job7])
- job3.set_children([job8])
- jobs = [job1,job2,job3,job4,job5,job6,job7,job8]
- return jobs
 
 def updateGenealogy(jobs):
  joblist_logger.info("in genealogy!")

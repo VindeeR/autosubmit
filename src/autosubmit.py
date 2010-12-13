@@ -11,9 +11,12 @@ import userdefinedfunctions
 import random
 import logging
 import cfuConfigParser
-import ItQueue
-import MnQueue
+sys.path.append('queue')
+from itqueue import ItQueue
+from mnqueue import MnQueue
 import Exper
+sys.path.append('job')
+from job import Job
 
 ####################
 # Global Variables
@@ -27,7 +30,7 @@ FAILURE = 1
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(name)s %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S',
-                    filename='../tmp/myauyto.log',
+                    filename='../tmp/myauto.log',
                     filemode='w')
 logger = logging.getLogger("AutoLog")
 # Hash with number of jobs in queues and running
@@ -83,9 +86,9 @@ if __name__ == "__main__":
  expid=parser.get('config','expid')
  maxWaitingJobs=int(parser.get('config','maxwaitingjobs'))
  safetysleeptime=int(parser.get('config','safetysleeptime'))
- if(parser.get('config', hpc) == "marenostrum"):
+ if(parser.get('config', 'hpcarch') == "marenostrum"):
 	 queue = MnQueue(expid)
- elif(parser.get('config', hpc) == "ithaca"):
+ elif(parser.get('config', 'hpcarch') == "ithaca"):
  	queue = ItQueue(expid)
  logger.debug("My template name is: %s" % myTemplate)
  logger.debug("The Experiment name is: %s" % expid)

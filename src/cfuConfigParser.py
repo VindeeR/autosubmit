@@ -75,7 +75,7 @@ def cfuConfigParser(file):
 
 def experConfigParser(file):
 	# default value in case this options does not exist on config file
-	default = ({'EXPID' : 'dumi', 'TYPE': '1', 'STATUS': '0', 'LONGNAME': 'Just a test')
+	default = ({'EXPID' : 'dumi', 'TYPE': '1', 'STATUS': '0', 'LONGNAME': 'Just a test'})
 
 	# check file existance
 	if(not os.path.isfile(file)):

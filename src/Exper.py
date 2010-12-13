@@ -68,7 +68,7 @@ class Exper:
    exper_logger.info("%s\t%s\t%s" % ("Expid Name","ExpId","Exp Status"))
    exper_logger.info("%s\t\t%s\t%s" % (self.longname,self.expid,self.status))
   else:
-   print "%s\t%s\t%s" % ("Expid Name","ExpId","Exp Status"))
+   print "%s\t%s\t%s" % ("Expid Name","ExpId","Exp Status")
    print "%s\t\t%s\t%s" % (self.longname,self.expid,self.status)
 
  def setName(self,newName):

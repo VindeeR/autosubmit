@@ -4,7 +4,7 @@ from xml.dom.minidom import parseString
 from hpcqueue import HPCQueue
 from time import sleep
 
-class MnQueue(Queue):
+class MnQueue(HPCQueue):
 	def __init__(self,expid):
 		self._host = "mn1.bsc.es"
 		self._cancel_cmd = "mncancel"

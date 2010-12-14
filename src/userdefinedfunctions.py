@@ -2,7 +2,12 @@
 
 import JobListFactory
 import chunk_date_lib
-from Job import *
+#from Job import *
+import sys
+sys.path.append('job')
+from job import Job
+from job_common import Status
+from job_common import Type
 #import monitor
 import logging
 
@@ -10,13 +15,13 @@ udef_logger = logging.getLogger("AutoLog.userdef")
 
 def CreateJobScript_yve1(job,parameters):
  mytemplate="template"
- scriptname=job.getName()+'.cmd'
- splittedname=job.getName().split('_')
+ scriptname=job.get_name()+'.cmd'
+ splittedname=job.get_name().split('_')
  #procx=int(splittedname[1])
  parameters['NEMOPROCX']=splittedname[1]
  #procy=int(splittedname[2])
  parameters['NEMOPROCY']=splittedname[2]
- parameters['JOBNAME'] = job.getName() 
+ parameters['JOBNAME'] = job.get_name() 
  ##update parameters
  udef_logger.info("My Template: %s" % mytemplate)
  templateContent = file(mytemplate).read()
@@ -30,10 +35,10 @@ def CreateJobScript_yve1(job,parameters):
  return scriptname
 
 def CreateJobScript_scal(job,parameters):
- expid=job.getExpid()
+ expid=job.get_expid()
  mytemplate="../templates/scale_coupled.sim"
- scriptname=job.getName()+'.cmd'
- splittedname=job.getName().split('_')
+ scriptname=job.get_name()+'.cmd'
+ splittedname=job.get_name().split('_')
  nemo_procx=splittedname[6]
  nemo_procy=splittedname[7]
  coup_freq=splittedname[9]
@@ -50,7 +55,7 @@ def CreateJobScript_scal(job,parameters):
  parameters['IFS_NPRTRV']= ifs_procy
  parameters['NTASKS']= str(ntasks)
  parameters['COUP_FREQ']=coup_freq
- parameters['JOBNAME'] = job.getName() 
+ parameters['JOBNAME'] = job.get_name() 
  
  ##update parameters
  udef_logger.info("My Template: %s" % mytemplate)
@@ -65,25 +70,25 @@ def CreateJobScript_scal(job,parameters):
  return scriptname
 
 def CreateJobScript_dum(job,parameters):
- scriptname=job.getName()+'.cmd'
+ scriptname=job.get_name()+'.cmd'
  template="../templates/dummy"
- splittedname=job.getName().split('_')
+ splittedname=job.get_name().split('_')
  #date=int(splittedname[1])
  parameters['DATE']=splittedname[1]
  #member=int(splittedname[2])
  parameters['MEMBER']=splittedname[2]
  parameters['CHUNK']=splittedname[3]
- parameters['JOBNAME'] = job.getName() 
- if (job.getJobType()==0):
-  udef_logger.debug("jobType:", job.getJobType())
+ parameters['JOBNAME'] = job.get_name() 
+ if (job.get_type()==0):
+  udef_logger.debug("jobType:", job.get_type())
   mytemplate=template+'.sim'
   ##update parameters
- elif (job.getJobType()==1):
-  udef_logger.debug("jobType:", job.getJobType())
+ elif (job.get_type()==1):
+  udef_logger.debug("jobType:", job.get_type())
   mytemplate=template+'.post'
   ##update parameters
- elif (job.getJobType()==2):
-  udef_logger.debug("jobType:", job.getJobType())
+ elif (job.get_type()==2):
+  udef_logger.debug("jobType:", job.get_type())
   ##update parameters
   mytemplate=template+'.clean'
  else: 
@@ -101,30 +106,30 @@ def CreateJobScript_dum(job,parameters):
  return scriptname
 
 def CreateJobScript_yves(job,parameters):
- scriptname=job.getName()+'.cmd'
+ scriptname=job.get_name()+'.cmd'
  template="Template"
- splittedname=job.getName().split('_')
+ splittedname=job.get_name().split('_')
  #date=int(splittedname[1])
  parameters['DATE']=splittedname[1]
  #member=int(splittedname[2])
  parameters['MEMBER']=splittedname[2]
  chunk=int(splittedname[3])
  parameters['CHUNK']=splittedname[3]
- parameters['JOBNAME'] = job.getName() 
+ parameters['JOBNAME'] = job.get_name() 
  prev=[0,59,59+61,59+61*2,59+61*2+62,59+61*3+62]
- if (job.getJobType()==0):
-  udef_logger.debug("jobType:", job.getJobType())
+ if (job.get_type()==0):
+  udef_logger.debug("jobType:", job.get_type())
   mytemplate=template+'.sim'
   ##update parameters
   parameters['WALLCLOCKLIMIT']='72:00:00'
   parameters['PREV']=str(24*prev[chunk-1])
- elif (job.getJobType()==1):
-  udef_logger.debug("jobType:", job.getJobType())
+ elif (job.get_type()==1):
+  udef_logger.debug("jobType:", job.get_type())
   mytemplate=template+'.post'
   ##update parameters
   parameters['WALLCLOCKLIMIT']="02:01:00"
- elif (job.getJobType()==2):
-  udef_logger.debug("jobType:", job.getJobType())
+ elif (job.get_type()==2):
+  udef_logger.debug("jobType:", job.get_type())
   ##update parameters
   mytemplate=template+'.clean'
   parameters['WALLCLOCKLIMIT']="10:00:00"
@@ -143,8 +148,8 @@ def CreateJobScript_yves(job,parameters):
  return scriptname
 
 def CreateJobScript_nemo(job,parameters):
- scriptname=job.getName()+'.cmd'
- splittedname=job.getName().split('chk')
+ scriptname=job.get_name()+'.cmd'
+ splittedname=job.get_name().split('chk')
  schunk=splittedname[1].split('_')[0]
 # parameters['SDATE']=splittedname[1]
  string_date=parameters['SDATE']
@@ -152,7 +157,7 @@ def CreateJobScript_nemo(job,parameters):
  total_chunk=int(parameters['Chunk_NUMBERS'])
  chunk=int(schunk)
  chunk_length_in_month=int(parameters['Chunk_SIZE_MONTH'])
- parameters['JOBNAME'] = job.getName() 
+ parameters['JOBNAME'] = job.get_name() 
  
  chunk_start_date=chunk_date_lib.chunk_start_date(string_date,chunk,chunk_length_in_month)
  chunk_end_date=chunk_date_lib.chunk_end_date(chunk_start_date,chunk_length_in_month)
@@ -191,9 +196,9 @@ def CreateJobScript_nemo(job,parameters):
  return scriptname
 
 def CreateJobScript_yve2(job,parameters):
- scriptname=job.getName()+'.cmd'
- template="../templates/MyTemplate_yve2"
- splittedname=job.getName().split('_')
+ scriptname=job.get_name()+'.cmd'
+ template="../templates/MyTemplate_dumi"
+ splittedname=job.get_name().split('_')
  parameters['SDATE']=splittedname[1]
  string_date=splittedname[1]
   #member=int(splittedname[2])
@@ -202,7 +207,7 @@ def CreateJobScript_yve2(job,parameters):
  chunk=int(splittedname[3])
  chunk_length_in_month=int(parameters['Chunk_SIZE_MONTH'])
  parameters['CHUNK']=splittedname[3]
- parameters['JOBNAME'] = job.getName() 
+ parameters['JOBNAME'] = job.get_name() 
  chunk_start_date=chunk_date_lib.chunk_start_date(string_date,chunk,chunk_length_in_month)
  chunk_end_date=chunk_date_lib.chunk_end_date(chunk_start_date,chunk_length_in_month)
  run_days=chunk_date_lib.running_days(chunk_start_date,chunk_end_date)
@@ -238,14 +243,14 @@ def CreateJobScript_yve2(job,parameters):
  else:
   parameters['Chunk_LAST']='.FALSE.'
   
- if (job.getJobType()==0):
-  udef_logger.debug("jobType:", job.getJobType())
+ if (job.get_type()==0):
+  udef_logger.debug("jobType:", job.get_type())
   mytemplate=template+'.sim'
   ##update parameters
   parameters['WALLCLOCKLIMIT']='72:00:00'
   parameters['PREV']=str(prev_days)
- elif (job.getJobType()==1):
-  udef_logger.debug("jobType:", job.getJobType())
+ elif (job.get_type()==1):
+  udef_logger.debug("jobType:", job.get_type())
   mytemplate=template+'.post'
   ##update parameters
   starting_date_year=chunk_date_lib.chunk_start_year(string_date)
@@ -253,13 +258,13 @@ def CreateJobScript_yve2(job,parameters):
   parameters['Starting_DATE_YEAR']=str(starting_date_year)
   parameters['Starting_DATE_MONTH']=str(starting_date_month)
   parameters['WALLCLOCKLIMIT']="02:01:00"
- elif (job.getJobType()==2):
-  udef_logger.debug("jobType:", job.getJobType())
+ elif (job.get_type()==2):
+  udef_logger.debug("jobType:", job.get_type())
   ##update parameters
   mytemplate=template+'.clean'
   parameters['WALLCLOCKLIMIT']="10:00:00"
- elif (job.getJobType()==-1):
-  udef_logger.debug("jobType:", job.getJobType())
+ elif (job.get_type()==-1):
+  udef_logger.debug("jobType:", job.get_type())
   ##update parameters
   mytemplate=template+'.ini'
   parameters['WALLCLOCKLIMIT']="10:00:00"
@@ -366,35 +371,35 @@ def CreateJobList_yve2(list_of_dates, num_member,num_chunks):
   for mem in range(num_member):
    for chk in range(1,num_chunks+1):
     job_rootname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk)+'_'
-    job_sim = Job(job_rootname+'sim',0,Job.Status.WAITING,Job.JobType.SIMULATION)
-    job_post = Job(job_rootname+'post',0,Job.Status.WAITING,Job.JobType.POSTPROCESSING)
-    job_clean = Job(job_rootname+'clean',0,Job.Status.WAITING,Job.JobType.CLEANING)
+    job_sim = Job(job_rootname+'sim',0,Status.WAITING,Type.SIMULATION)
+    job_post = Job(job_rootname+'post',0,Status.WAITING,Type.POSTPROCESSING)
+    job_clean = Job(job_rootname+'clean',0,Status.WAITING,Type.CLEANING)
     #set depency of postprocessing jobs
-    job_post.setParents([job_sim.name])
-    job_post.setChildren([job_clean.name])
+    job_post.set_parents([job_sim._name])
+    job_post.set_children([job_clean._name])
     #set Parents of clean job
-    job_clean.setParents([job_post.name])
+    job_clean.set_parents([job_post._name])
     #set first child of sim job
-    job_sim.setChildren([job_post.name])
+    job_sim.set_children([job_post._name])
     ##Set status of first chunk to READY
     if (chk==1):
-     job_ini = Job(job_rootname+'ini',0,Job.Status.READY,Job.JobType.INITIALISATION)
-     job_ini.setChildren([job_sim.name])
-     job_ini.setParents([])
-     job_sim.setParents([job_ini.name])
+     job_ini = Job(job_rootname+'ini',0,Status.READY,Type.INITIALISATION)
+     job_ini.set_children([job_sim._name])
+     job_ini.set_parents([])
+     job_sim.set_parents([job_ini._name])
      joblist+=[job_ini]
     if(chk>1):
      parentname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk-1)+'_'+'sim'
-     job_sim.setParents([parentname])
+     job_sim.set_parents([parentname])
      if (chk>2):
       parentname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk-2)+'_'+'clean'
-      job_sim.addParents(parentname)
+      job_sim.add_parents(parentname)
     if (chk<num_chunks):
      childname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk+1)+'_'+'sim'
-     job_sim.addChildren(childname)
+     job_sim.add_children(childname)
     if (chk<num_chunks-1):
      childname="job_"+str(dates)+'_'+str(mem)+'_'+str(chk+2)+'_'+'sim'
-     job_clean.setChildren([childname])
+     job_clean.set_children([childname])
 
     JobListFactory.printJobs([job_sim ,job_post ,job_clean])
     joblist+=[job_sim ,job_post ,job_clean]
@@ -435,7 +440,7 @@ def CreateJobList_scal(expid):
     #no parents nor children
     job_comp.setParents([])
     job_comp.setChildren([])
-    job_comp.setExpid(expid)
+    job_comp.set_expid(expid)
     #JobListFactory.printJobs([job_comp])
     joblist+=[job_comp]
  return joblist   
@@ -570,8 +575,8 @@ def GenerateParameter(expid):
   udef_logger.warning("there is no defined generateparameter function for the expid : %s " % expid) 
 
 def CreateJobScript(job):
- expid=job.getExpid()
- udef_logger.info("creating the script for job: %s" % job.getName())
+ expid=job.get_expid()
+ udef_logger.info("creating the script for job: %s" % job.get_name())
  if expid=="yves":
   parameter=generateJobParameters_yves(expid)
   scriptname=CreateJobScript_yves(job,parameter)
@@ -585,6 +590,10 @@ def CreateJobScript(job):
   scriptname=CreateJobScript_yve1(job,parameter)
   return scriptname
  elif expid=="yve2":
+  parameter=generateJobParameters_yve2(expid)
+  scriptname=CreateJobScript_yve2(job,parameter)
+  return scriptname
+ elif expid=="dumi":
   parameter=generateJobParameters_yve2(expid)
   scriptname=CreateJobScript_yve2(job,parameter)
   return scriptname
@@ -614,6 +623,11 @@ def CreateJobList(expid):
   members=5
   numchunks=15 
   joblist=CreateJobList_yve2(dates,members,numchunks)
+ elif expid=="dumi":
+  dates=[19801101,19851101,19901101,19951101]
+  members=5
+  numchunks=15 
+  joblist=CreateJobList_yve2(dates,members,numchunks)
  elif expid=="testpatch":
   dates=[19751101]
   members=1
@@ -627,7 +641,7 @@ def CreateJobList(expid):
  joblist=JobListFactory.updateGenealogy(joblist)
  #monitor.CreateTreeList(joblist)
  for job in joblist:
-  job.setExpid(expid)
+  job.set_expid(expid)
  return joblist
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ import cfuConfigParser
 sys.path.append('queue')
 from itqueue import ItQueue
 from mnqueue import MnQueue
-import Exper
+from Exper import Exper
 sys.path.append('job')
 from job import Job
 
@@ -80,8 +80,8 @@ if __name__ == "__main__":
  else:
   parser=cfuConfigParser.cfuConfigParser(sys.argv[1])
  
- alreadySubmitted=parser.get('config','alreadysubmitted')
- totalJobs=parser.get('config','totaljobs')
+ alreadySubmitted=int(parser.get('config','alreadysubmitted'))
+ totalJobs=int(parser.get('config','totaljobs'))
  myTemplate=parser.get('config','jobtemplate')
  expid=parser.get('config','expid')
  maxWaitingJobs=int(parser.get('config','maxwaitingjobs'))
@@ -117,7 +117,8 @@ if __name__ == "__main__":
   exper.setParser(expparser)
   exper.setup()
   joblist=userdefinedfunctions.CreateJobList(expid)
- 
+  queue.check_pathdir()
+  
  newlistname='../auxfiles/joblist_'+expid+'2Bupdated.pkl'
  #joblist=JobListFactory.CreateJobList2()
  logger.debug("Length of joblist: ",len(joblist))
@@ -130,7 +131,7 @@ if __name__ == "__main__":
   #active = getActiveJobs(queueStatus)
   active = JobListFactory.getRunning(joblist)
   waiting = JobListFactory.getSubmitted(joblist) + JobListFactory.getQueuing(joblist)
-  available = maxWaitingJobs-waiting
+  available = maxWaitingJobs-len(waiting)
   if (os.path.exists(newlistname)):
    d = time.localtime()
    date = "%04d-%02d-%02d_%02d:%02d:%02d" % (d[0],d[1],d[2],d[3],d[4],d[5])
@@ -140,20 +141,20 @@ if __name__ == "__main__":
 
   logger.info("saving joblist")
   JobListFactory.saveJobList(joblist,'../auxfiles/joblist.pkl')
-  graphname=joblist[0].getExpid()+'_graph.png'
+  graphname=exper.getExpid()+'_graph.png'
   if  (os.path.exists(graphname)):
    pathname='/gpfs/projects/ecm86/common/db'
    if  (os.path.exists(pathname)):
     os.system('cp %s %s' % (graphname,pathname))
-  if parser.get('congig','verbose').lower()=='true':
+  if parser.get('config','verbose').lower()=='true':
    logger.info("Active jobs in queues:\t%s" % active)
    logger.info("Waiting jobs in queues:\t%s" % waiting)
 
   if available == 0:
-   if  parser.get('congig','verbose').lower()=='true':
+   if  parser.get('config','verbose').lower()=='true':
     logger.info("There's no room for more jobs...")
   else:
-   if  parser.get('congig','verbose').lower()=='true':
+   if  parser.get('config','verbose').lower()=='true':
     logger.info("We can safely submit %s jobs..." % available)
   
   #get the list of jobs currently in the Queue
@@ -197,11 +198,12 @@ if __name__ == "__main__":
    for job in jobsavail[0:min(available,len(jobsavail))]:
     scriptname=userdefinedfunctions.CreateJobScript(job) 
     print scriptname
+    queue.send_script(scriptname)
     jobid=submitJob(scriptname, queue)
-    job.setId(jobid)
+    job.set_id(jobid)
     ##set status to "submitted"
-    job.setStatus(2)
-    if  parser.get('congig','clean').lower()=='true':
+    job.set_status(2)
+    if  parser.get('config','clean').lower()=='true':
      os.system("rm %s" % scriptname)
 
     alreadySubmitted += 1
@@ -214,7 +216,7 @@ if __name__ == "__main__":
  logger.info("Finished job submission")
  JobListFactory.updateJobList(joblist)
  JobListFactory.printJobs(joblist)
- if  parser.get('congig','verbose').lower()=='true':
+ if  parser.get('config','verbose').lower()=='true':
   #queueStatus=parse_mnq.updateQueueStatus(queueStatus)
   #waiting = getWaitingJobs(queueStatus)
   #active = getActiveJobs(queueStatus)

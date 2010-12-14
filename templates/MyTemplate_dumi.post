@@ -1,26 +1,141 @@
-#!/bin/ksh
+#!/bin/sh
 ###############################################################################
-#                     IINITIALIZE THE EC_EARTH EXPERIMENT                     #
+#                      POSTPROCESS EC_EARTH
 ###############################################################################
 #
-## @ job_name         = JOBNAME
-# @ class            = interactive
-# @ partition        = hsm
-# @ output           = LOGDIR/JOBNAME_%j.out
-# @ error            = LOGDIR/JOBNAME_%j.err
-# @ initialdir       = LOGDIR
-# @ features         = hsm
-# @ total_tasks      = 4
-# @ wall_clock_limit = 00:05:00
+#@ job_name         = JOBNAME
+#@ wall_clock_limit = 07:00:00
+#@ output           = LOGDIR/JOBNAME_%j.out
+#@ error            = LOGDIR/JOBNAME_%j.err
+##@ output           = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.out
+##@ error            = /gpfs/scratch/ecm86/${USER}/LOGDIR/JOBNAME_%j.err
+#@ total_tasks      = 2
+#@ initialdir       = INITIALDIR
+#@ tracing          = 1
 #
-
+set -exuv
 date
-#
-# Basic Definitions
-#
-Myversion=VERSION
-echo "TEST parameter version"
-echo $Myversion
-sleep(3)
 
-touch LOGDIR/JOBNAME_COMPLETED
+Myversion=VERSION
+Myexpid=EXPID
+Mymember=MEMBER
+START_date=SDATE
+WRITINGDIR=/gpfs/scratch/ecm86/${USER}/${Myexpid}
+RUN_dir=${WRITINGDIR}/${START_date}/fc${Mymember}
+
+#
+# Chunk management
+#
+chunk=CHUNK
+
+Chunk_start_date=Chunk_START_DATE
+Chunk_end_date=Chunk_END_DATE
+nyearini=Starting_DATE_YEAR
+nmonthini=Starting_DATE_MONTH
+
+#in days
+RUN_days=RUN_DAYS
+
+# in hours
+Chunk_length=$(( ${RUN_days} * 24 )) # In hours
+
+#in month
+RUN_chunk_size=Chunk_SIZE_MONTH
+#
+# Output path on HSM
+#
+output_dir=$RUN_dir/Output_${chunk}
+
+find ${output_dir}/. -type d | xargs chmod 775 
+find ${output_dir}/. -type f | xargs chmod 664 
+
+if [[ -d ${output_dir} ]] ; then
+   cd $output_dir
+else
+   exit
+fi
+
+#
+# Rebuild ocean output
+#
+date
+if [[ ! -a JOBNAME.opost ]] ; then
+ rebuild_tool=/gpfs/projects/ecm86/ecearth/${Myversion}/sources/nemo/modipsl/modeles/IOIPSL/tools/rebuild
+ #
+ interval=MM
+ prefix=ORCA1_${interval}_${Chunk_start_date}_${Chunk_end_date}
+ grid_types="grid_W grid_T grid_U grid_V icemod"
+ for grid_type in ${grid_types}; do
+    output_file=${prefix}_${grid_type}.nc
+   ${rebuild_tool} -v -o ${output_file} ${prefix}_${grid_type}_00[01][0-9].nc
+    ${rebuild_tool} -o ${output_file} ${prefix}_${grid_type}_00[01][0-9].nc
+    gzip -9 ${output_file}
+    rm -f ${prefix}_${grid_type}_00[01][0-9].nc
+ done
+
+ touch JOBNAME.opost
+fi
+
+#
+# Compute atmospheric monthly means
+#
+if [[ ! -a JOBNAME.apost ]] ; then
+ cdo="/gpfs/apps/CDO/1.1.1/64/bin/cdo"
+ PATHGRIBAPI=/gpfs/apps/GRIB/1.8.0/bin
+
+ nmon=1
+ year=${nyearini}
+ while [[ $nmon -le $RUN_chunk_size ]] ; do
+      date
+      month=$((nmonthini+(chunk-1)*RUN_chunk_size+nmon-1))
+      year=$((nyearini+((month-1)/12)))
+      month=$((month-((month-1)/12)*12))
+      month=`printf '%02d' ${month}`
+      for type in SH GG ; do
+          prefix=ICM${type}${Myexpid}
+          file=${prefix}+${year}${month}
+          if [[ ! -a ${file}.grb ]] ; then
+           cp ${file} ${file}.tmp
+           for PAR in `${PATHGRIBAPI}/grib_ls ${file} | head -n -3 | tr -s ' ' | cut -f3 -d' ' |  sort -n | uniq | grep ^[0-9]` ; do
+              if [[ $PAR = 152.128 || $PAR = 133.128 || $PAR = 246.128 || $PAR = 247.128 || $PAR = 248.128 ]] ; then
+                 rm -f ${PAR}.grb
+                 ${PATHGRIBAPI}/grib_copy -w param=${PAR} ${file}.tmp ${PAR}.grb
+                 if [[ $PAR = 152.128 ]] ; then
+                    rm -f ${PAR}.grb
+                 fi
+                 mv ${file}.tmp ${file}.tmp2
+                 ${PATHGRIBAPI}/grib_copy -w param!=${PAR} ${file}.tmp2 ${file}.tmp
+              fi
+           done
+           for PAR in 133.128 246.128 247.128 248.128 ; do
+              if [[ -a ${PAR}.grb ]] ; then
+                 ${cdo} -R -r -t ecmwf -f nc splitvar ${PAR}.grb ${file}_
+                 rm -f ${PAR}.grb
+              fi
+           done
+           ${cdo} -R -r -t ecmwf -f nc splitvar ${file}.tmp ${file}_
+	   rm -f ${file}.tmp ${file}.tmp2
+#
+           date
+           for infile in `ls ${file}_*.nc` ; do
+              name=`basename $infile .nc`
+              quant=`echo $name | sed s/${prefix}+${year}${month}_//`
+              outfile=IM_${quant}_${year}${month}
+              ${cdo} -f nc -r -monmean ${prefix}+${year}${month}_${quant}.nc ${outfile}_mm.nc  # needed because last timestep=01 jan 00:00 hours
+              rm -f ${prefix}+${year}${month}_${quant}.nc
+           done
+           ${cdo} -f nc -r -merge IM_*_${year}${month}_mm.nc MMA_${Myexpid}_${type}_${year}${month}.nc
+           gzip -9 MMA_${Myexpid}_${type}_${year}${month}.nc
+           rm -f IM_*_${year}${month}_mm.nc
+ 	   mv ${file} ${file}.grb
+          fi
+      done
+      nmon=$((nmon+1))
+ done
+
+ touch JOBNAME.apost
+fi
+
+if [[ -a JOBNAME.opost && -a JOBNAME.apost ]] ; then
+ touch LOGDIR/JOBNAME_COMPLETED
+fi 

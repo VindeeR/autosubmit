@@ -6,10 +6,11 @@ from time import sleep
 
 class MnQueue(HPCQueue):
 	def __init__(self,expid):
-		self._host = "mn1.bsc.es"
+		self._host = "mn"
 		self._cancel_cmd = "mncancel"
-		self._checkjob_cmd = "checkjob -xml"
+		self._checkjob_cmd = "checkjob --xml"
 		self._submit_cmd = "mnsubmit"
+		self._job_status	=	dict()
 		self._job_status['COMPLETED'] = ['Completed']
 		self._job_status['RUNNING'] = ['Running']
 		self._job_status['QUEUING'] = ['Pending', 'Idle', 'Blocked']

@@ -3,7 +3,7 @@
 import logging
 import pickle
 import newparse_mnq as parse_mnq
-from Job import *
+#from Job import *
 import userdefinedfunctions
 import time, os
 #import monitor
@@ -21,7 +21,7 @@ def compareStatus(job_a,job_b):
  return cmp(int(job_a.get_status()),int(job_b.get_status()))
 
 def compareType(job_a,job_b):
- return cmp(int(job_a.get_job_type()),int(job_b.getJobType()))
+ return cmp(int(job_a.get_type()),int(job_b.get_type()))
 
 
 def compareId(job_a,job_b):
@@ -155,7 +155,7 @@ def updateJobList(jobs,save=1):
  for job in jobs:
   if (job.get_status()==-1):
    count=job.get_fail_count()
-   job.printJob()
+   job.print_job()
    job.set_fail_count(count+1)
    if (job.get_fail_count()<4):
     job.set_status(Status.READY)
@@ -188,7 +188,7 @@ def updateJobList(jobs,save=1):
 def updateGenealogy(jobs):
  joblist_logger.info("in genealogy!")
  for job in jobs:
-  job.printJob()
+  job.print_job()
   if(job.has_children()!=0):
    ##print "number of Children:",job.has_children()
    children=job.get_children()
@@ -202,7 +202,7 @@ def updateGenealogy(jobs):
      job.add_children(jobchild)
     else:
      ##print "surely child has already the type job:",child
-     child.printJob()
+     #child.print_job()
      job.add_children(child)
    
   if(job.has_parents()!=0):

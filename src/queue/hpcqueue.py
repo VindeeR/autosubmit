@@ -22,6 +22,7 @@ class HPCQueue:
 
 		retry = 10;
 		(status, output) = getstatusoutput('ssh '+self._host+' "'+self._checkjob_cmd+' %s"' % str(job_id))
+		print	'ssh '+self._host+' "'+self._checkjob_cmd+' %s"' % str(job_id)
 		while(status!=0 and retry>0):
 			retry -= 1
 			(status, output) = getstatusoutput('ssh '+self._host+' "'+self._checkjob_cmd+' %s"' % str(job_id))
@@ -46,11 +47,26 @@ class HPCQueue:
 				job_status = UNKNOWN
 
 		return job_status
-
+	
+	def	check_pathdir(self):
+		(status, output) = getstatusoutput('ssh '+self._host+' "mkdir	-p	'+self._pathdir+'"')
+		if	status	==	0:
+			print	'%s	has	been	created	on	%s	.'	%(self._pathdir,self._host)
+		else:
+			print	'could	not	create	the	DIR	on	HPC'	
+	
+	def	send_script(self,job_script):
+		(status, output) = getstatusoutput('scp ../tmp/'+str(job_script)+'	'+self._host+':'+self._pathdir+'/')
+		if(status	==	0):
+			print	'The	script	has	been	sent'
+		else:	
+			print	'the	script	has	not	been	sent'
+	
 	def submit_job(self, job_script):
 		(status, output) = getstatusoutput('ssh '+self._host+' "'+self._submit_cmd+' ' + self._pathdir+'/'+str(job_script) + '"')
-
+		print	'ssh '+self._host+' "'+self._submit_cmd+' ' + self._pathdir+'/'+str(job_script)
 		if(status == 0):
 			job_id = self.get_submitted_job_id(output)
+			print	job_id
 			return int(job_id)
 

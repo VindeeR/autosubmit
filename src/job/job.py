@@ -20,7 +20,8 @@ class Job:
 		self._failcount=0
 		self._expid = ''
 		self._complete = True
- 
+ 	self._para	=	dict()
+ 	
 	def print_job(self):
 		print 'NAME: %s' %self._name 
 		print 'JOBID: %s' %self._id 
@@ -73,8 +74,17 @@ class Job:
 		return list(Set(job_list))
 
 	def get_fail_count(self):
+		"""Returns the number	of	failures"""
 		return self._fail_count
  
+	def	get_parameters(self):
+		'''		return	the	parameters	list'''
+		return	self._para
+	
+	def	set_parameters(self,newparameters):
+		'''		set	the	parameters	list'''
+		self._para	=	newparameters		
+	
 	def set_name(self, newName):
 		self._name = newName
  
@@ -135,6 +145,7 @@ class Job:
 		return cmp(self.get_name(), other.get_name())
 
 	def check_completion(self):
+		'''	Check	the	presence	of	*COMPLETED	file	and	touch	a	Checked	or	failed	file	'''
 		logname='../tmp/'+self._name+'_COMPLETED'
 		if(os.path.exists(logname)):
 			self._complete=True
@@ -143,6 +154,7 @@ class Job:
 			os.system('touch ../tmp/%s' % self._name+'Failed')
    
 	def remove_dependencies(self):
+		'''If	Complete	remove	the	dependency	'''
 		if (self._complete):
 			self.set_status(Status.COMPLETED)
 			#job_logger.info("Job is completed, we are now removing the dependency in his %s child/children:" % self.has_children())
@@ -154,6 +166,8 @@ class Job:
 			#job_logger.info("The checking in check_completion tell us that job %s has failed" % self.name)
 			self.set_status(Status.FAILED)
 
+	def	create_script():
+		pass	
 
 if __name__ == "__main__":
 	mainJob = Job('uno','1',Status.READY,0)

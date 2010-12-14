@@ -7,7 +7,7 @@ import newparse_mnq as parse_mnq
 import JobListFactory
 import signal
 import newparseMnqXml as mnq
-import userdefinedfunctions
+#import userdefinedfunctions
 import random
 import logging
 import cfuConfigParser
@@ -16,6 +16,7 @@ from queue.mnqueue import MnQueue
 from Exper import Exper
 from job.job import Job
 from job.job_common import Status
+from job.job_list import JobList
 
 ####################
 # Global Variables
@@ -111,11 +112,21 @@ if __name__ == "__main__":
   #joblist=.Exper.getJoblist()
   ##Creating the Exper object from scratch
   exper=Exper(expid,1) 
-  exp_parser_name='../auxfiles/expdef_'+expid+'.file'
+  exp_parser_name=parser.get('config','EXPDEFFILE')
   expparser=cfuConfigParser.experConfigParser(exp_parser_name)
   exper.setParser(expparser)
   exper.setup()
-  joblist=userdefinedfunctions.CreateJobList(expid)
+  listofdates=expparser.get('expdef','DATELIST')
+  chunkini=expparser.get('expdef','CHUNKINI')
+  numchunks=expparser.get('expdef','NUMCHUNKS')
+  memberslist=expparser.get('expdef','MEMBERS')
+  
+  print listofdates
+  print chunkini
+  print numchunks
+  print memberlist
+  
+  joblist=JobList(expid,listofdates,members,chunkini,numchunks)
   queue.check_pathdir()
   
  newlistname='../auxfiles/joblist_'+expid+'2Bupdated.pkl'

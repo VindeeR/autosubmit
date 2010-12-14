@@ -122,7 +122,7 @@ class JobList:
 	def load_file(self, filename):
 		if(os.path.exists(filename)):
 			return pickle.load(file(filename, 'r'))
-		else
+		else:
 			# URi: print ERROR
 			return list() 
 	

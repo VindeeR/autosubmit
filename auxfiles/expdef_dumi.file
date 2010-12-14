@@ -5,9 +5,10 @@ STATUS = 0
 LONGNAME = "Test a first experiment object"
 
 ##Things which could be useful for Creating the joblist
-DATE_LIST = (19801101 , 199851101)
+DATE_LIST = [19801101,199851101]
 NUMCHUNKS = 5
-MEMBERS = 2
+CHUNKINI = 1
+MEMBERS = [fc0,fc1]
 CHUNKSIZE = 4 
 
 
@@ -16,6 +17,7 @@ CHUNKSIZE = 4
 [common_parameters]
 VERSION = v2.2.1
 ECEARTHDIR = /gpfs/projects/ecm86/common/ecearth
+TEMPLATE = MyTemplate
 
 ##Parameters specific for a particular type of jobs
 [para_type0]

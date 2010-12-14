@@ -4,7 +4,7 @@ import logging
 import pickle
 import newparse_mnq as parse_mnq
 #from Job import *
-import userdefinedfunctions
+#import userdefinedfunctions
 import time, os
 #import monitor
 import commands

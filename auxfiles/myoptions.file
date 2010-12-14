@@ -3,7 +3,7 @@ MAXWAITINGJOBS = 3
 TOTALJOBS = 6 
 ALREADYSUBMITTED = 0
 SAFETYSLEEPTIME = 10
-JOBTEMPLATE = jobtemplate
+JOBTEMPLATE = MyTemplate
 EXPID = dumi
 CLEAN = 0
 VERBOSE = true
@@ -34,9 +34,9 @@ RUNMODE = remote
 # if key files,alias have to be set its here.
 
 # Where is Autosubmit putting the touch files, scripts, temp files ect.
-AUTOFILEDIR = /home/ysoufflet/rwc_autosubmit/tmp
+AUTOFILEDIR = ../tmp
 
-EXPDEFFILE = /home/ysoufflet/rwc_autosubmit/src/expdef_dumi.file
+EXPDEFFILE = ../auxfiles/expdef_dumi.file
 
 ######################
 # CHECK CONFIGURARION#

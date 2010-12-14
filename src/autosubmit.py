@@ -11,12 +11,11 @@ import userdefinedfunctions
 import random
 import logging
 import cfuConfigParser
-sys.path.append('queue')
-from itqueue import ItQueue
-from mnqueue import MnQueue
+from queue.itqueue import ItQueue
+from queue.mnqueue import MnQueue
 from Exper import Exper
-sys.path.append('job')
-from job import Job
+from job.job import Job
+from job.job_common import Status
 
 ####################
 # Global Variables
@@ -165,7 +164,7 @@ if __name__ == "__main__":
    job.print_job()
    status=queue.check_job(job.get_id())
    if(status==5):
-    joblist_logger.debug("this job seems to have completed...checking")
+    logger.debug("this job seems to have completed...checking")
     job.check_completion()
     job.remove_dependencies()
    else:

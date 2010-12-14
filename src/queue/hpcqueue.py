@@ -2,9 +2,7 @@
 
 from commands import getstatusoutput
 from time import sleep
-
-UNKNOWN = 0
-RUNNING = 1
+from job.job_common import Status
 
 class HPCQueue:
 	def cancel_job(self, job_id):
@@ -12,7 +10,7 @@ class HPCQueue:
 		(status, output) = getstatusoutput('ssh '+self._host+' "'+self._cancel_cmd+' ' + str(job_id) + '"')
 	
 	def check_job(self, job_id):
-		job_status = UNKNOWN
+		job_status = Status.UNKNOWN
 
 		if type(job_id) is not int:
 			# URi: logger
@@ -23,9 +21,12 @@ class HPCQueue:
 		retry = 10;
 		(status, output) = getstatusoutput('ssh '+self._host+' "'+self._checkjob_cmd+' %s"' % str(job_id))
 		print	'ssh '+self._host+' "'+self._checkjob_cmd+' %s"' % str(job_id)
+		print status
+		print output
 		while(status!=0 and retry>0):
 			retry -= 1
 			(status, output) = getstatusoutput('ssh '+self._host+' "'+self._checkjob_cmd+' %s"' % str(job_id))
+			print status
 			# URi: logger
 			print('Can not get job status, retrying in 5 sec\n');
 			sleep(5)
@@ -36,15 +37,15 @@ class HPCQueue:
 			job_status = self.parse_job_output(output)
 			# URi: define status list in HPC Queue Class
 			if (job_status in self._job_status['COMPLETED'] or retry == 0):
-				job_status = COMPLETED
+				job_status = Status.COMPLETED
 			elif (job_status in self._job_status['RUNNING']):
-				job_status = RUNNING
+				job_status = Status.RUNNING
 			elif (job_status in self._job_status['QUEUING']):
-				job_status = QUEUING
+				job_status = Status.QUEUING
 			elif (job_status in self._job_status['FAILED']):
-				job_status = FAILED
+				job_status = Status.FAILED
 			else:
-				job_status = UNKNOWN
+				job_status = Status.UNKNOWN
 
 		return job_status
 	

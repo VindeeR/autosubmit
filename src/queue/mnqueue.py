@@ -10,7 +10,7 @@ class MnQueue(HPCQueue):
 		self._cancel_cmd = "mncancel"
 		self._checkjob_cmd = "checkjob --xml"
 		self._submit_cmd = "mnsubmit"
-		self._job_status	=	dict()
+		self._job_status = dict()
 		self._job_status['COMPLETED'] = ['Completed']
 		self._job_status['RUNNING'] = ['Running']
 		self._job_status['QUEUING'] = ['Pending', 'Idle', 'Blocked']

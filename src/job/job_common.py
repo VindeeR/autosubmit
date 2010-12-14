@@ -9,6 +9,7 @@ class Status:
 	RUNNING = 4
 	COMPLETED = 5
 	FAILED = -1
+	UNKNOWN = -2
 
 class Type:
 	"""Class to handle the type of a job.

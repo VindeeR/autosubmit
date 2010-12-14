@@ -4,10 +4,11 @@ import JobListFactory
 import chunk_date_lib
 #from Job import *
 import sys
-sys.path.append('job')
-from job import Job
-from job_common import Status
-from job_common import Type
+#sys.path.append('job')
+from job.job import Job
+from job.job_common import Status
+from job.job_common import Type
+
 #import monitor
 import logging
 

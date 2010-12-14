@@ -2,6 +2,7 @@
 import os
 from job_common import Status
 from job_common import Type
+from sets import Set
 
 class Job:
 	"""Class to handle all the tasks with Jobs at HPC.
@@ -68,7 +69,8 @@ class Job:
 		for job in self._children:
 			job_list.append(job)
 			job_list += job.get_all_children()
-		return job_list
+		# convert the list into a Set to remove duplicates and the again to a list
+		return list(Set(job_list))
 
 	def get_fail_count(self):
 		return self._fail_count
@@ -119,6 +121,18 @@ class Job:
 
 	def has_parents(self):
 		return self._parents.__len__() 
+
+	def compare_by_status(self, other):
+		return cmp(self.get_status(), other.get_status())
+	
+	def compare_by_type(self, other):
+		return cmp(self.get_type(), other.get_type())
+
+	def compare_by_id(self, other):
+		return cmp(self.get_id(), other.get_id())
+	
+	def compare_by_name(self, other):
+		return cmp(self.get_name(), other.get_name())
 
 	def check_completion(self):
 		logname='../tmp/'+self._name+'_COMPLETED'

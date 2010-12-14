@@ -3,11 +3,17 @@
 from job_common import Status
 from job_common import Type
 from job import Job
+import os
+import cPickle as pickle
 
 class JobList:
 	
-	def __init__(self, date_list, member_list, starting_chunk, num_chunks):
+	def __init__(self, expid, date_list, member_list, starting_chunk, num_chunks):
+		self.path = "../auxfiles/"
+		self.update_file = "updated_job_list_" + expid + ".pkl"
+		self.failed_file = "failed_job_list_" + expid + ".pkl"
 		self.job_list = list()
+
 		for date in date_list:
 			for member in member_list:
 				for	chunk in range(starting_chunk, starting_chunk + num_chunks+1):
@@ -99,15 +105,66 @@ class JobList:
 		for job in self.job_list:
 			if job.get_name() == name:
 				return job
+		return False
 	
+	def sort_by_name(self):
+		return sorted(self.job_list, key=lambda k:k.get_name())
+	
+	def sort_by_id(self):
+		return sorted(self.job_list, key=lambda k:k.get_id())
+
+	def sort_by_type(self):
+		return sorted(self.job_list, key=lambda k:k.get_type())
+	
+	def sort_by_status(self):
+		return sorted(self.job_list, key=lambda k:k.get_status())
+	
+	def load_file(self, filename):
+		if(os.path.exists(filename)):
+			return pickle.load(file(filename, 'r'))
+		else
+			# URi: print ERROR
+			return list() 
+	
+	def load_updated(self):
+		return self.load_file(self.path + self.update_file)
+
+	def load_failed(self):
+		return self.load_file(self.path + self.failed_file)
+
+	def save_failed(self):
+		# URi: should we check that the path exists?
+		pickle.dump(self.job_list, file(self.path + self.failed_file, 'w'))
+
 	def update_list(self):
+		#load updated file list
+		updated_list = self.load_updated()
+		self.job_list += self.updated_list
+		# recover failed list
+		failed_list = self.load_failed()
+		# remove elements that are already in the job_list, may be because they have been updated
+		for failed_job in failed_list:
+			if self.get_job_by_name(failed_job.get_name()):
+				failed_list.remove(failed_job)
 		# reset jobs that has failed less than 4 times
 		for job in self.get_failed():
 			job.inc_fail_count()
 			if job.get_fail_count < 4:
 				job.set_status(Status.READY)
-			#else:
-				#URi: do something ?
+			else:
+				# get all childrens of a job that has failed more than 3 times
+				child_list = job.get_all_children()
+				# add job to the failed list
+				failed += [job]
+				# remove job from the "working" list
+				self.job_list.remove(job)
+				# add to the failed list all childrens of the failed job
+				failed.append(child_list)
+				# remove all childrens of the failed job from the "working" list
+				for child in child_list:
+					self.job_list.remove(child)
+				self.save_failed()
+
 		
 		# if waiting jobs has all parents completed change its State to READY
 		for job in self.get_waiting():

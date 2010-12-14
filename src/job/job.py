@@ -73,38 +73,41 @@ class Job:
 	def get_fail_count(self):
 		return self._fail_count
  
-	def set_name(self,newName):
+	def set_name(self, newName):
 		self._name = newName
  
-	def set_id(self,new_id):
+	def set_id(self, new_id):
 		self._id = new_id
  
-	def set_status(self,new_status):
+	def set_status(self, new_status):
 		self._status = new_status
   
-	def set_expid(self,new_expid):
+	def set_expid(self, new_expid):
 		self._expid = new_expid
 
-	def set_type(self,new_type):
+	def set_type(self, new_type):
 		self._type = new_type
 
-	def set_parents(self,new_parents):
+	def set_parents(self, new_parents):
 		self._parents = new_parents
  
-	def set_children(self,new_children):
+	def set_children(self, new_children):
 		self._children = new_children
  
-	def set_fail_count(self,new_fail_count):
+	def set_fail_count(self, new_fail_count):
 		self._failcount = new_fail_count
+	
+	def inc_fail_count(self):
+		self._failcount += 1
  
-	def add_parents(self,new_parents):
+	def add_parents(self, new_parents):
 		self._parents += [new_parents]
  
 	def add_children(self, new_children):
 		self._children += [new_children]
 
 	def delete_parent(self, parent):
-		#careful, it is only possible to remove one parent at a time 
+		# careful, it is only possible to remove one parent at a time 
 		self._parents.remove(parent)
  
 	def delete_child(self, child):

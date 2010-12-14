@@ -31,7 +31,7 @@ class JobList:
 						parentjob_name = "job_" + str(date) + "_" + str(member) + "_" + str(chunk-1) + "_" + "sim"
 						sim_job.set_parents([parentjob_name])
 						if (chunk > 2):
-							parentjob_name = "job_" + str(date) + "_" + str(member) + "_" + str(chunk-1) + "_" + "clean"
+							parentjob_name = "job_" + str(date) + "_" + str(member) + "_" + str(chunk-2) + "_" + "clean"
 							sim_job.set_parents([parentjob_name])
 					elif (chunk == 1):
 						init_job = Job(rootjob_name + "init", 0, Status.READY,Type.INITIALISATION)
@@ -44,9 +44,104 @@ class JobList:
 						sim_job.add_children(childjob_name)
 					elif (chunk < starting_chunk + num_chunks - 1):
 						childjob_name = "job_" + str(date) + "_" + str(member) + "_" + str(chunk+2) + "_" + "sim"
-						sim_job.set_children([childjob_name])
+						clean_job.set_children([childjob_name])
 
 					self.job_list += [sim_job, post_job, clean_job]
 
+		self.update_genealogy()
 
+	def get_completed(self):
+		"""Returns a list of completed jobs"""
+		return [job for job in self.job_list if job.get_status() == Status.COMPLETED]
+
+	def get_submitted(self):
+		"""Returns a list of submitted jobs"""
+		return [job for job in self.job_list if job.get_status() == Status.SUBMITTED]
+
+	def get_running(self):
+		"""Returns a list of jobs running"""
+		return [job for job in self.job_list if job.get_status() == Status.RUNNING]
+
+	def get_queuing(self):
+		"""Returns a list of jobs queuing"""
+		return [job for job in self.job_list if job.get_status() == Status.QUEUING]
+
+	def get_failed(self):
+		"""Returns a list of failed jobs"""
+		return [job for job in self.job_list if job.get_status() == Status.FAILED]
+
+	def get_ready(self):
+		"""Returns a list of jobs ready"""
+		return [job for job in self.job_list if job.get_status() == Status.READY]
+
+	def get_waiting(self):
+		"""Returns a list of jobs waiting"""
+		return [job for job in self.job_list if job.get_status() == Status.WAITING]
+
+	def get_in_queue(self):
+		"""Returns a list of jobs in the queue (Submitted, Running, Queuing)"""
+		return self.get_submitted() + self.get_running() + self.get_queuing()
+
+	def get_not_in_queue(self):
+		"""Returns a list of jobs NOT in the queue (Ready, Waiting)"""
+		return self.get_ready() + self.get_waiting()
+
+	def get_finished(self):
+		"""Returns a list of jobs finished (Completed, Failed)"""
+		return self.get_completed() + self.get_failed()
+
+	def get_active(self):
+		"""Returns a list of active jobs (In queue, Ready)"""
+		return self.get_in_queue() + self.get_ready()
+	
+	def get_job_by_name(self, name):
+		"""Returns the job that its name matches name"""
+		for job in self.job_list:
+			if job.get_name() == name:
+				return job
+	
+	def update_list(self):
+		# reset jobs that has failed less than 4 times
+		for job in self.get_failed():
+			job.inc_fail_count()
+			if job.get_fail_count < 4:
+				job.set_status(Status.READY)
+			#else:
+				#URi: do something ?
+		
+		# if waiting jobs has all parents completed change its State to READY
+		for job in self.get_waiting():
+			for parent in job.get_parents():
+				if parent.get_status() != Status.COMPLETED:
+					break	
+			job.set_status(Status.READY)
+
+	def update_genealogy(self):
+		"""When we have create the joblist, parents and child list just contain the names. Update the genealogy replacing job names by the corresponding job object"""
+		for job in self.job_list:
+			if job.has_children():
+				# get the list of childrens (names)
+				child_list = job.get_children()
+				# remove the list of names
+				job.set_children([])
+				# for each child find the corresponding job
+				for child in child_list:
+					if isinstance(child, str):
+						job_object = self.get_job_by_name(child)
+						job.add_children(job_object)
+					else:
+						job.add_children(child)
+
+			if job.has_parents():
+				# get the list of childrens (names)
+				parent_list = job.get_parents()
+				# remove the list of names
+				job.set_parents([])
+				# for each child find the corresponding job
+				for parent in parent_list:
+					if isinstance(parent, str):
+						job_object = self.get_job_by_name(parent)
+						job.add_parents(job_object)
+					else:
+						job.add_parents(parent)
 

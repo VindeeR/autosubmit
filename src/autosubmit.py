@@ -118,10 +118,10 @@ if __name__ == "__main__":
   expparser=cfuConfigParser.experConfigParser(exp_parser_name)
   exper.setParser(expparser)
   exper.setup()
-  listofdates=expparser.get('expdef','DATELIST')
+  listofdates=expparser.get('expdef','DATELIST').split(' ')
   chunkini=int(expparser.get('expdef','CHUNKINI'))
   numchunks=int(expparser.get('expdef','NUMCHUNKS'))
-  memberslist=expparser.get('expdef','MEMBERS')
+  memberslist=expparser.get('expdef','MEMBERS').split(' ')
   
   print listofdates
   print chunkini
@@ -132,7 +132,7 @@ if __name__ == "__main__":
    print d
   for m in memberslist: 
    print m
-  stop  
+    
   joblist=JobList(expid,listofdates,memberslist,chunkini,numchunks)
   queue.check_pathdir()
   

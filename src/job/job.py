@@ -171,10 +171,11 @@ class Job:
 			self.set_status(Status.FAILED)
 
 	def	create_script(self,templatename):
+		templatename='../templates/'+templatename
 		scriptname=self._name+'.cmd'
 		parameters	=	self._para
 		splittedname=self._name.split('_')
-		parameters['SDATE']=splittedname[1]
+		parameters['SDATE']=splittedname[2]
 		string_date=splittedname[2]
 		#member=int(splittedname[2])
 		parameters['MEMBER']=splittedname[3]
@@ -216,7 +217,7 @@ class Job:
 		else:
 		 parameters['Chunk_LAST']='.FALSE.'
 		  
-		if (self._type()==0):
+		if (self._type==0):
 		 print	"jobType:	%s" %str(self._type)
 		 mytemplate=templatename+'.sim'
 		 ##update parameters
@@ -231,13 +232,13 @@ class Job:
 		 parameters['Starting_DATE_YEAR']=str(starting_date_year)
 		 parameters['Starting_DATE_MONTH']=str(starting_date_month)
 		 parameters['WALLCLOCKLIMIT']="02:01:00"
-		elif (self._type()==2):
+		elif (self._type==2):
 		 print	"jobType:	%	s"	%	str(self._type)
 		 ##update parameters
 		 mytemplate=templatename+'.clean'
 		 parameters['WALLCLOCKLIMIT']="10:00:00"
-		elif (job.get_type()==-1):
-		 udef_logger.debug("jobType:", job.get_type())
+		elif (self._type==-1):
+		 print	"jobType:	%s"	%	self._type
 		 ##update parameters
 		 mytemplate=templatename+'.ini'
 		 parameters['WALLCLOCKLIMIT']="10:00:00"

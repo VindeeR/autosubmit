@@ -5,7 +5,7 @@ STATUS = 0
 LONGNAME = "Test a first experiment object"
 
 ##Things which could be useful for Creating the joblist
-DATELIST = 19801101 199851101
+DATELIST = 19801101 19851101
 NUMCHUNKS = 5
 CHUNKINI = 1
 MEMBERS = fc0 fc1

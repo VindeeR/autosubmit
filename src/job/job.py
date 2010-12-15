@@ -3,8 +3,8 @@ import os
 from job_common import Status
 from job_common import Type
 from sets import Set
-import sys
-sys.path.append('..')
+#import sys
+#sys.path.append('..')
 import chunk_date_lib
 
 class Job:
@@ -22,9 +22,8 @@ class Job:
 		self._children = list()
 		self._failcount=0
 		self._expid = ''
-		self._para	=	dict()
 		self._complete = True
- 	
+		self._parameters	=	dict()
  	
 	def print_job(self):
 		print 'NAME: %s' %self._name 
@@ -83,11 +82,11 @@ class Job:
  
 	def	get_parameters(self):
 		'''		return	the	parameters	list'''
-		return	self._para
+		return	self._parameters
 	
 	def	set_parameters(self,newparameters):
 		'''		set	the	parameters	list'''
-		self._para	=	newparameters		
+		self._parameters	=	newparameters		
 	
 	def set_name(self, newName):
 		self._name = newName
@@ -173,7 +172,7 @@ class Job:
 	def	create_script(self,templatename):
 		templatename='../templates/'+templatename
 		scriptname=self._name+'.cmd'
-		parameters	=	self._para
+		parameters	=	self._parameters
 		splittedname=self._name.split('_')
 		parameters['SDATE']=splittedname[2]
 		string_date=splittedname[2]
@@ -233,7 +232,7 @@ class Job:
 		 parameters['Starting_DATE_MONTH']=str(starting_date_month)
 		 parameters['WALLCLOCKLIMIT']="02:01:00"
 		elif (self._type==Type.CLEANING):
-		 print	"jobType:	%	s"	%	str(self._type)
+		 print	"jobType:	%s"	%	str(self._type)
 		 ##update parameters
 		 mytemplate=templatename+'.clean'
 		 parameters['WALLCLOCKLIMIT']="10:00:00"

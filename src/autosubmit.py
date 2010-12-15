@@ -3,12 +3,7 @@ from optparse import OptionParser
 from ConfigParser import SafeConfigParser
 import time, os, sys
 import commands
-import newparse_mnq as parse_mnq
-#import JobListFactory
 import signal
-import newparseMnqXml as mnq
-#import userdefinedfunctions
-import random
 import logging
 import cfuConfigParser
 from queue.itqueue import ItQueue
@@ -18,16 +13,10 @@ from job.job import Job
 from job.job_common import Status
 from job.job_list import JobList
 import cPickle as pickle
-import chunk_date_lib
 
 ####################
 # Global Variables
 ####################
-
-jobList = list()
-SLEEPING_TIME = 10
-SUCCESS = 0
-FAILURE = 1
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(name)s %(levelname)s %(message)s',
@@ -35,12 +24,6 @@ logging.basicConfig(level=logging.DEBUG,
                     filename='../tmp/myauto.log',
                     filemode='w')
 logger = logging.getLogger("AutoLog")
-# Hash with number of jobs in queues and running
-queueStatus = dict()
-# adding a new comment for testing
-
-##TODO add an option to pass the expid on the command line.
-## TODO pass jobtemplate as an optional argument to CreateJobScript
 
 def log_long(message):
  print "[%s] %s" % (time.asctime(),message)
@@ -49,26 +32,6 @@ def log_short(message):
  d = time.localtime()
  date = "%04d-%02d-%02d %02d:%02d:%02d" % (d[0],d[1],d[2],d[3],d[4],d[5])
  print "[%s] %s" % (date,message)
-
-def getActiveJobs(queueStatus):
- return queueStatus.get('active')
-
-def getWaitingJobs(queueStatus):
- return int(queueStatus.get('eligible'))+int(queueStatus.get('blocked'))
-
-def goToSleep(value):
- logger.info("Going to sleep (%s seconds) before retry..." % value)
- time.sleep(value)
-
-def submitJob(scriptName, queue, debug=0):
- jobid=0
- if not debug:
-  jobid=queue.submit_job(scriptName)
- else:
-  os.system('bash %s' % scriptName)
-  jobid=random.randrange(0,1000000)
- return jobid
-
 
 ####################
 # Main Program
@@ -106,6 +69,7 @@ if __name__ == "__main__":
  
  if parser.get('config','restart').lower()=='true':
   filename='../auxfiles/job_list_'+expid+'.pkl'
+  #the experiment should be loaded as well
   if (os.path.exists(filename)):
    joblist= pickle.load(file(filename,'rw'))
    logger.info("Restarting from joblist pickled in %s " % filename)
@@ -126,19 +90,9 @@ if __name__ == "__main__":
   chunkini=int(expparser.get('expdef','CHUNKINI'))
   numchunks=int(expparser.get('expdef','NUMCHUNKS'))
   memberslist=expparser.get('expdef','MEMBERS').split(' ')
-  
-  print listofdates
-  print chunkini
-  print numchunks
-  print memberslist
-  
-  for d in listofdates:
-   print d
-  for m in memberslist: 
-   print m
-    
-  joblist=JobList(expid,listofdates,memberslist,chunkini,numchunks)
-  queue.check_pathdir()
+ 
+ joblist=JobList(expid,listofdates,memberslist,chunkini,numchunks)
+ queue.check_pathdir()
   
  
  logger.debug("Length of joblist: ",len(joblist))
@@ -157,20 +111,17 @@ if __name__ == "__main__":
  parameters['VERSION']='v2.2.1'
  for j in joblist.get_job_list():
   j.set_parameters(parameters) 
+  
  template_rootname=expparser.get('common_parameters','TEMPLATE') 
  # Main loop. Finishing when all jobs have been submitted
- while len(joblist.get_not_in_queue())!=0 :
+ while joblist.get_active() :
   active = len(joblist.get_running())
   waiting = len(joblist.get_submitted() + joblist.get_queuing())
   available = maxWaitingJobs-waiting
   
   logger.info("saving joblist")
   joblist.save()
-  graphname=exper.getExpid()+'_graph.png'
-  if  (os.path.exists(graphname)):
-   pathname='/gpfs/projects/ecm86/common/db'
-   if  (os.path.exists(pathname)):
-    os.system('cp %s %s' % (graphname,pathname))
+  
   if parser.get('config','verbose').lower()=='true':
    logger.info("Active jobs in queues:\t%s" % active)
    logger.info("Waiting jobs in queues:\t%s" % waiting)
@@ -188,17 +139,19 @@ if __name__ == "__main__":
   for job in jobinqueue:
    job.print_job()
    status=queue.check_job(job.get_id())
-   if(status==5):
+   if(status==Status.COMPLETED):
     logger.debug("this job seems to have completed...checking")
     job.check_completion()
-    job.remove_dependencies()
+    #job.remove_dependencies()
    else:
-    job.set_status(status) 
+    job.set_status(status)
+    #Uri add check if status UNKNOWN and exit if you want 
    
   ##after checking the jobs , no job should have the status "submitted"
   ##Uri throw an exception if this happens (warning type no exit)
-  for job in joblist.get_ready():
-   job.print_job()
+ 
+  #for job in joblist.get_ready():
+  # job.print_job()
    
   joblist.update_list()
   activejobs=joblist.get_active()
@@ -220,26 +173,14 @@ if __name__ == "__main__":
     scriptname=job.create_script(template_rootname) 
     print scriptname
     queue.send_script(scriptname)
-    jobid=submitJob(scriptname, queue)
+    jobid=queue.submit_job(scriptname)
     job.set_id(jobid)
     ##set status to "submitted"
-    job.set_status(2)
+    job.set_status(Status.SUBMITTED)
     if  parser.get('config','clean').lower()=='true':
      os.system("rm %s" % scriptname)
 
-    alreadySubmitted += 1
-    
-   logger.info("We have already submitted %s of %s jobs" % (alreadySubmitted,totaljobs))
-  
-  if len(joblist.get_active())!=0:
-   goToSleep(safetysleeptime)
+  time.sleep(safetysleeptime)
  
  logger.info("Finished job submission")
- joblist.update_list()
  
- if  parser.get('config','verbose').lower()=='true':
-  active = len(joblist.get_running())
-  waiting = len(joblist.get_submitted() + joblist.get_queuing())
-  logger.info("Active jobs in queues:\t%s" % active)
-  logger.info("Waiting jobs in queues:\t%s" % waiting)
-

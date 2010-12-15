@@ -18,7 +18,7 @@ class Type:
 	POSTPROCESSING are single processor jobs
 	ClEANING are archiving job---> dealing with large transfer of data on tape
 	INITIALISATION are jobs which transfer data from tape to disk"""
-	SIMULATION = 0
-	POSTPROCESSING = 1
-	CLEANING = 2
-	INITIALISATION = -1
+	SIMULATION = 3
+	POSTPROCESSING = 2
+	CLEANING = 1
+	INITIALISATION = 0

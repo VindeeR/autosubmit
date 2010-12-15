@@ -23,11 +23,11 @@ class JobList:
 					rootjob_name = "job_"	+	str(expid)	+	"_" + str(date) + "_" + str(member) + "_" + str(chunk) + "_"
 					post_job = Job(rootjob_name+"post", 0, Status.WAITING, Type.POSTPROCESSING)
 					clean_job = Job(rootjob_name+"clean", 0, Status.WAITING, Type.CLEANING)
-					if (starting_chunk == 1):
-						sim_job = Job(rootjob_name+"sim", 0, Status.WAITING, Type.SIMULATION)
-					else:
+					if	(starting_chunk	==	chunk	and	chunk	!=	1):
 						sim_job = Job(rootjob_name+"sim", 0, Status.READY, Type.SIMULATION)
-
+					else:
+						sim_job = Job(rootjob_name+"sim", 0, Status.WAITING, Type.SIMULATION)
+						
 					# set dependency of postprocessing jobs
 					post_job.set_parents([sim_job.get_name()])
 					post_job.set_children([clean_job.get_name()])
@@ -35,6 +35,7 @@ class JobList:
 					clean_job.set_parents([post_job.get_name()])
 					# set first child of simulation job
 					sim_job.set_children([post_job.get_name()])
+					
 					# set status of first chunk to READY
 					if (chunk > 1):
 						parentjob_name = "job_" +	str(expid)	+	"_"	+ str(date) + "_" + str(member) + "_" + str(chunk-1) + "_" + "sim"
@@ -42,16 +43,16 @@ class JobList:
 						if (chunk > 2):
 							parentjob_name = "job_"	+	str(expid)	+	"_" + str(date) + "_" + str(member) + "_" + str(chunk-2) + "_" + "clean"
 							sim_job.set_parents([parentjob_name])
-					elif (chunk == 1):
+					if (chunk == 1):
 						init_job = Job(rootjob_name + "init", 0, Status.READY,Type.INITIALISATION)
 						init_job.set_children([sim_job.get_name()])
 						init_job.set_parents([])
 						sim_job.set_parents([init_job.get_name()])
 						self.job_list += [init_job]
-					elif (chunk < starting_chunk + num_chunks):
+					if (chunk < starting_chunk + num_chunks):
 						childjob_name = "job_" +	str(expid)	+	"_"	+ str(date) + "_" + str(member) + "_" + str(chunk+1) + "_" + "sim"
 						sim_job.add_children(childjob_name)
-					elif (chunk < starting_chunk + num_chunks - 1):
+					if (chunk < starting_chunk + num_chunks - 1):
 						childjob_name = "job_"	+	str(expid)	+	"_" + str(date) + "_" + str(member) + "_" + str(chunk+2) + "_" + "sim"
 						clean_job.set_children([childjob_name])
 
@@ -185,10 +186,12 @@ class JobList:
 		
 		# if waiting jobs has all parents completed change its State to READY
 		for job in self.get_waiting():
-			for parent in job.get_parents():
-				if parent.get_status() != Status.COMPLETED:
-					break	
-			job.set_status(Status.READY)
+			tmp	=	[parent	for	parent	in	job.get_parents()	if	parent.get_status()	==	Status.COMPLETED]
+			#for parent in job.get_parents():				
+				#if parent.get_status() != Status.COMPLETED:
+				#	break
+			if	len(tmp)	==	len(job.get_parents()):
+				job.set_status(Status.READY)
 
 	def update_genealogy(self):
 		"""When we have create the joblist, parents and child list just contain the names. Update the genealogy replacing job names by the corresponding job object"""

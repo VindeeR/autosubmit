@@ -48,7 +48,9 @@ class HPCQueue:
 				job_status = Status.FAILED
 			else:
 				job_status = Status.UNKNOWN
-
+		else:
+			####BOUOUOUOU	NOT	GOOD!
+			job_status = Status.COMPLETED
 		return job_status
 	
 	def	check_pathdir(self):

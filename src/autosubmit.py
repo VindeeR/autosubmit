@@ -17,6 +17,8 @@ from Exper import Exper
 from job.job import Job
 from job.job_common import Status
 from job.job_list import JobList
+import cPickle as pickle
+import chunk_date_lib
 
 ####################
 # Global Variables
@@ -99,9 +101,9 @@ if __name__ == "__main__":
  logger.info("Starting job submission...")
 
  if parser.get('config','restart').lower()=='true':
-  filename='../auxfiles/joblist_'+expid+'.pkl'
+  filename='../auxfiles/job_list_'+expid+'.pkl'
   if (os.path.exists(filename)):
-   joblist= JobListFactory.loadJobList(filename)
+   joblist= pickle.load(file(filename,'rw'))
    logger.info("Restarting from joblist pickled in %s " % filename)
   else:
    logger.error("The pickle file %s necessary for restart is not present!" % filename)
@@ -117,40 +119,52 @@ if __name__ == "__main__":
   exper.setParser(expparser)
   exper.setup()
   listofdates=expparser.get('expdef','DATELIST')
-  chunkini=expparser.get('expdef','CHUNKINI')
-  numchunks=expparser.get('expdef','NUMCHUNKS')
+  chunkini=int(expparser.get('expdef','CHUNKINI'))
+  numchunks=int(expparser.get('expdef','NUMCHUNKS'))
   memberslist=expparser.get('expdef','MEMBERS')
   
   print listofdates
   print chunkini
   print numchunks
-  print memberlist
+  print memberslist
   
-  joblist=JobList(expid,listofdates,members,chunkini,numchunks)
+  for d in listofdates:
+   print d
+  for m in memberslist: 
+   print m
+  stop  
+  joblist=JobList(expid,listofdates,memberslist,chunkini,numchunks)
   queue.check_pathdir()
   
- newlistname='../auxfiles/joblist_'+expid+'2Bupdated.pkl'
- #joblist=JobListFactory.CreateJobList2()
+ 
  logger.debug("Length of joblist: ",len(joblist))
  totaljobs=len(joblist)
- logger.info("New Jobs to submit: "+str(totaljobs)) 
+ logger.info("New Jobs to submit: "+str(totaljobs))
+ list_of_common_para=expparser.items('common_parameters')
+ parameters=dict()
+ for it in list_of_common_para:
+  parameters[it[0].upper()]= it[1]
+ parameters['SHELL'] = "/bin/ksh"
+ parameters['Chunk_NUMBERS']='15'
+ parameters['Chunk_SIZE_MONTH']='4'
+ parameters['INITIALDIR']='/home/ecm86/ecm86503/LOG_'+expid
+ parameters['LOGDIR']='/home/ecm86/ecm86503/LOG_'+expid
+ parameters['EXPID']=expid
+ parameters['VERSION']='v2.2.1'
+ for j in joblist.get_job_list():
+  j.set_parameters(parameters) 
+ template_rootname=expparser.get('common_parameters','TEMPLATE') 
  # Main loop. Finishing when all jobs have been submitted
- while JobListFactory.getNotInQueue(joblist).__len__()!=0 :
+ while len(joblist.get_not_in_queue())!=0 :
   #queueStatus=parse_mnq.updateQueueStatus(queueStatus)
   #waiting = getWaitingJobs(queueStatus)
   #active = getActiveJobs(queueStatus)
-  active = JobListFactory.getRunning(joblist)
-  waiting = JobListFactory.getSubmitted(joblist) + JobListFactory.getQueuing(joblist)
-  available = maxWaitingJobs-len(waiting)
-  if (os.path.exists(newlistname)):
-   d = time.localtime()
-   date = "%04d-%02d-%02d_%02d:%02d:%02d" % (d[0],d[1],d[2],d[3],d[4],d[5])
-   newlist=JobListFactory.loadJobList(newlistname)
-   joblist+=newlist
-   os.system('mv %s %s' % (newlistname,newlistname+'_'+date))
-
+  active = len(joblist.get_running())
+  waiting = len(joblist.get_submitted() + joblist.get_queuing())
+  available = maxWaitingJobs-waiting
+  
   logger.info("saving joblist")
-  JobListFactory.saveJobList(joblist,'../auxfiles/joblist.pkl')
+  joblist.save()
   graphname=exper.getExpid()+'_graph.png'
   if  (os.path.exists(graphname)):
    pathname='/gpfs/projects/ecm86/common/db'
@@ -168,8 +182,8 @@ if __name__ == "__main__":
     logger.info("We can safely submit %s jobs..." % available)
   
   #get the list of jobs currently in the Queue
-  jobinqueue=JobListFactory.getInQueue(joblist)
-  logger.info("number of jobs in queue :%s" % jobinqueue.__len__()) 
+  jobinqueue=joblist.get_in_queue()
+  logger.info("number of jobs in queue :%s" % len(jobinqueue)) 
   #JobListFactory.checkjobInList(jobinqueue)
   for job in jobinqueue:
    job.print_job()
@@ -183,17 +197,15 @@ if __name__ == "__main__":
    
   ##after checking the jobs , no job should have the status "submitted"
   ##Jordi throw an exception if this happens (warning type no exit)
-  if (JobListFactory.getReady(joblist).__len__()!=0) :
-   JobListFactory.printJobs(JobListFactory.getReady(joblist))
+  for job in joblist.get_ready():
+   job.print_job()
    
-  #update joblist
-  #we only need to update the active jobs
-  JobListFactory.updateJobList(joblist)
-  activejobs=JobListFactory.getActive(joblist)
-  logger.info("in the factory there is %s active jobs" % activejobs.__len__())
+  joblist.update_list()
+  activejobs=joblist.get_active()
+  logger.info("in the factory there is %s active jobs" % len(activejobs))
 
   ## get the list of jobs READY
-  jobsavail=JobListFactory.getReady(joblist)
+  jobsavail=joblist.get_ready()
   if (min(available,len(jobsavail)) ==0):
    logger.info("There is no job READY or available")
    logger.info("Number of job ready: ",len(jobsavail))
@@ -201,12 +213,11 @@ if __name__ == "__main__":
   elif (min(available,len(jobsavail)) > 0): 
    logger.info("We are gonna submit: ", min(available,len(jobsavail)))
    ##should sort the jobsavail by priority Clean->post->sim>ini
-   JobListFactory.printJobs(jobsavail)
-   jobsavail=JobListFactory.sortByType(jobsavail)
-   
-   jobsavail.reverse()
-   for job in jobsavail[0:min(available,len(jobsavail))]:
-    scriptname=userdefinedfunctions.CreateJobScript(job) 
+   list_of_jobs_avail=sorted(jobsavail, key=lambda k:k.get_type())
+     
+   for job in list_of_jobs_avail[0:min(available,len(jobsavail))]:
+    print job.get_name()
+    scriptname=job.create_script(template_rootname) 
     print scriptname
     queue.send_script(scriptname)
     jobid=submitJob(scriptname, queue)
@@ -220,18 +231,15 @@ if __name__ == "__main__":
     
    logger.info("We have already submitted %s of %s jobs" % (alreadySubmitted,totaljobs))
   
-  if JobListFactory.getActive(joblist).__len__()!=0:
+  if len(joblist.get_active())!=0:
    goToSleep(safetysleeptime)
  
  logger.info("Finished job submission")
- JobListFactory.updateJobList(joblist)
- JobListFactory.printJobs(joblist)
+ joblist.update_list()
+ 
  if  parser.get('config','verbose').lower()=='true':
-  #queueStatus=parse_mnq.updateQueueStatus(queueStatus)
-  #waiting = getWaitingJobs(queueStatus)
-  #active = getActiveJobs(queueStatus)
-  active = JobListFactory.getRunning(joblist)
-  waiting = JobListFactory.getSubmitted(joblist) + JobListFactory.getQueuing(joblist)
+  active = len(joblist.get_running())
+  waiting = len(joblist.get_submitted() + joblist.get_queuing())
   logger.info("Active jobs in queues:\t%s" % active)
   logger.info("Waiting jobs in queues:\t%s" % waiting)
 

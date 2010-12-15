@@ -3,12 +3,15 @@ import os
 from job_common import Status
 from job_common import Type
 from sets import Set
+import sys
+sys.path.append('..')
+import chunk_date_lib
 
 class Job:
 	"""Class to handle all the tasks with Jobs at HPC.
 	   A job is created by default with a name, a jobid, a status and a type.
 	   It can have children and parents. The inheritance reflects the dependency between jobs.
-	   If Job2 must wait until Job1 is completed then Job2 is a 'child of Job1. Inversely Job1 is a parent of Job2 """
+	   If Job2 must wait until Job1 is completed then Job2 is a child of Job1. Inversely Job1 is a parent of Job2 """
   
 	def __init__(self, name, id, status, jobtype):
 		self._name = name
@@ -19,8 +22,9 @@ class Job:
 		self._children = list()
 		self._failcount=0
 		self._expid = ''
+		self._para	=	dict()
 		self._complete = True
- 	self._para	=	dict()
+ 	
  	
 	def print_job(self):
 		print 'NAME: %s' %self._name 
@@ -166,8 +170,90 @@ class Job:
 			#job_logger.info("The checking in check_completion tell us that job %s has failed" % self.name)
 			self.set_status(Status.FAILED)
 
-	def	create_script():
-		pass	
+	def	create_script(self,templatename):
+		scriptname=self._name+'.cmd'
+		parameters	=	self._para
+		splittedname=self._name.split('_')
+		parameters['SDATE']=splittedname[1]
+		string_date=splittedname[2]
+		#member=int(splittedname[2])
+		parameters['MEMBER']=splittedname[3]
+		total_chunk=int(parameters['Chunk_NUMBERS'])
+		chunk=int(splittedname[4])
+		chunk_length_in_month=int(parameters['Chunk_SIZE_MONTH'])
+		parameters['CHUNK']=splittedname[4]
+		parameters['JOBNAME'] = self._name 
+		chunk_start_date=chunk_date_lib.chunk_start_date(string_date,chunk,chunk_length_in_month)
+		chunk_end_date=chunk_date_lib.chunk_end_date(chunk_start_date,chunk_length_in_month)
+		run_days=chunk_date_lib.running_days(chunk_start_date,chunk_end_date)
+		prev_days=chunk_date_lib.previous_days(string_date,chunk_start_date)
+		chunk_end_days=chunk_date_lib.previous_days(string_date,chunk_end_date)
+		day_before=chunk_date_lib.previous_day(string_date)
+		chunk_end_date_1=chunk_date_lib.previous_day(chunk_end_date)
+		parameters['DAY_BEFORE']=day_before
+		parameters['Chunk_START_DATE']=chunk_start_date
+		parameters['Chunk_END_DATE']=chunk_end_date_1
+		parameters['RUN_DAYS']=str(run_days)
+		parameters['Chunk_End_IN_DAYS']=str(chunk_end_days)
+		version=parameters['VERSION']
+		if version=='v2.2.2':
+		 yy=2005
+		else: 
+		 yy=1999
+		
+		chunk_start_month=chunk_date_lib.chunk_start_month(chunk_start_date)
+		chunk_start_year=chunk_date_lib.chunk_start_year(chunk_start_date)
+		lrcp='FALSE'
+		if chunk_start_year > yy:
+		 lrcp='TRUE'
+		parameters['RCP']='4.5'
+		parameters['LRCP']=lrcp
+		  
+		parameters['Chunk_START_YEAR']=str(chunk_start_year)
+		parameters['Chunk_START_MONTH']=str(chunk_start_month)
+		if total_chunk==chunk:
+		 parameters['Chunk_LAST']='.TRUE.'
+		else:
+		 parameters['Chunk_LAST']='.FALSE.'
+		  
+		if (self._type()==0):
+		 print	"jobType:	%s" %str(self._type)
+		 mytemplate=templatename+'.sim'
+		 ##update parameters
+		 parameters['WALLCLOCKLIMIT']='72:00:00'
+		 parameters['PREV']=str(prev_days)
+		elif (self._type==1):
+		 print	"jobType:	%s	"	%	str(self._type)
+		 mytemplate=templatename+'.post'
+		 ##update parameters
+		 starting_date_year=chunk_date_lib.chunk_start_year(string_date)
+		 starting_date_month=chunk_date_lib.chunk_start_month(string_date)
+		 parameters['Starting_DATE_YEAR']=str(starting_date_year)
+		 parameters['Starting_DATE_MONTH']=str(starting_date_month)
+		 parameters['WALLCLOCKLIMIT']="02:01:00"
+		elif (self._type()==2):
+		 print	"jobType:	%	s"	%	str(self._type)
+		 ##update parameters
+		 mytemplate=templatename+'.clean'
+		 parameters['WALLCLOCKLIMIT']="10:00:00"
+		elif (job.get_type()==-1):
+		 udef_logger.debug("jobType:", job.get_type())
+		 ##update parameters
+		 mytemplate=templatename+'.ini'
+		 parameters['WALLCLOCKLIMIT']="10:00:00"
+		else: 
+		 print	"Unknown Job Type"
+		 
+		print	"My Template: %s" % mytemplate
+		templateContent = file(mytemplate).read()
+		for key in parameters.keys():
+		 if key in templateContent:
+		  print	"%s:\t%s" % (key,parameters[key])
+		  templateContent = templateContent.replace(key,parameters[key])
+		
+		self.para	=	parameters 
+		file('../tmp/'+scriptname,'w').write(templateContent)
+		return scriptname
 
 if __name__ == "__main__":
 	mainJob = Job('uno','1',Status.READY,0)

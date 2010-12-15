@@ -27,7 +27,7 @@ class MnQueue(HPCQueue):
 	def get_submitted_job_id(self, output):
 		return output.split(' ')[3]
 	
-	def job_in_queue(self):
+	def jobs_in_queue(self,	output):
 		dom = parseString(output)
 		job_list = dom.getElementsByTagName("job")
 		return [ int(job.getAttribute('JobID')) for job in job_list ]

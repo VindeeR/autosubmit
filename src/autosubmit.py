@@ -4,7 +4,7 @@ from ConfigParser import SafeConfigParser
 import time, os, sys
 import commands
 import newparse_mnq as parse_mnq
-import JobListFactory
+#import JobListFactory
 import signal
 import newparseMnqXml as mnq
 #import userdefinedfunctions
@@ -100,6 +100,10 @@ if __name__ == "__main__":
  logger.info("Sleep: %s" % safetysleeptime)
  logger.info("Starting job submission...")
 
+
+ signal.signal(signal.SIGQUIT, queue.smart_stop)
+ signal.signal(signal.SIGINT, queue.normal_stop)
+ 
  if parser.get('config','restart').lower()=='true':
   filename='../auxfiles/job_list_'+expid+'.pkl'
   if (os.path.exists(filename)):

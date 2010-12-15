@@ -3,6 +3,7 @@
 from commands import getstatusoutput
 from time import sleep
 from job.job_common import Status
+from	sys	import	exit
 
 SLEEPING_TIME = 30
 
@@ -72,14 +73,20 @@ class HPCQueue:
 			print job_id
 			return int(job_id)
 
-	def normal_stop(self):
-		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._status_cmd + ' %s"' % str(job_id))
+	def normal_stop(self,	signum,	frame):
+		sleep(SLEEPING_TIME)
+		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._status_cmd	+ ' "')
 		for job_id in self.jobs_in_queue(output):
 			self.cancel_job(job_id)
-		sys.exit(0)
+			
+		exit(0)
 
-	def smart_stop(self):
-		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._status_cmd + ' %s"' % str(job_id))
+	def smart_stop(self,	signum,	frame):
+		sleep(SLEEPING_TIME)
+		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._status_cmd	+ ' "')
+		print	self.jobs_in_queue(output)
 		while self.jobs_in_queue(output):
-			time.sleep(SLEEPING_TIME)
-		sys.exit(0)
+			print	self.jobs_in_queue(output)
+			sleep(SLEEPING_TIME)
+			(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._status_cmd	+ ' "')
+		exit(0)

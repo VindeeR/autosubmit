@@ -4,6 +4,8 @@ from commands import getstatusoutput
 from time import sleep
 from job.job_common import Status
 
+SLEEPING_TIME = 30
+
 class HPCQueue:
 	def cancel_job(self, job_id):
 		print 'ssh ' + self._host + ' "' + self._cancel_cmd + ' ' + str(job_id) + '"'
@@ -60,7 +62,7 @@ class HPCQueue:
 		if(status == 0):
    			print 'The script has been sent'
 		else:	
-			print 'the script has not been sent'
+			print 'The script has not been sent'
 	
 	def submit_job(self, job_script):
 		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._submit_cmd +' ' + self._pathdir + '/' + str(job_script) + '"')
@@ -70,3 +72,14 @@ class HPCQueue:
 			print job_id
 			return int(job_id)
 
+	def normal_stop(self):
+		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._status_cmd + ' %s"' % str(job_id))
+		for job_id in self.jobs_in_queue(output):
+			self.cancel_job(job_id)
+		sys.exit(0)
+
+	def smart_stop(self):
+		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._status_cmd + ' %s"' % str(job_id))
+		while self.jobs_in_queue(output):
+			time.sleep(SLEEPING_TIME)
+		sys.exit(0)

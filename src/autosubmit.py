@@ -160,9 +160,6 @@ if __name__ == "__main__":
  template_rootname=expparser.get('common_parameters','TEMPLATE') 
  # Main loop. Finishing when all jobs have been submitted
  while len(joblist.get_not_in_queue())!=0 :
-  #queueStatus=parse_mnq.updateQueueStatus(queueStatus)
-  #waiting = getWaitingJobs(queueStatus)
-  #active = getActiveJobs(queueStatus)
   active = len(joblist.get_running())
   waiting = len(joblist.get_submitted() + joblist.get_queuing())
   available = maxWaitingJobs-waiting
@@ -188,7 +185,6 @@ if __name__ == "__main__":
   #get the list of jobs currently in the Queue
   jobinqueue=joblist.get_in_queue()
   logger.info("number of jobs in queue :%s" % len(jobinqueue)) 
-  #JobListFactory.checkjobInList(jobinqueue)
   for job in jobinqueue:
    job.print_job()
    status=queue.check_job(job.get_id())
@@ -200,7 +196,7 @@ if __name__ == "__main__":
     job.set_status(status) 
    
   ##after checking the jobs , no job should have the status "submitted"
-  ##Jordi throw an exception if this happens (warning type no exit)
+  ##Uri throw an exception if this happens (warning type no exit)
   for job in joblist.get_ready():
    job.print_job()
    

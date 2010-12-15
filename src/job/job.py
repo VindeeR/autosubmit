@@ -217,13 +217,13 @@ class Job:
 		else:
 		 parameters['Chunk_LAST']='.FALSE.'
 		  
-		if (self._type==0):
+		if (self._type==Type.SIMULATION):
 		 print	"jobType:	%s" %str(self._type)
 		 mytemplate=templatename+'.sim'
 		 ##update parameters
 		 parameters['WALLCLOCKLIMIT']='72:00:00'
 		 parameters['PREV']=str(prev_days)
-		elif (self._type==1):
+		elif (self._type==Type.POSTPROCESSING):
 		 print	"jobType:	%s	"	%	str(self._type)
 		 mytemplate=templatename+'.post'
 		 ##update parameters
@@ -232,12 +232,12 @@ class Job:
 		 parameters['Starting_DATE_YEAR']=str(starting_date_year)
 		 parameters['Starting_DATE_MONTH']=str(starting_date_month)
 		 parameters['WALLCLOCKLIMIT']="02:01:00"
-		elif (self._type==2):
+		elif (self._type==Type.CLEANING):
 		 print	"jobType:	%	s"	%	str(self._type)
 		 ##update parameters
 		 mytemplate=templatename+'.clean'
 		 parameters['WALLCLOCKLIMIT']="10:00:00"
-		elif (self._type==-1):
+		elif (self._type==Type.INITIALISATION):
 		 print	"jobType:	%s"	%	self._type
 		 ##update parameters
 		 mytemplate=templatename+'.ini'

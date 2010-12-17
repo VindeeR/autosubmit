@@ -67,6 +67,14 @@ class HPCQueue:
 		else:	
 			print 'The script has not been sent'
 	
+	def	get_completed_files(self,jobname):
+		filename=jobname+'_COMPLETED'
+		(status, output) = getstatusoutput('scp '+ self._host + ':' +self._pathdir + '/'+filename	+	'	../tmp/')
+		if(status == 0):
+   			print 'The	COMPLETED	files	have been transfered'
+		else:	
+			print 'Something	did	not	work	well	when	transferring	the	COMPLETED	files'
+	
 	def submit_job(self, job_script):
 		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._submit_cmd +' ' + self._pathdir + '/' + str(job_script) + '"')
 		print 'ssh ' + self._host + ' "' + self._submit_cmd + ' ' + self._pathdir + '/' + str(job_script)

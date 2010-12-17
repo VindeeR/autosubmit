@@ -20,7 +20,7 @@ class Job:
 		self._type = jobtype
 		self._parents = list()
 		self._children = list()
-		self._failcount=0
+		self._fail_count	=	0
 		self._expid = ''
 		self._complete = True
 		self._parameters	=	dict()
@@ -30,9 +30,9 @@ class Job:
 		print 'JOBID: %s' %self._id 
 		print 'STATUS: %s' %self._status
 		print 'TYPE: %s' %self._type
-		print 'PARENTS: %s' %self._parents
-		print 'CHILDREN: %s' %self._children
-		print 'FAILCOUNTS: %s' %self._failcount
+		print 'PARENTS: %s' %[p._name	for	p	in	self._parents	]
+		print 'CHILDREN: %s' %[c._name	for	c	in	self._children]
+		print 'fail_countS: %s' %self._fail_count
 		print 'EXPID: %s' %self._expid 
  
  
@@ -110,10 +110,10 @@ class Job:
 		self._children = new_children
  
 	def set_fail_count(self, new_fail_count):
-		self._failcount = new_fail_count
+		self._fail_count = new_fail_count
 	
 	def inc_fail_count(self):
-		self._failcount += 1
+		self._fail_count += 1
  
 	def add_parents(self, new_parents):
 		self._parents += [new_parents]
@@ -153,8 +153,10 @@ class Job:
 		if(os.path.exists(logname)):
 			self._complete=True
 			os.system('touch ../tmp/%s' % self._name+'Checked')
+			self._status	=	Status.COMPLETED
 		else:
 			os.system('touch ../tmp/%s' % self._name+'Failed')
+			self._status	=	Status.FAILED
    
 	def remove_dependencies(self):
 		'''If	Complete	remove	the	dependency	'''

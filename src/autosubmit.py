@@ -69,6 +69,7 @@ if __name__ == "__main__":
  
  if parser.get('config','restart').lower()=='true':
   filename='../auxfiles/job_list_'+expid+'.pkl'
+  print 'ploum %s' %filename
   #the experiment should be loaded as well
   if (os.path.exists(filename)):
    joblist= pickle.load(file(filename,'rw'))
@@ -86,34 +87,14 @@ if __name__ == "__main__":
   expparser=cfuConfigParser.experConfigParser(exp_parser_name)
   exper.setParser(expparser)
   exper.setup()
-  listofdates=expparser.get('expdef','DATELIST').split(' ')
-  chunkini=int(expparser.get('expdef','CHUNKINI'))
-  numchunks=int(expparser.get('expdef','NUMCHUNKS'))
-  memberslist=expparser.get('expdef','MEMBERS').split(' ')
+  joblist=exper.get_job_list()
+  ##END OF IF NOT RESTART 
  
- joblist=JobList(expid,listofdates,memberslist,chunkini,numchunks)
  queue.check_pathdir()
-  
- 
  logger.debug("Length of joblist: ",len(joblist))
  totaljobs=len(joblist)
- logger.info("New Jobs to submit: "+str(totaljobs))
- list_of_common_para=expparser.items('common_parameters')
- parameters=dict()
- for it in list_of_common_para:
-  parameters[it[0].upper()]= it[1]
- parameters['SHELL'] = "/bin/ksh"
- parameters['Chunk_NUMBERS']='15'
- parameters['Chunk_SIZE_MONTH']='4'
- parameters['INITIALDIR']='/home/ecm86/ecm86503/LOG_'+expid
- parameters['LOGDIR']='/home/ecm86/ecm86503/LOG_'+expid
- parameters['EXPID']=expid
- parameters['VERSION']='v2.2.1'
- for j in joblist.get_job_list():
-  j.set_parameters(parameters) 
-  
+ logger.info("New Jobs to submit: "+str(totaljobs))# Main loop. Finishing when all jobs have been submitted
  template_rootname=expparser.get('common_parameters','TEMPLATE') 
- # Main loop. Finishing when all jobs have been submitted
  while joblist.get_active() :
   active = len(joblist.get_running())
   waiting = len(joblist.get_submitted() + joblist.get_queuing())
@@ -141,6 +122,7 @@ if __name__ == "__main__":
    status=queue.check_job(job.get_id())
    if(status==Status.COMPLETED):
     logger.debug("this job seems to have completed...checking")
+    queue.get_completed_files(job.get_name())
     job.check_completion()
     #job.remove_dependencies()
    else:

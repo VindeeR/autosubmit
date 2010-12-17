@@ -4,7 +4,8 @@ from job_common import Status
 from job_common import Type
 from job import Job
 import os
-import cPickle as pickle
+import pickle
+from	sys	import	exit
 
 class JobList:
 	
@@ -12,14 +13,14 @@ class JobList:
 		self.path = "../auxfiles/"
 		self.update_file = "updated_job_list_" + expid + ".pkl"
 		self.failed_file = "failed_job_list_" + expid + ".pkl"
-		self.file	=	"job_list"+expid+".pkl"
+		self.file	=	"job_list_"+expid+".pkl"
 		self.job_list = list()
 
 		for date in date_list:
 			print	date
 			for member in member_list:
 				print	member
-				for	chunk in range(starting_chunk, starting_chunk + num_chunks+1):
+				for	chunk in range(starting_chunk, starting_chunk + num_chunks):
 					rootjob_name = "job_"	+	str(expid)	+	"_" + str(date) + "_" + str(member) + "_" + str(chunk) + "_"
 					post_job = Job(rootjob_name+"post", 0, Status.WAITING, Type.POSTPROCESSING)
 					clean_job = Job(rootjob_name+"clean", 0, Status.WAITING, Type.CLEANING)
@@ -49,10 +50,10 @@ class JobList:
 						init_job.set_parents([])
 						sim_job.set_parents([init_job.get_name()])
 						self.job_list += [init_job]
-					if (chunk < starting_chunk + num_chunks):
+					if (chunk < starting_chunk + num_chunks	-	1):
 						childjob_name = "job_" +	str(expid)	+	"_"	+ str(date) + "_" + str(member) + "_" + str(chunk+1) + "_" + "sim"
 						sim_job.add_children(childjob_name)
-					if (chunk < starting_chunk + num_chunks - 1):
+					if (chunk < starting_chunk + num_chunks - 2):
 						childjob_name = "job_"	+	str(expid)	+	"_" + str(date) + "_" + str(member) + "_" + str(chunk+2) + "_" + "sim"
 						clean_job.set_children([childjob_name])
 
@@ -116,7 +117,8 @@ class JobList:
 		for job in self.job_list:
 			if job.get_name() == name:
 				return job
-		return False
+		print	"We	could	not	find	that	job	%s	in	the	list!!!!"	%	name
+		exit(0)
 	
 	def sort_by_name(self):
 		return sorted(self.job_list, key=lambda k:k.get_name())
@@ -146,9 +148,9 @@ class JobList:
 	def load_failed(self):
 		return self.load_file(self.path + self.failed_file)
 
-	def save_failed(self):
+	def save_failed(self,	failed_list):
 		# URi: should we check that the path exists?
-		pickle.dump(self.job_list, file(self.path + self.failed_file, 'w'))
+		pickle.dump(failed_list, file(self.path + self.failed_file, 'w'))
 	
 	def save(self):
 		# URi: should we check that the path exists?
@@ -158,6 +160,8 @@ class JobList:
 		#load updated file list
 		updated_list = self.load_updated()
 		self.job_list += updated_list
+		#check	dependency	tree
+		
 		# recover failed list
 		failed_list = self.load_failed()
 		# remove elements that are already in the job_list, may be because they have been updated
@@ -173,15 +177,15 @@ class JobList:
 				# get all childrens of a job that has failed more than 3 times
 				child_list = job.get_all_children()
 				# add job to the failed list
-				failed += [job]
+				failed_list += [job]
 				# remove job from the "working" list
 				self.job_list.remove(job)
 				# add to the failed list all childrens of the failed job
-				failed.append(child_list)
+				failed_list	+=	child_list
 				# remove all childrens of the failed job from the "working" list
 				for child in child_list:
 					self.job_list.remove(child)
-				self.save_failed()
+				self.save_failed(failed_list)
 
 		
 		# if waiting jobs has all parents completed change its State to READY
@@ -192,9 +196,10 @@ class JobList:
 				#	break
 			if	len(tmp)	==	len(job.get_parents()):
 				job.set_status(Status.READY)
-
+			self.save()
+			
 	def update_genealogy(self):
-		"""When we have create the joblist, parents and child list just contain the names. Update the genealogy replacing job names by the corresponding job object"""
+		"""When we have created the joblist, parents and child list just contain the names. Update the genealogy replacing job names by the corresponding job object"""
 		for job in self.job_list:
 			if job.has_children():
 				# get the list of childrens (names)
@@ -221,4 +226,7 @@ class JobList:
 						job.add_parents(job_object)
 					else:
 						job.add_parents(parent)
-
+						
+	def check_genealogy(self):
+		"""When we have updated the joblist, parents and child list must	be	consistent"""
+		pass

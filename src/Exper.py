@@ -5,7 +5,7 @@ import os
 import sys
 from ConfigParser import SafeConfigParser
 import cfuConfigParser
-
+from job.job_list import JobList
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(name)s %(levelname)s %(message)s',
@@ -38,7 +38,7 @@ class Exper:
   self.expid = expid
   self.status = 0
   self.Exptype = 1
-  self.joblist = list()
+  self.joblist = JobList('',[],[],1,1)
   self.parser = SafeConfigParser()
 
  def getName(self):
@@ -59,7 +59,7 @@ class Exper:
  def getParser(self):
   return self.parser
  
- def getJobList(self):
+ def get_job_list(self):
   return self.joblist
 
  
@@ -102,10 +102,27 @@ class Exper:
   #chunks=[]
   #from JobListFactory create the joblist
   #joblist=jlf.CreateJobList(dates,members,chunks)
-
-
-  #
-  pass
+  listofdates=self.parser.get('expdef','DATELIST').split(' ')
+  chunkini=int(self.parser.get('expdef','CHUNKINI'))
+  numchunks=int(self.parser.get('expdef','NUMCHUNKS'))
+  memberslist=self.parser.get('expdef','MEMBERS').split(' ')
+  joblist=JobList(self.expid,listofdates,memberslist,chunkini,numchunks)
+  list_of_common_para=self.parser.items('common_parameters')
+  parameters=dict()
+  for it in list_of_common_para:
+   parameters[it[0].upper()]= it[1]
+  parameters['SHELL'] = "/bin/ksh"
+  parameters['Chunk_NUMBERS']='15'
+  parameters['Chunk_SIZE_MONTH']='4'
+  parameters['INITIALDIR']='/home/ecm86/ecm86503/LOG_'+self.expid
+  parameters['LOGDIR']='/home/ecm86/ecm86503/LOG_'+self.expid
+  parameters['EXPID']=self.expid
+  
+  parameters['VERSION']='v2.2.1'
+  for j in joblist.get_job_list():
+   j.set_parameters(parameters) 
+  
+  self.joblist=joblist
 
 
 if __name__ == "__main__":

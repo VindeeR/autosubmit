@@ -46,15 +46,9 @@ RUN_chunk_size=Chunk_SIZE_MONTH
 #
 # Output path on HSM
 #
-PATHOUT="/HSM/ecm86/ecearth/${Myexpid}/${START_date}/fc${Mymember}"
-if [[ ! -d ${PATHOUT} ]] ; then
-   echo "HOUSTON we have a problem!"
-   echo " this directory should already exist ! ${PATHOUT}"
-   exit
-fi
-
+mkdir -p $RUN_dir
 output_dir=${RUN_dir}/Output_${chunk}
-
+mkdir -p $output_dir
 if [[ -d ${RUN_dir} ]] ; then
    cd $RUN_dir
 else
@@ -69,7 +63,6 @@ else
    exit
 fi
 
-PATHOUT_OUT="${PATHOUT}/outputs"
 if [[ ! -d ${PATHOUT_OUT} ]] ; then
    mkdir -p ${PATHOUT_OUT}
 fi   
@@ -77,12 +70,6 @@ fi
 date
 cd $RUN_dir
 rm -rf ${output_dir}
-
-
-if [[ -a rest_$((chunk-1)) ]] ; then
-	echo "We are now removing IFS_Restart_$((chunk-1))"
-        rm -rf IFS_Restart_$((chunk-1))
-fi
 
 
 touch LOGDIR/JOBNAME_COMPLETED

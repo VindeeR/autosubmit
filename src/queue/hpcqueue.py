@@ -3,7 +3,7 @@
 from commands import getstatusoutput
 from time import sleep
 from job.job_common import Status
-from	sys	import	exit
+from sys import exit
 
 SLEEPING_TIME = 30
 
@@ -12,7 +12,7 @@ class HPCQueue:
 		print 'ssh ' + self._host + ' "' + self._cancel_cmd + ' ' + str(job_id) + '"'
 		(status, output) = getstatusoutput('ssh '+self._host+' "'+self._cancel_cmd+' ' + str(job_id) + '"')
 	
-	def check_job(self, job_id):
+	def check_job(self, job_id, current_state):
 		job_status = Status.UNKNOWN
 
 		if type(job_id) is not int:
@@ -26,13 +26,16 @@ class HPCQueue:
 		print	'ssh '+self._host+' "'+self._checkjob_cmd+' %s"' % str(job_id)
 		print status
 		print output
+		# retry infinitelly except if it was in the RUNNING state, because it can happen that we don't get a COMPLETE status from queue due to the 5 min lifetime
 		while(status!=0 and retry>0):
-			retry -= 1
+			if(current_state == Status.RUNNING):
+				retry -= 1
+			print('Can not get job status, retrying in 10 sec\n');
 			(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._checkjob_cmd + ' %s"' % str(job_id))
 			print status
+			print output
 			# URi: logger
-			print('Can not get job status, retrying in 5 sec\n');
-			sleep(5)
+			sleep(10)
 
 		if(status == 0):
 			# URi: this command is specific of mn
@@ -68,12 +71,17 @@ class HPCQueue:
 			print 'The script has not been sent'
 	
 	def	get_completed_files(self,jobname):
+		# wait five secons to check get file
+		sleep(5)
 		filename=jobname+'_COMPLETED'
-		(status, output) = getstatusoutput('scp '+ self._host + ':' +self._pathdir + '/'+filename	+	'	../tmp/')
+		(status, output) = getstatusoutput('scp '+ self._host + ':' +self._pathdir + '/'+filename + ' ../tmp/')
+		print 'scp '+ self._host + ':' +self._pathdir + '/'+filename + ' ../tmp/'
 		if(status == 0):
-   			print 'The	COMPLETED	files	have been transfered'
+			print 'The COMPLETED files have been transfered'
+			return True
 		else:	
-			print 'Something	did	not	work	well	when	transferring	the	COMPLETED	files'
+			print 'Something did not work well when transferring the COMPLETED files'
+			return False
 	
 	def submit_job(self, job_script):
 		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._submit_cmd +' ' + self._pathdir + '/' + str(job_script) + '"')
@@ -94,7 +102,7 @@ class HPCQueue:
 	def smart_stop(self,	signum,	frame):
 		sleep(SLEEPING_TIME)
 		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._status_cmd	+ ' "')
-		print	self.jobs_in_queue(output)
+		print self.jobs_in_queue(output)
 		while self.jobs_in_queue(output):
 			print	self.jobs_in_queue(output)
 			sleep(SLEEPING_TIME)

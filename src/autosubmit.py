@@ -119,7 +119,7 @@ if __name__ == "__main__":
   logger.info("number of jobs in queue :%s" % len(jobinqueue)) 
   for job in jobinqueue:
    job.print_job()
-   status=queue.check_job(job.get_id())
+   status=queue.check_job(job.get_id(), job.get_status())
    if(status==Status.COMPLETED):
     logger.debug("this job seems to have completed...checking")
     queue.get_completed_files(job.get_name())

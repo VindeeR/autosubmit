@@ -13,13 +13,13 @@ class JobList:
 		self.path = "../auxfiles/"
 		self.update_file = "updated_job_list_" + expid + ".pkl"
 		self.failed_file = "failed_job_list_" + expid + ".pkl"
-		self.file	=	"job_list_"+expid+".pkl"
+		self.job_list_file = "job_list_"+expid+".pkl"
 		self.job_list = list()
 
 		for date in date_list:
-			print	date
+			print date
 			for member in member_list:
-				print	member
+				print member
 				for	chunk in range(starting_chunk, starting_chunk + num_chunks):
 					rootjob_name = "job_"	+	str(expid)	+	"_" + str(date) + "_" + str(member) + "_" + str(chunk) + "_"
 					post_job = Job(rootjob_name+"post", 0, Status.WAITING, Type.POSTPROCESSING)
@@ -117,8 +117,7 @@ class JobList:
 		for job in self.job_list:
 			if job.get_name() == name:
 				return job
-		print	"We	could	not	find	that	job	%s	in	the	list!!!!"	%	name
-		exit(0)
+		print "We could not find that job %s in the list!!!!" % name
 	
 	def sort_by_name(self):
 		return sorted(self.job_list, key=lambda k:k.get_name())
@@ -140,27 +139,32 @@ class JobList:
 			return list()
 		 
 	def load(self):
-		return	load_file(self,self.path + self.file)
+		print "Loading JobList: " + self.path + self.job_list_file
+		return	load_file(self,self.path + self.job_list_file)
 		
 	def load_updated(self):
+		print "Loading updated list: " + self.path + self.update_file
 		return self.load_file(self.path + self.update_file)
 
 	def load_failed(self):
+		print "Loading failed list: " + self.path + self.failed_file
 		return self.load_file(self.path + self.failed_file)
 
-	def save_failed(self,	failed_list):
+	def save_failed(self, failed_list):
 		# URi: should we check that the path exists?
+		print "Saving failed list: " + self.path + self.failed_file
 		pickle.dump(failed_list, file(self.path + self.failed_file, 'w'))
 	
 	def save(self):
 		# URi: should we check that the path exists?
-		pickle.dump(self, file(self.path + self.file, 'w'))
+		print "Saving JobList: " + self.path + self.job_list_file
+		pickle.dump(self, file(self.path + self.job_list_file, 'w'))
 
 	def update_list(self):
-		#load updated file list
+		# load updated file list
 		updated_list = self.load_updated()
 		self.job_list += updated_list
-		#check	dependency	tree
+		# check	dependency	tree
 		
 		# recover failed list
 		failed_list = self.load_failed()
@@ -181,22 +185,32 @@ class JobList:
 				# remove job from the "working" list
 				self.job_list.remove(job)
 				# add to the failed list all childrens of the failed job
-				failed_list	+=	child_list
+				#failed_list	+=	child_list
+				for child in child_list:
+					found = False
+					for failed_job in failed_list:
+						if failed_job.get_name() == child.get_name()
+							found = True
+					if not found:
+						failed_list += [child]
 				# remove all childrens of the failed job from the "working" list
 				for child in child_list:
-					self.job_list.remove(child)
-				self.save_failed(failed_list)
+					print child.get_name()
+					if child in self.job_list:
+						print "Removing child: " + child.get_name()
+						self.job_list.remove(child)
+		self.save_failed(failed_list)
 
 		
 		# if waiting jobs has all parents completed change its State to READY
 		for job in self.get_waiting():
-			tmp	=	[parent	for	parent	in	job.get_parents()	if	parent.get_status()	==	Status.COMPLETED]
+			tmp = [parent for parent in job.get_parents() if parent.get_status() == Status.COMPLETED]
 			#for parent in job.get_parents():				
 				#if parent.get_status() != Status.COMPLETED:
 				#	break
-			if	len(tmp)	==	len(job.get_parents()):
+			if len(tmp) == len(job.get_parents()):
 				job.set_status(Status.READY)
-			self.save()
+		self.save()
 			
 	def update_genealogy(self):
 		"""When we have created the joblist, parents and child list just contain the names. Update the genealogy replacing job names by the corresponding job object"""

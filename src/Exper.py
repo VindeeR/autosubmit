@@ -114,8 +114,8 @@ class Exper:
   parameters['SHELL'] = "/bin/ksh"
   parameters['Chunk_NUMBERS']='15'
   parameters['Chunk_SIZE_MONTH']='4'
-  parameters['INITIALDIR']='/home/ecm86/ecm86503/LOG_'+self.expid
-  parameters['LOGDIR']='/home/ecm86/ecm86503/LOG_'+self.expid
+  parameters['INITIALDIR']='/home/ecm86/ecm86843/LOG_'+self.expid
+  parameters['LOGDIR']='/home/ecm86/ecm86843/LOG_'+self.expid
   parameters['EXPID']=self.expid
   
   parameters['VERSION']='v2.2.1'

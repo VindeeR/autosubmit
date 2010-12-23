@@ -189,7 +189,7 @@ class JobList:
 				for child in child_list:
 					found = False
 					for failed_job in failed_list:
-						if failed_job.get_name() == child.get_name()
+						if failed_job.get_name() == child.get_name():
 							found = True
 					if not found:
 						failed_list += [child]

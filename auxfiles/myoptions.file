@@ -3,8 +3,8 @@ MAXWAITINGJOBS = 3
 TOTALJOBS = 6 
 ALREADYSUBMITTED = 0
 SAFETYSLEEPTIME = 10
-JOBTEMPLATE = MyTemplate
-EXPID = dumi
+JOBTEMPLATE = MyTemplate_b018
+EXPID = b018
 CLEAN = 0
 VERBOSE = true
 DEBUG = false
@@ -16,16 +16,16 @@ LOGLEVEL = DEBUG
 # Name of the logging file:
 # Default = would be great to be able to pass the PID of the job through the
 # name of the logfile --> THAT WILL BE POSSIBLE AT RUNTIME
-LOGNAME = dumi.log
+LOGNAME = b018.log
 
 # Where are the jobs running:(MARENOSTRUM, ITHACA)
 HPCARCH = marenostrum
 
 # HPC user name
-HPCUSERNAME = ecm86503
+HPCUSERNAME = ecm86133
 
 # On the HPC = where are the jobs touching files, writing logs.
-HPCFILEDIR = /home/ecm86/ecm86503/dumi_LOG_DIR
+HPCFILEDIR = /home/ecm86/ecm86133/b018_LOG_DIR
 
 # Is Autosubmit running remotely or locally:(with ssh or not)?
 RUNMODE = remote
@@ -36,7 +36,7 @@ RUNMODE = remote
 # Where is Autosubmit putting the touch files, scripts, temp files ect.
 AUTOFILEDIR = ../tmp
 
-EXPDEFFILE = ../auxfiles/expdef_dumi.file
+EXPDEFFILE = ../auxfiles/expdef_b018.file
 
 ######################
 # CHECK CONFIGURARION#

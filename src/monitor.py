@@ -47,8 +47,8 @@ def CreateTreeList(joblist):
  pngfile=expid+'_graph.png'
  pdffile=expid+'_graph.pdf'
  #graph.set_graphviz_executables({'dot': '/gpfs/apps/GRAPHVIZ/2.26.3/bin/dot'})
- graph.write_png(pngfile) 
- #graph.write_pdf(pdffile) 
+ #graph.write_png(pngfile) 
+ graph.write_pdf(pdffile) 
  
 
 if __name__ == "__main__":

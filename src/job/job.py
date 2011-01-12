@@ -209,7 +209,7 @@ class Job:
 		if chunk_start_year > yy:
 		 lrcp='TRUE'
 		parameters['RCP']='4.5'
-		parameters['LRCP']=lrcp
+		parameters['Lrcp']=lrcp
 		  
 		parameters['Chunk_START_YEAR']=str(chunk_start_year)
 		parameters['Chunk_START_MONTH']=str(chunk_start_month)

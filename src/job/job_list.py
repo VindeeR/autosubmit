@@ -5,7 +5,7 @@ from job_common import Type
 from job import Job
 import os
 import pickle
-from	sys	import	exit
+from sys import	exit, setrecursionlimit
 
 class JobList:
 	
@@ -15,6 +15,7 @@ class JobList:
 		self.failed_file = "failed_job_list_" + expid + ".pkl"
 		self.job_list_file = "job_list_"+expid+".pkl"
 		self.job_list = list()
+		setrecursionlimit(10000)
 
 		for date in date_list:
 			print date

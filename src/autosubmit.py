@@ -94,7 +94,7 @@ if __name__ == "__main__":
  logger.debug("Length of joblist: ",len(joblist))
  totaljobs=len(joblist)
  logger.info("New Jobs to submit: "+str(totaljobs))# Main loop. Finishing when all jobs have been submitted
- template_rootname=expparser.get('common_parameters','TEMPLATE') 
+ template_rootname=expparser.get('common_parameters','TEMPLATE_FILE') 
  while joblist.get_active() :
   active = len(joblist.get_running())
   waiting = len(joblist.get_submitted() + joblist.get_queuing())

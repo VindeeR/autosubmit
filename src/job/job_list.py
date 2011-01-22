@@ -44,7 +44,7 @@ class JobList:
 						sim_job.set_parents([parentjob_name])
 						if (chunk > 2):
 							parentjob_name = "job_"	+	str(expid)	+	"_" + str(date) + "_" + str(member) + "_" + str(chunk-2) + "_" + "clean"
-							sim_job.set_parents([parentjob_name])
+							sim_job.add_parents(parentjob_name)
 					if (chunk == 1):
 						init_job = Job(rootjob_name + "init", 0, Status.READY,Type.INITIALISATION)
 						init_job.set_children([sim_job.get_name()])

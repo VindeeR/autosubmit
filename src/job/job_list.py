@@ -22,7 +22,7 @@ class JobList:
 			for member in member_list:
 				print member
 				for	chunk in range(starting_chunk, starting_chunk + num_chunks):
-					rootjob_name = "job_"	+	str(expid)	+	"_" + str(date) + "_" + str(member) + "_" + str(chunk) + "_"
+					rootjob_name = "job_" + str(expid) + "_" + str(date) + "_" + str(member) + "_" + str(chunk) + "_"
 					post_job = Job(rootjob_name+"post", 0, Status.WAITING, Type.POSTPROCESSING)
 					clean_job = Job(rootjob_name+"clean", 0, Status.WAITING, Type.CLEANING)
 					if	(starting_chunk	==	chunk	and	chunk	!=	1):

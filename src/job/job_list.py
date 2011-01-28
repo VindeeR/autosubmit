@@ -40,10 +40,10 @@ class JobList:
 					
 					# set status of first chunk to READY
 					if (chunk > 1):
-						parentjob_name = "job_" +	str(expid)	+	"_"	+ str(date) + "_" + str(member) + "_" + str(chunk-1) + "_" + "sim"
+						parentjob_name = "job_" + str(expid) + "_" + str(date) + "_" + str(member) + "_" + str(chunk-1) + "_" + "sim"
 						sim_job.set_parents([parentjob_name])
 						if (chunk > 2):
-							parentjob_name = "job_"	+	str(expid)	+	"_" + str(date) + "_" + str(member) + "_" + str(chunk-2) + "_" + "clean"
+							parentjob_name = "job_" + str(expid) + "_" + str(date) + "_" + str(member) + "_" + str(chunk-2) + "_" + "clean"
 							sim_job.add_parents(parentjob_name)
 					if (chunk == 1):
 						init_job = Job(rootjob_name + "init", 0, Status.READY,Type.INITIALISATION)

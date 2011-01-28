@@ -26,14 +26,14 @@ class Job:
 		self._parameters	=	dict()
  	
 	def print_job(self):
-		print 'NAME: %s' %self._name 
-		print 'JOBID: %s' %self._id 
-		print 'STATUS: %s' %self._status
-		print 'TYPE: %s' %self._type
-		print 'PARENTS: %s' %[p._name	for	p	in	self._parents	]
-		print 'CHILDREN: %s' %[c._name	for	c	in	self._children]
-		print 'fail_countS: %s' %self._fail_count
-		print 'EXPID: %s' %self._expid 
+		print 'NAME: %s' % self._name 
+		print 'JOBID: %s' % self._id 
+		print 'STATUS: %s' % self._status
+		print 'TYPE: %s' % self._type
+		print 'PARENTS: %s' % [ p._name	for	p in self._parents ]
+		print 'CHILDREN: %s' % [ c._name	for	c in self._children ]
+		print 'fail_countS: %s' % self._fail_count
+		print 'EXPID: %s' % self._expid 
  
  
 	def get_name(self):
@@ -148,7 +148,7 @@ class Job:
 		return cmp(self.get_name(), other.get_name())
 
 	def check_completion(self):
-		'''	Check	the	presence	of	*COMPLETED	file	and	touch	a	Checked	or	failed	file	'''
+		''' Check the presence of *COMPLETED file and touch a Checked or failed file '''
 		logname='../tmp/'+self._name+'_COMPLETED'
 		if(os.path.exists(logname)):
 			self._complete=True
@@ -159,7 +159,7 @@ class Job:
 			self._status	=	Status.FAILED
    
 	def remove_dependencies(self):
-		'''If	Complete	remove	the	dependency	'''
+		'''If Complete remove the dependency '''
 		if (self._complete):
 			self.set_status(Status.COMPLETED)
 			#job_logger.info("Job is completed, we are now removing the dependency in his %s child/children:" % self.has_children())

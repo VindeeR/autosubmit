@@ -67,6 +67,9 @@ if __name__ == "__main__":
  signal.signal(signal.SIGQUIT, queue.smart_stop)
  signal.signal(signal.SIGINT, queue.normal_stop)
  
+ exper=Exper(expid,1) 
+ exp_parser_name=parser.get('config','EXPDEFFILE')
+ expparser=cfuConfigParser.experConfigParser(exp_parser_name)
  if parser.get('config','restart').lower()=='true':
   filename='../auxfiles/job_list_'+expid+'.pkl'
   print 'ploum %s' %filename
@@ -82,13 +85,12 @@ if __name__ == "__main__":
   #exper=Exper.getfromdatabase(expid)
   #joblist=.Exper.getJoblist()
   ##Creating the Exper object from scratch
-  exper=Exper(expid,1) 
-  exp_parser_name=parser.get('config','EXPDEFFILE')
-  expparser=cfuConfigParser.experConfigParser(exp_parser_name)
   exper.setParser(expparser)
   exper.setup()
   joblist=exper.get_job_list()
   ##END OF IF NOT RESTART 
+
+ # needed in all cases
  
  queue.check_pathdir()
  logger.debug("Length of joblist: ",len(joblist))

@@ -8,6 +8,7 @@ import logging
 import cfuConfigParser
 from queue.itqueue import ItQueue
 from queue.mnqueue import MnQueue
+from queue.htqueue import HtQueue
 from Exper import Exper
 from job.job import Job
 from job.job_common import Status
@@ -55,6 +56,8 @@ if __name__ == "__main__":
 	 queue = MnQueue(expid)
  elif(parser.get('config', 'hpcarch') == "ithaca"):
  	queue = ItQueue(expid)
+ elif(parser.get('config'. 'hpcarch') == "hector"):
+ 	queue = HtQueue(expid)
  logger.debug("My template name is: %s" % myTemplate)
  logger.debug("The Experiment name is: %s" % expid)
  logger.info("Jobs to submit: %s" % totalJobs)

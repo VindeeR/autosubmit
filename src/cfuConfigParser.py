@@ -24,7 +24,7 @@ def ccpCheckValues(value, valid_values):
 		invalid_values = True
 
 def cfuConfigParser(file):
-	hpcarch = ['marenostrum', 'ithaca']
+	hpcarch = ['marenostrum', 'ithaca', 'hector']
 	runmode = ['local', 'remote']
 	loglevel = ['debug', 'info', 'warning', 'error', 'critical']
 	

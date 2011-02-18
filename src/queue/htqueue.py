@@ -10,7 +10,7 @@ class HtQueue(HPCQueue):
 		self._cancel_cmd = "qdel"
 		self._checkjob_cmd = "qstat"
 		self._submit_cmd = "qsub"
-		self._status_cmd = "qstat -u $USER |tail -n +6|awk -F '{print $1}"
+		self._status_cmd = "qstat -u \$USER |tail -n +6|cut -d' ' -f1"
 		self._job_status = dict()
 		self._job_status['COMPLETED'] = ['F']
 		self._job_status['RUNNING'] = ['R']
@@ -19,11 +19,12 @@ class HtQueue(HPCQueue):
 		self._pathdir = "\$HOME/LOG_"+expid
 	
 	def parse_job_output(self, output):
-		job_state = output.split('\n')[2].split()[0]
+		job_state = output.split('\n')[2].split()[4]
 		return job_state
 
 	def get_submitted_job_id(self, output):
-		return output
+		return output.split('.')[0]
 	
 	def jobs_in_queue(self,	output):
+		print output
 		return output.split()

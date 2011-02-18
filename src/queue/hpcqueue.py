@@ -93,7 +93,9 @@ class HPCQueue:
 
 	def normal_stop(self,	signum,	frame):
 		sleep(SLEEPING_TIME)
-		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._status_cmd	+ ' "')
+		(status, output) = getstatusoutput('ssh ' + self._host + ' "' + self._status_cmd + ' "')
+		print status
+		print output
 		for job_id in self.jobs_in_queue(output):
 			self.cancel_job(job_id)
 			

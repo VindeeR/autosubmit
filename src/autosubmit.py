@@ -56,7 +56,7 @@ if __name__ == "__main__":
 	 queue = MnQueue(expid)
  elif(parser.get('config', 'hpcarch') == "ithaca"):
  	queue = ItQueue(expid)
- elif(parser.get('config'. 'hpcarch') == "hector"):
+ elif(parser.get('config', 'hpcarch') == "hector"):
  	queue = HtQueue(expid)
  logger.debug("My template name is: %s" % myTemplate)
  logger.debug("The Experiment name is: %s" % expid)

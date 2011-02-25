@@ -15,6 +15,8 @@ class Job:
   
 	def __init__(self, name, id, status, jobtype):
 		self._name = name
+		n = name.split('_')
+		self._short_name = n[0] + "_" + n[1][:6] + "_" + n[2][2:] + n[4][:1] + n[3]
 		self._id = id
 		self._status = status
 		self._type = jobtype
@@ -23,7 +25,7 @@ class Job:
 		self._fail_count	=	0
 		self._expid = ''
 		self._complete = True
-		self._parameters	=	dict()
+		self._parameters = dict()
  	
 	def print_job(self):
 		print 'NAME: %s' % self._name 
@@ -90,6 +92,8 @@ class Job:
 	
 	def set_name(self, newName):
 		self._name = newName
+		n = newName.split('_')
+		self._short_name = n[0] + "_" + n[1][6:] + "_" + n[2][2:] + n[4][:1] + n[3]
  
 	def set_id(self, new_id):
 		self._id = new_id
@@ -149,14 +153,14 @@ class Job:
 
 	def check_completion(self):
 		''' Check the presence of *COMPLETED file and touch a Checked or failed file '''
-		logname='../tmp/'+self._name+'_COMPLETED'
+		logname='../tmp/'+self._short_name+'_COMPLETED'
 		if(os.path.exists(logname)):
 			self._complete=True
-			os.system('touch ../tmp/%s' % self._name+'Checked')
-			self._status	=	Status.COMPLETED
+			os.system('touch ../tmp/%s' % self._short_name+'Checked')
+			self._status = Status.COMPLETED
 		else:
-			os.system('touch ../tmp/%s' % self._name+'Failed')
-			self._status	=	Status.FAILED
+			os.system('touch ../tmp/%s' % self._short_name+'Failed')
+			self._status = Status.FAILED
    
 	def remove_dependencies(self):
 		'''If Complete remove the dependency '''
@@ -172,88 +176,88 @@ class Job:
 			self.set_status(Status.FAILED)
 
 	def	create_script(self,templatename):
-		templatename='../templates/'+templatename
-		scriptname=self._name+'.cmd'
-		parameters	=	self._parameters
-		splittedname=self._name.split('_')
-		parameters['SDATE']=splittedname[2]
-		string_date=splittedname[2]
-		#member=int(splittedname[2])
-		parameters['MEMBER']=splittedname[3]
-		total_chunk=int(parameters['Chunk_NUMBERS'])
-		chunk=int(splittedname[4])
-		chunk_length_in_month=int(parameters['Chunk_SIZE_MONTH'])
-		parameters['CHUNK']=splittedname[4]
-		parameters['JOBNAME'] = self._name 
-		chunk_start_date=chunk_date_lib.chunk_start_date(string_date,chunk,chunk_length_in_month)
-		chunk_end_date=chunk_date_lib.chunk_end_date(chunk_start_date,chunk_length_in_month)
-		run_days=chunk_date_lib.running_days(chunk_start_date,chunk_end_date)
-		prev_days=chunk_date_lib.previous_days(string_date,chunk_start_date)
-		chunk_end_days=chunk_date_lib.previous_days(string_date,chunk_end_date)
-		day_before=chunk_date_lib.previous_day(string_date)
-		chunk_end_date_1=chunk_date_lib.previous_day(chunk_end_date)
-		parameters['DAY_BEFORE']=day_before
-		parameters['Chunk_START_DATE']=chunk_start_date
-		parameters['Chunk_END_DATE']=chunk_end_date_1
-		parameters['RUN_DAYS']=str(run_days)
-		parameters['Chunk_End_IN_DAYS']=str(chunk_end_days)
-		version=parameters['VERSION']
+		templatename = '../templates/'+templatename
+		scriptname = self._short_name+'.cmd'
+		parameters = self._parameters
+		splittedname = self._name.split('_')
+		parameters['SDATE'] = splittedname[1]
+		string_date = splittedname[1]
+		#member = int(splittedname[2])
+		parameters['MEMBER'] = splittedname[2]
+		total_chunk = int(parameters['Chunk_NUMBERS'])
+		chunk = int(splittedname[3])
+		chunk_length_in_month = int(parameters['Chunk_SIZE_MONTH'])
+		parameters['CHUNK'] = splittedname[3]
+		parameters['JOBNAME'] = self._short_name
+		chunk_start_date = chunk_date_lib.chunk_start_date(string_date,chunk,chunk_length_in_month)
+		chunk_end_date = chunk_date_lib.chunk_end_date(chunk_start_date,chunk_length_in_month)
+		run_days = chunk_date_lib.running_days(chunk_start_date,chunk_end_date)
+		prev_days = chunk_date_lib.previous_days(string_date,chunk_start_date)
+		chunk_end_days = chunk_date_lib.previous_days(string_date,chunk_end_date)
+		day_before = chunk_date_lib.previous_day(string_date)
+		chunk_end_date_1 = chunk_date_lib.previous_day(chunk_end_date)
+		parameters['DAY_BEFORE'] = day_before
+		parameters['Chunk_START_DATE'] = chunk_start_date
+		parameters['Chunk_END_DATE'] = chunk_end_date_1
+		parameters['RUN_DAYS'] = str(run_days)
+		parameters['Chunk_End_IN_DAYS'] = str(chunk_end_days)
+		version = parameters['VERSION']
 		if version=='v2.2.2':
 		 yy=2005
 		else: 
 		 yy=1999
 		
-		chunk_start_month=chunk_date_lib.chunk_start_month(chunk_start_date)
-		chunk_start_year=chunk_date_lib.chunk_start_year(chunk_start_date)
-		lrcp='FALSE'
+		chunk_start_month = chunk_date_lib.chunk_start_month(chunk_start_date)
+		chunk_start_year = chunk_date_lib.chunk_start_year(chunk_start_date)
+		lrcp = 'FALSE'
 		if chunk_start_year > yy:
-		 lrcp='TRUE'
-		parameters['RCP']='4.5'
-		parameters['Lrcp']=lrcp
+		 lrcp = 'TRUE'
+		parameters['RCP'] = '4.5'
+		parameters['Lrcp'] = lrcp
 		  
-		parameters['Chunk_START_YEAR']=str(chunk_start_year)
-		parameters['Chunk_START_MONTH']=str(chunk_start_month)
+		parameters['Chunk_START_YEAR'] = str(chunk_start_year)
+		parameters['Chunk_START_MONTH'] = str(chunk_start_month)
 		if total_chunk==chunk:
-		 parameters['Chunk_LAST']='.TRUE.'
+		 parameters['Chunk_LAST'] = '.TRUE.'
 		else:
-		 parameters['Chunk_LAST']='.FALSE.'
+		 parameters['Chunk_LAST'] = '.FALSE.'
 		  
 		if (self._type==Type.SIMULATION):
 		 print	"jobType:	%s" %str(self._type)
-		 mytemplate=templatename+'.sim'
+		 mytemplate = templatename+'.sim'
 		 ##update parameters
-		 parameters['WALLCLOCKLIMIT']='72:00:00'
-		 parameters['PREV']=str(prev_days)
+		 parameters['WALLCLOCKLIMIT'] = '72:00:00'
+		 parameters['PREV'] = str(prev_days)
 		elif (self._type==Type.POSTPROCESSING):
 		 print	"jobType:	%s	"	%	str(self._type)
-		 mytemplate=templatename+'.post'
+		 mytemplate = templatename+'.post'
 		 ##update parameters
-		 starting_date_year=chunk_date_lib.chunk_start_year(string_date)
-		 starting_date_month=chunk_date_lib.chunk_start_month(string_date)
-		 parameters['Starting_DATE_YEAR']=str(starting_date_year)
-		 parameters['Starting_DATE_MONTH']=str(starting_date_month)
-		 parameters['WALLCLOCKLIMIT']="02:01:00"
+		 starting_date_year = chunk_date_lib.chunk_start_year(string_date)
+		 starting_date_month = chunk_date_lib.chunk_start_month(string_date)
+		 parameters['Starting_DATE_YEAR'] = str(starting_date_year)
+		 parameters['Starting_DATE_MONTH'] = str(starting_date_month)
+		 parameters['WALLCLOCKLIMIT'] = "02:01:00"
 		elif (self._type==Type.CLEANING):
 		 print	"jobType:	%s"	%	str(self._type)
 		 ##update parameters
-		 mytemplate=templatename+'.clean'
-		 parameters['WALLCLOCKLIMIT']="10:00:00"
+		 mytemplate = templatename+'.clean'
+		 parameters['WALLCLOCKLIMIT'] = "10:00:00"
 		elif (self._type==Type.INITIALISATION):
 		 print	"jobType:	%s"	%	self._type
 		 ##update parameters
-		 mytemplate=templatename+'.ini'
-		 parameters['WALLCLOCKLIMIT']="10:00:00"
+		 mytemplate = templatename+'.ini'
+		 parameters['WALLCLOCKLIMIT'] = "10:00:00"
 		else: 
-		 print	"Unknown Job Type"
+		 print "Unknown Job Type"
 		 
-		print	"My Template: %s" % mytemplate
+		print "My Template: %s" % mytemplate
 		templateContent = file(mytemplate).read()
 		for key in parameters.keys():
 		 if key in templateContent:
 		  print	"%s:\t%s" % (key,parameters[key])
 		  templateContent = templateContent.replace(key,parameters[key])
 		
-		self.para	=	parameters 
+		self.para = parameters 
 		file('../tmp/'+scriptname,'w').write(templateContent)
 		return scriptname
 

@@ -22,7 +22,7 @@ class JobList:
 			for member in member_list:
 				print member
 				for	chunk in range(starting_chunk, starting_chunk + num_chunks):
-					rootjob_name = "job_" + str(expid) + "_" + str(date) + "_" + str(member) + "_" + str(chunk) + "_"
+					rootjob_name = str(expid) + "_" + str(date) + "_" + str(member) + "_" + str(chunk) + "_"
 					post_job = Job(rootjob_name+"post", 0, Status.WAITING, Type.POSTPROCESSING)
 					clean_job = Job(rootjob_name+"clean", 0, Status.WAITING, Type.CLEANING)
 					if	(starting_chunk	==	chunk	and	chunk	!=	1):
@@ -40,10 +40,10 @@ class JobList:
 					
 					# set status of first chunk to READY
 					if (chunk > 1):
-						parentjob_name = "job_" + str(expid) + "_" + str(date) + "_" + str(member) + "_" + str(chunk-1) + "_" + "sim"
+						parentjob_name = str(expid) + "_" + str(date) + "_" + str(member) + "_" + str(chunk-1) + "_" + "sim"
 						sim_job.set_parents([parentjob_name])
 						if (chunk > 2):
-							parentjob_name = "job_" + str(expid) + "_" + str(date) + "_" + str(member) + "_" + str(chunk-2) + "_" + "clean"
+							parentjob_name = str(expid) + "_" + str(date) + "_" + str(member) + "_" + str(chunk-2) + "_" + "clean"
 							sim_job.add_parents(parentjob_name)
 					if (chunk == 1):
 						init_job = Job(rootjob_name + "init", 0, Status.READY,Type.INITIALISATION)
@@ -52,10 +52,10 @@ class JobList:
 						sim_job.set_parents([init_job.get_name()])
 						self.job_list += [init_job]
 					if (chunk < starting_chunk + num_chunks	-	1):
-						childjob_name = "job_" +	str(expid)	+	"_"	+ str(date) + "_" + str(member) + "_" + str(chunk+1) + "_" + "sim"
+						childjob_name = str(expid) + "_" + str(date) + "_" + str(member) + "_" + str(chunk+1) + "_" + "sim"
 						sim_job.add_children(childjob_name)
 					if (chunk < starting_chunk + num_chunks - 2):
-						childjob_name = "job_"	+	str(expid)	+	"_" + str(date) + "_" + str(member) + "_" + str(chunk+2) + "_" + "sim"
+						childjob_name = str(expid) + "_" + str(date) + "_" + str(member) + "_" + str(chunk+2) + "_" + "sim"
 						clean_job.set_children([childjob_name])
 
 					self.job_list += [sim_job, post_job, clean_job]

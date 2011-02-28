@@ -16,7 +16,8 @@ class Job:
 	def __init__(self, name, id, status, jobtype):
 		self._name = name
 		n = name.split('_')
-		self._short_name = n[0] + "_" + n[1][:6] + "_" + n[2][2:] + n[4][:1] + n[3]
+		#self._short_name = n[0] + "_" + n[1][:6] + "_" + n[2][2:] + n[4][:1] + n[3]
+		self._short_name = n[3] + n[4][:1] + n[2][2:] + n[0] + "_" + n[1][:6]
 		self._id = id
 		self._status = status
 		self._type = jobtype
@@ -97,7 +98,8 @@ class Job:
 	def set_name(self, newName):
 		self._name = newName
 		n = newName.split('_')
-		self._short_name = n[0] + "_" + n[1][6:] + "_" + n[2][2:] + n[4][:1] + n[3]
+		#self._short_name = n[0] + "_" + n[1][6:] + "_" + n[2][2:] + n[4][:1] + n[3]
+		self._short_name = n[3] + n[4][:1] + n[2][2:] + n[0] + "_" + n[1][:6]
  
 	def set_id(self, new_id):
 		self._id = new_id

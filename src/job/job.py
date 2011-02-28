@@ -41,6 +41,10 @@ class Job:
 	def get_name(self):
 		"""Returns the job name"""
 		return self._name
+
+	def get_name(self):
+		"""Returns the job short name"""
+		return self._short_name
  
 	def get_id(self):
 		"""Returns the job id"""

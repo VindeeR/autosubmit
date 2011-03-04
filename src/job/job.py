@@ -159,13 +159,13 @@ class Job:
 
 	def check_completion(self):
 		''' Check the presence of *COMPLETED file and touch a Checked or failed file '''
-		logname='../tmp/'+self._short_name+'_COMPLETED'
+		logname='../tmp/'+self._name+'_COMPLETED'
 		if(os.path.exists(logname)):
 			self._complete=True
-			os.system('touch ../tmp/%s' % self._short_name+'Checked')
+			os.system('touch ../tmp/%s' % self._name+'Checked')
 			self._status = Status.COMPLETED
 		else:
-			os.system('touch ../tmp/%s' % self._short_name+'Failed')
+			os.system('touch ../tmp/%s' % self._name+'Failed')
 			self._status = Status.FAILED
    
 	def remove_dependencies(self):
@@ -183,7 +183,7 @@ class Job:
 
 	def	create_script(self,templatename):
 		templatename = '../templates/'+templatename
-		scriptname = self._short_name+'.cmd'
+		scriptname = self._name+'.cmd'
 		parameters = self._parameters
 		splittedname = self._name.split('_')
 		parameters['SDATE'] = splittedname[1]
@@ -194,7 +194,8 @@ class Job:
 		chunk = int(splittedname[3])
 		chunk_length_in_month = int(parameters['Chunk_SIZE_MONTH'])
 		parameters['CHUNK'] = splittedname[3]
-		parameters['JOBNAME'] = self._short_name
+		parameters['JOBNAME'] = self._name
+		parameters['JOBSHORTNAME'] = self._short_name
 		chunk_start_date = chunk_date_lib.chunk_start_date(string_date,chunk,chunk_length_in_month)
 		chunk_end_date = chunk_date_lib.chunk_end_date(chunk_start_date,chunk_length_in_month)
 		run_days = chunk_date_lib.running_days(chunk_start_date,chunk_end_date)

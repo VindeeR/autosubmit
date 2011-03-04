@@ -127,7 +127,7 @@ if __name__ == "__main__":
    status=queue.check_job(job.get_id(), job.get_status())
    if(status==Status.COMPLETED):
     logger.debug("this job seems to have completed...checking")
-    queue.get_completed_files(job.get_short_name())
+    queue.get_completed_files(job.get_name())
     job.check_completion()
     #job.remove_dependencies()
    else:

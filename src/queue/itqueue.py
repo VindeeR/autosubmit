@@ -6,22 +6,23 @@ from time import sleep
 
 class ItQueue(HPCQueue):
 	def __init__(self,expid):
-		self._host = "sun-login"
+		self._host = "ithaca"
 		self._cancel_cmd = "qdel"
-		self._checkjob_cmd = "qstat -xml -j"
+		self._checkjob_cmd = "qstatjob.sh"
 		self._submit_cmd = "qsub"
 		self._job_status = dict()
 		self._job_status['COMPLETED'] = []
-		self._job_status['RUNNING'] = ['128']
-		self._job_status['QUEUING'] = []
-		self._job_status['FAILED'] = []
+		self._job_status['RUNNING'] = ['r', 't', 'Rr', 'Rt']
+		self._job_status['QUEUING'] = ['qw', 'hqw', 'hRwq']
+		self._job_status['FAILED'] = ['Eqw', 'Ehqw', 'EhRqw']
 		self._pathdir = "\$HOME/LOG_"+expid
 		
 	def parse_job_output(self, output):
-		dom = parseString(output)
-		job_xml = dom.getElementsByTagName("JAT_status")
-		job_state = job_xml[0].firstChild.nodeValue
-		return job_state
+		return output
+		#dom = parseString(output)
+		#job_xml = dom.getElementsByTagName("JAT_status")
+		#job_state = job_xml[0].firstChild.nodeValue
+		#return job_state
 
 	def get_submitted_job_id(self, output):
 		return output.split(' ')[2]

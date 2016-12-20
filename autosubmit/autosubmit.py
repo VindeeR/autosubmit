@@ -622,9 +622,9 @@ class Autosubmit:
                     if job.platform_name is None:
                         job.platform_name = hpcarch
                     # noinspection PyTypeChecker
-                    job.set_platform(submitter.platforms[job.platform_name.lower()])
+                    job.platform = submitter.platforms[job.platform_name.lower()]
                     # noinspection PyTypeChecker
-                    platforms_to_test.add(job.get_platform())
+                    platforms_to_test.add(job.platform)
 
                 job_list.check_scripts(as_conf)
 
@@ -1028,7 +1028,7 @@ class Autosubmit:
             if job.platform_name is None:
                 job.platform_name = hpcarch
             # noinspection PyTypeChecker
-            job.set_platform(platforms[job.platform_name.lower()])
+            job.platform = platforms[job.platform_name.lower()]
             # noinspection PyTypeChecker
             platforms_to_test.add(platforms[job.platform_name.lower()])
 
@@ -1043,9 +1043,9 @@ class Autosubmit:
             if job.platform_name is None:
                 job.platform_name = hpcarch
             # noinspection PyTypeChecker
-            job.set_platform(platforms[job.platform_name.lower()])
+            job.platform = platforms[job.platform_name.lower()]
 
-            if job.get_platform().get_completed_files(job.name, 0):
+            if job.platform.get_completed_files(job.name, 0):
                 job.status = Status.COMPLETED
                 Log.info("CHANGED job '{0}' status to COMPLETED".format(job.name))
             elif job.status != Status.SUSPENDED:
@@ -1112,7 +1112,7 @@ class Autosubmit:
             if job.platform_name is None:
                 job.platform_name = hpcarch
             # noinspection PyTypeChecker
-            job.set_platform(submitter.platforms[job.platform_name.lower()])
+            job.platform = submitter.platforms[job.platform_name.lower()]
             job.update_parameters(as_conf, job_list.parameters)
 
         return job_list.check_scripts(as_conf)
@@ -1673,6 +1673,7 @@ class Autosubmit:
                     Log.error('There are repeated start dates!')
                     return False
                 num_chunks = as_conf.get_num_chunks()
+                chunk_ini = as_conf.get_chunk_ini()
                 member_list = as_conf.get_member_list()
                 if len(member_list) != len(set(member_list)):
                     Log.error('There are repeated member names!')
@@ -1691,7 +1692,7 @@ class Autosubmit:
                         date_format = 'H'
                     if date.minute > 1:
                         date_format = 'M'
-                job_list.generate(date_list, member_list, num_chunks, parameters, date_format, as_conf.get_retrials(),
+                job_list.generate(date_list, member_list, num_chunks, chunk_ini, parameters, date_format, as_conf.get_retrials(),
                                   as_conf.get_default_job_type())
                 if rerun == "true":
                     chunk_list = Autosubmit._create_json(as_conf.get_chunk_list())
@@ -2256,8 +2257,9 @@ class Autosubmit:
                 date_format = 'H'
             if date.minute > 1:
                 date_format = 'M'
-        job_list.generate(date_list, as_conf.get_member_list(), as_conf.get_num_chunks(), as_conf.load_parameters(),
-                          date_format, as_conf.get_retrials(), as_conf.get_default_job_type(), False)
+        job_list.generate(date_list, as_conf.get_member_list(), as_conf.get_num_chunks(), as_conf.get_chunk_ini(),
+                          as_conf.load_parameters(), date_format, as_conf.get_retrials(),
+                          as_conf.get_default_job_type(), False)
         return job_list
 
     @staticmethod

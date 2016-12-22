@@ -28,6 +28,8 @@ class Platform:
         self.scratch_free_space = None
         self.host = ''
         self.user = ''
+        self.account = ''
+        self.partition = ''
         self.project = ''
         self.budget = ''
         self.reservation = ''

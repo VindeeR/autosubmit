@@ -6,7 +6,7 @@ from autosubmit.config.log import Log
 from autosubmit.job.job_common import Status
 
 
-class Platform:
+class Platform(object):
     """
     Class to manage the connections to the different platforms.
     """
@@ -24,6 +24,7 @@ class Platform:
         self.tmp_path = os.path.join(self.config.LOCAL_ROOT_DIR, self.expid, self.config.LOCAL_TMP_DIR)
         self._serial_platform = None
         self._serial_queue = None
+        self._default_queue = None
         self.processors_per_node = None
         self.scratch_free_space = None
         self.host = ''
@@ -40,6 +41,7 @@ class Platform:
         self.service = None
         self.scheduler = None
         self.directory = None
+        self.hyperthreading = 'false'
 
     @property
     def serial_platform(self):
@@ -122,6 +124,16 @@ class Platform:
         """
         raise NotImplementedError
 
+    def move_file(self, src, dest):
+        """
+        Moves a file on the platform
+        :param src: source name
+        :type src: str
+        :param dest: destination name
+        :type dest: str
+        """
+        raise NotImplementedError
+
     def get_file(self, filename, must_exist=True, relative_path=''):
         """
         Copies a file from the current platform to experiment's tmp folder
@@ -164,17 +176,16 @@ class Platform:
         """
         raise NotImplementedError
 
-    def get_logs_files(self, exp_id, job_out_filename, job_err_filename):
+    def get_logs_files(self, exp_id, remote_logs):
         """
         Get the given LOGS files
-
+        
         :param exp_id: experiment id
         :type exp_id: str
-        :param job_out_filename: name of the out file
-        :type job_out_filename: str
-        :param job_err_filename: name of the err file
-        :type job_err_filename: str
+        :param remote_logs: names of the log files
+        :type remote_logs: (str, str)
         """
+        (job_out_filename, job_err_filename) = remote_logs
         self.get_files([job_out_filename, job_err_filename], False, 'LOG_{0}'.format(exp_id))
 
     def get_completed_files(self, job_name, retries=5):

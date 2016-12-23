@@ -1,9 +1,19 @@
+3.7.7
+    Some improvements for Slurm platforms
+    Geo-definition of processors
+    New configuration variables:
+    - CHUNKINI
+    - MEMORY
+    - MEMORY_PER_TASK
+    - HYPERTHREADING
+    Other minor bug fixes
+
 3.7.6
     Fixed refresh
     Fixed recovery for ECMWF
     Local logs copy can be disabled
     Some UX improvements
-    Other minor bugfixes
+    Other minor bug fixes
 
 3.7.5
     Fixed minor with LSF's logs
@@ -15,22 +25,22 @@
     PROCESSORS_PER_NODE/TASKS now optional
     Exclusivity for MN3 (with Paramiko)
     THREADS optional for ECMWF
-    Minor bugfixes
+    Minor bug fixes
 
 3.7.3
     Fixed error with logs directives (err & out were swapped)
     Added new option for MN3: SCRATCH_FREE_SPACE
     PROCESSORS_PER_NODE/TASKS now available with Paramiko
-    Other minor bugfixes
+    Other minor bug fixes
 
 3.7.2
-    Minor bugfixes
+    Minor bug fixes
     Regression test suite improved
     Solved some problems with paramiko & ECMWF platform
 
 3.7.1
     Fixed issue in setstatus
-    Added new testcase command
+    Added new test case command
 
 3.7.0
     Big improvements on memory consumption
@@ -41,7 +51,7 @@
     Fixed error with LSF schedulers by default
     Fixed bug on stats feature
     Fixed some bugs with Git and SVN
-    Other minor bugfixes
+    Other minor bug fixes
 
 3.6.1
     Fixed an incompatibility with recent versions of radical.utils (saga)
@@ -51,14 +61,14 @@
     UX improved on some error cases
     Fixed permission backwards incompatibility
     Fixed authorization problems on SAGA implementation
-    Other minor bugfixes
+    Other minor bug fixes
 
 3.5.0
     Added another mechanism for SAGA errors prevention
     Added no-plot option to setstatus
     Added exclusivity and processes per host support for MN
     Check method fixed (not working since 3.2)
-    Other minor bugfixes
+    Other minor bug fixes
 
 3.4.1
     Hot-fix ECMWF binary (bash, R, python)

@@ -1,3 +1,13 @@
+3.7.8
+    Some bug fixes:
+    - Database persistence
+    - Delete command
+    - Unarchive command
+    - CHUNKINI option
+    - Paramiko permissions
+    - Paramiko non-existing remote copy
+    - Saga sessions
+
 3.7.7
     Some improvements for Slurm platforms
     Geo-definition of processors

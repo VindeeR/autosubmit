@@ -212,7 +212,7 @@ class Platform(object):
 
         :param job_name: name of job to check
         :type job_name: str
-        :return: True if succesful, False otherwise
+        :return: True if successful, False otherwise
         :rtype: bool
         """
         filename = job_name + '_STAT'
@@ -227,7 +227,7 @@ class Platform(object):
 
         :param job_name: name of job to check
         :type job_name: str
-        :return: True if succesful, False otherwise
+        :return: True if successful, False otherwise
         :rtype: bool
         """
         filename = job_name + '_COMPLETED'

@@ -23,6 +23,7 @@ Command list
 -install  Install database for Autosubmit on the configured folder
 -archive  Clean, compress and remove from the experiments' folder a finalized experiment
 -unarchive  Restores an archived experiment
+-migrate_exp  Migrates an experiment from one user to another
 
 
 How to create an experiment
@@ -644,7 +645,7 @@ For jobs running in HPC platforms, usually you have to provide information about
 
 * QUEUE: queue to add the job to. If not specificied, uses PLATFORM default.
 
-There are also another, less used features that you can use:
+There are also other, less used features that you can use:
 
 * FREQUENCY: specifies that a job has only to be run after X dates, members or chunk. A job will always be created for
   the last one. If not specified, defaults to 1
@@ -657,6 +658,8 @@ There are also another, less used features that you can use:
 
 * RERUN_DEPENDENCIES: defines the jobs to be rerun if this job is going to be rerunned. Syntax is identical to
   the used in DEPENDENCIES
+
+* CUSTOM_DIRECTIVES: Custom directives for the HPC resource manager headers of the platform used for that job.
 
 Example:
 
@@ -719,7 +722,7 @@ configuration, you can specify what platform or queue to use to run serial jobs 
 * SERIAL_QUEUE: if specified, Autosubmit will run jobs with only one processor in the specified queue. Autosubmit
   will ignore this configuration if SERIAL_PLATFORM is provided
 
-There are some other parameters that you must need to specify:
+There are some other parameters that you may need to specify:
 
 * BUDGET: budget account for the machine scheduler. If omitted, takes the value defined in PROJECT
 
@@ -733,6 +736,8 @@ There are some other parameters that you must need to specify:
 
 * TOTAL_JOBS: maximum number of jobs to be running at the same time in this platform.
 
+* CUSTOM_DIRECTIVES: Custom directives for the resource manager of this platform.
+
 Example:
 
 .. code-block:: ini
@@ -745,6 +750,7 @@ Example:
     USER = my_user
     SCRATCH_DIR = /scratch
     TEST_SUITE = True
+    CUSTOM_DIRECTIVES = [ "my_directive" ]
 
 How to change the communications library
 =====================================
@@ -827,6 +833,34 @@ Example:
 
     autosubmit unarchive cxxx
 
+
+How to migrate an experiment
+============================
+To migrate an experiment from one user to another, you need to add two parameters in the platforms configuration file:
+
+ * USER_TO = <user>
+ * TEMP_DIR = <hpc_temporary_directory>
+
+Then, just run the command:
+::
+
+    autosubmit migrate_exp --ofer expid
+
+
+Local files will be archived and remote files put in the HPC temporary directory.
+
+.. warning:: The temporary directory must be readable by both users (old owner and new owner).
+
+Then the new owner will have to run the command:
+::
+
+    autosubmit migrate_exp --pickup expid
+
+
+
+Local files will be unarchived and remote files copied from the temporal loaction.
+
+.. warning:: The old owner might need to remove temporal files and archive.
 
 How to configure email notifications
 ====================================

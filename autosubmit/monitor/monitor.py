@@ -185,6 +185,7 @@ class Monitor:
         else:
             Log.error('Format {0} not supported', output_format)
             return
+        os.chmod(output_file, 0o664)
         Log.result('Plot created at {0}', output_file)
         if show:
             try:

@@ -109,12 +109,15 @@ class AutosubmitConfig(object):
         Add a section header to the project's configuration file (if not exists)
         """
         if os.path.exists(self._proj_parser_file):
-            with open(self._proj_parser_file, 'r+') as f:
+            with open(self._proj_parser_file, 'r') as f:
                 first_line = f.readline()
-                if not re.match('[[a-zA-Z0-9]*]', first_line):
-                    content = f.read()
-                    f.seek(0, 0)
-                    f.write('[DEFAULT]'.rstrip('\r\n') + '\n' + first_line + content)
+                if re.match('[[a-zA-Z0-9]*]', first_line):
+                    return
+
+            with open(self._proj_parser_file, 'r+') as f:
+                content = f.read()
+                f.seek(0, 0)
+                f.write('[DEFAULT]'.rstrip('\r\n') + '\n' + first_line + content)
 
     @property
     def jobs_file(self):

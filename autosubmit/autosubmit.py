@@ -2022,6 +2022,89 @@ class Autosubmit:
             Autosubmit.show_lock_warning(expid)
 
     @staticmethod
+    def completed(expid):
+        """
+        Check if experiment is completed status
+
+        :param expid: experiment identifier
+        :type expid: str
+        """
+        BasicConfig.read()
+        exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
+        tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
+        if not os.path.exists(exp_path):
+            Log.critical("The directory %s is needed and does not exist." % exp_path)
+            Log.warning("Does an experiment with the given id exist?")
+            return 1
+
+        # checking if there is a lock file to avoid multiple running on the same expid
+        try:
+            with portalocker.Lock(os.path.join(tmp_path, 'autosubmit.lock'), timeout=1):
+                Log.info("Preparing .lock file to avoid multiple instances with same expid.")
+
+                Log.set_file(os.path.join(tmp_path, 'completed.log'))
+                Log.debug('Exp ID: {0}', expid)
+
+                as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
+                if not as_conf.check_conf_files():
+                    Log.critical('Can not run with invalid configuration')
+                    return False
+
+                job_list = Autosubmit.load_job_list(expid, as_conf)
+                completed = not any([job.status == Status.COMPLETED for job in job_list.get_job_list()])
+                if completed:
+                    Log.result('Experiment {0} is completed!')
+                else:
+                    Log.info('Experiment {0} is not finished')
+                return completed
+
+        except portalocker.AlreadyLocked:
+            Autosubmit.show_lock_warning(expid)
+
+    @staticmethod
+    def failed(expid):
+        """
+        Check if experiment is completed status
+
+        :param expid: experiment identifier
+        :type expid: str
+        """
+        BasicConfig.read()
+        exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
+        tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
+        if not os.path.exists(exp_path):
+            Log.critical("The directory %s is needed and does not exist." % exp_path)
+            Log.warning("Does an experiment with the given id exist?")
+            return 1
+
+        # checking if there is a lock file to avoid multiple running on the same expid
+        try:
+            with portalocker.Lock(os.path.join(tmp_path, 'autosubmit.lock'), timeout=1):
+                Log.info("Preparing .lock file to avoid multiple instances with same expid.")
+
+                Log.set_file(os.path.join(tmp_path, 'failed.log'))
+                Log.debug('Exp ID: {0}', expid)
+
+                as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
+                if not as_conf.check_conf_files():
+                    Log.critical('Can not run with invalid configuration')
+                    return False
+
+                job_list = Autosubmit.load_job_list(expid, as_conf)
+                failed = [job.status == Status.FAILED for job in job_list.get_job_list()]
+                if len(failed) > 0:
+                    Log.info('Failed jobs')
+                    Log.info('===========')
+                    for job in failed:
+                        Log.info(job)
+                else:
+                    Log.info('No jobs have failed')
+                return True
+
+        except portalocker.AlreadyLocked:
+            Autosubmit.show_lock_warning(expid)
+
+    @staticmethod
     def _user_yes_no_query(question):
         """
         Utility function to ask user a yes/no question

@@ -2091,7 +2091,7 @@ class Autosubmit:
                     return False
 
                 job_list = Autosubmit.load_job_list(expid, as_conf)
-                failed = [job.status == Status.FAILED for job in job_list.get_job_list()]
+                failed = job_list.get_failed()
                 if len(failed) > 0:
                     Log.info('Failed jobs')
                     Log.info('===========')
@@ -2099,7 +2099,7 @@ class Autosubmit:
                         Log.info(job)
                 else:
                     Log.info('No jobs have failed')
-                return True
+                return failed
 
         except portalocker.AlreadyLocked:
             Autosubmit.show_lock_warning(expid)

@@ -43,6 +43,7 @@ import tarfile
 import time
 import copy
 import os
+import pwd
 import sys
 import shutil
 import re

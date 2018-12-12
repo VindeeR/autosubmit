@@ -1,3 +1,6 @@
+3.11.0-hotfix
+    Now users can only delete own experiments
+
 3.11.0
     Included %m% in the list of exceptions
     Wrapper major refactoring

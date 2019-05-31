@@ -45,8 +45,8 @@ Number of jobs in a package
 **********************
 
 - **MAX_WRAPPED** can be defined in ``jobs_cxxx.conf`` in order to limit the number of jobs wrapped for the corresponding job section
-    - If not defined, it considers the **MAXWRAPPEDJOBS** defined under [wrapper] in ``autosubmit_cxxx.conf``
-        - If **MAXWRAPPEDJOBS** is not defined, then **TOTALJOBS** is used by default
+    - If not defined, it considers the **MAX_WRAPPED** defined under [wrapper] in ``autosubmit_cxxx.conf``
+        - If **MAX_WRAPPED** is not defined, then **TOTALJOBS** is used by default
 
 Wrapper check time
 **********************

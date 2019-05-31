@@ -1109,24 +1109,26 @@ class Autosubmit:
             packages_to_submit, remote_dependencies_dict = JobPackager(as_conf, platform, job_list).build_packages()
             for package in packages_to_submit:
                 try:
-                    if remote_dependencies_dict and package.name in remote_dependencies_dict['dependencies']:
-                        remote_dependency = remote_dependencies_dict['dependencies'][package.name]
-                        remote_dependency_id = remote_dependencies_dict['name_to_id'][remote_dependency]
-                        package.set_job_dependency(remote_dependency_id)
+                    if hasattr(package, "name"):
+                        if remote_dependencies_dict and package.name in remote_dependencies_dict['dependencies']:
+                            remote_dependency = remote_dependencies_dict['dependencies'][package.name]
+                            remote_dependency_id = remote_dependencies_dict['name_to_id'][remote_dependency]
+                            package.set_job_dependency(remote_dependency_id)
+
+
                     if not only_wrappers:
                         package.submit(as_conf, job_list.parameters,inspect)
 
                     if hasattr(package, "name"):
                         job_list.packages_dict[package.name] = package.jobs
-
                         from job.job import WrapperJob
                         wrapper_job = WrapperJob(package.name, package.jobs[0].id, Status.SUBMITTED, 0, package.jobs,
                                                  package._wallclock, package._num_processors,
                                                  package.platform, as_conf)
                         job_list.job_package_map[package.jobs[0].id] = wrapper_job
 
-                    if remote_dependencies_dict and package.name in remote_dependencies_dict['name_to_id']:
-                        remote_dependencies_dict['name_to_id'][package.name] = package.jobs[0].id
+                        if remote_dependencies_dict and package.name in remote_dependencies_dict['name_to_id']:
+                            remote_dependencies_dict['name_to_id'][package.name] = package.jobs[0].id
 
                     if isinstance(package, JobPackageThread):
                         packages_persistence.save(package.name, package.jobs, package._expid,inspect)

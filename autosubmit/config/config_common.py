@@ -993,8 +993,9 @@ class AutosubmitConfig(object):
          :return: maximum number of jobs (or total jobs)
          :rtype: string
          """
-        return int(self._conf_parser.get_option('wrapper', 'MAXWRAPPEDJOBS', self.get_total_jobs()))
+        #return int(self._conf_parser.get_option('wrapper', 'MAXWRAPPEDJOBS', self.get_total_jobs()))
 
+        return int(self._conf_parser.get_option('wrapper', 'MAX_WRAPPED', self.get_total_jobs()))
     def get_wrapper_check_time(self):
         """
          Returns time to check the status of jobs in the wrapper

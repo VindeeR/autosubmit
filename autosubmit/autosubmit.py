@@ -1580,12 +1580,12 @@ class Autosubmit:
                     error = True
                     break
 
-                as_conf.set_new_user(platform[3], as_conf.get_migrate_user_to(platform))
+                as_conf.set_new_user(platform, as_conf.get_migrate_user_to(platform))
                 if as_conf.get_migrate_project_to(platform):
                     Log.info("Project in platform configuration file successfully updated to {0}",
                              as_conf.get_migrate_user_to(platform))
                     backup_conf.append([platform, as_conf.get_current_user(platform), as_conf.get_current_project(platform)])
-                    as_conf.set_new_project(platform[3], as_conf.get_migrate_project_to(platform))
+                    as_conf.set_new_project(platform, as_conf.get_migrate_project_to(platform))
 
                 else:
                     Log.warning("optional PROJECT_TO directive not found. The directive PROJECT will remain unchanged")

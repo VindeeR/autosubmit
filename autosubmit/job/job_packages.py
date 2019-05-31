@@ -108,10 +108,14 @@ class JobPackageSimple(JobPackageBase):
     Class to manage a group of simple jobs, not packaged, to be submitted by autosubmit
     """
 
+
+
     def __init__(self, jobs):
         super(JobPackageSimple, self).__init__(jobs)
         self._job_scripts = {}
-
+    @property
+    def name(self):
+        return str(self._jobs[0].name)
     def _create_scripts(self, configuration):
         for job in self.jobs:
             self._job_scripts[job.name] = job.create_script(configuration)

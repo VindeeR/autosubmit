@@ -1601,11 +1601,13 @@ class Autosubmit:
                         Log.info("Converting the absolute symlinks into relatives on platform {0} ", platform) #dummy
                         command= "find " + p.root_dir +" -type l -lname '/*' -printf ' ln -sf  \"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" \\n' "
                         try:
-                            p.send_command(command)
+                            p.send_command(command,True)
                         except IOError:
                             Log.debug("The platform {0} does not contain absolute symlinks", platform)
                         except BaseException:
-                            Log.warning("Absolute symlinks failed to convert")
+                            Log.warning("Absolute symlinks failed to convert, check user in platform.conf")
+                            error = True
+                            break
 
                         Log.info("Moving remote files/dirs on {0}", platform)
                         Log.info("Moving from {0} to {1}", os.path.join(p.root_dir),os.path.join(p.temp_dir, experiment_id))
@@ -1639,6 +1641,7 @@ class Autosubmit:
 
                 return False
             else:
+
                 if not Autosubmit.archive(experiment_id, False):
                     Log.critical("The experiment cannot be offered,reverting changes.")
                     for platform in backup_files:
@@ -1653,10 +1656,11 @@ class Autosubmit:
                     return False
                 else:
                     Log.result("The experiment has been successfully offered.")
+
         elif pickup:
             Log.info('Migrating experiment {0}'.format(experiment_id))
             Log.info("Moving local files/dirs")
-            if not Autosubmit.unarchive(experiment_id):
+            if not Autosubmit.unarchive(experiment_id,True):
                 Log.critical("The experiment cannot be picked up")
                 return False
             Log.info("Local files/dirs have been successfully picked up")
@@ -2230,7 +2234,7 @@ class Autosubmit:
         return True
 
     @staticmethod
-    def unarchive(experiment_id):
+    def unarchive(experiment_id,migrate=False):
         """
         Unarchives an experiment: uncompress folder from tar.gz and moves to experiments root folder
 
@@ -2272,12 +2276,12 @@ class Autosubmit:
             return False
 
         Log.info("Unpacking finished")
-
-        try:
-            os.remove(archive_path)
-        except Exception as e:
-            Log.error("Can not remove archived file folder: {0}".format(e))
-            return False
+        if not migrate:
+            try:
+                os.remove(archive_path)
+            except Exception as e:
+                Log.error("Can not remove archived file folder: {0}".format(e))
+                return False
 
         Log.result("Experiment {0} unarchived successfully", experiment_id)
         return True

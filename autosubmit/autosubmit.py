@@ -1599,7 +1599,8 @@ class Autosubmit:
                         #find /home/bsc32/bsc32070/dummy3 -type l -lname '/*' -printf ' ln -sf "$(realpath -s --relative-to="%p" $(readlink "%p")")" \n' > script.sh #todo
 
                         Log.info("Converting the absolute symlinks into relatives on platform {0} ", platform) #dummy
-                        command= "find " + p.root_dir +" -type l -lname '/*' -printf ' ln -sf  \"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" \\n' "
+                        realpath
+                        command= "find " + p.root_dir +" -type l -lname \'/*\' -printf 'ln -sf %p \"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" \\n' "
                         try:
                             p.send_command(command,True)
                         except IOError:

@@ -1599,10 +1599,16 @@ class Autosubmit:
                         #find /home/bsc32/bsc32070/dummy3 -type l -lname '/*' -printf ' ln -sf "$(realpath -s --relative-to="%p" $(readlink "%p")")" \n' > script.sh #todo
 
                         Log.info("Converting the absolute symlinks into relatives on platform {0} ", platform) #dummy
-
-                        command= "find " + p.root_dir +" -type l -lname \'/*\' -printf 'ln -sf %p \"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" \\n' "
+                        #command = "find " + p.root_dir + " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n'"
+                        if p.root_dir.find(experiment_id) < 0:
+                            Log.error("(Aborting) it is not safe to change symlinks in {0} due an invalid expid",p.root_dir)
+                            error=True
+                            break
+                        command = "find " + p.root_dir + " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n' "
                         try:
                             p.send_command(command,True)
+                            if p.get_ssh_output().startswith("var="):
+                                p.send_command(p.get_ssh_output(),True)
                         except IOError:
                             Log.debug("The platform {0} does not contain absolute symlinks", platform)
                         except BaseException:

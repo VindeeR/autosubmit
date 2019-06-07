@@ -1606,9 +1606,9 @@ class Autosubmit:
                             break
                         command = "find " + p.root_dir + " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n' "
                         try:
-                            p.send_command(command,True)
+                            p.send_command(command,False)
                             if p.get_ssh_output().startswith("var="):
-                                p.send_command(p.get_ssh_output(),True)
+                                p.send_command(p.get_ssh_output(),False)
                         except IOError:
                             Log.debug("The platform {0} does not contain absolute symlinks", platform)
                         except BaseException:

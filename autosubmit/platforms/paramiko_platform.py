@@ -3,7 +3,7 @@ from time import sleep
 import os
 import paramiko
 import datetime
-
+import time
 from bscearth.utils.log import Log
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_common import Type
@@ -127,7 +127,7 @@ class ParamikoPlatform(Platform):
         try:
             ftp = self._ssh.open_sftp()
             ftp.put(os.path.join(self.tmp_path, filename), os.path.join(self.get_files_path(), filename))
-            ftp.chmod(os.path.join(self.get_files_path(), filename),
+            ftp.chmod(os.path.join(self.get_files_path(), os.path.basename(filename)),
                       os.stat(os.path.join(self.tmp_path, filename)).st_mode)
             ftp.close()
             return True
@@ -317,19 +317,29 @@ class ParamikoPlatform(Platform):
                 return None
         try:
             stdin, stdout, stderr = self._ssh.exec_command(command)
-            stderr_readlines = stderr.readlines()
             self._ssh_output = stdout.read().rstrip()
-            if stdout.channel.recv_exit_status() == 0:
-                if len(stderr_readlines) > 0 and not ignore_log:
-                    Log.warning('Command {0} in {1} warning: {2}', command, self.host, '\n'.join(stderr_readlines))
-                Log.debug('Command {0} in {1} successful with out message: {2}', command, self.host, self._ssh_output)
-                return True
+            timeout=30
+            start = time.time()
+            while time.time() < start + timeout:
+                if stdout.channel.exit_status_ready():
+                    break
+                time.sleep(1)
             else:
-                if not ignore_log:
-                    Log.error('Command {0} in {1} failed with error message: {2}',
+                stderr_readlines = stderr.readlines()
+                if len(stderr_readlines) > 0:
+                    Log.warning('Command {0} in {1} failed with error message: {2}',
                             command, self.host, '\n'.join(stderr_readlines))
+                else:
+                    Log.warning('Command {0} in {1} timeout',command, self.host)
                 return False
+
+            stderr_readlines = stderr.readlines()
+            if len(stderr_readlines) > 0 and not ignore_log:
+                Log.warning('Command {0} in {1} warning: {2}', command, self.host, '\n'.join(stderr_readlines))
+            Log.debug('Command {0} in {1} successful with out message: {2}', command, self.host, self._ssh_output)
+            return True
         except BaseException as e:
+
             Log.error('Can not send command {0} to {1}: {2}', command, self.host, e.message)
             return False
 

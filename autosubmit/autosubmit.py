@@ -1596,7 +1596,7 @@ class Autosubmit:
                     if p.root_dir != p.temp_dir or len(p.temp_dir) > 0:
                         already_moved.add(p.temp_dir)
                         Log.info("Converting abs symlink to relative")
-                        #find /home/bsc32/bsc32070/dummy3 -type l -lname '/*' -printf ' ln -sf "$(realpath -s --relative-to="%p" $(readlink "%p")")" \n' > script.sh #todo
+                        #find /home/bsc32/bsc32070/dummy3 -type l -lname '/*' -printf ' ln -sf "$(realpath -s --relative-to="%p" $(readlink "%p")")" \n' > script.sh
 
                         Log.info("Converting the absolute symlinks into relatives on platform {0} ", platform) #dummy
                         #command = "find " + p.root_dir + " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n'"
@@ -1617,7 +1617,8 @@ class Autosubmit:
                             break
 
                         Log.info("Moving remote files/dirs on {0}", platform)
-                        Log.info("Moving from {0} to {1}", os.path.join(p.root_dir),os.path.join(p.temp_dir, experiment_id))
+
+                        Log.info("Moving from {0} to {1}",p.root_dir,os.path.join(p.temp_dir, experiment_id))
                         try:
                             if not p.move_file(p.root_dir, os.path.join(p.temp_dir, experiment_id),True):
                                 Log.critical("The files/dirs on {0} cannot be moved to {1}.", p.root_dir,

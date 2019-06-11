@@ -4,6 +4,7 @@ import os
 import paramiko
 import datetime
 import time
+import select
 from bscearth.utils.log import Log
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_common import Type
@@ -127,7 +128,7 @@ class ParamikoPlatform(Platform):
         try:
             ftp = self._ssh.open_sftp()
             ftp.put(os.path.join(self.tmp_path, filename), os.path.join(self.get_files_path(), filename))
-            ftp.chmod(os.path.join(self.get_files_path(), os.path.basename(filename)),
+            ftp.chmod(os.path.join(self.get_files_path(), filename),
                       os.stat(os.path.join(self.tmp_path, filename)).st_mode)
             ftp.close()
             return True
@@ -192,6 +193,8 @@ class ParamikoPlatform(Platform):
             ftp = self._ssh.open_sftp()
             ftp.remove(os.path.join(self.get_files_path(), filename))
             ftp.close()
+            return True
+        except IOError:
             return True
         except BaseException as e:
             Log.debug('Could not remove file {0}'.format(os.path.join(self.get_files_path(), filename)))
@@ -301,7 +304,6 @@ class ParamikoPlatform(Platform):
         :rtype: str
         """
         raise NotImplementedError
-
     def send_command(self, command, ignore_log=False):
         """
         Sends given command to HPC
@@ -311,35 +313,57 @@ class ParamikoPlatform(Platform):
         :return: True if executed, False if failed
         :rtype: bool
         """
-         
+
         if self._ssh is None:
             if not self.connect():
                 return None
+        timeout = 120.0
         try:
-            stdin, stdout, stderr = self._ssh.exec_command(command)
-            self._ssh_output = stdout.read().rstrip()
-            timeout=30
-            start = time.time()
-            while time.time() < start + timeout:
-                if stdout.channel.exit_status_ready():
-                    break
-                time.sleep(1)
-            else:
-                stderr_readlines = stderr.readlines()
-                if len(stderr_readlines) > 0:
-                    Log.warning('Command {0} in {1} failed with error message: {2}',
-                            command, self.host, '\n'.join(stderr_readlines))
-                else:
-                    Log.warning('Command {0} in {1} timeout',command, self.host)
-                return False
 
-            stderr_readlines = stderr.readlines()
-            if len(stderr_readlines) > 0 and not ignore_log:
+            stdin, stdout, stderr = self._ssh.exec_command(command)
+            channel = stdout.channel
+            channel.settimeout(timeout)
+            stdin.close()
+            channel.shutdown_write()
+            stdout_chunks = []
+            stdout_chunks.append(stdout.channel.recv(len(stdout.channel.in_buffer)))
+            stderr_readlines = []
+
+            while not channel.closed or channel.recv_ready() or channel.recv_stderr_ready():
+                # stop if channel was closed prematurely, and there is no data in the buffers.
+                got_chunk = False
+                readq, _, _ = select.select([stdout.channel], [], [], timeout)
+                for c in readq:
+                    if c.recv_ready():
+                        stdout_chunks.append(stdout.channel.recv(len(c.in_buffer)))
+                        got_chunk = True
+                    if c.recv_stderr_ready():
+                        # make sure to read stderr to prevent stall
+                        stderr_readlines.append(stderr.channel.recv_stderr(len(c.in_stderr_buffer)))
+                        got_chunk = True
+                if not got_chunk and stdout.channel.exit_status_ready() and not stderr.channel.recv_stderr_ready() and not stdout.channel.recv_ready():
+                    # indicate that we're not going to read from this channel anymore
+                    stdout.channel.shutdown_read()
+                    # close the channel
+                    stdout.channel.close()
+                    break
+            # close all the pseudofiles
+            stdout.close()
+            stderr.close()
+            self._ssh_output = ""
+            if len(stdout_chunks) > 0:
+                for s in stdout_chunks:
+                    if s is not None:
+                        self._ssh_output += str(s)
+
+
+            if len(stderr_readlines) > 0:
                 Log.warning('Command {0} in {1} warning: {2}', command, self.host, '\n'.join(stderr_readlines))
+                if len(stdout_chunks) <= 0:
+                    return False
             Log.debug('Command {0} in {1} successful with out message: {2}', command, self.host, self._ssh_output)
             return True
         except BaseException as e:
-
             Log.error('Can not send command {0} to {1}: {2}', command, self.host, e.message)
             return False
 

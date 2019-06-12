@@ -274,11 +274,11 @@ class ParamikoPlatform(Platform):
             Log.error('Can not get job status for job id ({0}), retrying in 10 sec', job_id)
             sleep(10)
 
-        if retries >= 0:
+        if retries > 0:
             Log.debug('Successful check job command: {0}', self.get_checkjob_cmd(job_id))
-            job_status = self.parse_job_output(self.get_ssh_output())
+            job_status = self.parse_job_output(self.get_ssh_output()).strip("\n")
             # URi: define status list in HPC Queue Class
-            if job_status in self.job_status['COMPLETED'] or retries == 0:
+            if job_status in self.job_status['COMPLETED']:
                 job_status = Status.COMPLETED
             elif job_status in self.job_status['RUNNING']:
                 job_status = Status.RUNNING
@@ -335,13 +335,13 @@ class ParamikoPlatform(Platform):
                 readq, _, _ = select.select([stdout.channel], [], [], timeout)
                 for c in readq:
                     if c.recv_ready():
-                        chunk_read=stdout.channel.recv(len(c.in_buffer)).rstrip()
+                        chunk_read=stdout.channel.recv(len(c.in_buffer))
                         if chunk_read != "\n":
                             stdout_chunks.append(chunk_read)
                         got_chunk = True
                     if c.recv_stderr_ready():
                         # make sure to read stderr to prevent stall
-                        chunk_read = stderr.channel.recv_stderr(len(c.in_stderr_buffer)).rstrip()
+                        chunk_read = stderr.channel.recv_stderr(len(c.in_stderr_buffer))
                         if chunk_read != "\n":
                             stderr_readlines.append(chunk_read)
                         got_chunk = True

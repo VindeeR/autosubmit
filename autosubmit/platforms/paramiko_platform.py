@@ -335,11 +335,15 @@ class ParamikoPlatform(Platform):
                 readq, _, _ = select.select([stdout.channel], [], [], timeout)
                 for c in readq:
                     if c.recv_ready():
-                        stdout_chunks.append(stdout.channel.recv(len(c.in_buffer)))
+                        chunk_read=stdout.channel.recv(len(c.in_buffer)).rstrip()
+                        if chunk_read != "\n":
+                            stdout_chunks.append(chunk_read)
                         got_chunk = True
                     if c.recv_stderr_ready():
                         # make sure to read stderr to prevent stall
-                        stderr_readlines.append(stderr.channel.recv_stderr(len(c.in_stderr_buffer)))
+                        chunk_read = stderr.channel.recv_stderr(len(c.in_stderr_buffer)).rstrip()
+                        if chunk_read != "\n":
+                            stderr_readlines.append(chunk_read)
                         got_chunk = True
                 if not got_chunk and stdout.channel.exit_status_ready() and not stderr.channel.recv_stderr_ready() and not stdout.channel.recv_ready():
                     # indicate that we're not going to read from this channel anymore
@@ -354,7 +358,7 @@ class ParamikoPlatform(Platform):
             if len(stdout_chunks) > 0:
                 for s in stdout_chunks:
                     if s is not None:
-                        self._ssh_output += str(s)
+                        self._ssh_output += s
 
 
             if len(stderr_readlines) > 0:

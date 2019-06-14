@@ -697,9 +697,13 @@ class Job(object):
         :return: script code
         :rtype: str
         """
+
         if self.parameters['PROJECT_TYPE'].lower() != "none":
-            template_file = open(os.path.join(as_conf.get_project_dir(), self.file), 'r')
-            template = template_file.read()
+            try:
+                template_file = open(os.path.join(as_conf.get_project_dir(), self.file), 'r')
+                template = template_file.read()
+            except IOError as e:
+                return False
         else:
             if self.type == Type.BASH:
                 template = 'sleep 5'
@@ -782,17 +786,20 @@ class Job(object):
         :rtype: str
         """
         parameters = self.parameters
-        template_content = self.update_content(as_conf)
-        for key, value in parameters.items():
-            template_content = re.sub('%(?<!%%)' + key + '%(?!%%)', str(parameters[key]), template_content)
-        if self.undefined_variables:
-            for variable in self.undefined_variables:
-                template_content = re.sub('%(?<!%%)' + variable + '%(?!%%)', '', template_content)
-        template_content = template_content.replace("%%", "%")
-        script_name = '{0}.cmd'.format(self.name)
-        open(os.path.join(self._tmp_path, script_name), 'w').write(template_content)
-        os.chmod(os.path.join(self._tmp_path, script_name), 0o775)
-        return script_name
+        if self.update_content(as_conf) is not False:
+            template_content = self.update_content(as_conf)
+            for key, value in parameters.items():
+                template_content = re.sub('%(?<!%%)' + key + '%(?!%%)', str(parameters[key]), template_content)
+            if self.undefined_variables:
+                for variable in self.undefined_variables:
+                    template_content = re.sub('%(?<!%%)' + variable + '%(?!%%)', '', template_content)
+            template_content = template_content.replace("%%", "%")
+            script_name = '{0}.cmd'.format(self.name)
+            open(os.path.join(self._tmp_path, script_name), 'w').write(template_content)
+            os.chmod(os.path.join(self._tmp_path, script_name), 0o775)
+            return script_name
+        else:
+            return False
 
     def create_wrapped_script(self, as_conf, wrapper_tag='wrapped'):
         parameters = self.parameters
@@ -808,7 +815,7 @@ class Job(object):
         os.chmod(os.path.join(self._tmp_path, script_name), 0o775)
         return script_name
 
-    def check_script(self, as_conf, parameters,only_generate=False):
+    def check_script(self, as_conf, parameters,show_logs=False):
         """
         Checks if script is well formed
 
@@ -816,28 +823,34 @@ class Job(object):
         :type parameters: dict
         :param as_conf: configuration file
         :type as_conf: AutosubmitConfig
+        :param show_logs: Display output
+        :type show_logs: Bool
         :return: true if not problem has been detected, false otherwise
         :rtype: bool
         """
+
+
+        out=False
         parameters = self.update_parameters(as_conf, parameters)
         template_content = self.update_content(as_conf)
+        if template_content is not False:
 
-        variables = re.findall('%(?<!%%)\w+%(?!%%)', template_content)
-        variables = [variable[1:-1] for variable in variables]
-        out = set(parameters).issuperset(set(variables))
+            variables = re.findall('%(?<!%%)\w+%(?!%%)', template_content)
+            variables = [variable[1:-1] for variable in variables]
+            out = set(parameters).issuperset(set(variables))
 
-        # Check if the variables in the templates are defined in the configurations
-        if not out:
-            self.undefined_variables = set(variables) - set(parameters)
-            if not only_generate:
-                Log.warning("The following set of variables to be substituted in template script is not part of "
-                        "parameters set, and will be replaced by a blank value: {0}", str(self.undefined_variables))
+            # Check if the variables in the templates are defined in the configurations
+            if not out:
+                self.undefined_variables = set(variables) - set(parameters)
+                if show_logs:
+                    Log.warning("The following set of variables to be substituted in template script is not part of "
+                            "parameters set, and will be replaced by a blank value: {0}", str(self.undefined_variables))
 
-        # Check which variables in the proj.conf are not being used in the templates
-        if not set(variables).issuperset(set(parameters)):
-            Log.debug("The following set of variables are not being used in the templates: {0}",
-                        str(set(parameters)-set(variables)))
-
+            # Check which variables in the proj.conf are not being used in the templates
+            if show_logs:
+                if not set(variables).issuperset(set(parameters)):
+                    Log.debug("The following set of variables are not being used in the templates: {0}",
+                                str(set(parameters)-set(variables)))
         return out
 
     def write_submit_time(self):

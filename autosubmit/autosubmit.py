@@ -852,6 +852,7 @@ class Autosubmit:
             # noinspection PyTypeChecker
             platforms_to_test.add(job.platform)
         ## case setstatus
+        job_list.check_scripts(as_conf)
         job_list.update_list(as_conf, False)
         Autosubmit._load_parameters(as_conf, job_list, submitter.platforms)
         while job_list.get_active():

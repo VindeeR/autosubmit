@@ -1581,20 +1581,24 @@ class Autosubmit:
                     error = True
                     break
 
-                as_conf.set_new_user(platform, as_conf.get_migrate_user_to(platform))
                 if as_conf.get_migrate_project_to(platform):
                     Log.info("Project in platform configuration file successfully updated to {0}",
                              as_conf.get_migrate_user_to(platform))
                     backup_conf.append([platform, as_conf.get_current_user(platform), as_conf.get_current_project(platform)])
+                    as_conf.set_new_user(platform, as_conf.get_migrate_user_to(platform))
+
                     as_conf.set_new_project(platform, as_conf.get_migrate_project_to(platform))
 
                 else:
                     Log.warning("optional PROJECT_TO directive not found. The directive PROJECT will remain unchanged")
                     backup_conf.append([platform, as_conf.get_current_user(platform), None])
+                    as_conf.set_new_user(platform, as_conf.get_migrate_user_to(platform))
+
                 Log.info("Moving local files/dirs")
                 p = submitter.platforms[platform]
                 if p.temp_dir not in already_moved:
-                    if p.root_dir != p.temp_dir or len(p.temp_dir) > 0:
+                    if p.root_dir != p.temp_dir and len(p.temp_dir) > 0:
+
                         already_moved.add(p.temp_dir)
                         Log.info("Converting abs symlink to relative")
                         #find /home/bsc32/bsc32070/dummy3 -type l -lname '/*' -printf ' ln -sf "$(realpath -s --relative-to="%p" $(readlink "%p")")" \n' > script.sh
@@ -1607,9 +1611,16 @@ class Autosubmit:
                             break
                         command = "find " + p.root_dir + " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n' "
                         try:
-                            p.send_command(command,False)
-                            if p.get_ssh_output().startswith("var="):
-                                p.send_command(p.get_ssh_output(),False)
+                             p.send_command(command,False)
+                             if p.get_ssh_output().startswith("var="):
+                                convertLinkPath=os.path.join(BasicConfig.LOCAL_ROOT_DIR, experiment_id, BasicConfig.LOCAL_TMP_DIR,
+                                  'convertLink.sh')
+                                with open(convertLinkPath, 'w') as convertLinkFile:
+                                    convertLinkFile.write(p.get_ssh_output())
+                                p.send_file("convertLink.sh")
+                                convertLinkPathRemote=os.path.join(p.remote_log_dir,"convertLink.sh")
+                                command = "chmod +x " + convertLinkPathRemote +" && " + convertLinkPathRemote + " && rm " + convertLinkPathRemote
+                                p.send_command(command,True)
                         except IOError:
                             Log.debug("The platform {0} does not contain absolute symlinks", platform)
                         except BaseException:
@@ -1617,29 +1628,31 @@ class Autosubmit:
                             error = True
                             break
 
-                        Log.info("Moving remote files/dirs on {0}", platform)
-
-                        Log.info("Moving from {0} to {1}",p.root_dir,os.path.join(p.temp_dir, experiment_id))
                         try:
+                            Log.info("Moving remote files/dirs on {0}", platform)
                             if not p.move_file(p.root_dir, os.path.join(p.temp_dir, experiment_id),True):
                                 Log.critical("The files/dirs on {0} cannot be moved to {1}.", p.root_dir,
                                              os.path.join(p.temp_dir, experiment_id))
                                 error=True
                                 break
+                            Log.info("Moved from {0} to {1}", p.root_dir, os.path.join(p.temp_dir, experiment_id))
                         except (IOError,BaseException):
 
                             Log.critical("The files/dirs on {0} cannot be moved to {1}.", p.root_dir,
                                          os.path.join(p.temp_dir, experiment_id))
                             error=True
                             break
-                        backup_files.append(platform)
 
+                        backup_files.append(platform)
                 Log.result("Files/dirs on {0} have been successfully offered", platform)
                 Log.result("[{0}] from platforms configuration OK", platform)
 
             if error:
                 Log.critical("The experiment cannot be offered, reverting changes")
-
+                as_conf = AutosubmitConfig(experiment_id, BasicConfig, ConfigParserFactory())
+                if not as_conf.check_conf_files():
+                    Log.critical('Can not proceed with invalid configuration')
+                    return False
                 for platform in backup_files:
                     p = submitter.platforms[platform]
                     p.move_file(os.path.join(p.temp_dir, experiment_id),p.root_dir,True)

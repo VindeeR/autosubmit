@@ -1554,6 +1554,7 @@ class Autosubmit:
         Log.set_file(log_file)
 
         if offer:
+
             Log.info('Migrating experiment {0}'.format(experiment_id))
             as_conf = AutosubmitConfig(experiment_id, BasicConfig, ConfigParserFactory())
             if not as_conf.check_conf_files():
@@ -1574,6 +1575,7 @@ class Autosubmit:
 
             error=False
             for platform in platforms:
+
                 #Checks
                 Log.info("Checking [{0}] from platforms configuration...",platform)
                 if not as_conf.get_migrate_user_to(platform):
@@ -1596,6 +1598,7 @@ class Autosubmit:
 
                 Log.info("Moving local files/dirs")
                 p = submitter.platforms[platform]
+                debug =  os.path.join(p.root_dir, experiment_id)
                 if p.temp_dir not in already_moved:
                     if p.root_dir != p.temp_dir and len(p.temp_dir) > 0:
 
@@ -1699,6 +1702,8 @@ class Autosubmit:
 
             platforms = filter(lambda x: x not in ['local', 'LOCAL'], submitter.platforms)
             already_moved = set()
+            error = False
+            backup_files =  []
             for platform in platforms:
                 p = submitter.platforms[platform]
                 if p.temp_dir not in already_moved:
@@ -1710,16 +1715,23 @@ class Autosubmit:
                             p.send_command("cp -rP " + os.path.join(p.temp_dir, experiment_id) + " " +p.root_dir)
                         except (IOError, BaseException):
                             Autosubmit.archive(experiment_id,False)
+                            error = True
                             Log.critical("The experiment cannot be picked,reverting changes.")
 
                             Log.critical("The files/dirs on {0} cannot be copied to {1}.",
                                          os.path.join(p.temp_dir, experiment_id), p.root_dir)
-                            return False
+                            break
+                        backup_files.append(platform)
 
-
-                        Log.result("Files/dirs on {0} have been successfully picked up", platform)
-            Log.result("The experiment has been successfully picked up.")
-        return True
+            if error:
+                # for platform in backup_files:
+                #     p = submitter.platforms[platform]
+                #     p.send_command("rm -R " + p.root_dir )
+                return False
+            else:
+                Log.result("Files/dirs on {0} have been successfully picked up", platform)
+                Log.result("The experiment has been successfully picked up.")
+                return True
 
     @staticmethod
     def check(experiment_id, notransitive=False):

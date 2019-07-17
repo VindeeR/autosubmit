@@ -1682,7 +1682,7 @@ class Autosubmit:
         elif pickup:
             Log.info('Migrating experiment {0}'.format(experiment_id))
             Log.info("Moving local files/dirs")
-            if not Autosubmit.unarchive(experiment_id,True):
+            if not Autosubmit.unarchive(experiment_id):
                 Log.critical("The experiment cannot be picked up")
                 return False
             Log.info("Local files/dirs have been successfully picked up")
@@ -1702,32 +1702,23 @@ class Autosubmit:
             for platform in platforms:
                 p = submitter.platforms[platform]
                 if p.temp_dir not in already_moved:
-                    if  p.root_dir != p.temp_dir or len(p.temp_dir) > 0:
+                    if  p.root_dir != p.temp_dir and len(p.temp_dir) > 0:
                         already_moved.add(p.temp_dir)
-                Log.info("Copying remote files/dirs on {0}", platform)
+                        Log.info("Copying remote files/dirs on {0}", platform)
+                        Log.info("Copying from {0} to {1}", os.path.join(p.temp_dir, experiment_id),p.root_dir)
+                        try:
+                            p.send_command("cp -rP " + os.path.join(p.temp_dir, experiment_id) + " " +p.root_dir)
+                        except (IOError, BaseException):
+                            Autosubmit.archive(experiment_id,False)
+                            Log.critical("The experiment cannot be picked,reverting changes.")
 
-                Log.info("Copying from {0} to {1}", os.path.join(p.temp_dir, experiment_id),p.root_dir)
-                try:
-                    if not p.send_command("cp -rP " + os.path.join(p.temp_dir, experiment_id) + " " +p.root_dir):
-                        Autosubmit.archive(experiment_id)
-                        Log.critical("The experiment cannot be picked,reverting changes.")
-                        Log.critical("The files/dirs on {0} cannot be copied to {1}.",
-                                     os.path.join(p.temp_dir, experiment_id), p.root_dir)
-                        return False
-
-                except (IOError, BaseException):
-                    Autosubmit.archive(experiment_id)
-                    Log.critical("The experiment cannot be picked,reverting changes.")
-
-                    Log.critical("The files/dirs on {0} cannot be copied to {1}.",
-                                 os.path.join(p.temp_dir, experiment_id), p.root_dir)
-                    return False
+                            Log.critical("The files/dirs on {0} cannot be copied to {1}.",
+                                         os.path.join(p.temp_dir, experiment_id), p.root_dir)
+                            return False
 
 
-                Log.result("Files/dirs on {0} have been successfully picked up", platform)
-
+                        Log.result("Files/dirs on {0} have been successfully picked up", platform)
             Log.result("The experiment has been successfully picked up.")
-
         return True
 
     @staticmethod
@@ -2256,7 +2247,7 @@ class Autosubmit:
         return True
 
     @staticmethod
-    def unarchive(experiment_id,migrate=False):
+    def unarchive(experiment_id):
         """
         Unarchives an experiment: uncompress folder from tar.gz and moves to experiments root folder
 
@@ -2298,12 +2289,12 @@ class Autosubmit:
             return False
 
         Log.info("Unpacking finished")
-        if not migrate:
-            try:
-                os.remove(archive_path)
-            except Exception as e:
-                Log.error("Can not remove archived file folder: {0}".format(e))
-                return False
+
+        try:
+            os.remove(archive_path)
+        except Exception as e:
+            Log.error("Can not remove archived file folder: {0}".format(e))
+            return False
 
         Log.result("Experiment {0} unarchived successfully", experiment_id)
         return True

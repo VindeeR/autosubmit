@@ -1724,9 +1724,9 @@ class Autosubmit:
                         backup_files.append(platform)
 
             if error:
-                # for platform in backup_files:
-                #     p = submitter.platforms[platform]
-                #     p.send_command("rm -R " + p.root_dir )
+                for platform in backup_files:
+                    p = submitter.platforms[platform]
+                    p.send_command("rm -R " + p.root_dir )
                 return False
             else:
                 Log.result("Files/dirs on {0} have been successfully picked up", platform)

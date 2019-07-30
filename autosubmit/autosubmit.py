@@ -1405,7 +1405,7 @@ class Autosubmit:
                 return False
 
             project_type = autosubmit_config.get_project_type()
-            if project_type == "git":
+            if project_type == "git" and os.path.exists(autosubmit_config.get_project_dir()):
                 autosubmit_config.check_proj()
                 Log.info("Registering commit SHA...")
                 autosubmit_config.set_git_project_commit(autosubmit_config)
@@ -1578,15 +1578,20 @@ class Autosubmit:
                     break
                 if as_conf.get_migrate_project_to(platform):
                     Log.info("Project in platform configuration file successfully updated to {0}",
-                             as_conf.get_migrate_user_to(platform))
+                             as_conf.get_current_project(platform))
                     backup_conf.append([platform, as_conf.get_current_user(platform), as_conf.get_current_project(platform)])
                     as_conf.set_new_user(platform, as_conf.get_migrate_user_to(platform))
 
                     as_conf.set_new_project(platform, as_conf.get_migrate_project_to(platform))
                 else:
-                    Log.warning("optional PROJECT_TO directive not found. The directive PROJECT will remain unchanged")
+                    Log.warning("[OPTIONAL] PROJECT_TO directive not found. The directive PROJECT will remain unchanged")
                     backup_conf.append([platform, as_conf.get_current_user(platform), None])
                     as_conf.set_new_user(platform, as_conf.get_migrate_user_to(platform))
+                if as_conf.get_migrate_host_to(platform) is not None:
+                    Log.info("Host in platform configuration file successfully updated to {0}",as_conf.get_migrate_host_to(platform))
+                    as_conf.set_new_host(platform, as_conf.get_migrate_host_to(platform))
+                else:
+                    Log.warning("[OPTIONAL] HOST_TO directive not found. The directive HOST will remain unchanged")
 
                 Log.info("Moving local files/dirs")
                 p = submitter.platforms[platform]
@@ -1652,6 +1657,9 @@ class Autosubmit:
                     as_conf.set_new_user(platform[0], platform[1])
                     if platform[2] is not None:
                         as_conf.set_new_project(platform[0], platform[2])
+                    if as_conf.get_migrate_host_to(platform) is not None:
+                        as_conf.set_new_host(platform[0], as_conf.get_migrate_host_to(platform))
+
 
                 return False
             else:
@@ -1718,7 +1726,6 @@ class Autosubmit:
                 for platform in backup_files:
                     p = submitter.platforms[platform]
                     p.send_command("rm -R " + p.temp_dir, True)
-                Log.result("Files/dirs on {0} have been successfully picked up")
                 Log.result("The experiment has been successfully picked up.")
                 Log.info("Refreshing the experiment.")
                 Autosubmit.refresh(experiment_id,False,False)

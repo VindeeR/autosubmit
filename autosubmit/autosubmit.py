@@ -1579,14 +1579,20 @@ class Autosubmit:
                 if as_conf.get_migrate_project_to(platform):
                     Log.info("Project in platform configuration file successfully updated to {0}",
                              as_conf.get_current_project(platform))
+                    as_conf.get_current_project(platform)
                     backup_conf.append([platform, as_conf.get_current_user(platform), as_conf.get_current_project(platform)])
                     as_conf.set_new_user(platform, as_conf.get_migrate_user_to(platform))
 
                     as_conf.set_new_project(platform, as_conf.get_migrate_project_to(platform))
+                    as_conf.get_current_project(platform)
+                    as_conf.get_current_user(platform)
                 else:
-                    Log.warning("[OPTIONAL] PROJECT_TO directive not found. The directive PROJECT will remain unchanged")
+                    Log.info("[OPTIONAL] PROJECT_TO directive not found. The directive PROJECT will remain unchanged")
                     backup_conf.append([platform, as_conf.get_current_user(platform), None])
                     as_conf.set_new_user(platform, as_conf.get_migrate_user_to(platform))
+                    as_conf.get_current_project(platform)
+                    as_conf.get_current_user(platform)
+
                 if as_conf.get_migrate_host_to(platform) is not None:
                     Log.info("Host in platform configuration file successfully updated to {0}",as_conf.get_migrate_host_to(platform))
                     as_conf.set_new_host(platform, as_conf.get_migrate_host_to(platform))

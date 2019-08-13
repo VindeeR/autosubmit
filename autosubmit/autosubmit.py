@@ -1733,8 +1733,8 @@ class Autosubmit:
                     p = submitter.platforms[platform]
                     p.send_command("rm -R " + p.temp_dir, True)
                 Log.result("The experiment has been successfully picked up.")
-                Log.info("Refreshing the experiment.")
-                Autosubmit.refresh(experiment_id,False,False)
+                #Log.info("Refreshing the experiment.")
+                #Autosubmit.refresh(experiment_id,False,False)
                 return True
 
     @staticmethod

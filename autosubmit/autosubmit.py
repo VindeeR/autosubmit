@@ -1663,13 +1663,13 @@ class Autosubmit:
                     as_conf.set_new_user(platform[0], platform[1])
                     if platform[2] is not None:
                         as_conf.set_new_project(platform[0], platform[2])
-                    if as_conf.get_migrate_host_to(platform) is not None:
-                        as_conf.set_new_host(platform[0], as_conf.get_migrate_host_to(platform))
+                    if as_conf.get_migrate_host_to(platform[0]) is not None:
+                        as_conf.set_new_host(platform[0], as_conf.get_migrate_host_to(platform[0]))
 
 
                 return False
             else:
-                if not Autosubmit.archive(experiment_id):
+                if not Autosubmit.archive(experiment_id,False,False):
                     Log.critical("The experiment cannot be offered,reverting changes.")
                     for platform in backup_files:
                         p = submitter.platforms[platform]
@@ -1687,7 +1687,7 @@ class Autosubmit:
         elif pickup:
             Log.info('Migrating experiment {0}'.format(experiment_id))
             Log.info("Moving local files/dirs")
-            if not Autosubmit.unarchive(experiment_id):
+            if not Autosubmit.unarchive(experiment_id,False):
                 Log.critical("The experiment cannot be picked up")
                 return False
             Log.info("Local files/dirs have been successfully picked up")
@@ -1722,7 +1722,7 @@ class Autosubmit:
                     else:
                         Log.result("Files/dirs on {0} have been successfully picked up", platform)
             if error:
-                Autosubmit.archive(experiment_id, False)
+                Autosubmit.archive(experiment_id, False,False)
                 Log.critical("The experiment cannot be picked,reverting changes.")
                 for platform in backup_files:
                     p = submitter.platforms[platform]
@@ -2195,12 +2195,12 @@ class Autosubmit:
         return True
 
     @staticmethod
-    def archive(expid, clean=True):
+    def archive(expid, clean=True,compress=True):
         """
         Archives an experiment: call clean (if experiment is of version 3 or later), compress folder
         to tar.gz and moves to year's folder
 
-        :param clean:
+        :param clean,compress:
         :return:
         :param expid: experiment identifier
         :type expid: str
@@ -2243,10 +2243,16 @@ class Autosubmit:
             if not os.path.exists(year_path):
                 os.mkdir(year_path)
                 os.chmod(year_path, 0o775)
-            with tarfile.open(os.path.join(year_path, '{0}.tar.gz'.format(expid)), "w:gz") as tar:
+            if compress:
+                compress_type="w:gz"
+                output_filepath = '{0}.tar.gz'.format(expid)
+            else:
+                compress_type="w"
+                output_filepath='{0}.tar'.format(expid)
+            with tarfile.open(os.path.join(year_path, output_filepath), compress_type) as tar:
                 tar.add(exp_folder, arcname='')
                 tar.close()
-                os.chmod(os.path.join(year_path, '{0}.tar.gz'.format(expid)), 0o775)
+                os.chmod(os.path.join(year_path,output_filepath), 0o775)
         except Exception as e:
             Log.critical("Can not write tar file: {0}".format(e))
             return False
@@ -2257,14 +2263,14 @@ class Autosubmit:
             shutil.rmtree(exp_folder)
         except Exception as e:
             Log.critical("Can not remove experiments folder: {0}".format(e))
-            Autosubmit.unarchive(expid)
+            Autosubmit.unarchive(expid,compress)
             return False
 
         Log.result("Experiment archived successfully")
         return True
 
     @staticmethod
-    def unarchive(experiment_id):
+    def unarchive(experiment_id,compress=True):
         """
         Unarchives an experiment: uncompress folder from tar.gz and moves to experiments root folder
 
@@ -2282,8 +2288,15 @@ class Autosubmit:
         # Searching by year. We will store it on database
         year = datetime.datetime.today().year
         archive_path = None
+        if compress:
+            compress_type="r:gz"
+            output_pathfile = '{0}.tar.gz'.format(experiment_id)
+
+        else:
+            compress_type="r:"
+            output_pathfile='{0}.tar'.format(experiment_id)
         while year > 2000:
-            archive_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, str(year), '{0}.tar.gz'.format(experiment_id))
+            archive_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, str(year), output_pathfile)
             if os.path.exists(archive_path):
                 break
             year -= 1
@@ -2297,7 +2310,7 @@ class Autosubmit:
         Log.info("Unpacking tar file ... ")
         try:
             os.mkdir(exp_folder)
-            with tarfile.open(os.path.join(archive_path), "r:gz") as tar:
+            with tarfile.open(os.path.join(archive_path), compress_type) as tar:
                 tar.extractall(exp_folder)
                 tar.close()
         except Exception as e:

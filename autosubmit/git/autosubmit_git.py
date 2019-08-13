@@ -130,6 +130,11 @@ class AutosubmitGit:
         git_project_branch = as_conf.get_git_project_branch()
         git_project_commit = as_conf.get_git_project_commit()
         git_project_submodules = as_conf.get_submodules_list()
+        if as_conf.get_fetch_single_branch() != "true":
+            git_single_branch = False
+        else:
+            git_single_branch = True
+
         project_destination = as_conf.get_project_destination()
         project_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, as_conf.expid, BasicConfig.LOCAL_PROJ_DIR)
         git_path = as_conf.get_project_dir()
@@ -147,8 +152,13 @@ class AutosubmitGit:
         if git_project_commit:
             Log.info("Fetching {0} into {1}", git_project_commit + " " + git_project_origin, project_path)
             try:
-
-                command = "cd {0}; git clone {1} {4}; cd {2}; git checkout {3};".format(project_path,
+                if git_single_branch:
+                    command = "cd {0}; git clone  {1} {4}; cd {2}; git checkout {3};".format(project_path,
+                                                                                        git_project_origin, git_path,
+                                                                                        git_project_commit,
+                                                                                        project_destination)
+                else:
+                    command = "cd {0}; git clone {1} {4}; cd {2}; git checkout {3};".format(project_path,
                                                                                         git_project_origin, git_path,
                                                                                         git_project_commit,
                                                                                         project_destination)
@@ -170,11 +180,21 @@ class AutosubmitGit:
             try:
                 command = "cd {0}; ".format(project_path)
                 if git_project_submodules.__len__() <= 0:
-                    command += " git clone --recursive -b {0} {1} {2}".format(git_project_branch, git_project_origin,
-                                                                              project_destination)
+                    if not git_single_branch:
+                        command += " git clone --recursive -b {0} {1} {2}".format(git_project_branch, git_project_origin,
+                                                                                  project_destination)
+                    else:
+                        command += " git clone --single-branch  --depth=1 --recursive -b {0} {1} {2}".format(git_project_branch, git_project_origin,
+                                                                                  project_destination)
                 else:
-                    command += " git clone -b {0} {1} {2};".format(git_project_branch, git_project_origin,
+                    if not git_single_branch:
+                        command += " git clone -b {0} {1} {2};".format(git_project_branch, git_project_origin,
                                                                    project_destination)
+                    else:
+                        command += " git clone --single-branch --depth=1 -b {0} {1} {2};".format(git_project_branch,
+                                                                                       git_project_origin,
+                                                                                       project_destination)
+
                     command += " cd {0}; git submodule init;".format(project_destination)
                     for submodule in git_project_submodules:
                         command += " git submodule update {0};".format(submodule)

@@ -1560,6 +1560,7 @@ class Autosubmit:
         if offer:
             Log.info('Migrating experiment {0}'.format(experiment_id))
             as_conf = AutosubmitConfig(experiment_id, BasicConfig, ConfigParserFactory())
+
             if not as_conf.check_conf_files():
                 Log.critical('Can not proceed with invalid configuration')
                 return False
@@ -1641,8 +1642,8 @@ class Autosubmit:
                                              os.path.join(p.temp_dir, experiment_id))
                                 error=True
                                 break
+                            p.send_command("chmod 775 -R " + os.path.join(p.temp_dir, experiment_id))
                         except (IOError,BaseException):
-
                             Log.critical("The files/dirs on {0} cannot be moved to {1}.", p.root_dir,
                                          os.path.join(p.temp_dir, experiment_id))
                             error=True
@@ -1711,7 +1712,8 @@ class Autosubmit:
                         Log.info("Copying remote files/dirs on {0}", platform)
                         Log.info("Copying from {0} to {1}", os.path.join(p.temp_dir, experiment_id),p.root_dir)
                         try:
-                            p.send_command("cp -rP " + os.path.join(p.temp_dir, experiment_id) + " " +p.root_dir,True)
+                            p.send_command("cp -rP " + os.path.join(p.temp_dir, experiment_id) + " " +p.root_dir)
+                            p.send_command("chmod 755 -R "+p.root_dir)
                             Log.result("Files/dirs on {0} have been successfully picked up", platform)
                         except (IOError, BaseException):
                             error = True
@@ -1726,12 +1728,12 @@ class Autosubmit:
                 Log.critical("The experiment cannot be picked,reverting changes.")
                 for platform in backup_files:
                     p = submitter.platforms[platform]
-                    p.send_command("rm -R " + p.root_dir,True)
+                    p.send_command("rm -R " + p.root_dir)
                 return False
             else:
                 for platform in backup_files:
                     p = submitter.platforms[platform]
-                    p.send_command("rm -R " + p.temp_dir, True)
+                    p.send_command("rm -R " + p.temp_dir+"/"+experiment_id)
                 Log.result("The experiment has been successfully picked up.")
                 #Log.info("Refreshing the experiment.")
                 #Autosubmit.refresh(experiment_id,False,False)
@@ -2314,9 +2316,9 @@ class Autosubmit:
 
         # Creating tar file
         Log.info("Unpacking tar file ... ")
+        if not os.path.isdir(exp_folder):
+            os.mkdir(exp_folder)
         try:
-            if not os.stat(exp_folder):
-                os.mkdir(exp_folder)
             with tarfile.open(os.path.join(archive_path), compress_type) as tar:
                 tar.extractall(exp_folder)
                 tar.close()

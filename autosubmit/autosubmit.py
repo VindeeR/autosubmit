@@ -1500,7 +1500,10 @@ class Autosubmit:
                 job.status = Status.COMPLETED
                 Log.info("CHANGED job '{0}' status to COMPLETED".format(job.name))
                 if save:
-                    job.platform.get_logs_files(expid, job.remote_logs)
+                    try:
+                        job.platform.get_logs_files(expid, job.remote_logs)
+                    except:
+                        pass
             elif job.status != Status.SUSPENDED:
                 job.status = Status.WAITING
                 job.fail_count = 0
@@ -1638,7 +1641,6 @@ class Autosubmit:
                                              os.path.join(p.temp_dir, experiment_id))
                                 error=True
                                 break
-                            Log.info("Moved from {0} to {1}", p.root_dir, os.path.join(p.temp_dir, experiment_id))
                         except (IOError,BaseException):
 
                             Log.critical("The files/dirs on {0} cannot be moved to {1}.", p.root_dir,
@@ -1665,8 +1667,6 @@ class Autosubmit:
                         as_conf.set_new_project(platform[0], platform[2])
                     if as_conf.get_migrate_host_to(platform[0]) is not None:
                         as_conf.set_new_host(platform[0], as_conf.get_migrate_host_to(platform[0]))
-
-
                 return False
             else:
                 if not Autosubmit.archive(experiment_id,False,False):
@@ -2262,36 +2262,42 @@ class Autosubmit:
         try:
             shutil.rmtree(exp_folder)
         except Exception as e:
-            Log.critical("Can not remove experiments folder: {0}".format(e))
-            Autosubmit.unarchive(expid,compress)
-            return False
+            Log.warning("Can not fully remove experiments folder: {0}".format(e))
+            if os.stat(exp_folder):
+                try:
+                    tmp_folder = os.path.join(BasicConfig.LOCAL_ROOT_DIR, "tmp")
+                    tmp_expid = os.path.join(tmp_folder,expid+"_to_delete")
+                    os.rename(exp_folder,tmp_expid)
+                    Log.warning("Experiment folder renamed to: {0}".format(exp_folder+"_to_delete "))
+                except Exception as e:
+                    Log.critical("Can not remove or rename experiments folder: {0}".format(e))
+                    Autosubmit.unarchive(expid,compress,True)
+                    return False
 
         Log.result("Experiment archived successfully")
         return True
 
     @staticmethod
-    def unarchive(experiment_id,compress=True):
+    def unarchive(experiment_id, compress=True, overwrite=False):
         """
         Unarchives an experiment: uncompress folder from tar.gz and moves to experiments root folder
 
         :param experiment_id: experiment identifier
         :type experiment_id: str
+        :type compress: boolean
+        :type overwrite: boolean
         """
         BasicConfig.read()
         Log.set_file(os.path.join(BasicConfig.LOCAL_ROOT_DIR, "ASlogs", 'unarchive_{0}.log'.format(experiment_id)))
         exp_folder = os.path.join(BasicConfig.LOCAL_ROOT_DIR, experiment_id)
 
-        if os.path.exists(exp_folder):
-            Log.error("Experiment {0} is not archived", experiment_id)
-            return False
 
         # Searching by year. We will store it on database
         year = datetime.datetime.today().year
         archive_path = None
         if compress:
-            compress_type="r:gz"
+            compress_type = "r:gz"
             output_pathfile = '{0}.tar.gz'.format(experiment_id)
-
         else:
             compress_type="r:"
             output_pathfile='{0}.tar'.format(experiment_id)
@@ -2302,19 +2308,20 @@ class Autosubmit:
             year -= 1
 
         if year == 2000:
-            Log.critical("Experiment can not be located on archive")
+            Log.error("Experiment {0} is not archived", experiment_id)
             return False
         Log.info("Experiment located in {0} archive", year)
 
         # Creating tar file
         Log.info("Unpacking tar file ... ")
         try:
-            os.mkdir(exp_folder)
+            if not os.stat(exp_folder):
+                os.mkdir(exp_folder)
             with tarfile.open(os.path.join(archive_path), compress_type) as tar:
                 tar.extractall(exp_folder)
                 tar.close()
         except Exception as e:
-            os.rmdir(exp_folder)
+            shutil.rmtree(exp_folder,ignore_errors=True)
             Log.critical("Can not extract tar file: {0}".format(e))
             return False
 

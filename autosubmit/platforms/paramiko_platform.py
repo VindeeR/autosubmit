@@ -317,9 +317,11 @@ class ParamikoPlatform(Platform):
         if self._ssh is None:
             if not self.connect():
                 return None
-        timeout = 120.0
+        if "-rP" or "mv" or "find" or "convertLink" in command:
+            timeout = 3600.0  # Max Wait 1hour if the command is a copy or simbolic links ( migrate can trigger long times)
+        else:
+            timeout = 1200.0  # Max Wait 20min in the normal workflow.
         try:
-
             stdin, stdout, stderr = self._ssh.exec_command(command)
             channel = stdout.channel
             channel.settimeout(timeout)

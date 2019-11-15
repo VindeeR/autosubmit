@@ -1625,9 +1625,11 @@ class Autosubmit:
                                 with open(convertLinkPath, 'w') as convertLinkFile:
                                     convertLinkFile.write(p.get_ssh_output())
                                 p.send_file("convertLink.sh")
+
                                 convertLinkPathRemote=os.path.join(p.remote_log_dir,"convertLink.sh")
                                 command = "chmod +x " + convertLinkPathRemote +" && " + convertLinkPathRemote + " && rm " + convertLinkPathRemote
-                                p.send_command(command,True)
+                                Log.info("Converting absolute symlinks this can take a while depending on the experiment size ")
+                                p.send_command(command)
                         except IOError:
                             Log.debug("The platform {0} does not contain absolute symlinks", platform)
                         except BaseException:

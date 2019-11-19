@@ -1597,7 +1597,7 @@ class Autosubmit:
                     as_conf.get_current_project(platform)
                     as_conf.get_current_user(platform)
 
-                if as_conf.get_migrate_host_to(platform) is not None:
+                if as_conf.get_migrate_host_to(platform) != "none":
                     Log.info("Host in platform configuration file successfully updated to {0}",as_conf.get_migrate_host_to(platform))
                     as_conf.set_new_host(platform, as_conf.get_migrate_host_to(platform))
                 else:
@@ -1629,7 +1629,7 @@ class Autosubmit:
                                 convertLinkPathRemote=os.path.join(p.remote_log_dir,"convertLink.sh")
                                 command = "chmod +x " + convertLinkPathRemote +" && " + convertLinkPathRemote + " && rm " + convertLinkPathRemote
                                 Log.info("Converting absolute symlinks this can take a while depending on the experiment size ")
-                                p.send_command(command)
+                                p.send_command(command,True)
                         except IOError:
                             Log.debug("The platform {0} does not contain absolute symlinks", platform)
                         except BaseException:
@@ -1639,7 +1639,7 @@ class Autosubmit:
 
                         try:
                             Log.info("Moving remote files/dirs on {0}", platform)
-                            p.send_command("chmod 777 -R " + p.root_dir)
+                            p.send_command("chmod 770 -R " + p.root_dir)
                             if not p.move_file(p.root_dir, os.path.join(p.temp_dir, experiment_id),True):
                                 Log.critical("The files/dirs on {0} cannot be moved to {1}.", p.root_dir,
                                              os.path.join(p.temp_dir, experiment_id))
@@ -1668,8 +1668,9 @@ class Autosubmit:
                     as_conf.set_new_user(platform[0], platform[1])
                     if platform[2] is not None:
                         as_conf.set_new_project(platform[0], platform[2])
-                    if as_conf.get_migrate_host_to(platform[0]) is not None:
+                    if as_conf.get_migrate_host_to(platform[0]) != "none":
                         as_conf.set_new_host(platform[0], as_conf.get_migrate_host_to(platform[0]))
+
                 return False
             else:
                 if not Autosubmit.archive(experiment_id,False,False):

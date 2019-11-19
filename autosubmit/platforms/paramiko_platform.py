@@ -357,15 +357,20 @@ class ParamikoPlatform(Platform):
             stdout.close()
             stderr.close()
             self._ssh_output = ""
-            if len(stdout_chunks) > 0:
+            if len(stdout_chunks) > 0 :
                 for s in stdout_chunks:
                     if s is not None:
                         self._ssh_output += s
 
 
             if len(stderr_readlines) > 0:
-                Log.warning('Command {0} in {1} warning: {2}', command, self.host, '\n'.join(stderr_readlines))
+                if not ignore_log:
+                    if len(stdout_chunks) > 0:
+                        Log.warning('Command {0} in {1} warning: {2}', command, self.host, '\n'.join(stderr_readlines))
+                else:
+                    Log.debug('Command {0} in {1} warning: {2}', command, self.host, '\n'.join(stderr_readlines))
                 if len(stdout_chunks) <= 0:
+                    Log.critical('Command {0} in {1} warning: {2}', command, self.host, '\n'.join(stderr_readlines))
                     return False
             Log.debug('Command {0} in {1} successful with out message: {2}', command, self.host, self._ssh_output)
             return True

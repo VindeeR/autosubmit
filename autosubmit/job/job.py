@@ -986,6 +986,7 @@ class WrapperJob(Job):
 
     def check_status(self, status):
         if status != self.status:
+
             if status == Status.QUEUING:
                 reason = str()
                 if self.platform.type == 'slurm':

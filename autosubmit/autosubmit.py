@@ -1015,9 +1015,12 @@ class Autosubmit:
                         for job_id, job in queuing_jobs.items():
                             if job_list.job_package_map and job_id in job_list.job_package_map:
 
+
                                 Log.debug('Checking wrapper job with id ' + str(job_id))
                                 wrapper_job = job_list.job_package_map[job_id]
-
+                                if as_conf.get_notifications() == 'true':
+                                    for inner_job in wrapper_job.job_list:
+                                        inner_job.prev_status= inner_job.status
                                 check_wrapper = True
                                 if wrapper_job.status == Status.RUNNING:
                                     check_wrapper = True if datetime.timedelta.total_seconds(
@@ -1025,10 +1028,20 @@ class Autosubmit:
                                 if check_wrapper:
                                     wrapper_job.checked_time = datetime.datetime.now()
                                     status = platform.check_job(wrapper_job.id)
+
                                     Log.info(
                                         'Wrapper job ' + wrapper_job.name + ' is ' + str(Status.VALUE_TO_KEY[status]))
+
                                     wrapper_job.check_status(status)
                                     save = True
+                                if as_conf.get_notifications() == 'true':
+                                    for inner_job in wrapper_job.job_list:
+                                        if inner_job.prev_status != inner_job.status:
+                                            if Status.VALUE_TO_KEY[inner_job.status] in inner_job.notify_on:
+                                                Notifier.notify_status_change(MailNotifier(BasicConfig), expid, inner_job.name,
+                                                                              Status.VALUE_TO_KEY[inner_job.prev_status],
+                                                                              Status.VALUE_TO_KEY[inner_job.status],
+                                                                              as_conf.get_mails_to())
                                 else:
                                     Log.info("Waiting for wrapper check time: {0}\n", check_wrapper_jobs_sleeptime)
                             else:
@@ -1055,7 +1068,6 @@ class Autosubmit:
                         if prev_status != job.update_status(platform.check_job(job.id),
                                                             as_conf.get_copy_remote_logs() == 'true'):
                             if as_conf.get_notifications():
-
                                     Notifier.notify_status_change(MailNotifier(BasicConfig), expid, job.name,
                                                                   Status.VALUE_TO_KEY[prev_status],
                                                                   Status.VALUE_TO_KEY[job.status],
@@ -2273,7 +2285,7 @@ class Autosubmit:
                     tmp_folder = os.path.join(BasicConfig.LOCAL_ROOT_DIR, "tmp")
                     tmp_expid = os.path.join(tmp_folder,expid+"_to_delete")
                     os.rename(exp_folder,tmp_expid)
-                    Log.warning("Experiment folder renamed to: {0}".format(exp_folder+"_to_delete "))
+                    Log.warning("Experiment folder renamed to: {0}".format(tmp_expid))
                 except Exception as e:
                     Log.critical("Can not remove or rename experiments folder: {0}".format(e))
                     Autosubmit.unarchive(expid,compress,True)

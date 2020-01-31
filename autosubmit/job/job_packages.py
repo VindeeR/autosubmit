@@ -47,7 +47,7 @@ class JobPackageBase(object):
             self._platform = jobs[0].platform
             self._custom_directives = set()
             for job in jobs:
-                if job.platform.name != self._platform.name or job.platform is None:
+                if job.platform != self._platform or job.platform is None:
                     raise Exception('Only one valid platform per package')
         except IndexError:
             raise Exception('No jobs given')
@@ -82,13 +82,8 @@ class JobPackageBase(object):
                 if only_generate:
                     exit=True
                     break
-                if not os.path.exists(os.path.join(configuration.get_project_dir(), job.file)):
-                    raise WrongTemplateException(job.name)
                 if not job.check_script(configuration, parameters,show_logs=False):
-                    Log.warning("Script {0} check failed",job.name)
-                    Log.user_warning("On submission script has some empty variables")
-                else:
-                    Log.result("Script {0} OK",job.name)
+                    raise WrongTemplateException(job.name)
             job.update_parameters(configuration, parameters)
             # looking for directives on jobs
             self._custom_directives = self._custom_directives | set(job.custom_directives)

@@ -285,7 +285,7 @@ class JobPackagerVerticalSimple(JobPackagerVertical):
 
     def get_wrappable_child(self, job):
         for child in job.children:
-            if self._is_wrappable(child, job):
+            if child.status  in [Status.WAITING, Status.READY] and self._is_wrappable(child, job):
                 return child
             continue
         return None

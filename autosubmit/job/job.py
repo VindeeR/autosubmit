@@ -1001,6 +1001,7 @@ class WrapperJob(Job):
                     Log.info("Job {0} is QUEUING {1}", self.name, reason)
             self.status = status
         if status in [Status.FAILED, Status.UNKNOWN]:
+            self.status = Status.FAILED
             self.cancel_failed_wrapper_job()
             self.update_failed_jobs()
         elif status == Status.COMPLETED:

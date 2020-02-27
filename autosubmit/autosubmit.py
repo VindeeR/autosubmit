@@ -2586,14 +2586,16 @@ class Autosubmit:
             if os.path.exists(project_path):
 
                 Log.info("Using project folder: {0}", project_path)
-                if  os.path.exists(local_destination):
-                    try:
-                        cmd=["rsync -ach --info=progress2 " +local_project_path+"/* "+local_destination]
-                        subprocess.call(cmd,shell=True)
-                    except subprocess.CalledProcessError:
-                        Log.error("Can not synchronize {0} into {1}. Exiting...", local_project_path, project_path)
-                        #shutil.rmtree(project_path)
-                        return False
+
+                if os.path.exists(local_destination):
+                    if force:
+                        try:
+                            cmd=["rsync -ach --info=progress2 " +local_project_path+"/* "+local_destination]
+                            subprocess.call(cmd,shell=True)
+                        except subprocess.CalledProcessError:
+                            Log.error("Can not synchronize {0} into {1}. Exiting...", local_project_path, project_path)
+                            #shutil.rmtree(project_path)
+                            return False
                 else:
                     os.mkdir(local_destination)
                     try:

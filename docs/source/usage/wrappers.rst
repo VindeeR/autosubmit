@@ -183,7 +183,7 @@ In `autosubmit_cxxx.conf`:
     JOBS_IN_WRAPPER = # Job types (as defined in jobs_cxxx.conf) separated by space. REQUIRED only if vertical-mixed
     CHECK_TIME_WRAPPER = # OPTIONAL. Time in seconds, overrides SAFETYSLEEPTIME
     DEPENDENCIES = {True,False} # OPTIONAL. False if not specified
-    MAXWRAPPEDJOBS = # OPTIONAL. Integer value, overrides TOTALJOBS
+    MAX_WRAPPED = # OPTIONAL. Integer value, overrides TOTALJOBS
 
 
 In `platforms_cxxx.conf`:

@@ -267,8 +267,7 @@ class ParamikoPlatform(Platform):
             Log.error('check_job() The job id ({0}) is not an integer neither a string.', job_id)
             # URi: value ?
             return job_status
-
-        while not self.send_command(self.get_checkjob_cmd(job_id)) and retries >= 0:
+        while not (self.send_command(self.get_checkjob_cmd(job_id)) and retries >= 0) or (self.get_ssh_output() == "" and retries >= 0):
             retries -= 1
             Log.warning('Retrying check job command: {0}', self.get_checkjob_cmd(job_id))
             Log.error('Can not get job status for job id ({0}), retrying in 10 sec', job_id)

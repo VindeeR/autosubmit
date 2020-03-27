@@ -163,18 +163,33 @@ class ParamikoPlatform(Platform):
             if not self.connect():
                 return None
 
-        try:
-            ftp = self._ssh.open_sftp()
-            ftp.get(os.path.join(self.get_files_path(), filename), file_path)
-            ftp.close()
+        file_exist = False
+        sleeptime = 5
+        remote_path = os.path.join(self.get_files_path(), filename)
+        retries = 0
+        while not file_exist and retries < 1:
+            try:
+                self._ftpChannel.stat(remote_path) # This return IOError if path doesn't exist
+                file_exist = True
+            except IOError: # File doesn't exist, retry in sleeptime
+                Log.debug("{2} File still no exists.. waiting {0}s for a new retry ( retries left: {1})", sleeptime,
+                         1 - retries,remote_path)
+                sleep(sleeptime)
+                sleeptime= sleeptime+5
+                retries= retries+1
+            except: # Unrecoverable error
+                file_exist = False # won't exist
+                retries = 999 # no more retries
+        if file_exist:
+            self._ftpChannel.get(remote_path, file_path)
             return True
-        except BaseException:
-            # ftp.get creates a local file anyway
-            if os.path.exists(file_path):
+        else:
+            if os.path.exists(file_path): # ftp.get creates a local file anyway
                 os.remove(file_path)
             if must_exist:
                 raise Exception('File {0} does not exists'.format(filename))
-            return False
+            else:
+                return False
 
     def delete_file(self, filename):
         """
@@ -200,35 +215,46 @@ class ParamikoPlatform(Platform):
             Log.debug('Could not remove file {0}'.format(os.path.join(self.get_files_path(), filename)))
             return False
 
-    def move_file(self, src, dest,migrate=False):
+    def move_file(self, src, dest,must_exist=False):
         """
         Moves a file on the platform
         :param src: source name
         :type src: str
         :param dest: destination name
-        :param migrate: ignore if file exist or not
+        :param must_exist: ignore if file exist or not
         :type dest: str
         """
         if self._ssh is None:
             if not self.connect():
                 return None
 
-        try:
-            ftp = self._ssh.open_sftp()
-            if not migrate:
-                ftp.rename(os.path.join(self.get_files_path(), src), os.path.join(self.get_files_path(), dest))
-            else:
-                try:
-                    ftp.chdir((os.path.join(self.get_files_path(), src)))
-                    ftp.rename(os.path.join(self.get_files_path(), src), os.path.join(self.get_files_path(),dest))
-                except (IOError):
-                    pass
-            ftp.close()
+        file_exist = False
+        sleeptime = 5
+        remote_path = os.path.join(self.get_files_path(), os.path.join(self.get_files_path(), src))
+        retries = 0
+        while not file_exist and retries < 1:
+            try:
+                self._ftpChannel.stat(os.path.join(self.get_files_path(), src))  # This return IOError if path doesn't exist
+                file_exist = True
+            except IOError:  # File doesn't exist, retry in sleeptime
+                Log.debug("{2} File still no exists.. waiting {0}s for a new retry ( retries left: {1})", sleeptime,
+                         1 - retries, remote_path)
+                sleep(sleeptime)
+                sleeptime = sleeptime + 5
+                retries = retries + 1
+            except:  # Unrecoverable error
+                file_exist = False  # won't exist
+                retries = 999  # no more retries
+        if file_exist:
+            self._ftpChannel.rename(os.path.join(self.get_files_path(), src),
+                                    os.path.join(self.get_files_path(), dest))
             return True
-        except BaseException:
-            Log.debug('Could not move (rename) file {0} to {1}'.format(os.path.join(self.get_files_path(), src),
-                                                                       os.path.join(self.get_files_path(), dest)))
-            return False
+        else:
+            if must_exist:
+                #raise Exception('File {0} does not exists'.format(os.path.join(self.get_files_path(), src))) won't work on 3.12.0
+                return False
+            else:
+                return False
 
     def submit_job(self, job, script_name):
         """
@@ -319,7 +345,7 @@ class ParamikoPlatform(Platform):
         if "-rP" or "mv" or "find" or "convertLink" in command:
             timeout = 3600.0  # Max Wait 1hour if the command is a copy or simbolic links ( migrate can trigger long times)
         else:
-            timeout = 1200.0  # Max Wait 20min in the normal workflow.
+            timeout = 60.0*5.0  # Max Wait 5min in the normal workflow.
         try:
             stdin, stdout, stderr = self._ssh.exec_command(command)
             channel = stdout.channel

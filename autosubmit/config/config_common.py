@@ -1142,7 +1142,7 @@ class AutosubmitConfig(object):
 
     def is_valid_communications_library(self):
         library = self.get_communications_library()
-        return library in ['paramiko', 'saga']
+        return library in ['paramiko']
 
     def is_valid_storage_type(self):
         storage_type = self.get_storage_type()

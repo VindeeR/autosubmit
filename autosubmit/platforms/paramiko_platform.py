@@ -288,6 +288,7 @@ class ParamikoPlatform(Platform):
             else:
                 job_status = Status.UNKNOWN
         else:
+            # BOUOUOUOU	NOT	GOOD!
             job_status = Status.UNKNOWN
             Log.error('check_job() The job id ({0}) status is {1}.', job_id, job_status)
         return job_status

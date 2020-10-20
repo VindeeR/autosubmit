@@ -1048,7 +1048,6 @@ class Autosubmit:
                                 prev_status = job.status
                                 if job.status == Status.FAILED:
                                     continue
-
                                 if prev_status != job.update_status(platform.check_job(job.id),
                                                                     as_conf.get_copy_remote_logs() == 'true'):
 

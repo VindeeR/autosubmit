@@ -1052,7 +1052,7 @@ class Autosubmit:
                                                                     as_conf.get_copy_remote_logs() == 'true'):
 
                                     if as_conf.get_notifications() == 'true':
-                                        if Status.VALUE_TO_KEY[job.status] in job.notify_on:
+                                        if Status.VALUE_TO_KEY[job.status] in job.notify_on or Status.UNKNOWN in Status.VALUE_TO_KEY[job.status]:
                                             Notifier.notify_status_change(MailNotifier(BasicConfig), expid, job.name,
                                                                           Status.VALUE_TO_KEY[prev_status],
                                                                           Status.VALUE_TO_KEY[job.status],

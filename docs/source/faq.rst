@@ -53,7 +53,6 @@ This usually happens when trying to run `autosubmit create` with an expid of ano
 ----
 
 [ERROR] Command sbatch -D ... failed with error message: sbatch: error: Batch job submission failed: Invalid account or account/partition combination specified or [CRITICAL] Unhandled exception on Autosubmit: 'bool' object has no attribute 'startswith' 
-
 ====================
 
 .. code-block:: python

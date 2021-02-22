@@ -57,6 +57,7 @@ This usually happens when trying to run `autosubmit create` with an expid of ano
 ====================
 
 .. code-block:: python
+
   [ERROR] nord3 submission failed
   [CRITICAL] Unhandled exception on Autosubmit: 'bool' object has no attribute 'startswith'
   Traceback (most recent call last):

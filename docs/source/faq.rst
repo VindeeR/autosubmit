@@ -17,8 +17,7 @@ FAQ - Frequently Asked Questions
     return self.acquire()
     File "/shared/earth/software/autosubmit/3.11.0b-foss-2015a-Python-2.7.9/lib/python2.7/site-packages/portalocker-1.2.0-py2.7.egg/portalocker/utils.py", line 155, in acquire
     raise exceptions.LockException(exception)
-    LockException: [Errno 11] Resource temporarily unavailable
-
+    LockException: [Errno 11] R
 
 Solution
 ---------------
@@ -53,21 +52,37 @@ This usually happens when trying to run `autosubmit create` with an expid of ano
 
 ----
 
-[ERROR] Command sbatch -D ... failed with error message: sbatch: error: Batch job submission failed: Invalid account or account/partition combination specified
+[ERROR] Command sbatch -D ... failed with error message: sbatch: error: Batch job submission failed: Invalid account or account/partition combination specified or [CRITICAL] Unhandled exception on Autosubmit: 'bool' object has no attribute 'startswith' 
+
 ====================
+
+.. code-block:: python
+  [ERROR] nord3 submission failed
+  [CRITICAL] Unhandled exception on Autosubmit: 'bool' object has no attribute 'startswith'
+  Traceback (most recent call last):
+    File "/shared/earth/software/autosubmit/3.12.0-foss-2015a-Python-2.7.9/lib/python2.7/site-packages/autosubmit-3.12.0-py2.7.egg/autosubmit/autosubmit.py", line 416, in parse_args
+      return Autosubmit.run_experiment(args.expid, args.notransitive)
+    File "/shared/earth/software/autosubmit/3.12.0-foss-2015a-Python-2.7.9/lib/python2.7/site-packages/autosubmit-3.12.0-py2.7.egg/autosubmit/autosubmit.py", line 1076, in run_experiment
+      if Autosubmit.submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence):
+    File "/shared/earth/software/autosubmit/3.12.0-foss-2015a-Python-2.7.9/lib/python2.7/site-packages/autosubmit-3.12.0-py2.7.egg/autosubmit/autosubmit.py", line 1132, in submit_ready_jobs
+      package.submit(as_conf, job_list.parameters,inspect)
+    File "/shared/earth/software/autosubmit/3.12.0-foss-2015a-Python-2.7.9/lib/python2.7/site-packages/autosubmit-3.12.0-py2.7.egg/autosubmit/job/job_packages.py", line 96, in submit
+      self._send_files()
+    File "/shared/earth/software/autosubmit/3.12.0-foss-2015a-Python-2.7.9/lib/python2.7/site-packages/autosubmit-3.12.0-py2.7.egg/autosubmit/job/job_packages.py", line 129, in _send_files
+      self.platform.send_file(self._job_scripts[job.name])
+    File "/shared/earth/software/autosubmit/3.12.0-foss-2015a-Python-2.7.9/lib/python2.7/site-packages/autosubmit-3.12.0-py2.7.egg/autosubmit/platforms/paramiko_platform.py", line 126, in send_file
+      self.delete_file(filename)
+    File "/shared/earth/software/autosubmit/3.12.0-foss-2015a-Python-2.7.9/lib/python2.7/site-packages/autosubmit-3.12.0-py2.7.egg/autosubmit/platforms/paramiko_platform.py", line 200, in delete_file
+      Log.debug('Could not remove file {0}'.format(os.path.join(self.get_files_path(), filename)))
+    File "/shared/earth/software/Python/2.7.9-foss-2015a/lib/python2.7/posixpath.py", line 75, in join
+      if b.startswith('/'):
+  AttributeError: 'bool' object has no attribute 'startswith'
 
 Solution
 ---------------
 This can be due to an invalid configuration in your ~/.ssh/config file, so check if you are able to run a ssh command using the account displayed in the error message.
-If so, once you are in the remote platform, type bsc_acct and see if the information for your username/account is displayed:
+Alternately, this can also happen if you have some issue on your jobs or platform experiment configuration, please check FILE, QUEUE , WALLCLOCK values of the jobs_conf and doble check that your proj file contains the appropiate templates and files. 
 
-.. code-block:: ini
-
-    USER CONSUMED CPU:
-
-    User:                                             Machine:          Used [khours]:
-
-If not, contact support referring to the problem and specifying your account.
 
 ----
 

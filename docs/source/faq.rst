@@ -19,6 +19,12 @@ FAQ - Frequently Asked Questions
     raise exceptions.LockException(exception)
     LockException: [Errno 11] R
 
+.. code-block:: ini
+
+    [WARNING] We have detected that there is another Autosubmit instance using the experiment a3av.
+    [WARNING] We have stopped this execution in order to prevent incoherency errors.
+    [WARNING] Stop other Autosubmit instances that are using the experiment a3av and try it again.
+
 Solution
 ---------------
 Make sure the experiment is not still running. If it's not, delete the autosubmit.lock in the /tmp folder inside your experiment directory.

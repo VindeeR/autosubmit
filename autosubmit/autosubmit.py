@@ -1566,7 +1566,7 @@ class Autosubmit:
         :param pickup:
         :param offer:
         """
-        Log.critical("This is disabled on this version, You must use 3.13.0 migrate. It is safe regardless the version.")
+        Log.critical("\n[DISABLED FEATURE]\nUse Autosubmit 3.13.0 migrate through a module load.\nYou can use it even if you experiment runs with 3.12.0.\nOnce it is offered and picked, you can switch back to 3.12.0.")
 
 
     @staticmethod

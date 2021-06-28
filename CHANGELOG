@@ -1,6 +1,5 @@
 3.13.0 - This has been the Autosubmit development version for many months, so it provides a lot of improvements, especially in terms of efficiency and stability. It also brings a full refactor of the wrapper module.
 
-
 Multi-threaded wrappers were introduced in this version.
 It provides the possibility to specify multiple hosts for the same platform (in a list) so it is more robust against connection issues/login failures.
 In general, big experiments, with many startdates/members or featuring very big wrappers run much more efficiently with 3.13.0.

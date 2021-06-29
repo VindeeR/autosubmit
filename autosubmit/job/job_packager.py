@@ -316,6 +316,13 @@ class JobPackager(object):
                                        independent_inner_job and parent.status == Status.COMPLETED]
                                 if len(tmp) != len(job.parents):
                                     deadlock = False
+                            for job in p.jobs:
+                                tmp = [child for child in job.children if child.section in self.jobs_in_wrapper and job not in p.jobs]
+                                if len(tmp) > 0:
+                                    deadlock = True
+                            if deadlock:
+                                for job in p.jobs:
+                                    job.packed = False
 
                             if deadlock and self.wrapper_policy == "strict":
                                 Log.debug(

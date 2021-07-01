@@ -4566,7 +4566,7 @@ class Autosubmit:
                     # job_data_structure.update_jobs_from_change_status(job_tracked_changes)
                     job_data_structure.process_status_changes(
                         job_tracked_changes, job_list.get_job_list(), as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), check_run=True, current_config=as_conf.get_full_config_as_json(), is_setstatus=True)
-                    
+
                 else:
                     Log.printlog(
                         "Changes NOT saved to the JobList!!!!:  use -s option to save", 3000)
@@ -4687,6 +4687,8 @@ class Autosubmit:
                                       "NUMCHUNKS = 1")
             content = content.replace(re.search('^PROJECT_TYPE =.*', content, re.MULTILINE).group(0),
                                       "PROJECT_TYPE = none")
+            content = content.replace(re.search('^RUN_ONLY_MEMBERS = .*', content, re.MULTILINE).group(0),
+                                      "RUN_ONLY_MEMBERS = ")
 
             open(as_conf.experiment_file, 'w').write(content)
 

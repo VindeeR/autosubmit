@@ -72,7 +72,8 @@ class JobListPersistencePkl(JobListPersistence):
             fd = open(path, 'r')
             return pickle.load(fd)
         else:
-            Log.printlog('File {0} does not exist'.format(path),7040)
+            # Changed to warning
+            Log.warning('File {0} does not exist'.format(path), 7040)
             return list()
 
     def save(self, persistence_path, persistence_file, job_list):
@@ -110,7 +111,8 @@ class JobListPersistenceDb(JobListPersistence):
                     'remote_out', 'remote_err']
 
     def __init__(self, persistence_path, persistence_file):
-        self.db_manager = DbManager(persistence_path, persistence_file, self.VERSION)
+        self.db_manager = DbManager(
+            persistence_path, persistence_file, self.VERSION)
 
     def load(self, persistence_path, persistence_file):
         """

@@ -305,24 +305,16 @@ class JobPackager(object):
                                 job.packed = True
                             packages_to_submit.append(p)
                         else:
-                            deadlock = True
+                            deadlock = False
                             for job in p.jobs:
-                                independent_inner_job = True
-                                for parent in job.parents:
-                                    if parent in p.jobs and parent.name != job.name:  # This job depends on others inner jobs
-                                        independent_inner_job = False
-                                        break
-                                tmp = [parent for parent in job.parents if
-                                       independent_inner_job and parent.status == Status.COMPLETED]
-                                if len(tmp) != len(job.parents):
-                                    deadlock = False
-                            for job in p.jobs:
-                                tmp = [child for child in job.children if child.section in self.jobs_in_wrapper and job not in p.jobs]
+                                tmp = [child for child in job.children if child.section in self.jobs_in_wrapper and child not in p.jobs]
                                 if len(tmp) > 0:
                                     deadlock = True
-                            if deadlock:
+                            if deadlock: #last case
                                 for job in p.jobs:
-                                    job.packed = False
+                                    if job.running=="chunk" and job.chunk == job.parameters["NUMCHUNKS"]:
+                                        deadlock = False
+
 
                             if deadlock and self.wrapper_policy == "strict":
                                 Log.debug(

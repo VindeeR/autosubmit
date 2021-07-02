@@ -353,6 +353,7 @@ class ParamikoPlatform(Platform):
         :rtype: int
         """
         if self.type == 'slurm':
+
             self.get_submit_cmd(script_name, job, hold=hold, export=export)
             return None
         else:

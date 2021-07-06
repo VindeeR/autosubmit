@@ -1792,6 +1792,8 @@ class Autosubmit:
                     Log.result("Run successful")
                     # Updating finish time for job data header
                     job_data_structure.update_finish_time()
+                fh.flush()
+                os.fsync(fh.fileno())
         except portalocker.AlreadyLocked:
             message = "We have detected that there is another Autosubmit instance using the experiment\n. Stop other Autosubmit instances that are using the experiment or delete autosubmit.lock file located on tmp folder"
             raise AutosubmitCritical(message, 7000)

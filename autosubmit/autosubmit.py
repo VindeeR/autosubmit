@@ -4270,9 +4270,11 @@ class Autosubmit:
                             reference = status_reference.VALUE_TO_KEY[job.status]
                             if reference not in status_list:
                                 status_list.append(reference)
+                        status_validation_error = True
                         for status in status_filter:
-                            if status not in status_list:
-                                status_validation_error = True
+                            if status in status_list:
+                                status_validation_error = False
+                            else:
                                 status_validation_message += "\n\t There are no jobs with status " + \
                                     status + " in this experiment."
                     if status_validation_error == True:

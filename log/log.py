@@ -110,6 +110,7 @@ class Log:
     def __init__(self):
         pass
 
+    file_path = ""
     __module__ = __name__
     EVERYTHING = 0
     STATUS = 1000

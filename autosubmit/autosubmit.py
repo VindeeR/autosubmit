@@ -669,6 +669,7 @@ class Autosubmit:
                 os.remove(os.path.join(aslogs_path, 'jobs_status.log'))
             Log.set_file(os.path.join(
                 aslogs_path, 'jobs_status.log'), "status")
+            Log.file_path = tmp_path
         else:
             if expid == 'None':
                 exp_id = ""

@@ -727,6 +727,7 @@ class Job(object):
             Log.printlog("Job {0} is UNKNOWN. Checking completed files to confirm the failure...".format(
                 self.name), 3000)
             self._platform.get_completed_files(
+
                 self.name, wrapper_failed=self.packed)
             self.check_completion(Status.UNKNOWN)
             if self.status == Status.UNKNOWN:
@@ -1178,7 +1179,7 @@ class Job(object):
         # noinspection PyTypeChecker
         f.write(date2str(datetime.datetime.fromtimestamp(start_time), 'S'))
         # Writing database
-        JobDataStructure(self.expid).write_start_time(self.name, time.time(), Status.VALUE_TO_KEY[self.status] if self.status in Status.VALUE_TO_KEY.keys() else "UNKNOWN", self.processors,
+        JobDataStructure(self.expid).write_start_time(self.name, start_time, Status.VALUE_TO_KEY[self.status] if self.status in Status.VALUE_TO_KEY.keys() else "UNKNOWN", self.processors,
                                                       self.wallclock, self._queue, self.date, self.member, self.section, self.chunk, self.platform_name, self.id, self.packed, self._wrapper_queue)
         return True
 

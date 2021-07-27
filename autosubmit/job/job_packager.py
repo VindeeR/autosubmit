@@ -305,11 +305,11 @@ class JobPackager(object):
                                 job.packed = True
                             packages_to_submit.append(p)
                         else:
-                            deadlock = False
-                            for job in p.jobs:
-                                tmp = [child for child in job.children if child.section in self.jobs_in_wrapper and child not in p.jobs]
-                                if len(tmp) > 0:
-                                    deadlock = True
+                            deadlock = True
+                            #for job in p.jobs:
+                            #    tmp = [child for child in job.children if child.section in self.jobs_in_wrapper and child not in p.jobs]
+                            #    if len(tmp) > 0:
+                            #        deadlock = True
                             if deadlock: #last case
                                 for job in p.jobs:
                                     if job.running=="chunk" and job.chunk == job.parameters["NUMCHUNKS"]:

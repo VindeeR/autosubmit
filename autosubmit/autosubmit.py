@@ -4001,7 +4001,7 @@ class Autosubmit:
         return True
 
     @staticmethod
-    def change_status(final, final_status, job, save):
+    def change_status(final, final_status, job, save, platforms ):
         """
         Set job status to final
 
@@ -4009,20 +4009,33 @@ class Autosubmit:
         :param final_status:
         :param job:
         """
-
-        if (job.status == Status.SUBMITTED or job.status == Status.QUEUING or job.status == Status.HELD) and save and (final_status != Status.QUEUING and final_status != Status.HELD and final_status != Status.SUSPENDED):
+        #Autosubmit.restore_platforms(platforms)
+        if (job.status == Status.SUBMITTED or job.status == Status.QUEUING or job.status == Status.HELD or job.status == Status.RUNNING) and save and (final_status != Status.QUEUING and final_status != Status.HELD and final_status != Status.SUSPENDED and final_status != Status.RUNNING):
+            for platform in platforms:
+                if not platform.connected:
+                    Autosubmit.restore_platforms(platforms)
             job.hold = False
             if job.platform_name is not None and job.platform_name.lower() != "local":
-                job.platform.send_command(
-                    job.platform.cancel_cmd + " " + str(job.id), ignore_log=True)
-        elif (job.status == Status.QUEUING or job.status == Status.RUNNING or job.status == Status.SUBMITTED) and save and (final_status == Status.SUSPENDED):
-            if job.platform_name is not None and job.platform_name.lower() != "local":
-                job.platform.send_command(
-                    "scontrol hold " + "{0}".format(job.id), ignore_log=True)
-        elif (final_status == Status.QUEUING or final_status == Status.RUNNING) and save and (job.status == Status.SUSPENDED):
-            if job.platform_name is not None and job.platform_name.lower() != "local":
-                job.platform.send_command(
-                    "scontrol release " + "{0}".format(job.id), ignore_log=True)
+                try:
+                    job.platform.send_command(job.platform.cancel_cmd + " " + str(job.id), ignore_log=True)
+                except:
+                    Log.warning("Job couldn't be cancelled, please cancel it manually")
+        elif (job.status == Status.QUEUING or job.status == Status.SUBMITTED) and save and (final_status == Status.HELD):
+            job.hold = True
+            try:
+                if job.platform_name is not None and job.platform_name.lower() != "local":
+                    job.platform.send_command(
+                        "scontrol hold " + "{0}".format(job.id), ignore_log=True)
+            except:
+                Log.warning("Job couldn't be hold, please hold it manually")
+        elif (final_status == Status.QUEUING or final_status == Status.RUNNING) and save and (job.status == Status.HELD):
+            job.hold = False
+            try:
+                if job.platform_name is not None and job.platform_name.lower() != "local":
+                    job.platform.send_command(
+                        "scontrol release " + "{0}".format(job.id), ignore_log=True)
+            except:
+                Log.warning("Job couldn't be released, please release it manually")
         job.status = final_status
         Log.info("CHANGED: job: " + job.name + " status to: " + final)
         Log.status("CHANGED: job: " + job.name + " status to: " + final)
@@ -4134,9 +4147,7 @@ class Autosubmit:
                     # noinspection PyTypeChecker
                     job.platform = platforms[job.platform_name.lower()]
                     # noinspection PyTypeChecker
-                    if job.status in [Status.QUEUING, Status.SUBMITTED, Status.RUNNING]:
-                        platforms_to_test.add(
-                            platforms[job.platform_name.lower()])
+                    platforms_to_test.add(platforms[job.platform_name.lower()])
                 # establish the connection to all platforms
                 definitive_platforms = list()
                 for platform in platforms_to_test:
@@ -4295,7 +4306,7 @@ class Autosubmit:
                             job_tracked_changes[job.name] = (
                                 job.status, final_status)
                             Autosubmit.change_status(
-                                final, final_status, job, save)
+                                final, final_status, job, save,platforms_to_test)
                     else:
                         for section in ft:
                             for job in job_list.get_job_list():
@@ -4307,7 +4318,7 @@ class Autosubmit:
                                         job_tracked_changes[job.name] = (
                                             job.status, final_status)
                                         Autosubmit.change_status(
-                                            final, final_status, job, save)
+                                            final, final_status, job, save,platforms_to_test)
 
                 # New feature : Change status by section, member, and chunk; freely.
                 # Including inner validation. Trying to make it independent.
@@ -4469,7 +4480,7 @@ class Autosubmit:
                             performed_changes[job.name] = str(
                                 Status.VALUE_TO_KEY[job.status]) + " -> " + str(final)
                             Autosubmit.change_status(
-                                final, final_status, job, save)
+                                final, final_status, job, save,platforms_to_test)
                     # If changes have been performed
                     if len(performed_changes.keys()) > 0:
                         if detail == True:
@@ -4497,7 +4508,7 @@ class Autosubmit:
                             job_tracked_changes[job.name] = (
                                 job.status, final_status)
                             Autosubmit.change_status(
-                                final, final_status, job, save)
+                                final, final_status, job, save,platforms_to_test)
                     else:
                         # noinspection PyTypeChecker
                         data = json.loads(Autosubmit._create_json(fc))
@@ -4518,35 +4529,36 @@ class Autosubmit:
                                         job_tracked_changes[job.name] = (
                                             job.status, final_status)
                                         Autosubmit.change_status(
-                                            final, final_status, job, save)
+                                            final, final_status, job, save,platforms_to_test)
 
                                     for job in filter(lambda j: j.chunk == chunk, jobs_member):
                                         # Tracking changes
                                         job_tracked_changes[job.name] = (
                                             job.status, final_status)
                                         Autosubmit.change_status(
-                                            final, final_status, job, save)
+                                            final, final_status, job, save,platforms_to_test)
 
                 if filter_status:
                     status_list = filter_status.split()
 
                     Log.debug("Filtering jobs with status {0}", filter_status)
                     if status_list == 'Any':
+                        Autosubmit.restore_platforms(platforms_to_test)
                         for job in job_list.get_job_list():
                             # Tracking changes
                             job_tracked_changes[job.name] = (
                                 job.status, final_status)
                             Autosubmit.change_status(
-                                final, final_status, job, save)
+                                final, final_status, job, save,platforms_to_test)
                     else:
                         for status in status_list:
                             fs = Autosubmit._get_status(status)
                             for job in filter(lambda j: j.status == fs, job_list.get_job_list()):
                                 # Tracking changes
                                 job_tracked_changes[job.name] = (
-                                    job.status, final_status)
+                                    job.status, final_status, platforms_to_test)
                                 Autosubmit.change_status(
-                                    final, final_status, job, save)
+                                    final, final_status, job, save,platforms_to_test)
 
                 if lst:
                     jobs = lst.split()
@@ -4563,7 +4575,7 @@ class Autosubmit:
                     if jobs == 'Any':
                         for job in job_list.get_job_list():
                             Autosubmit.change_status(
-                                final, final_status, job, save)
+                                final, final_status, job, save,platforms_to_test)
                     else:
                         for job in job_list.get_job_list():
                             if job.name in jobs:
@@ -4571,7 +4583,7 @@ class Autosubmit:
                                 job_tracked_changes[job.name] = (
                                     job.status, final_status)
                                 Autosubmit.change_status(
-                                    final, final_status, job, save)
+                                    final, final_status, job, save,platforms_to_test)
 
                 job_list.update_list(as_conf, False, True)
 

@@ -269,6 +269,31 @@ class JobPackager(object):
                         jobs_to_submit_by_section[section], max_wrapped_jobs, section, max_wrapper_job_by_section))
             if wrapped:
                 for p in built_packages_tmp:
+                    if self.wrapper_type[self.current_wrapper_section] == 'vertical-horizontal':
+                        min_h = len(p.jobs_lists)
+                        min_v = len(p.jobs_lists[0])
+                        for list_of_jobs in p.jobs_lists[1:]:
+                            min_v = min(min_v, len(list_of_jobs))
+                        min_t = len(p.jobs_lists)
+                    elif self.wrapper_type[self.current_wrapper_section] == 'horizontal-vertical':
+                        min_v = len(p.jobs_lists)
+                        min_h = len(p.jobs_lists[0])
+                        for list_of_jobs in p.jobs_lists[1:]:
+                            min_h = min(min_h, len(list_of_jobs))
+                        min_t = len(p.jobs_lists[0])
+                    elif self.wrapper_type[self.current_wrapper_section] == 'horizontal':
+                        min_h = len(p.jobs_lists)
+                        min_v = 0
+                        min_t = len(p.jobs_lists)
+                    elif self.wrapper_type[self.current_wrapper_section] == 'vertical':
+                        min_v = len(p.jobs_lists)
+                        min_h = 0
+                        min_t = len(p.jobs_lists)
+                    else:
+                        min_v = 0
+                        min_h = 0
+
+
                     failed_innerjobs = False
                     # Check failed jobs first
                     aux_jobs = []
@@ -299,7 +324,8 @@ class JobPackager(object):
                                     packages_to_submit.append(package)
                         else:
                             # if the quantity is enough, make the wrapper
-                            if len(p.jobs) >= min_wrapped_jobs:
+                            #if len(p.jobs) >= min_wrapped_jobs:
+                            if min_t >= min_wrapped_jobs:
                                 for job in p.jobs:
                                     job.packed = True
                                 packages_to_submit.append(p)

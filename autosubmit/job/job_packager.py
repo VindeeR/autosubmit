@@ -343,8 +343,8 @@ class JobPackager(object):
 
 
                                 if deadlock and self.wrapper_policy == "strict":
-                                    Log.warning(
-                                        "Wrapper policy is set to strict and there is a deadlock, waiting until the wrapper can be formed")
+                                    Log.printlog(
+                                        "Wrapper policy is set to strict and there are not enough jobs to form a wrapper, waiting until the wrapper can be formed. If no more jobs are running, check configuration",6013)
                                     sleep(2)
                                     for job in p.jobs:
                                         job.packed = False
@@ -358,8 +358,8 @@ class JobPackager(object):
                                                 packages_to_submit.append(package)
 
                                 elif deadlock and self.wrapper_policy == "mixed":
-                                    Log.warning(
-                                        "Wrapper policy is set to mixed, there is a deadlock, waiting until the wrapper can be formed")
+                                    Log.printlog(
+                                        "Wrapper policy is set to MIXED and there are not enough jobs to form a wrapper, waiting until the wrapper can be formed. If no more jobs are running, check configuration",6013)
                                     sleep(2)
                                     for job in p.jobs:
                                         job.packed = False

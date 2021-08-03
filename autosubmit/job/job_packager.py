@@ -27,6 +27,7 @@ from math import ceil
 import operator
 from time import sleep
 from collections import defaultdict
+from log.log import AutosubmitError, AutosubmitCritical, Log
 
 
 class JobPackager(object):
@@ -139,6 +140,7 @@ class JobPackager(object):
         :rtype: List() of JobPackageVertical
         """
         packages_to_submit = list()
+        dependencies_keys = list()
         max_wrapper_job_by_section = dict()
         # only_wrappers = False when coming from Autosubmit.submit_ready_jobs, jobs_filtered empty
         jobs_ready = list()
@@ -325,30 +327,41 @@ class JobPackager(object):
                                     packages_to_submit.append(package)
                         else:
                             # if the quantity is enough, make the wrapper
-                            #if len(p.jobs) >= min_wrapped_jobs:
                             if min_t >= min_wrapped_jobs:
                                 for job in p.jobs:
                                     job.packed = True
                                 packages_to_submit.append(p)
                             else:
                                 deadlock = True
-                                #for job in p.jobs:
-                                #    tmp = [child for child in job.children if child.section in self.jobs_in_wrapper and child not in p.jobs]
-                                #    if len(tmp) > 0:
-                                #        deadlock = True
+                                wallclock_sum = job.wallclock
+                                for seq in xrange(1, min_v):
+                                    wallclock_sum = sum_str_hours(wallclock_sum, job.wallclock)
+                                #temp = list()
+                                #for keyn in dependencies_keys:
+                                #    if "+" in keyn:
+                                #        aux_key = keyn.split("+")[0]
+                                #    elif "-" in keyn:
+                                #        aux_key = keyn.split("-")[0]
+                                #    else:
+                                #        aux_key = keyn
+                                #    if aux_key not in self.jobs_in_wrapper:
+                                #        temp.append(aux_key)
+                                active_jobs = self._jobs_list.get_active()
+                                active_jobs = [ aux_job for aux_job in active_jobs if not (aux_job.status == Status.READY and  aux_job.section in self.jobs_in_wrapper) ]
                                 if deadlock: #last case
                                     for job in p.jobs:
-                                        if job.running=="chunk" and job.chunk == job.parameters["NUMCHUNKS"]:
+                                        if job.running=="chunk" and job.chunk == int(job.parameters["NUMCHUNKS"]):
                                             deadlock = False
-
-
-                                if deadlock and self.wrapper_policy == "strict":
-                                    Log.printlog(
-                                        "Wrapper policy is set to strict and there are not enough jobs to form a wrapper, waiting until the wrapper can be formed. If no more jobs are running, check configuration",6013)
-                                    sleep(2)
+                                if not deadlock:
+                                    for job in p.jobs:
+                                        job.packed = True
+                                    packages_to_submit.append(p)
+                                elif self.wrapper_policy == "strict":
+                                    error = True
                                     for job in p.jobs:
                                         job.packed = False
                                         if job in self._jobs_list.jobs_to_run_first:
+                                            error = False
                                             if job.status == Status.READY:
                                                 if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
                                                     package = JobPackageSimpleWrapped(
@@ -356,14 +369,23 @@ class JobPackager(object):
                                                 else:
                                                     package = JobPackageSimple([job])
                                                 packages_to_submit.append(package)
-
-                                elif deadlock and self.wrapper_policy == "mixed":
-                                    Log.printlog(
-                                        "Wrapper policy is set to MIXED and there are not enough jobs to form a wrapper, waiting until the wrapper can be formed. If no more jobs are running, check configuration",6013)
-                                    sleep(2)
+                                    if len(active_jobs) > 0 or not error:
+                                        Log.printlog("Wrapper policy is set to STRICT and there are not enough jobs to form a wrapper. [wrappeable:{0} < defined_min:{1}] waiting until the wrapper can be formed.".format(min_t, min_wrapped_jobs), 6013)
+                                    else:
+                                        message = "Wrapper couldn't be formed under {0} POLICY due minimum limit not being reached: [wrappeable:{1} < defined_min:{2}] ".format(
+                                            self.wrapper_policy, min_t, min_wrapped_jobs)
+                                        if min_t > 1:
+                                            message += "\nCheck your configuration: Total vertical Wallclock is {0}.".format(wallclock_sum)
+                                        else:
+                                            message += "\nCheck your configuration: Only jobs_in_wrappers are active, check your jobs_in_wrapper dependencies."
+                                        raise AutosubmitCritical(message, 7014)
+                                elif self.wrapper_policy == "mixed":
+                                    error = True
+                                    show_log = True
                                     for job in p.jobs:
                                         job.packed = False
                                         if job in self._jobs_list.jobs_to_run_first:
+                                            error = False
                                             if job.status == Status.READY:
                                                 if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
                                                     package = JobPackageSimpleWrapped(
@@ -373,17 +395,30 @@ class JobPackager(object):
                                                 packages_to_submit.append(package)
                                         else:
                                             if job.fail_count > 0 and job.status == Status.READY:
-                                                Log.debug(
+                                                Log.printlog(
                                                     "Wrapper policy is set to semi-strict, there is a failed job that will be sent sequential")
+                                                error = False
+                                                show_log = False
                                                 if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
                                                     package = JobPackageSimpleWrapped(
                                                         [job])
                                                 else:
                                                     package = JobPackageSimple([job])
                                                 packages_to_submit.append(package)
-                                elif deadlock and self.wrapper_policy != "strict" and self.wrapper_policy != "mixed":
-                                    Log.debug(
-                                        "Wrapper policy is set to flexible and there is a deadlock, As will submit the jobs sequentally")
+                                        if len(active_jobs) > 0:
+                                            if show_log:
+                                                Log.printlog("Wrapper policy is set to STRICT and there are not enough jobs to form a wrapper. [wrappeable:{0} < defined_min:{1}] waiting until the wrapper can be formed.".format(min_t, min_wrapped_jobs), 6013)
+
+                                        else:
+                                            message = "Wrapper couldn't be formed under {0} POLICY due minimum limit not being reached: [wrappeable:{1} < defined_min:{2}] ".format(
+                                                self.wrapper_policy,min_t,min_wrapped_jobs)
+                                            if min_t > 1:
+                                                message += "\nCheck your configuration: Total vertical wallclock is {0}.".format(
+                                                    wallclock_sum)
+                                            else:
+                                                message += "\nCheck your configuration: Only jobs_in_wrappers are active, check your jobs_in_wrapper dependencies."
+                                            raise AutosubmitCritical(message, 7014)
+                                else:
                                     for job in p.jobs:
                                         job.packed = False
                                         if job.status == Status.READY:
@@ -393,21 +428,7 @@ class JobPackager(object):
                                             else:
                                                 package = JobPackageSimple([job])
                                             packages_to_submit.append(package)
-                                elif not deadlock:  # last case
-                                    last_inner_job = False
-                                    for job in p.jobs:
-                                        all_children_out_wrapper = True
-                                        for child in job.children:  # Check if job is considered child
-                                            if child in p.jobs and child.name != job.name:
-                                                all_children_out_wrapper = False
-                                        if all_children_out_wrapper:
-                                            last_inner_job = True
-                                            break
-                                    if last_inner_job:  # Last case
-                                        packages_to_submit.append(p)
-                                else:
-                                    for job in p.jobs:
-                                        job.packed = False
+                                    Log.info("Wrapper policy is set to flexible and there is a deadlock, As will submit the jobs sequentally")
             else:
                 for job in jobs_to_submit_by_section[section]:
                     if job.type == Type.PYTHON and not self._platform.allow_python_jobs:

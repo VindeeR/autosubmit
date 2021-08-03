@@ -979,11 +979,11 @@ class Job(object):
                 template = ''
                 if as_conf.get_remote_dependencies():
                     if self.type == Type.BASH:
-                        template = 'sleep 30' + "\n"
+                        template = 'sleep 2' + "\n"
                     elif self.type == Type.PYTHON:
-                        template = 'time.sleep(30)' + "\n"
+                        template = 'time.sleep(2)' + "\n"
                     elif self.type == Type.R:
-                        template = 'Sys.sleep(30)' + "\n"
+                        template = 'Sys.sleep(2)' + "\n"
                 template += template_file.read()
             else:
                 if self.type == Type.BASH:

@@ -1469,7 +1469,7 @@ class AutosubmitConfig(object):
          :return: maximum number of jobs (or total jobs)
          :rtype: int
          """
-        return int(self._conf_parser.get_option('wrapper', 'MAX_WRAPPED', self.get_total_jobs()))
+        return int(self._conf_parser.get_option('wrapper', 'MAX_WRAPPED', 999999999))
 
     def get_wrapper_method(self):
         """

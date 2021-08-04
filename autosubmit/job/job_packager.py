@@ -252,9 +252,6 @@ class JobPackager(object):
                                 hard_limit_wrapper = number
                 min_wrapped_jobs = min(self._as_config.jobs_parser.get_option(
                     section, "MIN_WRAPPED", self._as_config.get_min_wrapped_jobs()), hard_limit_wrapper)
-                if len(self._jobs_list.jobs_to_run_first) > 0:# Allows to prepare an experiment with TWO_STEP_START  and strict policy
-                    min_wrapped_jobs = 2
-
                 if self.wrapper_type in ['vertical', 'vertical-mixed']:
                     wrapped = True
                     built_packages_tmp = self._build_vertical_packages(jobs_to_submit_by_section[section],
@@ -271,32 +268,6 @@ class JobPackager(object):
                         jobs_to_submit_by_section[section], max_wrapped_jobs, section, max_wrapper_job_by_section))
             if wrapped:
                 for p in built_packages_tmp:
-                    if self.wrapper_type == 'vertical-horizontal':
-                        min_h = len(p.jobs_lists)
-                        min_v = len(p.jobs_lists[0])
-                        for list_of_jobs in p.jobs_lists[1:]:
-                            min_v = min(min_v, len(list_of_jobs))
-                        min_t = len(p.jobs_lists)
-                    elif self.wrapper_type == 'horizontal-vertical':
-                        min_v = len(p.jobs_lists)
-                        min_h = len(p.jobs_lists[0])
-                        for list_of_jobs in p.jobs_lists[1:]:
-                            min_h = min(min_h, len(list_of_jobs))
-                        min_t = len(p.jobs_lists[0])
-                    elif self.wrapper_type== 'horizontal':
-                        min_h = len(p.jobs)
-                        min_v = 0
-                        min_t = len(p.jobs)
-                    elif self.wrapper_type == 'vertical':
-                        min_v = len(p.jobs)
-                        min_h = 0
-                        min_t = len(p.jobs)
-                    else:
-                        min_v = 0
-                        min_h = 0
-                        min_t = 0
-
-
                     failed_innerjobs = False
                     # Check failed jobs first
                     aux_jobs = []
@@ -308,9 +279,22 @@ class JobPackager(object):
                         if job.fail_count > 0:
                             failed_innerjobs = True
                             break
+                    job_has_to_run_first = False
                     if len(self._jobs_list.jobs_to_run_first) > 0:
+                        job_has_to_run_first = True
                         for job in aux_jobs:
                             p.jobs.remove(job)
+                            for seq in range(0,len(p.jobs_lists)):
+                                try:
+                                    p.jobs_lists[seq].remove(job)
+                                except:
+                                    pass
+                        aux = p.jobs_lists
+                        p.jobs_lists = []
+                        for seq in range(0,len(aux)):
+                            if len(aux[seq]) > 0:
+                                p.jobs_lists.append(aux[seq])
+
                     if len(p.jobs) > 0:
                         if failed_innerjobs and str(self.wrapper_policy) == "mixed":
                             for job in p.jobs:
@@ -326,32 +310,54 @@ class JobPackager(object):
                                         package = JobPackageSimple([job])
                                     packages_to_submit.append(package)
                         else:
+                            balanced = True
+                            if self.wrapper_type == 'vertical-horizontal':
+                                min_h = len(p.jobs_lists)
+                                min_v = len(p.jobs_lists[0])
+                                for list_of_jobs in p.jobs_lists[1:-1]:
+                                    min_v = min(min_v, len(list_of_jobs))
+
+                                min_t = min_h
+                            elif self.wrapper_type == 'horizontal-vertical':
+                                min_v = len(p.jobs_lists)
+                                min_h = len(p.jobs_lists[0])
+                                for list_of_jobs in p.jobs_lists[1:-1]:
+                                    min_h = min(min_h, len(list_of_jobs))
+                                for list_of_jobs in p.jobs_lists[:-1]:
+                                    if min_h != len(list_of_jobs):
+                                        balanced = False
+                                min_t = min_h
+
+                            elif self.wrapper_type == 'horizontal':
+                                min_h = len(p.jobs)
+                                min_v = 0
+                                min_t = len(p.jobs)
+                            elif self.wrapper_type == 'vertical':
+                                min_v = len(p.jobs)
+                                min_h = 0
+                                min_t = len(p.jobs)
+                            else:
+                                min_v = 0
+                                min_h = 0
+                                min_t = 0
                             # if the quantity is enough, make the wrapper
-                            if min_t >= min_wrapped_jobs:
+                            if min_t >= min_wrapped_jobs or job_has_to_run_first:
                                 for job in p.jobs:
                                     job.packed = True
                                 packages_to_submit.append(p)
                             else:
                                 deadlock = True
-                                wallclock_sum = job.wallclock
-                                for seq in xrange(1, min_v):
-                                    wallclock_sum = sum_str_hours(wallclock_sum, job.wallclock)
-                                #temp = list()
-                                #for keyn in dependencies_keys:
-                                #    if "+" in keyn:
-                                #        aux_key = keyn.split("+")[0]
-                                #    elif "-" in keyn:
-                                #        aux_key = keyn.split("-")[0]
-                                #    else:
-                                #        aux_key = keyn
-                                #    if aux_key not in self.jobs_in_wrapper:
-                                #        temp.append(aux_key)
-                                active_jobs = self._jobs_list.get_active()
-                                active_jobs = [ aux_job for aux_job in active_jobs if not (aux_job.status == Status.READY and  aux_job.section in self.jobs_in_wrapper) ]
                                 if deadlock: #last case
                                     for job in p.jobs:
-                                        if job.running=="chunk" and job.chunk == int(job.parameters["NUMCHUNKS"]):
-                                            deadlock = False
+                                        if balanced and job.running=="chunk" and job.chunk == int(job.parameters["NUMCHUNKS"]):
+                                                deadlock = False
+                                    if deadlock:
+                                        wallclock_sum = job.wallclock
+                                        for seq in xrange(1, min_v):
+                                            wallclock_sum = sum_str_hours(wallclock_sum, job.wallclock)
+                                        active_jobs = self._jobs_list.get_active()
+                                        active_jobs = [aux_job for aux_job in active_jobs if not (
+                                                    aux_job.status == Status.READY and aux_job.section in self.jobs_in_wrapper)]
                                 if not deadlock:
                                     for job in p.jobs:
                                         job.packed = True

@@ -283,17 +283,20 @@ class JobPackager(object):
                     if len(self._jobs_list.jobs_to_run_first) > 0:
                         job_has_to_run_first = True
                         for job in aux_jobs:
+                            job.packed = False
                             p.jobs.remove(job)
-                            for seq in range(0,len(p.jobs_lists)):
-                                try:
-                                    p.jobs_lists[seq].remove(job)
-                                except:
-                                    pass
-                        aux = p.jobs_lists
-                        p.jobs_lists = []
-                        for seq in range(0,len(aux)):
-                            if len(aux[seq]) > 0:
-                                p.jobs_lists.append(aux[seq])
+                            if self.wrapper_type != "horizontal" and self.wrapper_type != "vertical" and self.wrapper_type != "vertical-mixed":
+                                for seq in range(0,len(p.jobs_lists)):
+                                    try:
+                                        p.jobs_lists[seq].remove(job)
+                                    except:
+                                        pass
+                        if self.wrapper_type != "horizontal" and self.wrapper_type != "vertical" and self.wrapper_type != "vertical-mixed":
+                            aux = p.jobs_lists
+                            p.jobs_lists = []
+                            for seq in range(0,len(aux)):
+                                if len(aux[seq]) > 0:
+                                    p.jobs_lists.append(aux[seq])
 
                     if len(p.jobs) > 0:
                         if failed_innerjobs and str(self.wrapper_policy) == "mixed":
@@ -316,7 +319,6 @@ class JobPackager(object):
                                 min_v = len(p.jobs_lists[0])
                                 for list_of_jobs in p.jobs_lists[1:-1]:
                                     min_v = min(min_v, len(list_of_jobs))
-
                                 min_t = min_h
                             elif self.wrapper_type == 'horizontal-vertical':
                                 min_v = len(p.jobs_lists)
@@ -384,6 +386,9 @@ class JobPackager(object):
                                             message += "\nCheck your configuration: Total vertical Wallclock is {0}.".format(wallclock_sum)
                                         else:
                                             message += "\nCheck your configuration: Only jobs_in_wrappers are active, check your jobs_in_wrapper dependencies."
+                                        if not balanced:
+                                            message += "\nPackages are not well balanced: Check your dependencies"
+
                                         raise AutosubmitCritical(message, 7014)
                                 elif self.wrapper_policy == "mixed":
                                     error = True

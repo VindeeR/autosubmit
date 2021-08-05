@@ -1075,7 +1075,8 @@ class Autosubmit:
         packages_persistence.reset_table(True)
         job_list_original = Autosubmit.load_job_list(
             expid, as_conf, notransitive=notransitive)
-        job_list = copy.deepcopy(job_list_original)
+        job_list =Autosubmit.load_job_list(
+            expid, as_conf, notransitive=notransitive)
         job_list.packages_dict = {}
 
         Log.debug("Length of the jobs list: {0}", len(job_list))
@@ -2140,7 +2141,7 @@ class Autosubmit:
             # Database modification
             packages_persistence.reset_table(True)
             referenced_jobs_to_remove = set()
-            job_list_wrappers = copy.deepcopy(job_list)
+            job_list_wrappers = Autosubmit.load_job_list(expid, as_conf, notransitive=notransitive)
             jobs_wr_aux = copy.deepcopy(jobs)
             jobs_wr = []
             [jobs_wr.append(job) for job in jobs_wr_aux if (
@@ -3825,14 +3826,15 @@ class Autosubmit:
                                                        expand_list=expand, expanded_status=status)
                             groups_dict = job_grouping.group_jobs()
                         # WRAPPERS
-
                         if as_conf.get_wrapper_type() != 'none' and check_wrappers:
                             as_conf.check_conf_files(True)
                             packages_persistence = JobPackagePersistence(
                                 os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"), "job_packages_" + expid)
                             packages_persistence.reset_table(True)
                             referenced_jobs_to_remove = set()
-                            job_list_wrappers = copy.deepcopy(job_list)
+                            sys.setrecursionlimit(5000000)
+
+                            job_list_wrappers = Autosubmit.load_job_list(expid, as_conf, notransitive=notransitive)
                             jobs_wr = job_list_wrappers.get_job_list()
                             for job in jobs_wr:
                                 for child in job.children:
@@ -4605,7 +4607,7 @@ class Autosubmit:
                                           expid, "pkl", "job_packages_" + expid + ".db"), 0775)
                     packages_persistence.reset_table(True)
                     referenced_jobs_to_remove = set()
-                    job_list_wrappers = copy.deepcopy(job_list)
+                    job_list_wrappers = Autosubmit.load_job_list(expid, as_conf, notransitive=notransitive)
                     jobs_wr = copy.deepcopy(job_list.get_job_list())
                     [job for job in jobs_wr if (
                         job.status != Status.COMPLETED)]

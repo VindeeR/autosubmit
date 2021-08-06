@@ -1021,8 +1021,11 @@ class Job(object):
 
     def _get_template_content(self, as_conf, snippet, template):
         #communications_library = as_conf.get_communications_library()
+        # if communications_library == 'paramiko':
         return self._get_paramiko_template(snippet, template)
-
+        # else:
+        #    raise AutosubmitCritical(
+        #        "Job {0} does not have an correct template// template not found".format(self.name), 7014)
 
     def _get_paramiko_template(self, snippet, template):
         current_platform = self._platform
@@ -1067,7 +1070,7 @@ class Job(object):
         :return: script's filename
         :rtype: str
         """
-        parameters = self.update_parameters(as_conf, self.parameters)
+        parameters = self.parameters
         template_content = self.update_content(as_conf)
         for key, value in parameters.items():
             template_content = re.sub(

@@ -91,9 +91,9 @@ class JobPackageBase(object):
     @threaded
     def check_scripts(self,jobs,configuration, parameters,only_generate,hold):
         for job in jobs:
-            lock.acquire()
+            #lock.acquire()
             job.update_parameters(configuration, parameters)
-            lock.release()
+            #lock.release()
             if job.check.lower() == Job.CHECK_ON_SUBMISSION.lower():
                 if only_generate:
                     exit = True
@@ -110,9 +110,9 @@ class JobPackageBase(object):
                     Log.warning("On submission script has  some empty variables")
                 else:
                     Log.result("Script {0} OK", job.name)
-            lock.acquire()
-            job.update_parameters(configuration, parameters)
-            lock.release()
+            #lock.acquire()
+            #job.update_parameters(configuration, parameters)
+            #lock.release()
             # looking for directives on jobs
             self._custom_directives = self._custom_directives | set(job.custom_directives)
     @threaded
@@ -146,6 +146,7 @@ class JobPackageBase(object):
         try:
             if len(self.jobs) < thread_number:
                 for job in self.jobs:
+                    job.update_parameters(configuration, parameters)
                     if job.check.lower() == Job.CHECK_ON_SUBMISSION.lower():
                         if only_generate:
                             exit=True

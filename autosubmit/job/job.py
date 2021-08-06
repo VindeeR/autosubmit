@@ -938,6 +938,7 @@ class Job(object):
 
         parameters['ROOTDIR'] = os.path.join(
             BasicConfig.LOCAL_ROOT_DIR, self.expid)
+
         parameters['PROJDIR'] = as_conf.get_project_dir()
 
         parameters['NUMMEMBERS'] = len(as_conf.get_member_list())
@@ -1019,7 +1020,7 @@ class Job(object):
         return template_content
 
     def _get_template_content(self, as_conf, snippet, template):
-        communications_library = as_conf.get_communications_library()
+        #communications_library = as_conf.get_communications_library()
         return self._get_paramiko_template(snippet, template)
 
 
@@ -1066,7 +1067,7 @@ class Job(object):
         :return: script's filename
         :rtype: str
         """
-        parameters = self.parameters
+        parameters = self.update_parameters(as_conf, self.parameters)
         template_content = self.update_content(as_conf)
         for key, value in parameters.items():
             template_content = re.sub(

@@ -243,13 +243,13 @@ class JobPackager(object):
                         else:
                             max_wrapper_job_by_section[sectionN] = max_wrapped_jobs
                 hard_limit_wrapper = max_wrapped_jobs
-                for k in dependencies_keys:
-                    if "-" in k:
-                        k_divided = k.split("-")
-                        if k_divided[0] not in self.jobs_in_wrapper:
-                            number = int(k_divided[1].strip(" "))
-                            if number < max_wrapped_jobs:
-                                hard_limit_wrapper = number
+                #for k in dependencies_keys:
+                #    if "-" in k:
+                #        k_divided = k.split("-")
+                #        if k_divided[0] not in self.jobs_in_wrapper:
+                #            number = int(k_divided[1].strip(" "))
+                #            if number < max_wrapped_jobs:
+                #                hard_limit_wrapper = number
                 min_wrapped_jobs = min(self._as_config.jobs_parser.get_option(
                     section, "MIN_WRAPPED", self._as_config.get_min_wrapped_jobs()), hard_limit_wrapper)
                 if self.wrapper_type in ['vertical', 'vertical-mixed']:
@@ -351,15 +351,19 @@ class JobPackager(object):
                                 deadlock = True
                                 if deadlock: #last case
                                     for job in p.jobs:
-                                        if balanced and job.running=="chunk" and job.chunk == int(job.parameters["NUMCHUNKS"]):
-                                                deadlock = False
+                                        if job.running =="chunk" and job.chunk == int(job.parameters["NUMCHUNKS"]):
+                                            deadlock = False
                                     if deadlock:
                                         wallclock_sum = job.wallclock
                                         for seq in xrange(1, min_v):
                                             wallclock_sum = sum_str_hours(wallclock_sum, job.wallclock)
-                                        active_jobs = self._jobs_list.get_active()
-                                        active_jobs = [aux_job for aux_job in active_jobs if not (
-                                                    aux_job.status == Status.READY and aux_job.section in self.jobs_in_wrapper)]
+                                        next_wrappable_jobs = self._jobs_list.get_jobs_by_section(self.jobs_in_wrapper)
+                                        next_wrappable_jobs = [job for job in next_wrappable_jobs if job.status == Status.WAITING and job not in p.jobs ]
+                                        active_jobs = list()
+                                        for job in next_wrappable_jobs:
+                                            active_jobs += [aux_parent for aux_parent in job.parents if  (
+                                                            aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED) and aux_parent.section not in self.jobs_in_wrapper ]
+                                        active_jobs = list(set(active_jobs))
                                 if not deadlock:
                                     for job in p.jobs:
                                         job.packed = True
@@ -387,7 +391,7 @@ class JobPackager(object):
                                         else:
                                             message += "\nCheck your configuration: Only jobs_in_wrappers are active, check your jobs_in_wrapper dependencies."
                                         if not balanced:
-                                            message += "\nPackages are not well balanced: Check your dependencies"
+                                            message += "\nPackages are not well balanced: Check your dependencies(This is not the main cause of the Critical error)"
 
                                         raise AutosubmitCritical(message, 7014)
                                 elif self.wrapper_policy == "mixed":
@@ -407,7 +411,7 @@ class JobPackager(object):
                                         else:
                                             if job.fail_count > 0 and job.status == Status.READY:
                                                 Log.printlog(
-                                                    "Wrapper policy is set to semi-strict, there is a failed job that will be sent sequential")
+                                                    "Wrapper policy is set to mixed, there is a failed job that will be sent sequential")
                                                 error = False
                                                 show_log = False
                                                 if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
@@ -418,8 +422,7 @@ class JobPackager(object):
                                                 packages_to_submit.append(package)
                                         if len(active_jobs) > 0:
                                             if show_log:
-                                                Log.printlog("Wrapper policy is set to STRICT and there are not enough jobs to form a wrapper. [wrappeable:{0} < defined_min:{1}] waiting until the wrapper can be formed.".format(min_t, min_wrapped_jobs), 6013)
-
+                                                Log.printlog("Wrapper policy is set to MIXED and there are not enough jobs to form a wrapper. [wrappeable:{0} < defined_min:{1}] waiting until the wrapper can be formed.".format(min_t, min_wrapped_jobs), 6013)
                                         else:
                                             message = "Wrapper couldn't be formed under {0} POLICY due minimum limit not being reached: [wrappeable:{1} < defined_min:{2}] ".format(
                                                 self.wrapper_policy,min_t,min_wrapped_jobs)
@@ -428,6 +431,8 @@ class JobPackager(object):
                                                     wallclock_sum)
                                             else:
                                                 message += "\nCheck your configuration: Only jobs_in_wrappers are active, check your jobs_in_wrapper dependencies."
+                                            if not balanced:
+                                                message += "\nPackages are not well balanced: Check your dependencies(This is not the main cause of the Critical error)"
                                             raise AutosubmitCritical(message, 7014)
                                 else:
                                     for job in p.jobs:

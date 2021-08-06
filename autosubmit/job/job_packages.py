@@ -36,10 +36,6 @@ from bscearth.utils.date import sum_str_hours
 from threading import Thread,Lock
 import multiprocessing
 import tarfile
-import copy
-from ..config.config_parser import ConfigParserFactory
-from ..config.config_common import AutosubmitConfig
-from ..config.basicConfig import BasicConfig
 lock = Lock()
 def threaded(fn):
     def wrapper(*args, **kwargs):
@@ -108,8 +104,10 @@ class JobPackageBase(object):
                     Log.warning("On submission script has  some empty variables")
                 else:
                     Log.result("Script {0} OK", job.name)
+            #job.update_parameters(configuration, parameters)
+
             # looking for directives on jobs
-            self._custom_directives = self._custom_directives | set(job.custom_directives)
+            #self._custom_directives = self._custom_directives | set(job.custom_directives)
     @threaded
     def _create_scripts_threaded(self,jobs,configuration):
         for i in xrange(0, len(jobs)):
@@ -163,6 +161,9 @@ class JobPackageBase(object):
                     Lhandle.append(self.check_scripts(self.jobs[i:i + chunksize], configuration, parameters, only_generate, hold))
                 for dataThread in Lhandle:
                     dataThread.join()
+                for job in self.jobs:
+                    job.update_parameters(configuration, parameters)
+                    self._custom_directives = self._custom_directives | set(job.custom_directives)
         except BaseException as e: #should be IOERROR
             raise AutosubmitCritical(
                 "Error on {1}, template [{0}] still does not exists in running time(check=on_submission actived) ".format(job.file,job.name), 7014)

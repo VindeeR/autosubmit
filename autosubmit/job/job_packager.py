@@ -361,8 +361,8 @@ class JobPackager(object):
                                         next_wrappable_jobs = [job for job in next_wrappable_jobs if job.status == Status.WAITING and job not in p.jobs ]
                                         active_jobs = list()
                                         for job in next_wrappable_jobs:
-                                            active_jobs += [aux_parent for aux_parent in job.parents if  (
-                                                            aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED) and aux_parent.section not in self.jobs_in_wrapper ]
+                                            #active_jobs += [aux_parent for aux_parent in job.parents if  (aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED) and aux_parent.section not in self.jobs_in_wrapper ]
+                                            active_jobs += [aux_parent for aux_parent in job.parents if (  aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED) and ( aux_parent.section not in self.jobs_in_wrapper or ( aux_parent.section in self.jobs_in_wrapper and aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED and aux_parent.status != Status.WAITING and aux_parent.status != Status.READY ) ) ]
                                         active_jobs = list(set(active_jobs))
                                 if not deadlock:
                                     for job in p.jobs:

@@ -243,13 +243,13 @@ class JobPackager(object):
                         else:
                             max_wrapper_job_by_section[sectionN] = max_wrapped_jobs
                 hard_limit_wrapper = max_wrapped_jobs
-                #for k in dependencies_keys:
-                #    if "-" in k:
-                #        k_divided = k.split("-")
-                #        if k_divided[0] not in self.jobs_in_wrapper:
-                #            number = int(k_divided[1].strip(" "))
-                #            if number < max_wrapped_jobs:
-                #                hard_limit_wrapper = number
+                for k in dependencies_keys:
+                    if "-" in k:
+                        k_divided = k.split("-")
+                        if k_divided[0] not in self.jobs_in_wrapper:
+                            number = int(k_divided[1].strip(" "))
+                            if number < max_wrapped_jobs:
+                               hard_limit_wrapper = number
                 min_wrapped_jobs = min(self._as_config.jobs_parser.get_option(
                     section, "MIN_WRAPPED", self._as_config.get_min_wrapped_jobs()), hard_limit_wrapper)
                 if self.wrapper_type in ['vertical', 'vertical-mixed']:
@@ -364,10 +364,45 @@ class JobPackager(object):
                                     next_wrappable_jobs = self._jobs_list.get_jobs_by_section(self.jobs_in_wrapper)
                                     next_wrappable_jobs = [job for job in next_wrappable_jobs if job.status == Status.WAITING and job not in p.jobs ]
                                     active_jobs = list()
+                                    aux_active_jobs = list()
                                     for job in next_wrappable_jobs:
-                                        #active_jobs += [aux_parent for aux_parent in job.parents if  (aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED) and aux_parent.section not in self.jobs_in_wrapper ]
-                                        active_jobs += [aux_parent for aux_parent in job.parents if (  aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED) and ( aux_parent.section not in self.jobs_in_wrapper or ( aux_parent.section in self.jobs_in_wrapper and aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED and aux_parent.status != Status.WAITING and aux_parent.status != Status.READY ) ) ]
-                                    active_jobs = list(set(active_jobs))
+                                        direct_children = False
+                                        for related in job.parents:
+                                            if related in p.jobs:
+                                                direct_children = True
+                                                break
+                                        if direct_children:
+                                            aux_active_jobs += [aux_parent for aux_parent in job.parents if (  aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED) and ( aux_parent.section not in self.jobs_in_wrapper or ( aux_parent.section in self.jobs_in_wrapper and aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED and aux_parent.status != Status.WAITING and aux_parent.status != Status.READY ) ) ]
+                                    aux_active_jobs = list(set(aux_active_jobs))
+                                    track = []
+                                    active_jobs_names = [ job.name for job in p.jobs ]
+                                    hard_deadlock = False
+                                    for job in aux_active_jobs:
+                                        infinite_deadlock = False
+                                        parents_to_check = []
+                                        if job.status == Status.WAITING:
+                                            aux_job = job
+                                            for parent in aux_job.parents:
+                                                if parent.name in active_jobs_names:
+                                                    hard_deadlock = True
+                                                    infinite_deadlock = True
+                                                    break
+                                                if (parent.status == Status.WAITING or parent.status != Status.READY) and parent.name != aux_job.name:
+                                                    parents_to_check.append(parent)
+                                            track.extend(parents_to_check)
+                                            while len(parents_to_check) > 0 and not infinite_deadlock:
+                                                aux_job = parents_to_check.pop(0)
+                                                for parent in aux_job.parents:
+                                                    if parent.name in active_jobs_names:
+                                                        hard_deadlock = True
+                                                        infinite_deadlock = True
+                                                        break
+                                                    if (parent.status == Status.WAITING or parent.status != Status.READY) and parent.name != aux_job.name and parent not in track:
+                                                        parents_to_check.append(parent)
+                                                track.extend(parents_to_check)
+                                        if not infinite_deadlock:
+                                            active_jobs.append(job)
+
                                     if self.wrapper_policy == "strict":
                                         error = True
                                         for job in p.jobs:
@@ -386,8 +421,10 @@ class JobPackager(object):
                                         else:
                                             message = "Wrapper couldn't be formed under {0} POLICY due minimum limit not being reached: [wrappeable:{1} < defined_min:{2}] ".format(
                                                 self.wrapper_policy, min_t, min_wrapped_jobs)
+                                            if hard_deadlock:
+                                                message += "\nCheck your configuration: The next wrappeable job can't be wrapped until some of inner jobs of current packages finishes which is imposible"
                                             if min_t > 1:
-                                                message += "\nCheck your configuration: Total vertical Wallclock is {0}.".format(wallclock_sum)
+                                                message += "\nCheck your configuration: Check if current {0} vertical wallclock has reached the max defined on platforms.conf.".format(wallclock_sum)
                                             else:
                                                 message += "\nCheck your configuration: Only jobs_in_wrappers are active, check your jobs_in_wrapper dependencies."
                                             if not balanced:
@@ -426,13 +463,15 @@ class JobPackager(object):
                                             else:
                                                 message = "Wrapper couldn't be formed under {0} POLICY due minimum limit not being reached: [wrappeable:{1} < defined_min:{2}] ".format(
                                                     self.wrapper_policy,min_t,min_wrapped_jobs)
+                                                if hard_deadlock:
+                                                    message += "\nCheck your configuration: The next wrappeable job can't be wrapped until some of inner jobs of current packages finishes which is imposible"
                                                 if min_t > 1:
-                                                    message += "\nCheck your configuration: Total vertical wallclock is {0}.".format(
+                                                    message += "\nCheck your configuration: Check if current {0} vertical wallclock has reached the max defined on platforms.conf.".format(
                                                         wallclock_sum)
                                                 else:
                                                     message += "\nCheck your configuration: Only jobs_in_wrappers are active, check your jobs_in_wrapper dependencies."
                                                 if not balanced:
-                                                    message += "\nPackages are not well balanced: Check your dependencies(This is not the main cause of the Critical error)"
+                                                    message += "\nPackages are not well balanced! (This is not the main cause of the Critical error)"
                                                 if len(self._jobs_list.get_in_queue()) == 0:
                                                     raise AutosubmitCritical(message, 7014)
                                     else:

@@ -377,7 +377,7 @@ class JobPackager(object):
                                                     hard_deadlock = True
                                                     infinite_deadlock = True
                                                     break
-                                                if (parent.status == Status.WAITING or parent.status != Status.READY) and parent.name != aux_job.name:
+                                                if (parent.status == Status.WAITING ) and parent.name != aux_job.name:
                                                     parents_to_check.append(parent)
                                             track.extend(parents_to_check)
                                             while len(parents_to_check) > 0 and not infinite_deadlock: # We want to look deeper on the tree until all jobs are completed or we find an unresolveable deadlock.
@@ -387,7 +387,7 @@ class JobPackager(object):
                                                         hard_deadlock = True
                                                         infinite_deadlock = True
                                                         break
-                                                    if (parent.status == Status.WAITING or parent.status != Status.READY) and parent.name != aux_job.name and parent not in track:
+                                                    if (parent.status == Status.WAITING ) and parent.name != aux_job.name and parent not in track:
                                                         parents_to_check.append(parent)
                                                 track.extend(parents_to_check)
                                         if not infinite_deadlock:

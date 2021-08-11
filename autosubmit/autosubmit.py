@@ -1611,7 +1611,7 @@ class Autosubmit:
                                             if wrapper_job.status != wrapper_job.new_status:
                                                 Log.info('Wrapper job ' + wrapper_job.name + ' changed from ' + str(
                                                     Status.VALUE_TO_KEY[wrapper_job.status]) + ' to status ' + str(Status.VALUE_TO_KEY[wrapper_job.new_status]))
-                                            save = True
+                                                save = True
                                         except:
                                             raise AutosubmitCritical(
                                                 "Wrapper is in Unknown Status couldn't get wrapper parameters", 7050)

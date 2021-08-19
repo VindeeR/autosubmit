@@ -146,7 +146,7 @@ class JobData(object):
         try:
             self.extra_data = loads(extra_data)
         except Exception as exp:
-            self.extra_data = ""
+            self.extra_data = dict()
             pass
         self.nnodes = nnodes
         self.run_id = run_id
@@ -796,7 +796,7 @@ class JobDataStructure(MainDataBase):
                             Log.info("Database version set to {0}.".format(
                                 CURRENT_DB_VERSION))
                             self.db_version = CURRENT_DB_VERSION
-                self.current_run_id = self.get_current_run_id()                
+                self.current_run_id = self.get_current_run_id()
             else:
                 if not os.path.exists(self.database_path):
                     self.database_exists = False
@@ -881,12 +881,13 @@ class JobDataStructure(MainDataBase):
                             # If setstatus changes more than 90% of date-member completed jobs, it's a new run
                             # Update status of individual jobs
                             if is_setstatus == True:
-                                self.update_jobs_from_change_status(tracking_dictionary)
-                            # Must create a new experiment run                            
+                                self.update_jobs_from_change_status(
+                                    tracking_dictionary)
+                            # Must create a new experiment run
                             Log.debug(
                                 "Since a significant amount of jobs have changed status. Autosubmit will consider a new run of the same experiment.")
                             self.validate_current_run(
-                                job_list, chunk_unit, chunk_size, must_create=True, only_update=False, current_config=current_config)                            
+                                job_list, chunk_unit, chunk_size, must_create=True, only_update=False, current_config=current_config)
                             return None
                     if job_list:
                         if len(tracking_dictionary.items()) > 0:
@@ -910,9 +911,10 @@ class JobDataStructure(MainDataBase):
                             current_run.submitted = submit_count
                             current_run.running = running_count
                             current_run.suspended = suspended_count
-                            # Update status of individual jobs      
-                            if is_setstatus == True:                      
-                                self.update_jobs_from_change_status(tracking_dictionary)
+                            # Update status of individual jobs
+                            if is_setstatus == True:
+                                self.update_jobs_from_change_status(
+                                    tracking_dictionary)
                             # Check if we are still dealing with the right number of jobs
                             if current_run.total != total_number_jobs:
                                 self.validate_current_run(job_list, current_run.chunk_unit, current_run.chunk_size,
@@ -951,7 +953,7 @@ class JobDataStructure(MainDataBase):
             if not job_list:
                 raise Exception(
                     "Historical database: Autosubmit couldn't find the job_list. validate_current_run.")
-            current_run = self.get_max_id_experiment_run()            
+            current_run = self.get_max_id_experiment_run()
             current_total = len(job_list)
             completed_count = sum(
                 1 for job in job_list if job.status == Status.COMPLETED)
@@ -973,7 +975,7 @@ class JobDataStructure(MainDataBase):
                 self.current_run_id = self._insert_experiment_run(new_run)
                 self.is_original_run_id = False
                 return self.current_run_id
-            else:                
+            else:
                 if current_run.total != current_total and only_update == False:
                     # There is a difference in total jobs, create new experiment run
                     new_run = ExperimentRun(0, None, 0, 0, chunk_unit, chunk_size, completed_count,
@@ -986,7 +988,7 @@ class JobDataStructure(MainDataBase):
                     current_run.completed = completed_count
                     current_run.failed = failed_count
                     current_run.queuing = queue_count
-                    current_run.submitted = submit_count                    
+                    current_run.submitted = submit_count
                     current_run.running = running_count
                     current_run.suspended = suspended_count
                     current_run.total = current_total if only_update == True else current_run.total
@@ -1336,8 +1338,9 @@ class JobDataStructure(MainDataBase):
                 return True
             else:
                 # Implementing a warning to keep track of it in the log.
-                Log.warning("Historical database: The register for {} from path {} was not found. The system will try to restore it with default values.".format(job_name, self.database_path))
-            # It is necessary to create a new row           
+                Log.warning("Historical database: The register for {} from path {} was not found. The system will try to restore it with default values.".format(
+                    job_name, self.database_path))
+            # It is necessary to create a new row
             submit_inserted = self.write_submit_time(
                 job_name, finish, status, ncpus, wallclock, qos, date, member, section, chunk, platform, job_id, is_packed, wrapper_queue)
             write_inserted = self.write_start_time(job_name, finish, status, ncpus,
@@ -1384,7 +1387,8 @@ class JobDataStructure(MainDataBase):
                 if current_job_data:
                     # Dropping parents key
                     for job in current_job_data:
-                        job.extra_data.pop('parents', None)
+                        if job.extra_data is not None and isinstance(job.extra_data, dict):
+                            job.extra_data.pop('parents', None)
                     # Internal map from name to object
                     name_to_current_job = {
                         job.job_name: job for job in current_job_data}
@@ -1563,28 +1567,32 @@ class JobDataStructure(MainDataBase):
         :type tracking_dictionary: dict()  
         :return: True if updated, False otherwise  
         :rtype: bool
-        """        
-        if tracking_dictionary: 
-            changes = []                 
-            current_job_data_detail = self.get_current_job_data(self.current_run_id, only_finished=False)
+        """
+        if tracking_dictionary:
+            changes = []
+            current_job_data_detail = self.get_current_job_data(
+                self.current_run_id, only_finished=False)
             # for x in current_job_data_detail:
             #     print("{} {} {}".format(x.job_name, x.last, x.status))
-            for job_name in tracking_dictionary:                
+            for job_name in tracking_dictionary:
                 status_code, final_status_code = tracking_dictionary[job_name]
                 #print("{} from {} to {}".format(job_name, status_code, final_status_code))
                 status_string = Status.VALUE_TO_KEY[status_code]
                 final_status_string = Status.VALUE_TO_KEY[final_status_code]
                 # REMOVED "and job_data.status == status_string" from the filter.
-                current_job_data = next((job_data for job_data in current_job_data_detail if job_data.job_name == job_name and job_data.last == 1), None)
+                current_job_data = next(
+                    (job_data for job_data in current_job_data_detail if job_data.job_name == job_name and job_data.last == 1), None)
                 # We found the current row that matches the provided current status
                 if current_job_data:
                     # print("{} to {}".format(job_name, final_status_code))
                     if final_status_code in [Status.COMPLETED, Status.FAILED, Status.QUEUING, Status.RUNNING, Status.HELD, Status.SUSPENDED]:
-                        # new_current_job_data = copy.deepcopy(current_job_data)                        
+                        # new_current_job_data = copy.deepcopy(current_job_data)
                         current_job_data.modified = datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
                         current_job_data.status = final_status_string
-                        current_job_data.finish = time.time() if final_status_code in [Status.COMPLETED, Status.FAILED] else 0
-                        changes.append((current_job_data.finish, current_job_data.modified, current_job_data.status, RowStatus.CHANGED, current_job_data._id))                        
+                        current_job_data.finish = time.time() if final_status_code in [
+                            Status.COMPLETED, Status.FAILED] else 0
+                        changes.append((current_job_data.finish, current_job_data.modified,
+                                        current_job_data.status, RowStatus.CHANGED, current_job_data._id))
                         #print("Added {}".format(current_job_data.job_name))
                 # else:
                 #     print("{} not found".format(job_name))
@@ -1673,7 +1681,7 @@ class JobDataStructure(MainDataBase):
             print(traceback.format_exc())
             print(
                 "Error on returning current job data. run_id {0}".format(run_id))
-            return None    
+            return None
 
     def get_max_id_experiment_run(self):
         """Get Max experiment run object (last experiment run)
@@ -1803,7 +1811,7 @@ class JobDataStructure(MainDataBase):
             Log.debug(traceback.format_exc())
             Log.warning("Error on Update : " + str(type(e).__name__))
             return None
-    
+
     def _update_many_job_data_change_status(self, changes):
         """
         Update a many job_data updates.
@@ -2001,7 +2009,7 @@ class JobDataStructure(MainDataBase):
             print("Error on select job data: {0}".format(
                 str(type(e).__name__)))
             return None
-    
+
     def _get_current_last_job_data(self, run_id):
         """
         Get job data for a current run.
@@ -2177,5 +2185,3 @@ class JobDataStructure(MainDataBase):
             Log.warning("Error on select max run_id : " +
                         str(type(e).__name__))
             return None
-
-

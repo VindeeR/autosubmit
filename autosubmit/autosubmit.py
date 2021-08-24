@@ -1450,11 +1450,10 @@ class Autosubmit:
                                 failed = False
                                 hold = False
                                 submitted = False
+                                if jobs[0].status == Status.RUNNING or jobs[0].status == Status.COMPLETED:
+                                    running = True
                                 for job in jobs:
-                                    if job.status == Status.RUNNING:
-                                        running = True
-                                        all_completed = False
-                                    elif job.status == Status.QUEUING:
+                                    if job.status == Status.QUEUING:
                                         queuing = True
                                         all_completed = False
                                     elif job.status == Status.FAILED:

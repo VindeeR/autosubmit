@@ -146,7 +146,7 @@ class JobData(object):
         try:
             self.extra_data = loads(extra_data)
         except Exception as exp:
-            self.extra_data = dict()
+            self.extra_data = ""
             pass
         self.nnodes = nnodes
         self.run_id = run_id

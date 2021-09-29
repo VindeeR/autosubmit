@@ -1487,11 +1487,9 @@ class Autosubmit:
                         except Exception as e:
                             raise AutosubmitCritical(
                                 "Autosubmit failed while processing job packages. This might be due to a change in your experiment configuration files after 'autosubmit create' was performed.", 7014, str(e))
-
                     Log.debug("Checking job_list current status")
-                    save = job_list.update_list(as_conf, first_time=True)
+                    job_list.update_list(as_conf, first_time=True)
                     job_list.save()
-
                     Log.info(
                         "Autosubmit is running with v{0}", Autosubmit.autosubmit_version)
                     # Before starting main loop, setup historical database tables and main information

@@ -434,6 +434,7 @@ class SlurmPlatform(ParamikoPlatform):
                     self.get_files_path(), filename))
                 file_exist = True
             except IOError:  # File doesn't exist, retry in sleeptime
+
                 Log.debug("{2} File still no exists.. waiting {0}s for a new retry ( retries left: {1})", sleeptime,
                           max_retries - retries, os.path.join(self.get_files_path(), filename))
                 if not wrapper_failed:

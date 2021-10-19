@@ -36,8 +36,9 @@ from autosubmit.config.config_common import AutosubmitConfig
 from autosubmit.job.job_common import Status, Type, increase_wallclock_by_chunk
 from autosubmit.job.job_common import StatisticsSnippetBash, StatisticsSnippetPython
 from autosubmit.job.job_common import StatisticsSnippetR, StatisticsSnippetEmpty
+from autosubmit.job.job_utils import get_job_package_code
+from autosubmit.history.experiment_history import ExperimentHistory
 from autosubmit.config.basicConfig import BasicConfig
-from autosubmit.database.db_jobdata import JobDataStructure
 from bscearth.utils.date import date2str, parse_date, previous_day, chunk_end_date, chunk_start_date, Log, subs_dates
 from time import sleep
 from threading import Thread
@@ -161,6 +162,20 @@ class Job(object):
         Log.debug('CHILDREN: {0}', [c.name for c in self.children])
         Log.debug('FAIL_COUNT: {0}', self.fail_count)
         Log.debug('EXPID: {0}', self.expid)
+
+    @property
+    def status_str(self):
+        """
+        String representation of the current status 
+        """
+        return Status.VALUE_TO_KEY.get(self.status, "UNKNOWN")
+    
+    @property
+    def children_names_str(self):
+        """ 
+        Comma separated list of children's names
+        """
+        return ",".join([str(child.name) for child in self._children])
 
     @property
     def parents(self):
@@ -1154,8 +1169,11 @@ class Job(object):
         f.write(date2str(datetime.datetime.now(), 'S'))
         # Get
         # Writing database
-        JobDataStructure(self.expid).write_submit_time(self.name, time.time(), Status.VALUE_TO_KEY[self.status] if self.status in Status.VALUE_TO_KEY.keys() else "UNKNOWN", self.processors,
-                                                       self.wallclock, self.queue, self.date, self.member, self.section, self.chunk, self.platform_name, self.id, self.packed, self._wrapper_queue)
+        exp_history = ExperimentHistory(self.expid)
+        exp_history.write_submit_time(self.name, submit=time.time(), status=Status.VALUE_TO_KEY.get(self.status, "UNKNOWN"), ncpus=self.processors,
+                                    wallclock=self.wallclock, qos=self.queue, date=self.date, member=self.member, section=self.section, chunk=self.chunk,
+                                    platform=self.platform_name, job_id=self.id, wrapper_queue=self._wrapper_queue, wrapper_code=get_job_package_code(self.name), 
+                                    children=self.children_names_str)
 
     def write_start_time(self):
         """
@@ -1180,8 +1198,11 @@ class Job(object):
         # noinspection PyTypeChecker
         f.write(date2str(datetime.datetime.fromtimestamp(start_time), 'S'))
         # Writing database
-        JobDataStructure(self.expid).write_start_time(self.name, start_time, Status.VALUE_TO_KEY[self.status] if self.status in Status.VALUE_TO_KEY.keys() else "UNKNOWN", self.processors,
-                                                      self.wallclock, self._queue, self.date, self.member, self.section, self.chunk, self.platform_name, self.id, self.packed, self._wrapper_queue)
+        exp_history = ExperimentHistory(self.expid)
+        exp_history.write_start_time(self.name, start=start_time, status=Status.VALUE_TO_KEY.get(self.status, "UNKNOWN"), ncpus=self.processors,
+                                wallclock=self.wallclock, qos=self.queue, date=self.date, member=self.member, section=self.section, chunk=self.chunk, 
+                                platform=self.platform_name, job_id=self.id, wrapper_queue=self._wrapper_queue, wrapper_code=get_job_package_code(self.name), 
+                                children=self.children_names_str)
         return True
 
     def write_end_time(self, completed):
@@ -1215,13 +1236,16 @@ class Job(object):
         out, err = self.local_logs
         path_out = os.path.join(self._tmp_path, 'LOG_' + str(self.expid), out)
         # Launch first as simple non-threaded function
-        JobDataStructure(self.expid).write_finish_time(self.name, finish_time, final_status, self.processors, self.wallclock, self._queue, self.date,
-                                                       self.member, self.section, self.chunk, self.platform_name, self.id, self.platform, self.packed, [job.id for job in self._parents], True, None, out, err, self._wrapper_queue)
+        exp_history = ExperimentHistory(self.expid)
+        job_data_dc = exp_history.write_finish_time(self.name, finish=finish_time, status=final_status, ncpus=self.processors,
+                                    wallclock=self.wallclock, qos=self.queue, date=self.date, member=self.member, section=self.section, chunk=self.chunk,
+                                    platform=self.platform_name, job_id=self.id, out_file=out, err_file=err, wrapper_queue=self._wrapper_queue,
+                                    wrapper_code=get_job_package_code(self.name), children=self.children_names_str)
         # Launch second as threaded function
-        thread_write_finish = Thread(target=JobDataStructure(self.expid).write_finish_time, args=(self.name, finish_time, final_status, self.processors,
-                                                                                                  self.wallclock, self._queue, self.date, self.member, self.section, self.chunk, self.platform_name, self.id, self.platform, self.packed, [job.id for job in self._parents], False, path_out, out, err, self._wrapper_queue))
-        thread_write_finish.name = "JOB_data_{}".format(self.name)
-        thread_write_finish.start()
+        if job_data_dc and type(self.platform) is not str and self.platform.type == "slurm":                
+                thread_write_finish = Thread(target=ExperimentHistory(self.expid).write_platform_data_after_finish, args=(job_data_dc, self.platform))
+                thread_write_finish.name = "JOB_data_{}".format(self.name)
+                thread_write_finish.start()
 
     def check_started_after(self, date_limit):
         """

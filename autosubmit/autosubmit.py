@@ -71,7 +71,8 @@ import portalocker
 from pkg_resources import require, resource_listdir, resource_exists, resource_string
 from collections import defaultdict
 from pyparsing import nestedExpr
-from database.db_jobdata import ExperimentStatus, JobDataStructure
+from history.experiment_status import ExperimentStatus
+from history.experiment_history import ExperimentHistory
 
 """
 Main module for autosubmit. Only contains an interface class to all functionality implemented on autosubmit
@@ -1325,17 +1326,11 @@ class Autosubmit:
             # Check if experiment exists. If False or None, it does not exist
             if not check_experiment_exists(start_after):
                 return None
-            # JobStructure object, check_only flag to avoid updating remote experiment
-            jobStructure = JobDataStructure(start_after, check_only=True)
-            # Check if database exists
-            if jobStructure.database_exists == False:
-                Log.critical(
-                    "Experiment {0} does not have a valid database. Make sure that it is running under the latest version of Autosubmit.".format(start_after))
-                return
-            # Check if database version is correct
-            if jobStructure.is_header_ready_db_version() == False:
-                Log.critical("Experiment {0} is running DB version {1} which is not supported by the completion trigger function. An updated DB version is needed.".format(
-                    start_after, jobStructure.db_version))
+            # Historical Database: We use the historical database to retrieve the current progress data of the supplied expid (start_after)
+            exp_history = ExperimentHistory(start_after, BasicConfig.JOBDATA_DIR)
+            if exp_history.is_header_ready() == False:
+                Log.critical("Experiment {0} is running a database version which is not supported by the completion trigger function. An updated DB version is needed.".format(
+                    start_after))
                 return
             Log.info("Autosubmit will start monitoring experiment {0}. When the number of completed jobs plus suspended jobs becomes equal to the total number of jobs of experiment {0}, experiment {1} will start. Querying every 60 seconds. Status format Completed/Queuing/Running/Suspended/Failed.".format(
                 start_after, expid))
@@ -1495,14 +1490,14 @@ class Autosubmit:
                     # Before starting main loop, setup historical database tables and main information
                     Log.debug("Running job data structure")
                     try:
-                        job_data_structure = JobDataStructure(expid)
-                        job_data_structure.validate_current_run(job_list.get_job_list(
-                        ), as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), current_config=as_conf.get_full_config_as_json())
-
-                        ExperimentStatus(expid).update_running_status()
+                        # Historical Database: Can create a new run if there is a difference in the number of jobs or if the current run does not exist.
+                        exp_history = ExperimentHistory(expid)
+                        exp_history.initialize_database()
+                        exp_history.process_status_changes(job_list.get_job_list(), as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), current_config=as_conf.get_full_config_as_json())                        
+                        ExperimentStatus(expid).set_as_running()
                     except Exception as e:
                         raise AutosubmitCritical(
-                            "Error while processing job_data_structure", 7067, str(e))
+                            "Error while processing historical database.", 7067, str(e))
                     if allowed_members:
                         # Set allowed members after checks have been performed. This triggers the setter and main logic of the -rm feature.
                         job_list.run_members = allowed_members
@@ -1707,9 +1702,10 @@ class Autosubmit:
                             job_list.update_list(as_conf, submitter=submitter)
                             job_list.save()
                         # Safe spot to store changes
-                        job_data_structure.process_status_changes(
-                            job_changes_tracker, job_list.get_job_list())
-                        job_changes_tracker = {}
+                        exp_history = ExperimentHistory(expid, BasicConfig.JOBDATA_DIR)                        
+                        if len(job_changes_tracker) > 0:
+                            exp_history.process_job_list_changes_to_experiment_totals(job_list.get_job_list())
+                        job_changes_tracker = {}  
                         save = job_list.update_list(
                             as_conf, submitter=submitter)
                         if save:
@@ -1836,8 +1832,8 @@ class Autosubmit:
                         raise
                 Log.result("No more jobs to run.")
                 # Updating job data header with current information when experiment ends
-                job_data_structure.validate_current_run(
-                    job_list.get_job_list(), as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), must_create=False, only_update=True)
+                exp_history = ExperimentHistory(expid, BasicConfig.JOBDATA_DIR)                                              
+                exp_history.process_job_list_changes_to_experiment_totals(job_list.get_job_list()) 
 
                 # Wait for all remaining threads of I/O, close remaining connections
                 timeout = 0
@@ -1862,7 +1858,7 @@ class Autosubmit:
                 else:
                     Log.result("Run successful")
                     # Updating finish time for job data header
-                    job_data_structure.update_finish_time()
+                    exp_history.finish_current_experiment_run()
                 fh.flush()
                 os.fsync(fh.fileno())
         except portalocker.AlreadyLocked:
@@ -3881,8 +3877,10 @@ class Autosubmit:
                     groups_dict = dict()
 
                     # Setting up job historical database header. Must create a new run.
-                    JobDataStructure(expid).validate_current_run(job_list.get_job_list(
-                    ), as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), must_create=True, current_config=as_conf.get_full_config_as_json())
+                    # Historical Database: Setup new run
+                    exp_history = ExperimentHistory(expid, BasicConfig.JOBDATA_DIR)
+                    exp_history.initialize_database()
+                    exp_history.create_new_experiment_run(as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), as_conf.get_full_config_as_json(), job_list.get_job_list())   
 
                     if not noplot:
                         if group_by:
@@ -4665,11 +4663,9 @@ class Autosubmit:
 
                 if save and wrongExpid == 0:
                     job_list.save()
-                    job_data_structure = JobDataStructure(expid)
-                    # job_data_structure.update_jobs_from_change_status(job_tracked_changes)
-                    job_data_structure.process_status_changes(
-                        job_tracked_changes, job_list.get_job_list(), as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), check_run=True, current_config=as_conf.get_full_config_as_json(), is_setstatus=True)
-
+                    exp_history = ExperimentHistory(expid, BasicConfig.JOBDATA_DIR)
+                    exp_history.initialize_database()
+                    exp_history.process_status_changes(job_list.get_job_list(), chunk_unit=as_conf.get_chunk_size_unit(), chunk_size=as_conf.get_chunk_size(), current_config=as_conf.get_full_config_as_json())   
                 else:
                     Log.printlog(
                         "Changes NOT saved to the JobList!!!!:  use -s option to save", 3000)

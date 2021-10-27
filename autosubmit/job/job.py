@@ -1169,7 +1169,7 @@ class Job(object):
         f.write(date2str(datetime.datetime.now(), 'S'))
         # Get
         # Writing database
-        exp_history = ExperimentHistory(self.expid)
+        exp_history = ExperimentHistory(self.expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
         exp_history.write_submit_time(self.name, submit=time.time(), status=Status.VALUE_TO_KEY.get(self.status, "UNKNOWN"), ncpus=self.processors,
                                     wallclock=self.wallclock, qos=self.queue, date=self.date, member=self.member, section=self.section, chunk=self.chunk,
                                     platform=self.platform_name, job_id=self.id, wrapper_queue=self._wrapper_queue, wrapper_code=get_job_package_code(self.name), 
@@ -1198,7 +1198,7 @@ class Job(object):
         # noinspection PyTypeChecker
         f.write(date2str(datetime.datetime.fromtimestamp(start_time), 'S'))
         # Writing database
-        exp_history = ExperimentHistory(self.expid)
+        exp_history = ExperimentHistory(self.expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
         exp_history.write_start_time(self.name, start=start_time, status=Status.VALUE_TO_KEY.get(self.status, "UNKNOWN"), ncpus=self.processors,
                                 wallclock=self.wallclock, qos=self.queue, date=self.date, member=self.member, section=self.section, chunk=self.chunk, 
                                 platform=self.platform_name, job_id=self.id, wrapper_queue=self._wrapper_queue, wrapper_code=get_job_package_code(self.name), 
@@ -1236,14 +1236,14 @@ class Job(object):
         out, err = self.local_logs
         path_out = os.path.join(self._tmp_path, 'LOG_' + str(self.expid), out)
         # Launch first as simple non-threaded function
-        exp_history = ExperimentHistory(self.expid)
+        exp_history = ExperimentHistory(self.expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
         job_data_dc = exp_history.write_finish_time(self.name, finish=finish_time, status=final_status, ncpus=self.processors,
                                     wallclock=self.wallclock, qos=self.queue, date=self.date, member=self.member, section=self.section, chunk=self.chunk,
                                     platform=self.platform_name, job_id=self.id, out_file=out, err_file=err, wrapper_queue=self._wrapper_queue,
                                     wrapper_code=get_job_package_code(self.name), children=self.children_names_str)
         # Launch second as threaded function
         if job_data_dc and type(self.platform) is not str and self.platform.type == "slurm":                
-                thread_write_finish = Thread(target=ExperimentHistory(self.expid).write_platform_data_after_finish, args=(job_data_dc, self.platform))
+                thread_write_finish = Thread(target=ExperimentHistory(self.expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR).write_platform_data_after_finish, args=(job_data_dc, self.platform))
                 thread_write_finish.name = "JOB_data_{}".format(self.name)
                 thread_write_finish.start()
 

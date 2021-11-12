@@ -1336,7 +1336,7 @@ class Autosubmit:
                 start_after, expid))
             while True:
                 # Query current run
-                current_run = jobStructure.get_max_id_experiment_run()
+                current_run = exp_history.manager.get_experiment_run_dc_with_max_id()
                 if current_run and current_run.finish > 0 and current_run.total > 0 and current_run.completed + current_run.suspended == current_run.total:
                     break
                 else:
@@ -1494,10 +1494,17 @@ class Autosubmit:
                         exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
                         exp_history.initialize_database()
                         exp_history.process_status_changes(job_list.get_job_list(), as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), current_config=as_conf.get_full_config_as_json())                        
+                    except Exception as e:
+                        # This error is important
+                        raise AutosubmitCritical(
+                            "Error while processing historical database.", 7005, str(e))
+                    
+                    try:
                         ExperimentStatus(expid).set_as_running()
                     except Exception as e:
-                        raise AutosubmitCritical(
-                            "Error while processing historical database.", 7067, str(e))
+                        # Connection to status database ec_earth.db can fail.
+                        # API worker will fix the status.
+                        Log.printlog("Autosubmit couldn't set your experiment as running on the main database.", 7003, str(e)) 
                     if allowed_members:
                         # Set allowed members after checks have been performed. This triggers the setter and main logic of the -rm feature.
                         job_list.run_members = allowed_members

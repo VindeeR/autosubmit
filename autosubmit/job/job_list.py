@@ -118,18 +118,18 @@ class JobList(object):
     def run_members(self, value):
         if value is not None:
             self._run_members = value
-            self._base_job_list = [job for job in self._job_list]
-            old_job_list = [job for job in self._job_list]
-            self._job_list = [
-                job for job in old_job_list if job.member is None or job.member in self._run_members or job.status not in [Status.WAITING, Status.READY]]
-            old_job_list = [job for job in self._job_list]
-            old_job_list_names = [job.name for job in old_job_list]
-            self._job_list = [job for job in old_job_list if len(
-                job.parents) == 0 or len(set(old_job_list_names).intersection(set([jobp.name for jobp in job.parents]))) == len(job.parents)]
-            # for job in self._job_list:
-            #     print("{0} {1}".format(
-            #         job.name, Status.VALUE_TO_KEY[job.status]))
-            # print(job.parents)
+            self._base_job_list = [job for job in self._job_list]            
+            found_member = False
+            processed_job_list = []
+            for job in self._job_list: # We are assuming that the jobs are sorted in topological order (which is the default)
+                if (job.member is None and found_member == False) or job.member in self._run_members or job.status not in [Status.WAITING, Status.READY]:
+                    processed_job_list.append(job)
+                if job.member is not None:
+                    found_member = True
+            self._job_list = processed_job_list 
+            # Old implementation that also considered children of the members.        
+            # self._job_list = [job for job in old_job_list if len(
+            #     job.parents) == 0 or len(set(old_job_list_names).intersection(set([jobp.name for jobp in job.parents]))) == len(job.parents)]
 
     def generate(self, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
                  default_job_type, wrapper_type=None, wrapper_jobs=None, new=True, notransitive=False, update_structure=False, run_only_members=[]):

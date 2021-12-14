@@ -360,8 +360,7 @@ class Monitor:
             # Replaced call to function for a call to the function of the object that
             # was previously implemented, nocolor is set to True because we don't want
             # strange ANSI codes in our plain text file
-            if job_list_object is not None:
-                print("In the new thingy")
+            if job_list_object is not None:                
                 output_file.write(job_list_object.print_with_status(
                     statusChange=None, nocolor=True, existingList=joblist))
             else:

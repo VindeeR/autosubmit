@@ -20,6 +20,7 @@
 import time
 import os
 from datetime import datetime
+from typing import Union, Any
 
 DATETIME_FORMAT = '%Y-%m-%d-%H:%M:%S'
 
@@ -28,26 +29,26 @@ def get_fields_as_comma_str(model):
   return ",".join(model._fields)
 
 def calculate_queue_time_in_seconds(submit_time, start_time):
-  # type : (float, float) -> int
+  # type: (float, float) -> int
   """ Calculates queue time in seconds based on submit and start timestamps. """
   if submit_time > 0 and start_time > 0 and (start_time - submit_time) > 0:
     return int(start_time - submit_time)
   return 0
 
 def calculate_run_time_in_seconds(start_time, finish_time):
-  # type : (float, float) -> int  
+  # type: (float, float) -> int  
   """ Calculates run time in seconds based on start and finish timestamps. """
   if finish_time > 0 and start_time > 0 and (finish_time - start_time) > 0:
     return int(finish_time - start_time)
   return 0
 
 def get_current_datetime():
-  # type : () -> str
+  # type: () -> str
   """ Returns the current time in format '%Y-%m-%d-%H:%M:%S' """
   return datetime.today().strftime(DATETIME_FORMAT)
 
 def get_current_datetime_if_none(argument):
-  # type : (Any) -> Union[Any, str]
+  # type: (Any) -> Union[Any, str]
   """ Returns the current time in format '%Y-%m-%d-%H:%M:%S' if the supplied argument is None, else return argument. """
   if argument is None:
     return get_current_datetime()
@@ -55,13 +56,13 @@ def get_current_datetime_if_none(argument):
     return argument
 
 def create_file_with_full_permissions(path):
-  # type : (str) -> None
+  # type: (str) -> None
   """ creates a database files with full permissions """
   os.umask(0)
   os.open(path, os.O_WRONLY | os.O_CREAT, 0o777)
 
 def create_path_if_not_exists(path):
-  # type : (str) -> bool
+  # type: (str) -> bool
   if not os.path.exists(path):
     os.makedirs(path)
     return True

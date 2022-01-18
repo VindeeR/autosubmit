@@ -469,8 +469,10 @@ class ParamikoPlatform(Platform):
             job_list_cmd=job_list_cmd[:-1]
         cmd = self.get_checkAlljobs_cmd(job_list_cmd)
         sleep_time = 5
-
-        while not (self.send_command(cmd) and retries >= 0) or (not self._check_jobid_in_queue(self.get_ssh_output(), job_list_cmd) and retries >= 0):
+        sleep(2)
+        self.send_command(cmd)
+        while not self._check_jobid_in_queue(self.get_ssh_output(), job_list_cmd) and retries >= 0:
+            self.send_command(cmd)
             retries -= 1
             Log.debug('Retrying check job command: {0}', cmd)
             Log.debug('retries left {0}', retries)
@@ -646,7 +648,7 @@ class ParamikoPlatform(Platform):
                 if "not active" in errorLine:
                     raise AutosubmitError(
                         'SSH Session not active, will restart the platforms', 6005)
-                if errorLine.find("submission failed") != -1 or errorLine.find("git clone") != -1 or errorLine.find("sbatch: error: ") != -1 or errorLine.find("not submitted") != -1:
+                if errorLine.find("refused") != -1 or errorLine.find("slurm_persist_conn_open_without_init") != -1 or errorLine.find("slurmdbd") != -1 or errorLine.find("submission failed") != -1 or errorLine.find("git clone") != -1 or errorLine.find("sbatch: error: ") != -1 or errorLine.find("not submitted") != -1:
                     if (self._submit_command_name == "sbatch" and errorLine.find("policy") != -1) or (self._submit_command_name == "sbatch" and errorLine.find("argument") != -1) or (self._submit_command_name == "bsub" and errorLine.find("job not submitted") != -1) or self._submit_command_name == "ecaccess-job-submit" or self._submit_command_name == "qsub ":
                         raise AutosubmitError(
                             "bad parameters", 7014, stderr_readlines)

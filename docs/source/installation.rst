@@ -9,7 +9,7 @@ The Autosubmit code is maintained in *PyPi*, the main source for python packages
 
 - Pre-requisties: These packages (bash, python2, sqlite3, git-scm > 1.8.2, subversion, dialog and GraphViz) must be available at local host machine.
 
-These packages (argparse, python-dateutil, pyparsing, numpy, pydotplus, matplotlib, paramiko,python2-pythondialog and portalocker) must be available for python runtime.
+These packages **argparse**, **python-dateutil**, **pyparsing**, **numpy**, **pydotplus**, **matplotlib**, **paramiko**, **python2-pythondialog**, **portalocker**, **requests**, **typing** must be available for python runtime.
 
 .. important:: (SYSTEM) Graphviz version must be 2.38, 2.40 is not working, others perhaps works. You can check the version using dot -v.
 
@@ -42,18 +42,17 @@ or download, unpack and:
 How to configure
 ================
 
-After installation, you have to configure database and path for Autosubmit.
-In order to use the default settings, just create a directory called `autosubmit` in your home directory before running the configure command.
-The experiments will be created in this folder, and the database named `autosubmit.db` in your home directory.
+After installation, you can choose to configure the database path and the main path for Autosubmit. However, you can use the default settings by running:
 
 ::
 
     autosubmit configure
 
+As a result, autosubmit will create the default folder ``~/autosubmit`` (if it doesn't exist) and you will see in your terminal the location of the 
+autosubmit configuration file and the main settings that have been applied.
 
 
-
-For advanced options you can add `--advanced` to the configure command. It will allow you to choose different directories (they must exist) for the experiments and database,
+For advanced options you can add `--advanced` to the configure command. It will allow you to choose different directories for the experiments and database,
 as well as configure SMTP server and an email account in order to use the email notifications feature.
 
 
@@ -67,12 +66,16 @@ as well as configure SMTP server and an email account in order to use the email 
     will be prompted (CLI). Use ``autosubmit configure -h`` to see all the allowed options.
 
 
-For installing the database for Autosubmit on the configured folder, when no database is created on the given path, execute:
+After executing ``autosubmit configure`` or ``autosubmit configure --advanced`` the main settings of autosubmit are stored in the ``~/.autosubmitrc`` file.
+However, the autosubmit database is not installed yet; to do that, execute:
+
 ::
 
     autosubmit install
 
 .. danger:: Be careful ! autosubmit install will create a blank database.
+
+The database will be created in the path specified in the ``~/.autosubmitrc`` file.
 
 Lastly, if autosubmit configure doesn't work for you or you need to configure additional info create:
 

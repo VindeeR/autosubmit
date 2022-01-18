@@ -1814,7 +1814,7 @@ class JobList(object):
             if job.has_parents() == False:
                 root = job
         visited = list()
-        print(root)
+        # print(root)
         # root exists
         if root is not None:
             result += self._recursion_print(root, 0, visited,

@@ -22,23 +22,25 @@ import database_managers.database_models as Models
 import utils as HUtils
 from time import time, sleep
 from database_managers.experiment_history_db_manager import ExperimentHistoryDbManager
-from database_managers.database_manager import DEFAULT_JOBDATA_DIR, DEFAULT_LOCAL_ROOT_DIR, DEFAULT_HISTORICAL_LOGS_DIR
+from database_managers.database_manager import DEFAULT_JOBDATA_DIR, DEFAULT_HISTORICAL_LOGS_DIR
 from strategies import PlatformInformationHandler, SingleAssociationStrategy, StraightWrapperAssociationStrategy, TwoDimWrapperDistributionStrategy, GeneralizedWrapperDistributionStrategy
 from data_classes.job_data import JobData
 from data_classes.experiment_run import ExperimentRun
 from platform_monitor.slurm_monitor import SlurmMonitor
 from internal_logging import Logging
+from autosubmit.config.basicConfig import BasicConfig
 
 SECONDS_WAIT_PLATFORM = 60
 
 class ExperimentHistory():
   def __init__(self, expid, jobdata_dir_path=DEFAULT_JOBDATA_DIR, historiclog_dir_path=DEFAULT_HISTORICAL_LOGS_DIR):    
     self.expid = expid
-    self._log = Logging(expid, historiclog_dir_path)
-    self._job_data_dir_path = jobdata_dir_path
-    self._historiclog_dir_path = historiclog_dir_path
+    BasicConfig.read()
+    self._log = Logging(expid, BasicConfig.HISTORICAL_LOG_DIR)
+    self._job_data_dir_path = BasicConfig.JOBDATA_DIR
+    self._historiclog_dir_path = BasicConfig.HISTORICAL_LOG_DIR
     try:
-      self.manager = ExperimentHistoryDbManager(self.expid, jobdata_dir_path=jobdata_dir_path)
+      self.manager = ExperimentHistoryDbManager(self.expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR)
     except Exception as exp:
       self._log.log(str(exp), traceback.format_exc())
       self.manager = None            
@@ -185,10 +187,11 @@ class ExperimentHistory():
     """ Detect status differences between job_list and current job_data rows, and update. Creates a new run if necessary. """
     try:
       current_experiment_run_dc = self.manager.get_experiment_run_dc_with_max_id()      
-      update_these_changes = self._get_built_list_of_changes(job_list)      
-      if len(update_these_changes) > 0:
+      update_these_changes = self._get_built_list_of_changes(job_list)
+      should_create_new_run = self.should_we_create_a_new_run(job_list, len(update_these_changes), current_experiment_run_dc, chunk_unit, chunk_size)
+      if len(update_these_changes) > 0 and should_create_new_run == False:
         self.manager.update_many_job_data_change_status(update_these_changes)
-      if self.should_we_create_a_new_run(job_list, len(update_these_changes), current_experiment_run_dc, chunk_unit, chunk_size):        
+      if should_create_new_run:        
         return self.create_new_experiment_run(chunk_unit, chunk_size, current_config, job_list)
       return self.update_counts_on_experiment_run_dc(current_experiment_run_dc, job_list)
     except Exception as exp:

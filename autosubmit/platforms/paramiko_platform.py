@@ -737,7 +737,7 @@ class ParamikoPlatform(Platform):
         :return: output from last command
         :rtype: str
         """
-        Log.debug('Output {0}', self._ssh_output)
+        #Log.debug('Output {0}', self._ssh_output)
         if self._ssh_output is None:
             self._ssh_output = ""
         return self._ssh_output

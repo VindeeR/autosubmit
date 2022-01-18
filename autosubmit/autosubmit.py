@@ -1844,7 +1844,7 @@ class Autosubmit:
                     except BaseException as e:  # If this happens, there is a bug in the code or an exception not-well caught
                         fh.flush()
                         os.fsync(fh.fileno())
-                        raise
+                        raise AutosubmitCritical("There is a bug in the code, please contact via git",7000,e.message)
                 Log.result("No more jobs to run.")
                 # Updating job data header with current information when experiment ends
                 exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)                                              

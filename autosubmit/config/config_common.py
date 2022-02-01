@@ -312,7 +312,7 @@ class AutosubmitConfig(object):
         :return: migrate user to
         :rtype: str
         """
-        return self._platforms_parser.get_option(section, 'HOST', '').lower()
+        return self._platforms_parser.get_option(section, 'HOST', '')
 
     def get_current_project(self, section):
         """
@@ -321,7 +321,7 @@ class AutosubmitConfig(object):
         :return: migrate user to
         :rtype: str
         """
-        return self._platforms_parser.get_option(section, 'PROJECT', '').lower()
+        return self._platforms_parser.get_option(section, 'PROJECT', '')
 
     def set_new_user(self, section, new_user):
         """
@@ -388,7 +388,7 @@ class AutosubmitConfig(object):
         :return: migrate project to
         :rtype: str
         """
-        return self._platforms_parser.get_option(section, 'PROJECT_TO', '').lower()
+        return self._platforms_parser.get_option(section, 'PROJECT_TO', '')
 
     def get_migrate_host_to(self, section):
         """
@@ -397,7 +397,7 @@ class AutosubmitConfig(object):
         :return: host_to
         :rtype: str
         """
-        return self._platforms_parser.get_option(section, 'HOST_TO', "none").lower()
+        return self._platforms_parser.get_option(section, 'HOST_TO', "none")
 
     def set_new_project(self, section, new_project):
         """

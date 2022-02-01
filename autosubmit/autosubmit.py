@@ -563,8 +563,9 @@ class Autosubmit:
         expid = "None"
         if hasattr(args, 'expid'):
             expid = args.expid
-        Autosubmit._init_logs(
-            args, args.logconsole, args.logfile, expid)
+        if args.command != "configure" and args.command != "install":
+            Autosubmit._init_logs(
+                args, args.logconsole, args.logfile, expid)
 
         if args.command == 'run':
             return Autosubmit.run_experiment(args.expid, args.notransitive, args.update_version, args.start_time, args.start_after, args.run_members)
@@ -2581,9 +2582,9 @@ class Autosubmit:
             backup_files = []
             backup_conf = []
             error = False
+            err_message = 'Invalid Configuration:'
             for platform in platforms:
                 # Checks
-                err_message = 'Invalid Configuration:'
                 Log.info(
                     "Checking [{0}] from platforms configuration...", platform)
                 if as_conf.get_migrate_user_to(platform) == '':

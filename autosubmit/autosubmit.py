@@ -1845,7 +1845,7 @@ class Autosubmit:
                     except BaseException as e:  # If this happens, there is a bug in the code or an exception not-well caught
                         fh.flush()
                         os.fsync(fh.fileno())
-                        raise AutosubmitCritical("There is a bug in the code, please contact via git",7000,e.message)
+                        raise AutosubmitCritical("There is a bug in the code, please contact via git",7070,e.message)
                 Log.result("No more jobs to run.")
                 # Updating job data header with current information when experiment ends
                 exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
@@ -1897,8 +1897,13 @@ class Autosubmit:
                 if message is None:
                     message = "OK"
                 if message != "OK":
-                    ssh_config_issues += message + " this is an PARAMIKO SSHEXCEPTION: indicates that there is something incompatible in the ssh_config for host:{0}\n maybe you need to contact your sysadmin".format(
+                    if message.find("Authentication failed") == -1:
+                        ssh_config_issues += message + " this is an PARAMIKO SSHEXCEPTION: indicates that there is something incompatible in the ssh_config for host:{0}\n maybe you need to contact your sysadmin".format(
                         platform.host)
+                    else:
+                        ssh_config_issues += message + "for host:{0}\n".format(
+                            platform.host)
+
             except BaseException as e:
                 platform_issues += "\n[{1}] Connection Unsuccessful to host {0} ".format(
                     platform.host, platform.name)

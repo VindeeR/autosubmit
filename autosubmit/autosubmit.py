@@ -1507,13 +1507,13 @@ class Autosubmit:
                         # This error is important
                         raise AutosubmitCritical(
                             "Error while processing historical database.", 7005, str(e))
-                    
+
                     try:
                         ExperimentStatus(expid).set_as_running()
                     except Exception as e:
                         # Connection to status database ec_earth.db can fail.
                         # API worker will fix the status.
-                        Log.printlog("Autosubmit couldn't set your experiment as running on the main database. Exception: {0}".format(str(e)), 7003) 
+                        Log.printlog("Autosubmit couldn't set your experiment as running on the main database. Exception: {0}".format(str(e)), 7003)
                     if allowed_members:
                         # Set allowed members after checks have been performed. This triggers the setter and main logic of the -rm feature.
                         job_list.run_members = allowed_members
@@ -1718,10 +1718,10 @@ class Autosubmit:
                             job_list.update_list(as_conf, submitter=submitter)
                             job_list.save()
                         # Safe spot to store changes
-                        exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)                        
+                        exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
                         if len(job_changes_tracker) > 0:
                             exp_history.process_job_list_changes_to_experiment_totals(job_list.get_job_list())
-                        job_changes_tracker = {}  
+                        job_changes_tracker = {}
                         save = job_list.update_list(
                             as_conf, submitter=submitter)
                         if save:
@@ -1848,8 +1848,8 @@ class Autosubmit:
                         raise AutosubmitCritical("There is a bug in the code, please contact via git",7000,e.message)
                 Log.result("No more jobs to run.")
                 # Updating job data header with current information when experiment ends
-                exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)                                              
-                exp_history.process_job_list_changes_to_experiment_totals(job_list.get_job_list()) 
+                exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
+                exp_history.process_job_list_changes_to_experiment_totals(job_list.get_job_list())
 
                 # Wait for all remaining threads of I/O, close remaining connections
                 timeout = 0
@@ -1889,11 +1889,18 @@ class Autosubmit:
     def restore_platforms(platform_to_test):
         Log.info("Checking the connection to all platforms in use")
         issues = ""
+        platform_issues = ""
+        ssh_config_issues = ""
         for platform in platform_to_test:
             try:
-                platform.test_connection()
-            except BaseException:
-                issues += "\n[{1}] Connection Unsuccessful to host {0}".format(
+                message = platform.test_connection()
+                if message is None:
+                    message = "OK"
+                if message != "OK":
+                    ssh_config_issues += message + " this is an PARAMIKO SSHEXCEPTION: indicates that there is something incompatible in the ssh_config for host:{0}\n maybe you need to contact your sysadmin".format(
+                        platform.host)
+            except BaseException as e:
+                platform_issues += "\n[{1}] Connection Unsuccessful to host {0} ".format(
                     platform.host, platform.name)
                 continue
             Log.result("[{1}] Connection successful to host {0}",
@@ -1902,11 +1909,14 @@ class Autosubmit:
                 Log.result("[{1}] Correct user privileges for host {0}",
                            platform.host, platform.name)
             else:
-                issues += "\n[{0}] has configuration issues. Check the parameters that build the root_path are correct:{{scratch_dir/project/user}} = {{{3}/{2}/{1}}}".format(
-                    platform.name, platform.user, platform.project, platform.scratch)
+                platform_issues += "\n[{0}] has configuration issues.\n Check that the connection is passwd-less.(ssh {1}@{4})\n Check the parameters that build the root_path are correct:{{scratch_dir/project/user}} = {{{3}/{2}/{1}}}".format(
+                    platform.name, platform.user, platform.project, platform.scratch,platform.host)
+                issues += platform_issues
+            if platform_issues != "":
+                Log.result("[{1}] Connection successful to host {0}",platform.host, platform.name)
         if issues != "":
             raise AutosubmitCritical(
-                "Issues while checking the connectivity of platforms.", 7010, issues)
+                "Issues while checking the connectivity of platforms.", 7010, issues+"\n"+ssh_config_issues)
 
     @staticmethod
     def submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence, inspect=False,
@@ -3113,7 +3123,7 @@ class Autosubmit:
         :param smtp_hostname:
         :type smtp_hostname: str
         """
-        
+
         home_path = os.path.expanduser('~')
         autosubmitapi_url = "http://192.168.11.91:8081" + " # Replace me?"
         # Setting default values
@@ -3123,8 +3133,8 @@ class Autosubmit:
             global_logs_path = os.path.join(home_path, "autosubmit", "logs")
             structures_path = os.path.join(home_path, "autosubmit", "metadata", "structures")
             historicdb_path = os.path.join(home_path, "autosubmit", "metadata", "data")
-            historiclog_path = os.path.join(home_path, "autosubmit", "metadata", "logs")            
-            database_filename = "autosubmit.db"            
+            historiclog_path = os.path.join(home_path, "autosubmit", "metadata", "logs")
+            database_filename = "autosubmit.db"
 
         while database_path is None:
             database_path = raw_input("Introduce Database path: ")
@@ -3145,7 +3155,7 @@ class Autosubmit:
                 local_root_path = None
                 Log.error("Not a valid path. You must include '~/' at the beginning.")
         local_root_path = local_root_path.replace('~', home_path)
-        
+
         # if not os.path.exists(local_root_path):
         HUtils.create_path_if_not_exists(local_root_path)
             # Log.error("Local Root path does not exist.")
@@ -3948,7 +3958,7 @@ class Autosubmit:
                     # Historical Database: Setup new run
                     exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
                     exp_history.initialize_database()
-                    exp_history.create_new_experiment_run(as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), as_conf.get_full_config_as_json(), job_list.get_job_list())   
+                    exp_history.create_new_experiment_run(as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), as_conf.get_full_config_as_json(), job_list.get_job_list())
 
                     if not noplot:
                         if group_by:
@@ -4733,7 +4743,7 @@ class Autosubmit:
                     job_list.save()
                     exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
                     exp_history.initialize_database()
-                    exp_history.process_status_changes(job_list.get_job_list(), chunk_unit=as_conf.get_chunk_size_unit(), chunk_size=as_conf.get_chunk_size(), current_config=as_conf.get_full_config_as_json())   
+                    exp_history.process_status_changes(job_list.get_job_list(), chunk_unit=as_conf.get_chunk_size_unit(), chunk_size=as_conf.get_chunk_size(), current_config=as_conf.get_full_config_as_json())
                 else:
                     Log.printlog(
                         "Changes NOT saved to the JobList!!!!:  use -s option to save", 3000)

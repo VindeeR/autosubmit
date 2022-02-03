@@ -3132,40 +3132,74 @@ class Autosubmit:
         home_path = os.path.expanduser('~')
         autosubmitapi_url = "http://192.168.11.91:8081" + " # Replace me?"
         # Setting default values
-        if not advanced and database_path is None and local_root_path is None:
+        if database_path is None and local_root_path is None:
             database_path = os.path.join(home_path, "autosubmit")
             local_root_path = os.path.join(home_path, "autosubmit")
-            global_logs_path = os.path.join(home_path, "autosubmit", "logs")
-            structures_path = os.path.join(home_path, "autosubmit", "metadata", "structures")
-            historicdb_path = os.path.join(home_path, "autosubmit", "metadata", "data")
-            historiclog_path = os.path.join(home_path, "autosubmit", "metadata", "logs")
+            #global_logs_path = os.path.join(home_path, "autosubmit", "logs")
+            #structures_path = os.path.join(home_path, "autosubmit", "metadata", "structures")
+            #historicdb_path = os.path.join(home_path, "autosubmit", "metadata", "data")
+            #historiclog_path = os.path.join(home_path, "autosubmit", "metadata", "logs")
             database_filename = "autosubmit.db"
+        if advanced:
+            option = raw_input("Introduce where is the Autosubmit database (or create it in the path specified) [{0}]:".format(database_path))
+            if len(option) > 0:
+                if option[0] != "/":
+                    if option[0] == "~":
+                        option = option[1:]
+                    database_path = os.path.join(home_path,option)
+            option = raw_input("Introduce the Autosubmit SQLITE Database name [{0}]: ".format(database_filename))
+            if len(option) > 0:
+                if option[0] != "/":
+                    if option[0] == "~":
+                        option = option[1:]
+                if option.find(".db") == -1:
+                    database_filename = option+".db"
+                else:
+                    database_filename = option
+            option = raw_input("Introduce where Autosubmit will store the experiments [{0}]: ".format(local_root_path))
+            if len(option) > 0:
+                if option[0] != "/":
+                    if option[0] == "~":
+                        option = option[1:]
+                    local_root_path = os.path.join(home_path,option)
+                else:
+                    local_root_path = option
 
-        while database_path is None:
-            database_path = raw_input("Introduce Database path: ")
-            if database_path.find("~/") < 0:
-                database_path = None
-                Log.error("Not a valid path. You must include '~/' at the beginning.")
-        database_path = database_path.replace('~', home_path)
-        # if not os.path.exists(database_path):
+            option = raw_input("Introduce the location of the default platform conf for newer experiments [{0},if None it will be obtained from autosubmit sources]: ".format(platforms_conf_path))
+            if len(option) > 0:
+                if option[0] != "/":
+                    if option[0] == "~":
+                        option = option[1:]
+                    platforms_conf_path = os.path.join(home_path,option)
+                else:
+                    platforms_conf_path = option
+            option = raw_input("Introduce the location of the default jobs conf for newer experiments [{0},if None it will be obtained from autosubmit sources]: ".format(jobs_conf_path))
+            if len(option) > 0:
+                if option[0] != "/":
+                    if option[0] == "~":
+                        option = option[1:]
+                    jobs_conf_path = os.path.join(home_path,option)
+                else:
+                    jobs_conf_path = option
+            option = raw_input("Introduce the e-mail from where you want to obtain autosubmit workflow related emails[{0}, if None e-mail notifier won't work]: ".format(mail_from))
+            if len(option) > 0:
+                if option[0] != "/":
+                    if option[0] == "~":
+                        option = option[1:]
+                    mail_from = os.path.join(home_path,option)
+                else:
+                    mail_from = option
+            option = raw_input("Introduce the smtp_hostname[{0},if None e-mail notifier won't work]: ".format(smtp_hostname))
+            if len(option) > 0:
+                if option[0] != "/":
+                    if option[0] == "~":
+                        option = option[1:]
+                    smtp_hostname = os.path.join(home_path,option)
+                else:
+                    smtp_hostname = option
+
         HUtils.create_path_if_not_exists(database_path)
-            # Log.error("Database path does not exist.")
-            # return False
-        while database_filename is None:
-            database_filename = raw_input("Introduce Database name: ")
-
-        while local_root_path is None:
-            local_root_path = raw_input("Introduce path to experiments: ")
-            if local_root_path.find("~/") < 0:
-                local_root_path = None
-                Log.error("Not a valid path. You must include '~/' at the beginning.")
-        local_root_path = local_root_path.replace('~', home_path)
-
-        # if not os.path.exists(local_root_path):
         HUtils.create_path_if_not_exists(local_root_path)
-            # Log.error("Local Root path does not exist.")
-            # return False
-        # else:
         global_logs_path = os.path.join(local_root_path, "logs")
         structures_path = os.path.join(local_root_path, "metadata", "structures")
         historicdb_path = os.path.join(local_root_path, "metadata", "data")
@@ -3230,13 +3264,15 @@ class Autosubmit:
             HUtils.create_path_if_not_exists(structures_path)
             HUtils.create_path_if_not_exists(historicdb_path)
             HUtils.create_path_if_not_exists(historiclog_path)
-            Log.result("Directories configured successfully: \n\t{5} \n\t{0} \n\t{1} \n\t{2} \n\t{3} \n\t{4}".format(
-                local_root_path,
-                global_logs_path,
-                structures_path,
-                historicdb_path,
-                historiclog_path,
-                database_path
+            Log.result("Directories configured successfully: \n\t{0} \n\t{1} \n\t{2} \n\t{3} \n\t{4} \n\t{5} \n\t{6}".format(
+                "DB_PATH:"+database_path,
+                "DB_NAME:"+database_filename,
+                "Experiments_Location:"+local_root_path,
+                "Global_ASLOGS:"+global_logs_path,
+                "Structures:"+structures_path,
+                "Historic_DB:"+historicdb_path,
+                "Historic_log:"+historiclog_path
+
             ))
         except (IOError, OSError) as e:
             raise AutosubmitCritical(

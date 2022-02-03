@@ -1265,7 +1265,7 @@ class AutosubmitConfig(object):
         :return: main platforms
         :rtype: str
         """
-        return self._exp_parser.get('experiment', 'HPCARCH')
+        return self._exp_parser.get('experiment', 'HPCARCH').lower()
 
     def set_platform(self, hpc):
         """

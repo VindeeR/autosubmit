@@ -18,11 +18,12 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import networkx
-
+import os
 from networkx.algorithms.dag import is_directed_acyclic_graph
 from networkx import DiGraph
 from networkx import dfs_edges
 from networkx import NetworkXError
+from autosubmit.config.basicConfig import BasicConfig
 from autosubmit.job.job_package_persistence import JobPackagePersistence
 
 
@@ -42,7 +43,8 @@ def transitive_reduction(graph):
             reduced_graph.add_edges_from((u, v) for v in u_edges)
         return reduced_graph
 
-def get_job_package_code(job_name):
+def get_job_package_code(expid, job_name):
+    # type: (str, str) -> int
     """
     Finds the package code and retrieves it. None if no package.
 
@@ -56,16 +58,18 @@ def get_job_package_code(job_name):
     :rtype: int or None
     """
     try:
-        packages_wrapper = JobPackagePersistence(os.path.join(self.basic_conf.LOCAL_ROOT_DIR, self.expid, "pkl"),"job_packages_" + self.expid).load(wrapper=True)
-        packages_wrapper_plus = JobPackagePersistence(os.path.join(self.basic_conf.LOCAL_ROOT_DIR, self.expid, "pkl"),"job_packages_" + self.expid).load(wrapper=False)
+        basic_conf = BasicConfig()
+        basic_conf.read()
+        packages_wrapper = JobPackagePersistence(os.path.join(basic_conf.LOCAL_ROOT_DIR, expid, "pkl"),"job_packages_" + expid).load(wrapper=True)
+        packages_wrapper_plus = JobPackagePersistence(os.path.join(basic_conf.LOCAL_ROOT_DIR, expid, "pkl"),"job_packages_" + expid).load(wrapper=False)
         if (packages_wrapper or packages_wrapper_plus):
             packages = packages_wrapper if len(packages_wrapper) > len(packages_wrapper_plus) else packages_wrapper_plus
             for exp, package_name, _job_name in packages:
                 if job_name == _job_name:
                     code = int(package_name.split("_")[2])
                     return code            
-    except:
-        pass
+    except Exception as exp:
+        print("Unable to get the package code: {}.".format(exp))
     return 0
 
 class Dependency(object):

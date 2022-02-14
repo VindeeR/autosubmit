@@ -489,9 +489,10 @@ class Monitor:
         general_stats = []
         general_stats_path = os.path.join(
             BasicConfig.LOCAL_ROOT_DIR, expid, "tmp", expid + "_GENERAL_STATS")
-        parser = AutosubmitConfig.get_parser(
-            ConfigParserFactory(), general_stats_path)
-        for section in parser.sections():
-            general_stats.append((section, ''))
-            general_stats += parser.items(section)        
+        if os.path.exists(general_stats_path):
+            parser = AutosubmitConfig.get_parser(
+                ConfigParserFactory(), general_stats_path)
+            for section in parser.sections():
+                general_stats.append((section, ''))
+                general_stats += parser.items(section)        
         return general_stats

@@ -166,13 +166,13 @@ class Job(object):
     @property
     def status_str(self):
         """
-        String representation of the current status 
+        String representation of the current status
         """
         return Status.VALUE_TO_KEY.get(self.status, "UNKNOWN")
-    
+
     @property
     def children_names_str(self):
-        """ 
+        """
         Comma separated list of children's names
         """
         return ",".join([str(child.name) for child in self._children])
@@ -828,38 +828,43 @@ class Job(object):
         :param parameters:
         :type parameters: dict
         """
-        chunk = 1
         parameters = parameters.copy()
         parameters.update(default_parameters)
         parameters['JOBNAME'] = self.name
         parameters['FAIL_COUNT'] = str(self.fail_count)
         parameters['SDATE'] = date2str(self.date, self.date_format)
         parameters['MEMBER'] = self.member
+        parameters['SPLIT'] = self.split
+        parameters['DELAY'] = self.delay
+        parameters['FREQUENCY'] = self.frequency
+        parameters['SYNCHRONIZE'] = self.synchronize
+        parameters['PACKED'] = self.packed
+        if self.chunk is None:
+            chunk = 1
+        else:
+            chunk = self.chunk
+
+        parameters['CHUNK'] = chunk
+        total_chunk = int(parameters['NUMCHUNKS'])
+        chunk_length = int(parameters['CHUNKSIZE'])
+        chunk_unit = parameters['CHUNKSIZEUNIT'].lower()
+        cal = parameters['CALENDAR'].lower()
+        if chunk == 1:
+            parameters['Chunk_FIRST'] = 'TRUE'
+        else:
+            parameters['Chunk_FIRST'] = 'FALSE'
+
+        if total_chunk == chunk:
+            parameters['Chunk_LAST'] = 'TRUE'
+        else:
+            parameters['Chunk_LAST'] = 'FALSE'
         if hasattr(self, 'retrials'):
             parameters['RETRIALS'] = self.retrials
 
         if self.date is not None:
-            if self.chunk is None:
-                chunk = 1
-            else:
-                chunk = self.chunk
-
-            parameters['CHUNK'] = chunk
-            parameters['SPLIT'] = self.split
-            parameters['DELAY'] = self.delay
-            parameters['FREQUENCY'] = self.frequency
-            parameters['SYNCHRONIZE'] = self.synchronize
-            parameters['PACKED'] = self.packed
-            total_chunk = int(parameters['NUMCHUNKS'])
-            chunk_length = int(parameters['CHUNKSIZE'])
-            chunk_unit = parameters['CHUNKSIZEUNIT'].lower()
-            cal = parameters['CALENDAR'].lower()
-            chunk_start = chunk_start_date(
-                self.date, chunk, chunk_length, chunk_unit, cal)
-            chunk_end = chunk_end_date(
-                chunk_start, chunk_length, chunk_unit, cal)
+            chunk_start = chunk_start_date(self.date, chunk, chunk_length, chunk_unit, cal)
+            chunk_end = chunk_end_date(chunk_start, chunk_length, chunk_unit, cal)
             chunk_end_1 = previous_day(chunk_end, cal)
-
             parameters['DAY_BEFORE'] = date2str(
                 previous_day(self.date, cal), self.date_format)
 
@@ -884,15 +889,7 @@ class Job(object):
 
             parameters['PREV'] = str(subs_dates(self.date, chunk_start, cal))
 
-            if chunk == 1:
-                parameters['Chunk_FIRST'] = 'TRUE'
-            else:
-                parameters['Chunk_FIRST'] = 'FALSE'
 
-            if total_chunk == chunk:
-                parameters['Chunk_LAST'] = 'TRUE'
-            else:
-                parameters['Chunk_LAST'] = 'FALSE'
 
         job_platform = self._platform
         self.processors = as_conf.get_processors(self.section)
@@ -1172,7 +1169,7 @@ class Job(object):
         exp_history = ExperimentHistory(self.expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
         exp_history.write_submit_time(self.name, submit=time.time(), status=Status.VALUE_TO_KEY.get(self.status, "UNKNOWN"), ncpus=self.processors,
                                     wallclock=self.wallclock, qos=self.queue, date=self.date, member=self.member, section=self.section, chunk=self.chunk,
-                                    platform=self.platform_name, job_id=self.id, wrapper_queue=self._wrapper_queue, wrapper_code=get_job_package_code(self.name), 
+                                    platform=self.platform_name, job_id=self.id, wrapper_queue=self._wrapper_queue, wrapper_code=get_job_package_code(self.name),
                                     children=self.children_names_str)
 
     def write_start_time(self):
@@ -1200,8 +1197,8 @@ class Job(object):
         # Writing database
         exp_history = ExperimentHistory(self.expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
         exp_history.write_start_time(self.name, start=start_time, status=Status.VALUE_TO_KEY.get(self.status, "UNKNOWN"), ncpus=self.processors,
-                                wallclock=self.wallclock, qos=self.queue, date=self.date, member=self.member, section=self.section, chunk=self.chunk, 
-                                platform=self.platform_name, job_id=self.id, wrapper_queue=self._wrapper_queue, wrapper_code=get_job_package_code(self.name), 
+                                wallclock=self.wallclock, qos=self.queue, date=self.date, member=self.member, section=self.section, chunk=self.chunk,
+                                platform=self.platform_name, job_id=self.id, wrapper_queue=self._wrapper_queue, wrapper_code=get_job_package_code(self.name),
                                 children=self.children_names_str)
         return True
 

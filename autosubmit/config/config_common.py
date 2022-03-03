@@ -1168,7 +1168,7 @@ class AutosubmitConfig(object):
         :return: number of chunks
         :rtype: int
         """
-        return int(self._exp_parser.get('experiment', 'NUMCHUNKS'))
+        return int(self._exp_parser.get('experiment', 'NUMCHUNKS',"1"))
 
     def get_chunk_ini(self, default=1):
         """

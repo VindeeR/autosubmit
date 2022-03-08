@@ -263,6 +263,7 @@ class TestJob(TestCase):
         as_conf.get_num_chunks = Mock(return_value=1)
         as_conf.get_chunk_size = Mock(return_value=1)
         as_conf.get_chunk_size_unit = Mock(return_value="day")
+        as_conf.get_calendar = Mock(return_value="standard")
         dummy_serial_platform = Mock()
         dummy_serial_platform.name = 'serial'
         dummy_platform = Mock()

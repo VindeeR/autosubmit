@@ -1169,6 +1169,14 @@ class AutosubmitConfig(object):
         :rtype: int
         """
         return int(self._exp_parser.get('experiment', 'NUMCHUNKS',"1"))
+    def get_calendar(self):
+        """
+        Returns calendar
+
+        :return: standard or noleap
+        :rtype: str
+        """
+        return self._exp_parser.get('experiment', 'CALENDAR',"standard")
 
     def get_chunk_ini(self, default=1):
         """

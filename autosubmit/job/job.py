@@ -851,10 +851,16 @@ class Job(object):
             chunk_unit = parameters['CHUNKSIZEUNIT'].lower()
             cal = parameters['CALENDAR'].lower()
         except: #Load in case that they aren't loaded
-            total_chunk = int(as_conf.get_num_chunks())
-            chunk_length = int(as_conf.get_chunk_size())
-            chunk_unit = as_conf.get_chunk_size_unit().lower()
-            cal = as_conf.get_calendar().lower()
+            try: # can not exist at this time
+                total_chunk = int(as_conf.get_num_chunks())
+                chunk_length = int(as_conf.get_chunk_size())
+                chunk_unit = as_conf.get_chunk_size_unit().lower()
+                cal = as_conf.get_calendar().lower()
+            except:
+                total_chunk = 1
+                chunk_length = 1
+                chunk_unit = "month"
+                cal = "standard"
         if chunk == 1:
             parameters['Chunk_FIRST'] = 'TRUE'
         else:

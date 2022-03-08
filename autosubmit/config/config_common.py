@@ -1168,7 +1168,7 @@ class AutosubmitConfig(object):
         :return: number of chunks
         :rtype: int
         """
-        return int(self._exp_parser.get('experiment', 'NUMCHUNKS',"1"))
+        return int(self._exp_parser.get('experiment', 'NUMCHUNKS'))
     def get_calendar(self):
         """
         Returns calendar
@@ -1176,7 +1176,7 @@ class AutosubmitConfig(object):
         :return: standard or noleap
         :rtype: str
         """
-        return self._exp_parser.get('experiment', 'CALENDAR',"standard")
+        return self._exp_parser.get('experiment', 'CALENDAR')
 
     def get_chunk_ini(self, default=1):
         """

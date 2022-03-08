@@ -847,11 +847,14 @@ class Job(object):
         parameters['CHUNK'] = chunk
         try:
             total_chunk = int(parameters['NUMCHUNKS'])
-        except:
-            total_chunk = as_conf.get_num_chunks()
+            chunk_length = int(parameters['CHUNKSIZE'])
+            chunk_unit = parameters['CHUNKSIZEUNIT'].lower()
+        except: #Load in case that they aren't loaded
+            total_chunk = int(as_conf.get_num_chunks())
+            chunk_length = int(as_conf.get_chunk_size())
+            chunk_unit = as_conf.get_chunk_size_unit().lower()
 
-        chunk_length = int(parameters['CHUNKSIZE'])
-        chunk_unit = parameters['CHUNKSIZEUNIT'].lower()
+
         cal = parameters['CALENDAR'].lower()
         if chunk == 1:
             parameters['Chunk_FIRST'] = 'TRUE'

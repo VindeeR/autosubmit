@@ -260,7 +260,9 @@ class TestJob(TestCase):
         as_conf.get_wallclock = Mock(return_value='00:30')
         as_conf.get_member_list = Mock(return_value=[])
         as_conf.get_custom_directives = Mock(return_value='["whatever"]')
-
+        as_conf.get_num_chunks = Mock(return_value=1)
+        as_conf.get_chunk_size = Mock(return_value=1)
+        as_conf.get_chunk_size_unit = Mock(return_value="day")
         dummy_serial_platform = Mock()
         dummy_serial_platform.name = 'serial'
         dummy_platform = Mock()

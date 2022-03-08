@@ -845,7 +845,11 @@ class Job(object):
             chunk = self.chunk
 
         parameters['CHUNK'] = chunk
-        total_chunk = int(parameters['NUMCHUNKS'])
+        try:
+            total_chunk = int(parameters['NUMCHUNKS'])
+        except:
+            total_chunk = as_conf.get_num_chunks()
+
         chunk_length = int(parameters['CHUNKSIZE'])
         chunk_unit = parameters['CHUNKSIZEUNIT'].lower()
         cal = parameters['CALENDAR'].lower()

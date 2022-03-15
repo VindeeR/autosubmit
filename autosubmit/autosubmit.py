@@ -1917,9 +1917,14 @@ class Autosubmit:
                 platform_issues += "\n[{0}] has configuration issues.\n Check that the connection is passwd-less.(ssh {1}@{4})\n Check the parameters that build the root_path are correct:{{scratch_dir/project/user}} = {{{3}/{2}/{1}}}".format(
                     platform.name, platform.user, platform.project, platform.scratch,platform.host)
                 issues += platform_issues
-            if platform_issues != "":
-                Log.result("[{1}] Connection successful to host {0}",platform.host, platform.name)
+            if platform_issues == "":
+                platform.connected = False
+                Log.result("[{1}] Connection failed to host {0}", platform.host, platform.name)
+            else:
+                platform.connected = False
+                Log.result("[{1}] Connection successful to host {0}", platform.host, platform.name)
         if issues != "":
+            platform.connected = False
             raise AutosubmitCritical(
                 "Issues while checking the connectivity of platforms.", 7010, issues+"\n"+ssh_config_issues)
 
@@ -1989,6 +1994,7 @@ class Autosubmit:
                             failed_packages.append(package.jobs[0].id)
                             continue
                         except AutosubmitError as e:
+                            platform.connected = False
                             if e.message.lower().find("bad parameters") != -1:
                                 error_msg = ""
                                 for package_tmp in valid_packages_to_submit:
@@ -2006,7 +2012,8 @@ class Autosubmit:
                             raise AutosubmitCritical("Invalid parameter substitution in {0} template".format(
                                 e.job_name), 7014, e.message)
                         except Exception as e:
-                            raise AutosubmitError("{0} submission failed".format(
+                            platform.connected = False
+                            raise AutosubmitError("{0} submission failed. May be related to running a job with check=on_submission and another that affect this job template".format(
                                 platform.name), 6015, str(e))
                 except WrongTemplateException as e:
                     raise AutosubmitCritical(

@@ -1708,7 +1708,7 @@ class Autosubmit:
                             as_conf, submitter=submitter)
                         job_list.save()
                         if len(job_list.get_ready()) > 0:
-                            Autosubmit.submit_ready_jobs(
+                            save = Autosubmit.submit_ready_jobs(
                                 as_conf, job_list, platforms_to_test, packages_persistence, hold=False)
                             job_list.update_list(as_conf, submitter=submitter)
                             job_list.save()
@@ -1918,11 +1918,10 @@ class Autosubmit:
                     platform.name, platform.user, platform.project, platform.scratch,platform.host)
                 issues += platform_issues
             if platform_issues == "":
-                platform.connected = False
-                Log.result("[{1}] Connection failed to host {0}", platform.host, platform.name)
+                Log.result("[{1}] Connection successful to host {0}", platform.host, platform.name)
             else:
                 platform.connected = False
-                Log.result("[{1}] Connection successful to host {0}", platform.host, platform.name)
+                Log.result("[{1}] Connection failed to host {0}", platform.host, platform.name)
         if issues != "":
             platform.connected = False
             raise AutosubmitCritical(
@@ -1951,7 +1950,9 @@ class Autosubmit:
         """
         save = False
         failed_packages = list()
+        error_message = ""
         for platform in platforms_to_test:
+            job_list.save()
             if not hold:
                 Log.debug("\nJobs ready for {1}: {0}", len(
                     job_list.get_ready(platform, hold=hold)), platform.name)
@@ -1967,6 +1968,7 @@ class Autosubmit:
                 platform.open_submit_script()
             valid_packages_to_submit = []
             for package in packages_to_submit:
+
                 try:
                     # If called from inspect command or -cw
                     if only_wrappers or inspect:
@@ -1987,15 +1989,19 @@ class Autosubmit:
                     # If called from RUN or inspect command
                     if not only_wrappers:
                         try:
-                            package.submit(
-                                as_conf, job_list.parameters, inspect, hold=hold)
+                            package.submit(as_conf, job_list.parameters, inspect, hold=hold)
+                            save=True
+                            job_list.save()
                             valid_packages_to_submit.append(package)
                         except (IOError, OSError):
-                            failed_packages.append(package.jobs[0].id)
+                            if package.jobs[0].id != 0:
+                                failed_packages.append(package.jobs[0].id)
                             continue
                         except AutosubmitError as e:
+                            if package.jobs[0].id != 0:
+                                failed_packages.append(package.jobs[0].id)
                             platform.connected = False
-                            if e.message.lower().find("bad parameters") != -1:
+                            if e.message.lower().find("bad parameters") != -1 or e.message.lower().find("scheduler is not installed") != -1:
                                 error_msg = ""
                                 for package_tmp in valid_packages_to_submit:
                                     for job_tmp in package_tmp.jobs:
@@ -2004,13 +2010,17 @@ class Autosubmit:
                                 for job_tmp in package.jobs:
                                     if job_tmp.section not in error_msg:
                                         error_msg += job_tmp.section + "&"
-                                raise AutosubmitCritical(
-                                    "Submission failed, check job and queue specified in jobs.conf. Sections that could be affected: {0}".format(
-                                        error_msg[:-1]), 7014, e.trace)
-                            raise
+                                if e.message.lower().find("bad parameters") != -1:
+                                    error_message+="\ncheck job and queue specified in jobs.conf. Sections that could be affected: {0}".format(
+                                            error_msg[:-1])
+                                else:
+                                    error_message+="\ncheck that {1} platform has set the correct scheduler. Sections that could be affected: {0}".format(
+                                            error_msg[:-1],platform.name)
                         except WrongTemplateException as e:
                             raise AutosubmitCritical("Invalid parameter substitution in {0} template".format(
                                 e.job_name), 7014, e.message)
+                        except AutosubmitCritical:
+                            raise
                         except Exception as e:
                             platform.connected = False
                             raise AutosubmitError("{0} submission failed. May be related to running a job with check=on_submission and another that affect this job template".format(
@@ -2027,22 +2037,30 @@ class Autosubmit:
 
             if platform.type == "slurm" and not inspect and not only_wrappers:
                 try:
-                    save = True
+                    valid_packages_to_submit = [ package for package in valid_packages_to_submit if package.x11 != True]
                     if len(valid_packages_to_submit) > 0:
                         try:
                             jobs_id = platform.submit_Script(hold=hold)
                         except AutosubmitError as e:
                             jobs_id = None
-                            if e.message.lower().find("bad parameters") != -1 or e.message.lower().find("invalid partition") != -1 or e.message.lower().find(" invalid qos") != -1:
+                            platform.connected = False
+                            if e.message.lower().find("bad parameters") != -1 or e.message.lower().find("invalid partition") != -1 or e.message.lower().find(" invalid qos") != -1 or e.message.lower().find("scheduler is not installed") != -1:
                                 error_msg = ""
                                 for package_tmp in valid_packages_to_submit:
                                     for job_tmp in package_tmp.jobs:
                                         if job_tmp.section not in error_msg:
                                             error_msg += job_tmp.section + "&"
-                                raise AutosubmitCritical(
-                                    "Submission failed. Check {0}: Queue, partition specified and total wallclock(sum of wallclock in case of wrapper)".format(
-                                        error_msg[:-1]), 7014, e.message)
+                                if e.message.lower().find("bad parameters") != -1:
+                                    error_message+="\ncheck job and queue specified in jobs.conf. Sections that could be affected: {0}".format(error_msg[:-1])
+                                else:
+                                    error_message+="\ncheck that {1} platform has set the correct scheduler. Sections that could be affected: {0}".format(
+                                            error_msg[:-1], platform.name)
+                        except IOError as e:
+                            raise AutosubmitError(
+                                "IO issues ", 6016, e.message)
                         except BaseException as e:
+                            if e.message.find("scheduler") != -1:
+                                raise AutosubmitCritical("Are you sure that [{0}] scheduler is the correct type for platform [{1}]?.\n Please, double check that {0} is loaded for {1} before autosubmit launch any job.".format(platform.type.upper(),platform.name.upper()),7070)
                             raise AutosubmitError(
                                 "Submission failed, this can be due a failure on the platform", 6015, e.message)
                         if jobs_id is None or len(jobs_id) <= 0:
@@ -2058,10 +2076,8 @@ class Autosubmit:
                                 try:
                                     can_continue = True
                                     while can_continue and retries > 0:
-                                        cmd = package.jobs[0].platform.get_queue_status_cmd(
-                                            jobs_id[i])
-                                        package.jobs[0].platform.send_command(
-                                            cmd)
+                                        cmd = package.jobs[0].platform.get_queue_status_cmd(jobs_id[i])
+                                        package.jobs[0].platform.send_command(cmd)
                                         queue_status = package.jobs[0].platform._ssh_output
                                         reason = package.jobs[0].platform.parse_queue_reason(
                                             queue_status, jobs_id[i])
@@ -2074,10 +2090,8 @@ class Autosubmit:
                                             sleep(5)
                                         retries = retries - 1
                                     if not can_continue:
-                                        package.jobs[0].platform.send_command(
-                                            package.jobs[0].platform.cancel_cmd + " {0}".format(jobs_id[i]))
+                                        package.jobs[0].platform.send_command(package.jobs[0].platform.cancel_cmd + " {0}".format(jobs_id[i]))
                                         i = i + 1
-                                        # skip job if is bug by the admin bug.
                                         continue
                                     if not platform.hold_job(package.jobs[0]):
                                         i = i + 1
@@ -2106,26 +2120,25 @@ class Autosubmit:
                 except AutosubmitCritical as e:
                     raise
                 except Exception as e:
-                    raise AutosubmitError("{0} submission failed".format(
-                        platform.name), 6015, str(e))
-            try:
-                for package in valid_packages_to_submit:
-                    if package.jobs[0].id not in failed_packages:
-                        if hasattr(package, "name"):
-                            job_list.packages_dict[package.name] = package.jobs
-                            from job.job import WrapperJob
-                            wrapper_job = WrapperJob(package.name, package.jobs[0].id, Status.SUBMITTED, 0,
-                                                     package.jobs,
-                                                     package._wallclock, package._num_processors,
-                                                     package.platform, as_conf, hold)
-                            job_list.job_package_map[package.jobs[0].id] = wrapper_job
-                            if isinstance(package, JobPackageThread):
-                                # Saving only when it is a real multi job package
-                                packages_persistence.save(
-                                    package.name, package.jobs, package._expid, inspect)
-            except Exception as e:
-                raise AutosubmitError("{0} submission failed".format(
-                    platform.name), 6015, str(e))
+                    raise AutosubmitError("{0} submission failed".format(platform.name), 6015, str(e))
+
+            for package in valid_packages_to_submit:
+                if package.jobs[0].id not in failed_packages:
+                    if hasattr(package, "name"):
+                        job_list.packages_dict[package.name] = package.jobs
+                        from job.job import WrapperJob
+                        wrapper_job = WrapperJob(package.name, package.jobs[0].id, Status.SUBMITTED, 0,
+                                                 package.jobs,
+                                                 package._wallclock, package._num_processors,
+                                                 package.platform, as_conf, hold)
+                        job_list.job_package_map[package.jobs[0].id] = wrapper_job
+                        if isinstance(package, JobPackageThread):
+                            # Saving only when it is a real multi job package
+                            packages_persistence.save(
+                                package.name, package.jobs, package._expid, inspect)
+            job_list.save()
+            if error_message != "":
+                raise AutosubmitCritical("Submission Failed due wrong configuration:{0}".format(error_message),7015)
         return save
 
     @staticmethod

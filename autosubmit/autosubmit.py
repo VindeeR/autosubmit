@@ -2037,7 +2037,7 @@ class Autosubmit:
 
             if platform.type == "slurm" and not inspect and not only_wrappers:
                 try:
-                    valid_packages_to_submit = [ package for package in valid_packages_to_submit if package.x11 != True]
+                    valid_packages_to_submit = [ package for package in valid_packages_to_submit ]
                     if len(valid_packages_to_submit) > 0:
                         try:
                             jobs_id = platform.submit_Script(hold=hold)

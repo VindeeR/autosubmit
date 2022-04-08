@@ -1538,7 +1538,7 @@ class Autosubmit:
                 # AUTOSUBMIT - MAIN LOOP
                 #########################
                 # Main loop. Finishing when all jobs have been submitted
-                main_loop_retrials = 480  # Hard limit of tries 480 tries at 30seconds sleep each try
+                main_loop_retrials = 3650  # Hard limit of tries 3650 tries at 15-120seconds sleep each try
                 # establish the connection to all platforms
 
                 Autosubmit.restore_platforms(platforms_to_test)
@@ -1732,87 +1732,125 @@ class Autosubmit:
                     except AutosubmitError as e:  # If an error is detected, restore all connections and job_list
                         Log.error("Trace: {0}", e.trace)
                         Log.error("{1} [eCode={0}]", e.code, e.message)
-                        Log.info("Waiting 30 seconds before continue")
-                        # Save job_list if not is a failed submitted job
-                        recovery = True
-                        try:
-                            failed_names = {}
-                            for job in job_list.get_job_list():
-                                if job.fail_count > 0:
-                                    failed_names[job.name] = job.fail_count
-                            job_list = Autosubmit.load_job_list(
-                                expid, as_conf, notransitive=notransitive)
-                            Autosubmit._load_parameters(
-                                as_conf, job_list, submitter.platforms)
-                            for job in job_list.get_job_list():
-                                if job.name in failed_names.keys():
-                                    job.fail_count = failed_names[job.name]
-                                if job.platform_name is None:
-                                    job.platform_name = hpcarch
-                                job.platform = submitter.platforms[job.platform_name.lower(
-                                )]
-
-                            packages_persistence = JobPackagePersistence(os.path.join(
-                                BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"), "job_packages_" + expid)
-                            packages = packages_persistence.load()
-                            for (exp_id, package_name, job_name) in packages:
-                                if package_name not in job_list.packages_dict:
-                                    job_list.packages_dict[package_name] = []
-                                job_list.packages_dict[package_name].append(
-                                    job_list.get_job_by_name(job_name))
-                            for package_name, jobs in job_list.packages_dict.items():
-                                from job.job import WrapperJob
-                                wrapper_status = Status.SUBMITTED
-                                all_completed = True
-                                running = False
-                                queuing = False
-                                failed = False
-                                hold = False
-                                submitted = False
-                                if jobs[0].status == Status.RUNNING or jobs[0].status == Status.COMPLETED:
-                                    running = True
-                                for job in jobs:
-                                    if job.status == Status.QUEUING:
-                                        queuing = True
-                                        all_completed = False
-                                    elif job.status == Status.FAILED:
-                                        failed = True
-                                        all_completed = False
-                                    elif job.status == Status.HELD:
-                                        hold = True
-                                        all_completed = False
-                                    elif job.status == Status.SUBMITTED:
-                                        submitted = True
-                                        all_completed = False
-                                if all_completed:
-                                    wrapper_status = Status.COMPLETED
-                                elif hold:
-                                    wrapper_status = Status.HELD
-                                else:
-                                    if running:
-                                        wrapper_status = Status.RUNNING
-                                    elif queuing:
-                                        wrapper_status = Status.QUEUING
-                                    elif submitted:
-                                        wrapper_status = Status.SUBMITTED
-                                    elif failed:
-                                        wrapper_status = Status.FAILED
+                        #Log.debug("FD recovery: {0}".format(log.fd_show.fd_table_status_str()))
+                        # No need to wait until the remote platform reconnection
+                        recovery = False
+                        as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
+                        consecutive_retrials = 1
+                        delay = min(15*consecutive_retrials,120)
+                        while not recovery and main_loop_retrials > 0:
+                            main_loop_retrials = main_loop_retrials - 1
+                            sleep(delay)
+                            consecutive_retrials = consecutive_retrials + 1
+                            Log.info("Waiting {0} seconds before continue".format(delay))
+                            try:
+                                as_conf.reload()
+                                Log.info("Recovering job_list...")
+                                job_list = Autosubmit.load_job_list(
+                                    expid, as_conf, notransitive=notransitive)
+                                if allowed_members:
+                                    # Set allowed members after checks have been performed. This triggers the setter and main logic of the -rm feature.
+                                    job_list.run_members = allowed_members
+                                    Log.result(
+                                        "Only jobs with member value in {0} or no member will be allowed in this run. Also, those jobs already SUBMITTED, QUEUING, or RUNNING will be allowed to complete and will be tracked.".format(
+                                            str(allowed_members)))
+                                platforms_to_test = set()
+                                for job in job_list.get_job_list():
+                                    if job.platform_name is None:
+                                        job.platform_name = hpcarch
+                                    job.platform = submitter.platforms[job.platform_name.lower()]
+                                    platforms_to_test.add(job.platform)
+                                #Recover job_list while keeping job.fail_count
+                                failed_names = {}
+                                for job in job_list.get_job_list():
+                                    if job.platform_name is None:
+                                        job.platform_name = hpcarch
+                                    job.platform = submitter.platforms[job.platform_name.lower()]
+                                    platforms_to_test.add(job.platform)
+                                    if job.fail_count > 0:
+                                        failed_names[job.name] = job.fail_count
+                                for job in job_list.get_job_list():
+                                    if job.name in failed_names.keys():
+                                        job.fail_count = failed_names[job.name]
+                                    if job.platform_name is None:
+                                        job.platform_name = hpcarch
+                                    job.platform = submitter.platforms[job.platform_name.lower()]
+                                Log.info("Recovering parameters...")
+                                Autosubmit._load_parameters(as_conf, job_list, submitter.platforms)
+                                # Recovery wrapper [Packages]
+                                Log.info("Recovering Wrappers...")
+                                packages_persistence = JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"), "job_packages_" + expid)
+                                packages = packages_persistence.load()
+                                for (exp_id, package_name, job_name) in packages:
+                                    if package_name not in job_list.packages_dict:
+                                        job_list.packages_dict[package_name] = []
+                                    job_list.packages_dict[package_name].append(
+                                        job_list.get_job_by_name(job_name))
+                                # Recovery wrappers [Wrapper status]
+                                for package_name, jobs in job_list.packages_dict.items():
+                                    from job.job import WrapperJob
+                                    wrapper_status = Status.SUBMITTED
+                                    all_completed = True
+                                    running = False
+                                    queuing = False
+                                    failed = False
+                                    hold = False
+                                    submitted = False
+                                    if jobs[0].status == Status.RUNNING or jobs[0].status == Status.COMPLETED:
+                                        running = True
+                                    for job in jobs:
+                                        if job.status == Status.QUEUING:
+                                            queuing = True
+                                            all_completed = False
+                                        elif job.status == Status.FAILED:
+                                            failed = True
+                                            all_completed = False
+                                        elif job.status == Status.HELD:
+                                            hold = True
+                                            all_completed = False
+                                        elif job.status == Status.SUBMITTED:
+                                            submitted = True
+                                            all_completed = False
+                                    if all_completed:
+                                        wrapper_status = Status.COMPLETED
+                                    elif hold:
+                                        wrapper_status = Status.HELD
                                     else:
-                                        wrapper_status = Status.SUBMITTED
-                                wrapper_job = WrapperJob(package_name, jobs[0].id, wrapper_status, 0, jobs,
-                                                         None,
-                                                         None, jobs[0].platform, as_conf, jobs[0].hold)
-                                job_list.job_package_map[jobs[0].id] = wrapper_job
-                            save = job_list.update_list(as_conf)
-                            job_list.save()
-                        except BaseException as e:
-                            raise AutosubmitCritical("Job_list couldn't be restored due I/O error to be solved on 3.14.", 7040,
-                                                     e.message)
+                                        if running:
+                                            wrapper_status = Status.RUNNING
+                                        elif queuing:
+                                            wrapper_status = Status.QUEUING
+                                        elif submitted:
+                                            wrapper_status = Status.SUBMITTED
+                                        elif failed:
+                                            wrapper_status = Status.FAILED
+                                        else:
+                                            wrapper_status = Status.SUBMITTED
+                                    wrapper_job = WrapperJob(package_name, jobs[0].id, wrapper_status, 0, jobs,
+                                                             None,
+                                                             None, jobs[0].platform, as_conf, jobs[0].hold)
+                                    job_list.job_package_map[jobs[0].id] = wrapper_job
+                                job_list.update_list(as_conf)
+                                Log.info("Saving recovered job list...")
+                                job_list.save()
+                                recovery = True
+                                Log.result("Recover of job_list is completed")
+                            except AutosubmitError as e:
+                                recovery = False
+                                Log.result("Recover of job_list has fail {0}".format(e.message))
+                            except IOError as e:
+                                recovery = False
+                                Log.result("Recover of job_list has fail".format(e.message))
+                            except BaseException as e:
+                                recovery = False
+                                Log.result("Recover of job_list has fail".format(e.message))
                         # Restore platforms and try again, to avoid endless loop with failed configuration, a hard limit is set.
                         reconnected = False
+                        delay = min(15*consecutive_retrials,120)
                         while not reconnected and main_loop_retrials > 0:
                             main_loop_retrials = main_loop_retrials - 1
-                            sleep(30)
+                            sleep(delay)
+                            consecutive_retrials = consecutive_retrials + 1
                             try:
                                 platforms_to_test = set()
                                 for job in job_list.get_job_list():
@@ -1823,12 +1861,12 @@ class Autosubmit:
                                     )]
                                     # noinspection PyTypeChecker
                                     platforms_to_test.add(job.platform)
-                                Autosubmit.restore_platforms(platforms_to_test)
+                                Autosubmit.restore_platforms(platforms_to_test,mail_notify=False,as_conf=as_conf,expid=expid)
                                 reconnected = True
                             except AutosubmitCritical:
                                 # Message prompt by restore_platforms.
                                 Log.info(
-                                    "Couldn't recover the platforms, retrying in 30seconds...")
+                                    "Couldn't recover the platforms, retrying...")
                                 reconnected = False
                             except BaseException:
                                 reconnected = False
@@ -1886,30 +1924,32 @@ class Autosubmit:
             raise
 
     @staticmethod
-    def restore_platforms(platform_to_test):
+    def restore_platforms(platform_to_test,mail_notify=False,as_conf=None,expid="xxxx"):
         Log.info("Checking the connection to all platforms in use")
         issues = ""
         platform_issues = ""
         ssh_config_issues = ""
         for platform in platform_to_test:
+            platform_issues = ""
             try:
                 message = platform.test_connection()
                 if message is None:
                     message = "OK"
                 if message != "OK":
-                    if message.find("Authentication failed") == -1:
-                        ssh_config_issues += message + " this is an PARAMIKO SSHEXCEPTION: indicates that there is something incompatible in the ssh_config for host:{0}\n maybe you need to contact your sysadmin".format(
+                    ssh_config_issues += message + " this is an PARAMIKO SSHEXCEPTION: indicates that there is something incompatible in the ssh_config for host:{0}\n maybe you need to contact your sysadmin".format(
                         platform.host)
-                    else:
-                        ssh_config_issues += message + "for host:{0}\n".format(
-                            platform.host)
-
             except BaseException as e:
+                try:
+                    if mail_notify:
+                        email = as_conf.get_mails_to()
+                        if "@" in email[0]:
+                            Notifier.notify_experiment_status(MailNotifier(BasicConfig),expid,email,platform)
+                except:
+                    pass
                 platform_issues += "\n[{1}] Connection Unsuccessful to host {0} ".format(
                     platform.host, platform.name)
+                issues += platform_issues
                 continue
-            Log.result("[{1}] Connection successful to host {0}",
-                       platform.host, platform.name)
             if platform.check_remote_permissions():
                 Log.result("[{1}] Correct user privileges for host {0}",
                            platform.host, platform.name)

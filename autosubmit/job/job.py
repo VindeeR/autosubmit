@@ -967,6 +967,7 @@ class Job(object):
 
         parameters['NUMMEMBERS'] = len(as_conf.get_member_list())
         parameters['WRAPPER'] = as_conf.get_wrapper_type()
+        parameters['CURRENT_WRAPPER'] = as_conf.get_wrapper_type()
 
         if self.export != "none":
             variables = re.findall('%(?<!%%)\w+%(?!%%)', self.export)

@@ -3,6 +3,7 @@ channels:
 - conda-forge
 
 dependencies:
+- graphviz
 - nose
 - nose-cov
 - paramiko

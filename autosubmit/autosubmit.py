@@ -782,13 +782,19 @@ class Autosubmit:
                                       args.command + exp_id + '.log'), "out", log_level)
             Log.set_file(os.path.join(BasicConfig.GLOBAL_LOG_DIR,
                                       args.command + exp_id + '_err.log'), "err")
-        #Enforce LANG=C
+        # Enforce LANG=UTF-8
         try:
             try:
-                locale.setlocale(locale.LC_ALL,'C.UTF-8')
-            except:
-                locale.setlocale(locale.LC_ALL, 'C.utf8')
-        except:
+                locale.setlocale(locale.LC_ALL, 'C.UTF-8')
+            except Exception as e:
+                try:
+                    locale.setlocale(locale.LC_ALL, 'C.utf8')
+                except Exception as e:
+                    try:
+                        locale.setlocale(locale.LC_ALL, 'en_GB')
+                    except Exception as e:
+                        locale.setlocale(locale.LC_ALL, 'es_ES')
+        except Exception as e:
             Log.info("Locale C.utf8 is not found, using '{0}' as fallback".format("C"))
             locale.setlocale(locale.LC_ALL, 'C')
         Log.info(

@@ -384,7 +384,7 @@ class Platform(object):
         """
         raise NotImplementedError
 
-    def check_job(self, jobid, default_status=Status.COMPLETED, retries=5):
+    def check_job(self, job, default_status=Status.COMPLETED, retries=5, submit_hold_check=False, is_wrapper=False):
         """
         Checks job running status
 

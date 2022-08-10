@@ -16,6 +16,7 @@ dependencies:
 - portalocker
 - networkx
 - python=2.7
+- requests
 - pip:
   - bscearth.utils
   - Xlib 

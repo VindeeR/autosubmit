@@ -415,37 +415,37 @@ class JobList(object):
                             if dependency.splits is not None:
                                 parent = filter(
                                     lambda _parent: _parent.split in dependency.splits, parent)
-                #Select chunk + select member
-                if parent.running in ["once"] or ( len(dependency.select_members_orig) <= 0 and len(dependency.select_chunks_orig) <= 0):
-                    job.add_parent(parent)
-                    JobList._add_edge(graph, job, parent)
-                elif len(dependency.select_members_orig) > 0:
-                    for relation_indx in member_relations_to_add:
-                        if member_list.index(parent.member) in dependency.select_members_dest[relation_indx] or len(dependency.select_members_dest[relation_indx]) <= 0:
-                            if parent not in visited_parents:
-                                job.add_parent(parent)
-                                JobList._add_edge(graph, job, parent)
-                                other_parents.remove(parent)
-                        visited_parents.add(parent)
-                elif len(dependency.select_chunks_orig) > 0:
+                    #Select chunk + select member
+                    if parent.running in ["once"] or ( len(dependency.select_members_orig) <= 0 and len(dependency.select_chunks_orig) <= 0):
+                        job.add_parent(parent)
+                        JobList._add_edge(graph, job, parent)
+                    elif len(dependency.select_members_orig) > 0:
+                        for relation_indx in member_relations_to_add:
+                            if member_list.index(parent.member) in dependency.select_members_dest[relation_indx] or len(dependency.select_members_dest[relation_indx]) <= 0:
+                                if parent not in visited_parents:
+                                    job.add_parent(parent)
+                                    JobList._add_edge(graph, job, parent)
+                                    other_parents.remove(parent)
+                            visited_parents.add(parent)
+                    elif len(dependency.select_chunks_orig) > 0:
+                        for relation_indx in chunk_relations_to_add:
+                            if parent.chunk in dependency.select_chunks_dest[relation_indx] or len(
+                                    dependency.select_chunks_dest[relation_indx]) == 0:
+                                if parent not in visited_parents:
+                                    job.add_parent(parent)
+                                    JobList._add_edge(graph, job, parent)
+                                    other_parents.remove(parent)
+                            visited_parents.add(parent)
+                # If job doesn't have any parent after a first search, search in all dependency.section. This is to avoid +1 being added only to the last one.
+                if len(job.parents) <= 0:
                     for relation_indx in chunk_relations_to_add:
-                        if parent.chunk in dependency.select_chunks_dest[relation_indx] or len(
-                                dependency.select_chunks_dest[relation_indx]) == 0:
-                            if parent not in visited_parents:
-                                job.add_parent(parent)
-                                JobList._add_edge(graph, job, parent)
-                                other_parents.remove(parent)
-                        visited_parents.add(parent)
-            # If job doesn't have any parent after a first search, search in all dependency.section. This is to avoid +1 being added only to the last one.
-            if len(job.parents) <= 0:
-                for relation_indx in chunk_relations_to_add:
-                    for parent in jobs_by_section:
-                        if parent.chunk in dependency.select_chunks_dest[relation_indx] or len(
-                                dependency.select_chunks_dest[relation_indx]) == 0:
-                            if parent not in visited_parents:
-                                job.add_parent(parent)
-                                JobList._add_edge(graph, job, parent)
-                        visited_parents.add(parent)
+                        for parent in jobs_by_section:
+                            if parent.chunk in dependency.select_chunks_dest[relation_indx] or len(
+                                    dependency.select_chunks_dest[relation_indx]) == 0:
+                                if parent not in visited_parents:
+                                    job.add_parent(parent)
+                                    JobList._add_edge(graph, job, parent)
+                            visited_parents.add(parent)
             JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member,
                                                            member_list, dependency.section, graph, other_parents)
 

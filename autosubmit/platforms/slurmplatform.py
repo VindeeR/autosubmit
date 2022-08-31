@@ -362,8 +362,8 @@ class SlurmPlatform(ParamikoPlatform):
                 return export + self._submit_hold_cmd + job_script
         else:
             if not hold:
-                self._submit_script_file.write(
-                    export + self._submit_cmd + job_script + "\n")
+                write_this = export + self._submit_cmd + job_script +"\n"
+                self._submit_script_file.write(write_this)
             else:
                 self._submit_script_file.write(
                     export + self._submit_hold_cmd + job_script + "\n")

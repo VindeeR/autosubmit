@@ -184,8 +184,9 @@ class ParamikoSubmitter(Submitter):
                                                                     None)
             remote_platform.custom_directives = parser.get_option(section, 'CUSTOM_DIRECTIVES',
                                                                   None)
-            Log.debug("Custom directives from platform.conf: {0}".format(
-                remote_platform.custom_directives))
+            if remote_platform.custom_directives is not None and remote_platform.custom_directives != '' and remote_platform.custom_directives != 'None':
+                Log.debug("Custom directives from platform.conf: {0}".format(
+                    remote_platform.custom_directives))
             remote_platform.scratch_free_space = parser.get_option(section, 'SCRATCH_FREE_SPACE',
                                                                    None)
             remote_platform.root_dir = os.path.join(remote_platform.scratch, remote_platform.project,

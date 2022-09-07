@@ -1600,7 +1600,9 @@ class AutosubmitConfig(object):
          :return: maximum number of jobs (or total jobs)
          :rtype: int
          """
-        return int(self._conf_parser.get_option(wrapper_section_name, 'MAX_WRAPPED', self.get_total_jobs()))
+        #total_jobs = self.get_total_jobs()
+        #unlimited because wrapper should count as one
+        return int(self._conf_parser.get_option(wrapper_section_name, 'MAX_WRAPPED', 999999999))
 
     def get_max_wrapped_jobs_vertical(self, wrapper_section_name="wrapper"):
         """
@@ -1609,8 +1611,7 @@ class AutosubmitConfig(object):
          :return: maximum number of jobs (or total jobs)
          :rtype: int
          """
-        max_wrapped = self.get_max_wrapped_jobs(wrapper_section_name)
-        return int(self._conf_parser.get_option(wrapper_section_name, 'MAX_WRAPPED_V', max_wrapped))
+        return int(self._conf_parser.get_option(wrapper_section_name, 'MAX_WRAPPED_V', -1))
 
     def get_max_wrapped_jobs_horizontal(self, wrapper_section_name="wrapper"):
         """
@@ -1620,7 +1621,7 @@ class AutosubmitConfig(object):
          :rtype: int
          """
         max_wrapped = self.get_max_wrapped_jobs(wrapper_section_name)
-        return int(self._conf_parser.get_option(wrapper_section_name, 'MAX_WRAPPED_H', max_wrapped))
+        return int(self._conf_parser.get_option(wrapper_section_name, 'MAX_WRAPPED_H', -1))
 
     def get_min_wrapped_jobs_vertical(self, wrapper_section_name="wrapper"):
         """

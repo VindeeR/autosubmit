@@ -1372,8 +1372,8 @@ class Autosubmit:
 
         while job_list.get_active():
             Autosubmit.submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence, True, only_wrappers, hold=False)
-            for job in job_list.get_uncompleted_and_not_waiting():
-                job.status = Status.COMPLETED
+            #for job in job_list.get_uncompleted_and_not_waiting():
+            #    job.status = Status.COMPLETED
             job_list.update_list(as_conf, False)
 
     @staticmethod
@@ -2071,7 +2071,6 @@ class Autosubmit:
                 platform.open_submit_script()
             valid_packages_to_submit = [] # type: List[JobPackageBase]
             for package in packages_to_submit:
-
                 try:
                     # If called from inspect command or -cw
                     if only_wrappers or inspect:

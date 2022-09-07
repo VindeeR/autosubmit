@@ -159,8 +159,10 @@ class ParamikoSubmitter(Submitter):
                                                                asconf.get_max_processors())
             remote_platform.max_waiting_jobs = int(parser.get_option(section, 'MAX_WAITING_JOBS',
                                                                      asconf.get_max_waiting_jobs()))
-            remote_platform.total_jobs = int(parser.get_option(section, 'TOTAL_JOBS',
+            totaljobs = int(parser.get_option(section, 'TOTALJOBS', asconf.get_total_jobs()))
+            total_jobs = int(parser.get_option(section, 'TOTAL_JOBS',
                                                                asconf.get_total_jobs()))
+            remote_platform.total_jobs = min(min(totaljobs, total_jobs),asconf.get_total_jobs())
             remote_platform.hyperthreading = parser.get_option(section, 'HYPERTHREADING',
                                                                'false').lower()
             remote_platform.project = parser.get_option(

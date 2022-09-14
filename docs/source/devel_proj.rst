@@ -700,3 +700,20 @@ The custom directives can be used for multiple parameters at the same time using
     MAX_PROCESSORS = 80
     # test [40] / small [40] // large [40]
     PROCESSORS_PER_NODE = 40
+
+Controling the number of active concurrent tasks in an experiment
+----------------------------------------------------------------------
+
+In some cases, you may want to control the number of concurrent tasks/jobs that can be active in an experiment.
+
+To set the maximum number of concurrent tasks/jobs, you can use the ``TOTAL_JOBS`` and ``MAX_WAITING_JOBS`` variable in the ``conf/autosubmit_cxxx.conf`` file.
+
+    vi <expid>/conf/autosubmit_cxxx.conf
+
+.. code-block:: ini
+
+        # Maximum number of submitted,waiting and running tasks
+        TOTAL_JOBS = 10
+        # Maximum number of submitted and waiting tasks
+        MAX_WAITING_JOBS = 10
+

@@ -901,7 +901,7 @@ class ParamikoPlatform(Platform):
         except AutosubmitError as e:
             raise
         except IOError as e:
-            raise AutosubmitError(e.message,6016)
+            raise AutosubmitError("IO issues, something seems wrong with {0}".format(self.name),6016,e.message)
         except BaseException as e:
             raise AutosubmitError('Command {0} in {1} warning: {2}'.format(
                 command, self.host, '\n'.join(stderr_readlines)), 6005, e.message)

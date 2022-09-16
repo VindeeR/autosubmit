@@ -540,6 +540,8 @@ class AutosubmitConfig(object):
             # In case that there are critical errors in the configuration, Autosubmit won't continue.
             if running_time is True:
                 raise AutosubmitCritical(e.message, e.code, e.trace)
+            else:
+                Log.printlog(e.message+"\n")
         except Exception as e:
             raise AutosubmitCritical(
                 "There was an error while showing the config log messages", 7014, str(e))

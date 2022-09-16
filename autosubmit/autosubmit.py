@@ -4341,12 +4341,13 @@ class Autosubmit:
                 raise AutosubmitCritical("Autosubmit couldn't identify the project destination.", 7014)
 
         if project_type == "git":
-            submitter = Autosubmit._get_submitter(as_conf)
-            submitter.load_platforms(as_conf)
+
             try:
+                submitter = Autosubmit._get_submitter(as_conf)
+                submitter.load_platforms(as_conf)
                 hpcarch = submitter.platforms[as_conf.get_platform()]
             except BaseException as e:
-                raise AutosubmitCritical("Can't set main platform", 7014, e.message)
+                raise AutosubmitCritical("Can't set main platform\nCheck the hpcarch platform configuration inside platform.conf", 7014)
 
             return AutosubmitGit.clone_repository(as_conf, force, hpcarch)
         elif project_type == "svn":

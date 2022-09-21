@@ -1,3 +1,4 @@
+configparser
 argparse>=1.2,<2
 python-dateutil>2
 matplotlib

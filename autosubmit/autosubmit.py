@@ -1546,7 +1546,7 @@ class Autosubmit:
                         exp_history.process_status_changes(job_list.get_job_list(), as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), current_config=as_conf.get_full_config_as_json())                        
                     except Exception as e:
                         # This error is important
-                        raise AutosubmitCritical("Error while processing historical database.", 7005, str(e))
+                        Log.printlog("Error while processing historical database.", 7005, str(e))
 
                     try:
                         ExperimentStatus(expid).set_as_running()
@@ -4175,10 +4175,23 @@ class Autosubmit:
 
                     # Setting up job historical database header. Must create a new run.
                     # Historical Database: Setup new run
-                    exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
-                    exp_history.initialize_database()
-                    exp_history.create_new_experiment_run(as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), as_conf.get_full_config_as_json(), job_list.get_job_list())
-
+                    try:
+                        exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
+                        exp_history.initialize_database()
+                        exp_history.create_new_experiment_run(as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), as_conf.get_full_config_as_json(), job_list.get_job_list())
+                    except BaseException as e:
+                        Log.printlog("Historic database seems corrupted, AS will repair it and resume the run",
+                                     Log.INFO)
+                        try:
+                            Autosubmit.database_fix(expid)
+                            exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR,
+                                                            historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
+                            exp_history.initialize_database()
+                            exp_history.create_new_experiment_run(as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(),
+                                                                  as_conf.get_full_config_as_json(),
+                                                                  job_list.get_job_list())
+                        except:
+                            Log.warning("Couldn't recover the Historical database, AS will continue without it, GUI may be affected")
                     if not noplot:
                         if group_by:
                             status = list()

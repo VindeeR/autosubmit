@@ -183,7 +183,7 @@ Sequence of instructions to install Autosubmit and its dependencies with conda.
     # Create conda environment
     conda env update -f environment.yml -n autosubmit python=2
     # Activate env
-    source activate autosubmit
+    conda activate autosubmit
     # Test autosubmit
     autosubmit -v
     # Configure autosubmitrc and install database as indicated in this doc

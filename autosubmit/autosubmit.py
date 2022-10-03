@@ -1584,7 +1584,7 @@ class Autosubmit:
                 if unparsed_two_step_start != "":
                     job_list.parse_jobs_by_filter(unparsed_two_step_start)
 
-                main_loop_retrials = 3650  # Hard limit of tries 3650 tries at 15-120seconds sleep each try
+                main_loop_retrials = 11250*2  # Hard limit of tries ( 48h min 72h max), 2 retrials per stop
                 # establish the connection to all platforms
 
                 Autosubmit.restore_platforms(platforms_to_test)
@@ -1822,7 +1822,7 @@ class Autosubmit:
                             Log.printlog("Error trying to store failed job count",Log.WARNING)
                         Log.result("Storing failed job count...done")
                         while not recovery and main_loop_retrials > 0:
-                            delay = min(15 * consecutive_retrials, 120)
+                            delay = min(15 * consecutive_retrials, 30)
                             main_loop_retrials = main_loop_retrials - 1
                             sleep(delay)
                             consecutive_retrials = consecutive_retrials + 1
@@ -1959,7 +1959,7 @@ class Autosubmit:
                             except BaseException:
                                 reconnected = False
                         if main_loop_retrials <= 0:
-                            raise AutosubmitCritical("Autosubmit Encounter too much errors during running time, limit of 4hours reached", 7051, e.message)
+                            raise AutosubmitCritical("Autosubmit Encounter too much errors during running time, limit of {0} retrials reached".format(main_loop_retrials), 7051, e.message)
                     except AutosubmitCritical as e:  # Critical errors can't be recovered. Failed configuration or autosubmit error
                         raise AutosubmitCritical(e.message, e.code, e.trace)
                     except portalocker.AlreadyLocked:
@@ -3322,7 +3322,12 @@ class Autosubmit:
             raise
         except BaseException as e:
             raise AutosubmitCritical("Unknown error while reporting the parameters list, likely it is due IO issues",7040,e.message)
-
+    @staticmethod
+    def removeInlineComments(cfgparser):
+        for section in cfgparser.sections():
+            for item in cfgparser.items(section):
+                cfgparser.set(section, item[0], item[1].split("#")[0].strip())
+        return cfgparser
     @staticmethod
     def describe(experiment_id):
         """
@@ -3497,6 +3502,7 @@ class Autosubmit:
                 parser.set("autosubmitapi", "url", autosubmitapi_url)
                 #parser.add_section("hosts")
                 #parser.set("hosts", "whitelist", " localhost # Add your machine names")
+                parser = Autosubmit.removeInlineComments(parser)
                 parser.write(config_file)
                 config_file.close()
                 Log.result("Configuration file written successfully: \n\t{0}".format(rc_path))
@@ -3591,6 +3597,8 @@ class Autosubmit:
                 parser = SafeConfigParser()
                 parser.optionxform = str
                 parser.read(path)
+                parser = Autosubmit.removeInlineComments(parser)
+
                 if parser.has_option('database', 'path'):
                     database_path = parser.get('database', 'path')
                 if parser.has_option('database', 'filename'):
@@ -3723,11 +3731,15 @@ class Autosubmit:
             parser.add_section('mail')
             parser.set('mail', 'smtp_server', smtp_hostname)
             parser.set('mail', 'mail_from', mail_from)
+            parser = Autosubmit.removeInlineComments(parser)
+
             parser.write(config_file)
             config_file.close()
             d.msgbox("Configuration file written successfully",
                      width=50, height=5)
             os.system('clear')
+
+
         except (IOError, OSError) as e:
             raise AutosubmitCritical(
                 "Can not write config file", 7012, e.message)

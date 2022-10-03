@@ -14,8 +14,11 @@ class ConfigParserFactory:
     def __init__(self):
         pass
 
+
+
     def create_parser(self):
-        return ConfigParser()
+        parser = ConfigParser()
+        return parser
 
 
 class ConfigParser(ConfPar, object):

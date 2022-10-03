@@ -3322,12 +3322,7 @@ class Autosubmit:
             raise
         except BaseException as e:
             raise AutosubmitCritical("Unknown error while reporting the parameters list, likely it is due IO issues",7040,e.message)
-    @staticmethod
-    def removeInlineComments(cfgparser):
-        for section in cfgparser.sections():
-            for item in cfgparser.items(section):
-                cfgparser.set(section, item[0], item[1].split("#")[0].strip())
-        return cfgparser
+
     @staticmethod
     def describe(experiment_id):
         """
@@ -3502,7 +3497,6 @@ class Autosubmit:
                 parser.set("autosubmitapi", "url", autosubmitapi_url)
                 #parser.add_section("hosts")
                 #parser.set("hosts", "whitelist", " localhost # Add your machine names")
-                parser = Autosubmit.removeInlineComments(parser)
                 parser.write(config_file)
                 config_file.close()
                 Log.result("Configuration file written successfully: \n\t{0}".format(rc_path))
@@ -3597,7 +3591,6 @@ class Autosubmit:
                 parser = SafeConfigParser()
                 parser.optionxform = str
                 parser.read(path)
-                parser = Autosubmit.removeInlineComments(parser)
 
                 if parser.has_option('database', 'path'):
                     database_path = parser.get('database', 'path')
@@ -3731,8 +3724,6 @@ class Autosubmit:
             parser.add_section('mail')
             parser.set('mail', 'smtp_server', smtp_hostname)
             parser.set('mail', 'mail_from', mail_from)
-            parser = Autosubmit.removeInlineComments(parser)
-
             parser.write(config_file)
             config_file.close()
             d.msgbox("Configuration file written successfully",
@@ -5398,10 +5389,12 @@ class Autosubmit:
             raise AutosubmitCritical('Can not test a RERUN experiment', 7014)
 
         content = open(as_conf.experiment_file).read()
+
         if random_select:
             if hpc is None:
                 platforms_parser = as_conf.get_parser(
                     ConfigParserFactory(), as_conf.platforms_file)
+
                 test_platforms = list()
                 for section in platforms_parser.sections():
                     if platforms_parser.get_option(section, 'TEST_SUITE', 'false').lower() == 'true':

@@ -1760,6 +1760,13 @@ class AutosubmitConfig(object):
         return origin_exists and (branch is not None or commit is not None)
 
     @staticmethod
+    def removeInlineComments(cfgparser):
+        for section in cfgparser.sections():
+            for item in cfgparser.items(section):
+                cfgparser.set(section, item[0], item[1].split("#")[0].strip())
+        return cfgparser
+
+    @staticmethod
     def get_parser(parser_factory, file_path):
         """
         Gets parser for given file
@@ -1794,5 +1801,7 @@ class AutosubmitConfig(object):
                 raise Exception(
                     "{}\n This file and the correctness of its content are necessary.".format(str(exp)))
         # parser.read(file_path)
+        #remove inline comments
+        parser = AutosubmitConfig.removeInlineComments(parser)
         return parser
 

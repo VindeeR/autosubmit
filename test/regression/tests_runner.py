@@ -79,6 +79,7 @@ def run(current_experiment_id, only_list=None, exclude_list=None, max_threads=5)
     tests_parser.optionxform = str
     tests_parser.read(tests_parser_file)
 
+
     # Resetting the database
     clean_database(db_path)
     create_database()

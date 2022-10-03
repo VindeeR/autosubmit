@@ -4467,7 +4467,10 @@ class Autosubmit:
             if job.status in [Status.SUBMITTED, Status.QUEUING, Status.HELD] and final_status not in [Status.QUEUING, Status.HELD, Status.SUSPENDED]:
                 job.hold = False
                 if job.platform_name and job.platform_name.lower() != "local":
-                    job.platform.send_command(job.platform.cancel_cmd + " " + str(job.id), ignore_log=True)
+                    try:
+                        job.platform.send_command(job.platform.cancel_cmd + " " + str(job.id), ignore_log=True)
+                    except:
+                        pass
             elif job.status in [Status.QUEUING, Status.RUNNING, Status.SUBMITTED] and final_status == Status.SUSPENDED:
                 if job.platform_name and job.platform_name.lower() != "local":
                     job.platform.send_command("scontrol hold " + "{0}".format(job.id), ignore_log=True)

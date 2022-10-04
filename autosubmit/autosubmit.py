@@ -590,7 +590,7 @@ class Autosubmit:
         except Exception as e:
             if type(e) is SystemExit:
                 # Version keyword force an exception in parse arg due and os_exit(0) but the program is succesfully finished
-                if e.message == 0:
+                if str(e) == 0:
                     print(Autosubmit.autosubmit_version)
                     os._exit(0)
             raise AutosubmitCritical(
@@ -836,28 +836,28 @@ class Autosubmit:
                             if ret:
                                 Log.result("Experiment {0} deleted".format(expid_delete))
                         except BaseException as e:
-                            error_message += 'Can not delete experiment entry: {0}\n'.format(e.message)
+                            error_message += 'Can not delete experiment entry: {0}\n'.format(str(e))
                         Log.info("Removing experiment directory...")
                         try:
                             shutil.rmtree(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid_delete))
                         except BaseException as e:
-                            error_message += 'Can not delete directory: {0}\n'.format(e.message)
+                            error_message += 'Can not delete directory: {0}\n'.format(str(e))
                         try:
                             Log.info("Removing Structure db...")
                             structures_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, BasicConfig.STRUCTURES_DIR, "structure_{0}.db".format(expid_delete))
                             if os.path.exists(structures_path):
                                 os.remove(structures_path)
                         except BaseException as e:
-                            error_message += 'Can not delete structure: {0}\n'.format(e.message)
+                            error_message += 'Can not delete structure: {0}\n'.format(str(e))
                         try:
                             Log.info("Removing job_data db...")
                             job_data_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, BasicConfig.JOBDATA_DIR, "job_data_{0}.db".format(expid_delete))
                             if os.path.exists(job_data_path):
                                 os.remove(job_data_path)
                         except BaseException as e:
-                            error_message += 'Can not delete job_data: {0}\n'.format(e.message)
+                            error_message += 'Can not delete job_data: {0}\n'.format(str(e))
                     except OSError as e:
-                        error_message += 'Can not delete directory: {0}\n'.format(e.message)
+                        error_message += 'Can not delete directory: {0}\n'.format(str(e))
                 else:
                     if not eadmin:
                         raise AutosubmitCritical(
@@ -1811,7 +1811,7 @@ class Autosubmit:
                         # No need to wait until the remote platform reconnection
                         recovery = False
                         as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
-                        consecutive_retrials = 0
+                        consecutive_retrials = 1
                         failed_names = {}
                         Log.info("Storing failed job count...")
                         try:

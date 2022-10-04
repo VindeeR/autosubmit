@@ -249,7 +249,7 @@ class JobList(object):
                 else:
                     self._ordered_jobs_by_date_member[wrapper_section] = {}
         except BaseException as e:
-            raise AutosubmitCritical("Some section jobs of the wrapper:{0} are not in the current job_list defined in jobs.conf".format(wrapper_section),7014,e.message)
+            raise AutosubmitCritical("Some section jobs of the wrapper:{0} are not in the current job_list defined in jobs.conf".format(wrapper_section),7014,str(e))
         pass
 
 
@@ -1417,11 +1417,11 @@ class JobList(object):
                                        self._persistence_file, self._job_list if self.run_members is None or job_list is None else job_list)
                 pass
             except BaseException as e:
-                raise AutosubmitError(e.message,6040,"Failure while saving the job_list")
+                raise AutosubmitError(str(e),6040,"Failure while saving the job_list")
         except AutosubmitError as e:
             raise
         except BaseException as e:
-            raise AutosubmitError(e.message,6040,"Unknown failure while saving the job_list")
+            raise AutosubmitError(str(e),6040,"Unknown failure while saving the job_list")
 
 
     def backup_save(self):

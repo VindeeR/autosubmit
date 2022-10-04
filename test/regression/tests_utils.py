@@ -23,7 +23,7 @@ def check_cmd(command, path=BIN_PATH, verbose='AS_TEST_VERBOSE' in os.environ):
 
     except subprocess.CalledProcessError as e:
         if verbose:
-            print e.output
+            print str(e)
         return False
 
 

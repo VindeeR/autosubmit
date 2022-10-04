@@ -60,7 +60,7 @@ class AutosubmitGit:
                                                      shell=True)
                 except subprocess.CalledProcessError as e:
                     raise AutosubmitCritical(
-                        "Failed to retrieve git info ...", 7064, e.message)
+                        "Failed to retrieve git info ...", 7064, str(e))
                 if output:
                     Log.info("Changes not committed detected... SKIPPING!")
                     raise AutosubmitCritical("Commit needed!", 7013)
@@ -231,7 +231,7 @@ class AutosubmitGit:
                     output_1 = subprocess.check_output(command_1, shell=True)
                 except BaseException as e:
                     submodule_failure = True
-                    Log.printlog("Trace: {0}".format(e.message), 6014)
+                    Log.printlog("Trace: {0}".format(str(e)), 6014)
                     Log.printlog(
                         "Submodule {0} has a wrong configuration".format(submodule), 6014)
             else:

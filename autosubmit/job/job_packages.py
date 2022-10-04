@@ -155,7 +155,7 @@ class JobPackageBase(object):
                             exit=True
                             break
                         if not os.path.exists(os.path.join(configuration.get_project_dir(), job.file)):
-                            if configuration.get_project_type().lower() != "none":
+                            if str(configuration.get_project_type()).lower() != "none":
                                 raise AutosubmitCritical("Template [ {0} ] using CHECK=On_submission has some empty variable {0}".format(job.name),7014)
                         if not job.check_script(configuration, parameters,show_logs=job.check_warnings):
                             Log.warning("Script {0} check failed",job.name)

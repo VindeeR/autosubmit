@@ -1763,7 +1763,10 @@ class AutosubmitConfig(object):
     def removeInlineComments(cfgparser):
         for section in cfgparser.sections():
             for item in cfgparser.items(section):
-                cfgparser.set(section, item[0], item[1].split("#")[0].strip())
+                try:
+                    cfgparser.set(section, item[0], item[1].split("#")[0].strip())
+                except:
+                    pass
         return cfgparser
 
     @staticmethod

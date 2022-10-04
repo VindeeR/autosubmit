@@ -513,11 +513,11 @@ class AutosubmitConfig(object):
             self.reload()
         except IOError as e:
             raise AutosubmitError(
-                "I/O Issues con config files", 6016, e.message)
+                "I/O Issues con config files", 6016, str(e))
         except (AutosubmitCritical, AutosubmitError) as e:
             raise
         except BaseException as e:
-            raise AutosubmitCritical("Unknown issue while checking the configulation files (check_conf_files)",7040,e.message)
+            raise AutosubmitCritical("Unknown issue while checking the configulation files (check_conf_files)",7040,str(e))
         # Annotates all errors found in the configuration files in dictionaries self.warn_config and self.wrong_config.
         self.check_expdef_conf()
         self.check_platforms_conf()

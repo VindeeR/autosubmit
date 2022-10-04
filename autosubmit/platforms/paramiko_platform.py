@@ -112,7 +112,7 @@ class ParamikoPlatform(Platform):
         except EOFError as e:
             self.connected = False
             raise AutosubmitError("[{0}] not alive. Host: {1}".format(
-                self.name, self.host), 6002, e.message)
+                self.name, self.host), 6002, str(e))
         except (AutosubmitError,AutosubmitCritical,IOError):
             self.connected = False
             raise
@@ -136,7 +136,7 @@ class ParamikoPlatform(Platform):
                         self.host.split(',')[0]), 6002)
                 else:
                     raise AutosubmitCritical(
-                        "First connection to {0} is failed, check host configuration or try another login node ".format(self.host), 7050,e.message)
+                        "First connection to {0} is failed, check host configuration or try another login node ".format(self.host), 7050,str(e))
             while self.connected is False and retry < retries:
                 try:
                     self.connect(True)
@@ -155,7 +155,7 @@ class ParamikoPlatform(Platform):
             raise
         except Exception as e:
             raise AutosubmitCritical(
-                'Cant connect to this platform due an unknown error', 7050, e.message)
+                'Cant connect to this platform due an unknown error', 7050, str(e))
     
     def threaded(fn):
         def wrapper(*args, **kwargs):
@@ -219,12 +219,12 @@ class ParamikoPlatform(Platform):
             elif "name or service not known" in e.strerror.lower():
                 raise SSHException(" {0} doesn't accept remote connections. Check if there is an typo in the hostname".format(self.host))
             else:
-                raise AutosubmitError("File can't be located due an slow connection", 6016, e.message)
+                raise AutosubmitError("File can't be located due an slow connection", 6016, str(e))
         except BaseException as e:
             self.connected = False
-            if "Authentication failed." in e.message:
+            if "Authentication failed." in str(e):
                 raise AutosubmitCritical("Authentication Failed, please check the platform.conf of {0}".format(
-                    self._host_config['hostname']), 7050, e.message)
+                    self._host_config['hostname']), 7050, str(e))
             if not reconnect and "," in self._host_config['hostname']:
                 self.restore_connection(reconnect=True)
             else:
@@ -284,7 +284,7 @@ class ParamikoPlatform(Platform):
             return True
         except IOError as e:
             raise AutosubmitError('Can not send file {0} to {1}'.format(os.path.join(
-                self.tmp_path, filename)), os.path.join(self.get_files_path(), filename), 6004, e.message)
+                self.tmp_path, filename)), os.path.join(self.get_files_path(), filename), 6004, str(e))
         except BaseException as e:
             raise AutosubmitError(
                 'Send file failed. Connection seems to no be active', 6004)
@@ -358,7 +358,7 @@ class ParamikoPlatform(Platform):
         except BaseException as e:
             Log.error('Could not remove file {0} due a wrong configuration'.format(
                 os.path.join(self.get_files_path(), filename)))
-            if e.message.lower().find("garbage") != -1:
+            if str(e).lower().find("garbage") != -1:
                 raise AutosubmitCritical(
                     "Wrong User or invalid .ssh/config. Or invalid user in platform.conf or public key not set ", 7051, e.message)
 

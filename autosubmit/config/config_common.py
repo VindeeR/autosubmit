@@ -1808,6 +1808,6 @@ class AutosubmitConfig(object):
                     "{}\n This file and the correctness of its content are necessary.".format(str(exp)))
         # parser.read(file_path)
         #remove inline comments
-        parser = AutosubmitConfig.removeInlineComments(parser)
+        #parser = AutosubmitConfig.removeInlineComments(parser)
         return parser
 

@@ -1764,7 +1764,10 @@ class AutosubmitConfig(object):
         for section in cfgparser.sections():
             for item in cfgparser.items(section):
                 try:
-                    cfgparser.set(section, item[0], item[1].split("#")[0].strip())
+                    if str(item[0]).upper() == "CUSTOM_DIRECTIVES":
+                        pass
+                    else:
+                        cfgparser.set(section, item[0], item[1].split("#")[0].strip())
                 except:
                     pass
         return cfgparser

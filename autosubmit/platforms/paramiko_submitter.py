@@ -203,6 +203,8 @@ class ParamikoSubmitter(Submitter):
             if parser.has_option(section, 'SERIAL_PLATFORM'):
                 platforms[section.lower()].serial_platform = platforms[parser.get_option(section,
                                                                                          'SERIAL_PLATFORM',
-                                                                                         None).lower()]
+                                                                                         None)]
+                if  platforms[section.lower()].serial_platform is not None:
+                    platforms[section.lower()].serial_platform = platforms[section.lower()].serial_platform.lower()
 
         self.platforms = platforms

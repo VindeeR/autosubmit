@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# PYTHON_ARGCOMPLETE_OK
 
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
 
@@ -65,7 +64,7 @@ try:
 except Exception:
     dialog = None
 from time import sleep
-import argparse, argcomplete
+import argparse
 import subprocess
 import json
 import tarfile
@@ -583,7 +582,6 @@ class Autosubmit:
 
             # Changelog
             subparsers.add_parser('changelog', description='show changelog')
-            argcomplete.autocomplete(parser)
             args = parser.parse_args()
 
 

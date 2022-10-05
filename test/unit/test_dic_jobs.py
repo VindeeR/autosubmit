@@ -123,7 +123,7 @@ class TestDicJobs(TestCase):
         self.dictionary._create_jobs_once.assert_not_called()
         self.dictionary._create_jobs_startdate.assert_not_called()
         self.dictionary._create_jobs_member.assert_not_called()
-        self.dictionary._create_jobs_chunk.assert_called_once_with(section, priority, frequency, Type.BASH, synchronize, delay, splits, {},excluded_chunks=[],excluded_members=[])
+        self.dictionary._create_jobs_chunk.assert_called_once_with(section, priority, frequency, Type.BASH, synchronize, delay, splits, {},excluded_chunks=[],excluded_members=[],included_chunks=[],included_members=[])
 
     def test_dic_creates_right_jobs_by_startdate(self):
         # arrange

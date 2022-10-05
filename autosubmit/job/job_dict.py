@@ -152,11 +152,19 @@ class DicJobs:
         elif running == 'date':
             self._create_jobs_startdate(section, priority, frequency, default_job_type, jobs_data,splits)
         elif running == 'member':
-            self._create_jobs_member(section, priority, frequency, default_job_type, jobs_data,splits,self.parse_relation(section,True,self.get_option(section, "EXCLUDED_MEMBERS", []),"EXCLUDED_MEMBERS"))
+            self._create_jobs_member(section, priority, frequency, default_job_type, jobs_data,splits, \
+                                     self.parse_relation(section,True,self.get_option(section, "EXCLUDED_MEMBERS", []),"EXCLUDED_MEMBERS"), \
+                                     self.parse_relation(section,True,self.get_option(section, "INCLUDED_MEMBERS", []),"INCLUDED_MEMBERS"))
+
         elif running == 'chunk':
             synchronize = self.get_option(section, "SYNCHRONIZE", None)
             delay = int(self.get_option(section, "DELAY", -1))
-            self._create_jobs_chunk(section, priority, frequency, default_job_type, synchronize, delay, splits, jobs_data,excluded_chunks=self.parse_relation(section,False,self.get_option(section, "EXCLUDED_CHUNKS", []),"EXCLUDED_CHUNKS"),excluded_members=self.parse_relation(section,True,self.get_option(section, "EXCLUDED_MEMBERS", []),"EXCLUDED_MEMBERS"))
+            self._create_jobs_chunk(section, priority, frequency, default_job_type, synchronize, delay, splits, jobs_data, \
+                                    excluded_chunks=self.parse_relation(section,False,self.get_option(section, "EXCLUDED_CHUNKS", []),"EXCLUDED_CHUNKS"), \
+                                    excluded_members=self.parse_relation(section,True,self.get_option(section, "EXCLUDED_MEMBERS", []),"EXCLUDED_MEMBERS"), \
+                                    included_chunks=self.parse_relation(section,False,self.get_option(section, "INCLUDED_CHUNKS", []),"INCLUDED_CHUNKS"), \
+                                    included_members=self.parse_relation(section,True,self.get_option(section, "INCLUDED_MEMBERS", []),"INCLUDED_MEMBERS"))
+
         pass
 
     def _create_jobs_once(self, section, priority, default_job_type, jobs_data=dict(),splits=0):
@@ -218,7 +226,7 @@ class DicJobs:
 
 
 
-    def _create_jobs_member(self, section, priority, frequency, default_job_type, jobs_data=dict(),splits=-1,excluded_members=[]):
+    def _create_jobs_member(self, section, priority, frequency, default_job_type, jobs_data=dict(),splits=-1,excluded_members=[],included_members=[]):
         """
         Create jobs to be run once per member
 
@@ -242,11 +250,18 @@ class DicJobs:
             count = 0
             if splits > 0:
                 for member in self._member_list:
-                    if self._member_list.index(member) not in excluded_members:
-                        tmp_dic[section][date][member] = []
+                    if len(included_members) == 0:
+                        if self._member_list.index(member) not in excluded_members:
+                            tmp_dic[section][date][member] = []
+                    else:
+                        if self._member_list.index(member) in included_members:
+                            tmp_dic[section][date][member] = []
             for member in self._member_list:
                 if self._member_list.index(member)  in excluded_members:
                     continue
+                if len(included_members) > 0:
+                    if self._member_list.index(member) not in included_members:
+                        continue
                 count += 1
                 if count % frequency == 0 or count == len(self._member_list):
                     if splits <= 0:
@@ -259,7 +274,7 @@ class DicJobs:
 
 
 
-    def _create_jobs_chunk(self, section, priority, frequency, default_job_type, synchronize=None, delay=0, splits=0, jobs_data=dict(),excluded_chunks=[],excluded_members=[]):
+    def _create_jobs_chunk(self, section, priority, frequency, default_job_type, synchronize=None, delay=0, splits=0, jobs_data=dict(),excluded_chunks=[],excluded_members=[],included_chunks=[],included_members=[]):
         """
         Create jobs to be run once per chunk
 
@@ -282,6 +297,9 @@ class DicJobs:
             for chunk in self._chunk_list:
                 if chunk in excluded_chunks:
                     continue
+                if len(included_chunks) > 0:
+                    if chunk not in included_chunks:
+                        continue
                 count += 1
                 if delay == -1 or delay < chunk:
                     if count % frequency == 0 or count == len(self._chunk_list):
@@ -311,6 +329,9 @@ class DicJobs:
         for date in self._date_list:
             self._dic[section][date] = dict()
             for member in self._member_list:
+                if len(included_members) > 0:
+                    if self._member_list.index(member) not in included_members:
+                        continue
                 if self._member_list.index(member) in excluded_members:
                     continue
                 self._dic[section][date][member] = dict()
@@ -318,6 +339,9 @@ class DicJobs:
                 for chunk in self._chunk_list:
                     if chunk in excluded_chunks:
                         continue
+                    if len(included_chunks) > 0:
+                        if chunk not in included_chunks:
+                            continue
                     count += 1
                     if delay == -1 or delay < chunk:
                         if count % frequency == 0 or count == len(self._chunk_list):

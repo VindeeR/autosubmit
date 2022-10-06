@@ -81,9 +81,10 @@ class TestDicJobs(TestCase):
         frequency = 123
         splits = 0
         excluded_list_m = []
+        included_list_m = []
         self.parser_mock.has_option = Mock(return_value=True)
         self.parser_mock.get = Mock(return_value='member')
-        self.dictionary.get_option = Mock(side_effect=[splits,frequency,excluded_list_m])
+        self.dictionary.get_option = Mock(side_effect=[splits,frequency,excluded_list_m,included_list_m])
         self.dictionary._create_jobs_once = Mock()
         self.dictionary._create_jobs_startdate = Mock()
         self.dictionary._create_jobs_member = Mock()
@@ -95,7 +96,7 @@ class TestDicJobs(TestCase):
         # assert
         self.dictionary._create_jobs_once.assert_not_called()
         self.dictionary._create_jobs_startdate.assert_not_called()
-        self.dictionary._create_jobs_member.assert_called_once_with(section, priority, frequency, Type.BASH, {},splits,excluded_list_m)
+        self.dictionary._create_jobs_member.assert_called_once_with(section, priority, frequency, Type.BASH, {},splits,excluded_list_m,included_list_m)
         self.dictionary._create_jobs_chunk.assert_not_called()
 
     def test_read_section_running_chunk_create_jobs_chunk(self):
@@ -108,9 +109,11 @@ class TestDicJobs(TestCase):
         splits = 0
         excluded_list_c = []
         excluded_list_m = []
+        included_list_c = []
+        included_list_m = []
         self.parser_mock.has_option = Mock(return_value=True)
         self.parser_mock.get = Mock(return_value='chunk')
-        self.dictionary.get_option = Mock(side_effect=[splits,frequency, synchronize, delay,excluded_list_c,excluded_list_m])
+        self.dictionary.get_option = Mock(side_effect=[splits,frequency, synchronize, delay,excluded_list_c,excluded_list_m,included_list_c,included_list_m])
         self.dictionary._create_jobs_once = Mock()
         self.dictionary._create_jobs_startdate = Mock()
         self.dictionary._create_jobs_member = Mock()

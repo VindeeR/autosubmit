@@ -57,7 +57,8 @@ class JobData(object):
           platform) > 0 else "NA"
       self.job_id = job_id if job_id else 0
       try:
-          self.extra_data_parsed = loads(extra_data)
+          if extra_data != "":
+            self.extra_data_parsed = loads(extra_data)
       except Exception as exp:
           self.extra_data_parsed = {} # Fail fast            
       self.extra_data = extra_data

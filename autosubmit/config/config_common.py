@@ -607,9 +607,7 @@ class AutosubmitConfig(object):
         """
         Checks experiment's queues configuration file.
         """
-        if len(self._platforms_parser.sections()) == 0:
-            self.wrong_config["Platform"] += [["Global",
-                                               "Platform file is not well-configured or found"]]
+
 
         if len(self._platforms_parser.sections()) != len(set(self._platforms_parser.sections())):
             self.wrong_config["Platform"] += [["Global",
@@ -619,7 +617,11 @@ class AutosubmitConfig(object):
             main_platform_found = True
         elif self.ignore_undefined_platforms:
             main_platform_found = True
+        if len(self._platforms_parser.sections()) == 0 and not main_platform_found:
+            self.wrong_config["Platform"] += [["Global",
+                                               "Platform file is not well-configured or found"]]
         for section in self._platforms_parser.sections():
+
             if section in self.hpcarch:
                 main_platform_found = True
             if not self._platforms_parser.check_exists(section, 'TYPE'):

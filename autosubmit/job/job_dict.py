@@ -402,9 +402,10 @@ class DicJobs:
                 for d in self._date_list:
                     self._get_date(jobs, dic, d, member, chunk)
         try:
-            if type(jobs[0]) is list:
-                jobs_flattened = [job for jobs_to_flatten in jobs for job in jobs_to_flatten]
-                jobs = jobs_flattened
+            if len(jobs) > 0:
+                if type(jobs[0]) is list:
+                    jobs_flattened = [job for jobs_to_flatten in jobs for job in jobs_to_flatten]
+                    jobs = jobs_flattened
         except BaseException as e:
             pass
         return jobs

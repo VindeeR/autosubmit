@@ -35,6 +35,7 @@ from log.log import Log, AutosubmitError, AutosubmitCritical
 
 from autosubmit.config.basicConfig import BasicConfig
 from collections import defaultdict
+from autosubmit.database.db_common import update_experiment_descrip_version
 
 
 class AutosubmitConfig(object):
@@ -1369,6 +1370,7 @@ class AutosubmitConfig(object):
             content = content.replace(re.search('AUTOSUBMIT_VERSION =.*', content).group(0),
                                       "AUTOSUBMIT_VERSION = " + autosubmit_version)
         open(self._conf_parser_file, 'w').write(content)
+        update_experiment_descrip_version(self.expid, description=None, version=autosubmit_version)
 
     def get_version(self):
         """

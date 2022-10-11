@@ -59,10 +59,11 @@ from log.log import Log, AutosubmitError, AutosubmitCritical
 from typing import Set
 import sqlite3
 
-try:
-    import dialog
-except Exception:
-    dialog = None
+#try:
+#    import dialog
+#except Exception:
+#    dialog = None
+dialog = None
 from time import sleep
 import argparse
 import subprocess
@@ -4253,7 +4254,12 @@ class Autosubmit:
                     try:
                         exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
                         exp_history.initialize_database()
-                        exp_history.create_new_experiment_run(as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), as_conf.get_full_config_as_json(), job_list.get_job_list())
+
+                        #exp_history.create_new_experiment_run(as_conf.get_chunk_size_unit(), as_conf.get_chunk_size(), as_conf.get_full_config_as_json(), job_list.get_job_list())
+                        exp_history.process_status_changes(job_list.get_job_list(),
+                                                           chunk_unit=as_conf.get_chunk_size_unit(),
+                                                           chunk_size=as_conf.get_chunk_size(),
+                                                           current_config=as_conf.get_full_config_as_json(),create=True)
                         Autosubmit.database_backup(expid)
                     except BaseException as e:
                         Log.printlog("Historic database seems corrupted, AS will repair it and resume the run",

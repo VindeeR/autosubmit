@@ -181,13 +181,22 @@ class TestAutosubmitConfig(TestCase):
         open_mock.assert_any_call(config.experiment_file, 'w')
 
     def test_set_version(self):
-        # arrange
+
+        #ARRAGE
+        FakeBasicConfig.DB_PATH = 'fake-path'
+        sys.modules['os'].path.exists = Mock(return_value=True)
+        connection_mock = Mock()
+        cursor_mock = Mock()
+        connection_mock.cursor = Mock(return_value=cursor_mock)
+        cursor_mock.fetchone = Mock(return_value=[0])
+
+        sys.modules['sqlite3'].connect = Mock(return_value=connection_mock)
         config = AutosubmitConfig(self.any_expid, FakeBasicConfig, ConfigParserFactory())
 
         open_mock = mock_open(read_data='AUTOSUBMIT_VERSION = dummy')
         with patch.object(builtins, "open", open_mock):
             # act
-            config.set_version('dummy-vesion')
+            config.set_version('dummy-version')
 
         # assert
         open_mock.assert_any_call(getattr(config, '_conf_parser_file'), 'w')
@@ -461,3 +470,4 @@ class FakeBasicConfig:
     LOCAL_PROJ_DIR = '/dummy/local/proj/dir'
     DEFAULT_PLATFORMS_CONF = ''
     DEFAULT_JOBS_CONF = ''
+

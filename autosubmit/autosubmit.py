@@ -1655,7 +1655,7 @@ class Autosubmit:
                                         Log.debug('Checking Wrapper {0}'.format(str(job_id)))
                                         wrapper_job.checked_time = datetime.datetime.now()
                                         # This is where wrapper will be checked on the slurm platform, update takes place.
-                                        platform.check_job(wrapper_job)
+                                        platform.check_job(wrapper_job,is_wrapper=True)
                                         #Log.info("FD 3Wrapper checked: {0}".format(log.fd_show.fd_table_status_str()))
                                         try:
                                             if wrapper_job.status != wrapper_job.new_status:

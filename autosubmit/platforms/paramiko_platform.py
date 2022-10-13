@@ -447,7 +447,7 @@ class ParamikoPlatform(Platform):
         """
         raise NotImplementedError
 
-    def check_job(self, job, default_status=Status.COMPLETED, retries=5, submit_hold_check=False):
+    def check_job(self, job, default_status=Status.COMPLETED, retries=5, submit_hold_check=False, is_wrapper=False):
         """
         Checks job running status
 
@@ -486,6 +486,20 @@ class ParamikoPlatform(Platform):
                 job_status = Status.COMPLETED
             elif job_status in self.job_status['RUNNING']:
                 job_status = Status.RUNNING
+                if not is_wrapper:
+                    if job.status != Status.RUNNING:
+                        job.start_time = datetime.datetime.now() # URi: start time
+                    if job.start_time is not None and str(job.wrapper_type).lower() == "none":
+                        wallclock = job.wallclock
+                        if job.wallclock == "00:00":
+                            wallclock == job.platform.max_wallclock
+                        if wallclock != "00:00" and wallclock != "00:00:00" and wallclock != "":
+                            if job.is_over_wallclock(job.start_time,wallclock):
+                                try:
+                                    job.platform.get_completed_files(job.name)
+                                    job_status = job.check_completion(over_wallclock=True)
+                                except:
+                                    job_status = Status.FAILED
             elif job_status in self.job_status['QUEUING'] and job.hold is False:
                 job_status = Status.QUEUING
             elif job_status in self.job_status['QUEUING'] and job.hold is True:
@@ -528,35 +542,63 @@ class ParamikoPlatform(Platform):
         cmd = self.get_checkAlljobs_cmd(job_list_cmd)
         sleep_time = 5
         sleep(sleep_time)
-        self.send_command(cmd)
-        while not self._check_jobid_in_queue(self.get_ssh_output(), job_list_cmd) and retries > 0:
+        slurm_error = False
+        e_msg = ""
+        try:
             self.send_command(cmd)
-            Log.debug('Retrying check job command: {0}', cmd)
-            Log.debug('retries left {0}', retries)
-            Log.debug('Will be retrying in {0} seconds', sleep_time)
-            retries -= 1
-            sleep(sleep_time)
-            sleep_time = sleep_time + 5
+        except AutosubmitError as e:
+            e_msg = e.trace+" "+e.message
+            slurm_error = True
+        if not slurm_error:
+            while not self._check_jobid_in_queue(self.get_ssh_output(), job_list_cmd) and retries > 0:
+                try:
+                    self.send_command(cmd)
+                except AutosubmitError as e:
+                    e_msg = e.trace + " " + e.message
+                    slurm_error = True
+                    break
+                Log.debug('Retrying check job command: {0}', cmd)
+                Log.debug('retries left {0}', retries)
+                Log.debug('Will be retrying in {0} seconds', sleep_time)
+                retries -= 1
+                sleep(sleep_time)
+                sleep_time = sleep_time + 5
+
         job_list_status = self.get_ssh_output()
         if retries >= 0:
             Log.debug('Successful check job command')
             in_queue_jobs = []
             list_queue_jobid = ""
             for job in job_list:
-                job_id = job.id
-                job_status = self.parse_Alljobs_output(job_list_status, job_id)
-                while len(job_status) <= 0 and retries >= 0:
-                    retries -= 1
-                    self.send_command(cmd)
-                    job_list_status = self.get_ssh_output()
+                if not slurm_error:
+                    job_id = job.id
                     job_status = self.parse_Alljobs_output(job_list_status, job_id)
-                    if len(job_status) <= 0:
-                        Log.debug('Retrying check job command: {0}', cmd)
-                        Log.debug('retries left {0}', retries)
-                        Log.debug('Will be retrying in {0} seconds', sleep_time)
-                        sleep(sleep_time)
-                        sleep_time = sleep_time + 5
-                # URi: define status list in HPC Queue Class
+                    while len(job_status) <= 0 and retries >= 0:
+                        retries -= 1
+                        self.send_command(cmd)
+                        job_list_status = self.get_ssh_output()
+                        job_status = self.parse_Alljobs_output(job_list_status, job_id)
+                        if len(job_status) <= 0:
+                            Log.debug('Retrying check job command: {0}', cmd)
+                            Log.debug('retries left {0}', retries)
+                            Log.debug('Will be retrying in {0} seconds', sleep_time)
+                            sleep(sleep_time)
+                            sleep_time = sleep_time + 5
+                    # URi: define status list in HPC Queue Class
+                else:
+                    if job.status != Status.RUNNING:
+                        job.start_time = datetime.datetime.now() # URi: start time
+                    if job.start_time is not None and str(job.wrapper_type).lower() == "none":
+                        wallclock = job.wallclock
+                        if job.wallclock == "00:00":
+                            wallclock == job.platform.max_wallclock
+                        if wallclock != "00:00" and wallclock != "00:00:00" and wallclock != "":
+                            if job.is_over_wallclock(job.start_time,wallclock):
+                                try:
+                                    job.platform.get_completed_files(job.name)
+                                    job_status = job.check_completion(over_wallclock=True)
+                                except:
+                                    job_status = Status.FAILED
                 if job_status in self.job_status['COMPLETED']:
                     job_status = Status.COMPLETED
                 elif job_status in self.job_status['RUNNING']:
@@ -617,6 +659,37 @@ class ParamikoPlatform(Platform):
                     'check_job() The job id ({0}) from platform {1} has an status of {2}.', job.id, self.name, job_status)
             raise AutosubmitError("Some Jobs are in Unknown status", 6008)
             # job.new_status=job_status
+        if slurm_error:
+            raise AutosubmitError(e_msg, 6000)
+
+    def get_jobid_by_jobname(self,job_name,retries=2):
+        """
+        Get job id by job name
+        :param retries: retries
+        :type retries: int
+        :return: job id
+        """
+        #sleep(5)
+        cmd = self.get_jobid_by_jobname_cmd(job_name)
+        self.send_command(cmd)
+        job_id_name = self.get_ssh_output()
+        while len(job_id_name) <= 0 and retries > 0:
+            self.send_command(cmd)
+            job_id_name = self.get_ssh_output()
+            retries -= 1
+            sleep(2)
+        if retries >= 0:
+            #get id last line
+            job_ids_names = job_id_name.split('\n')[1:-1]
+            #get all ids by jobname
+            job_ids = [job_id.split(',')[0] for job_id in job_ids_names]
+        return job_ids
+
+
+
+
+
+
 
     def get_checkjob_cmd(self, job_id):
         """

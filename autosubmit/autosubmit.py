@@ -916,7 +916,6 @@ class Autosubmit:
                 os.mkdir(os.path.join(
                     BasicConfig.LOCAL_ROOT_DIR, exp_id, 'conf'))
                 Log.info("Copying config files...")
-
                 # autosubmit config and experiment copied from AS.
                 files = resource_listdir('autosubmit.config', 'files')
                 for filename in files:

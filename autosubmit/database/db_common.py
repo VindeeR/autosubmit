@@ -24,7 +24,7 @@ import os
 import sqlite3
 import multiprocessing
 import Queue
-
+import autosubmit
 from log.log import Log, AutosubmitCritical, AutosubmitError
 Log.get_logger("Autosubmit")
 from autosubmit.config.basicConfig import BasicConfig
@@ -319,6 +319,7 @@ def _check_experiment_exists(name, error_on_inexistence=True):
     :return: If experiment exists returns true, if not returns false
     :rtype: bool
     """
+
     if not check_db():
         return False
     try:
@@ -339,6 +340,12 @@ def _check_experiment_exists(name, error_on_inexistence=True):
         if error_on_inexistence:
             raise AutosubmitCritical(
                 'The experiment name "{0}" does not exist yet!!!'.format(name), 7005)
+        if os.path.exists(os.path.join(BasicConfig.LOCAL_ROOT_DIR, name)):
+            try:
+                _save_experiment(name, 'No description', "3.14.0")
+            except  BaseException as e:
+                pass
+            return True
         return False
     return True
 

@@ -1467,8 +1467,10 @@ class Autosubmit:
                         if job.platform_name is None:
                             job.platform_name = hpcarch
                         # noinspection PyTypeChecker
-                        job.platform = submitter.platforms[job.platform_name.lower(
-                        )]
+                        try:
+                            job.platform = submitter.platforms[job.platform_name.lower()]
+                        except:
+                            raise AutosubmitCritical("hpcarch={0} not found in the platforms configuration file".format(job.platform_name), 7014)
                         # noinspection PyTypeChecker
                         if job.status not in (Status.COMPLETED, Status.SUSPENDED):
                             platforms_to_test.add(job.platform)

@@ -160,7 +160,7 @@ Sequence of instructions to install Autosubmit and its dependencies in Ubuntu.
     autosubmit install
 
     # Get expid
-    autosubmit expid -H TEST -d "Test exp."
+    autosubmit expid -H local -d "Test exp."
 
     # Create with -np
     # Since it was a new install the expid will be a000
@@ -175,7 +175,7 @@ Sequence of instructions to install Autosubmit and its dependencies with conda.
     wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh
     # Launch it
     chmod +x ./Miniconda3-py39_4.12.0-Linux-x86_64.sh ; ./Miniconda3-py39_4.12.0-Linux-x86_64.sh
-    # Download git
+    # Download git (if it is not already installed)
     apt install git -y -q
     # Download autosubmit
     git clone https://earth.bsc.es/gitlab/es/autosubmit.git -b v3.14.0b
@@ -186,4 +186,7 @@ Sequence of instructions to install Autosubmit and its dependencies with conda.
     conda activate autosubmit
     # Test autosubmit
     autosubmit -v
-    # Configure autosubmitrc and install database as indicated in this doc
+    # Configure autosubmitrc and install the database as indicated in the installation instructions above this section
+
+.. hint::
+    After installing conda, you may need to close the terminal and re-open it so the installation takes effect.

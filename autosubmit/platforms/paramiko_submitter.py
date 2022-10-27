@@ -20,7 +20,8 @@
 
 import os
 
-from log.log import Log
+
+from log.log import Log,AutosubmitCritical,AutosubmitError
 from autosubmit.config.basicConfig import BasicConfig
 from autosubmit.config.config_common import AutosubmitConfig
 from submitter import Submitter
@@ -72,7 +73,7 @@ class ParamikoSubmitter(Submitter):
         :return: platforms used by the experiment
         :rtype: dict
         """
-
+        raise_message=""
         platforms_used = list()
         hpcarch = asconf.get_platform()
         platforms_used.append(hpcarch)
@@ -191,12 +192,16 @@ class ParamikoSubmitter(Submitter):
                     remote_platform.custom_directives))
             remote_platform.scratch_free_space = parser.get_option(section, 'SCRATCH_FREE_SPACE',
                                                                    None)
-            remote_platform.root_dir = os.path.join(remote_platform.scratch, remote_platform.project,
-                                                    remote_platform.user, remote_platform.expid)
+            try:
+                remote_platform.root_dir = os.path.join(remote_platform.scratch, remote_platform.project,
+                                                        remote_platform.user, remote_platform.expid)
+                remote_platform.update_cmds()
+                platforms[section.lower()] = remote_platform
+
+            except:
+                raise_message = "Error in platform.conf: SCRATCH_DIR, PROJECT, USER, EXPID must be defined for platform {0}".format(section)
             # Executes update_cmds() from corresponding Platform Object
-            remote_platform.update_cmds()
             # Save platform into result dictionary
-            platforms[section.lower()] = remote_platform
 
         for section in parser.sections():
             # if this section is included in platforms
@@ -208,3 +213,5 @@ class ParamikoSubmitter(Submitter):
                     platforms[section.lower()].serial_platform = platforms[section.lower()].serial_platform.lower()
 
         self.platforms = platforms
+        if raise_message != "":
+            raise AutosubmitError(raise_message)

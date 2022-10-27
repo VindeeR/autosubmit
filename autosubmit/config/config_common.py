@@ -623,7 +623,7 @@ class AutosubmitConfig(object):
                                                "Platform file is not well-configured or found"]]
         for section in self._platforms_parser.sections():
 
-            if section in self.hpcarch:
+            if section.lower() in self.hpcarch.lower():
                 main_platform_found = True
             if not self._platforms_parser.check_exists(section, 'TYPE'):
                 self.wrong_config["Platform"] += [[section,

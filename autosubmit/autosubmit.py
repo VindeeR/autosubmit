@@ -1359,6 +1359,7 @@ class Autosubmit:
             for wrapper_section in as_conf.get_wrapper_multi():
                 wrapper_jobs[wrapper_section] = as_conf.get_wrapper_jobs(wrapper_section)
         wrapper_jobs["wrapper"] = as_conf.get_wrapper_jobs("wrapper")
+        #
         Log.warning("Aux Job_list was generated successfully")
         submitter = Autosubmit._get_submitter(as_conf)
         submitter.load_platforms(as_conf)

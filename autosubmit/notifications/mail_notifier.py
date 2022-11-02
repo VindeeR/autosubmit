@@ -31,6 +31,7 @@ class MailNotifier:
         message = MIMEText(message_text)
         message['From'] = email.utils.formataddr(('Autosubmit', self.config.MAIL_FROM))
         message['Subject'] = '[Autosubmit] Warning a remote platform is malfunctioning'
+        message['Date'] = email.utils.formatdate(localtime=True)
 
         for mail in mail_to:
             message['To'] = email.utils.formataddr((mail, mail))
@@ -43,6 +44,7 @@ class MailNotifier:
         message = MIMEText(message_text)
         message['From'] = email.utils.formataddr(('Autosubmit', self.config.MAIL_FROM))
         message['Subject'] = '[Autosubmit] The job {0} status has changed to {1}'.format(job_name, str(status))
+        message['Date'] = email.utils.formatdate(localtime=True)
         for mail in mail_to:
             message['To'] = email.utils.formataddr((mail, mail))
             try:

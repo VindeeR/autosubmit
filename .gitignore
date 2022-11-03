@@ -10,3 +10,6 @@ autosubmit/simple_test.py
 .vscode/
 .vscode
 autosubmit.egg-info/
+venv/
+.pytest_cache/
+.cache/

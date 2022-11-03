@@ -31,6 +31,7 @@ class MailNotifier:
         message = MIMEText(message_text)
         message['From'] = email.utils.formataddr(('Autosubmit', self.config.MAIL_FROM))
         message['Subject'] = '[Autosubmit] Warning a remote platform is malfunctioning'
+
         for mail in mail_to:
             message['To'] = email.utils.formataddr((mail, mail))
             try:

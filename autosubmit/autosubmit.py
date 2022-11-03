@@ -2068,7 +2068,6 @@ class Autosubmit:
                 platform.connected = False
                 Log.printlog("[{1}] Connection failed to host {0}".format( platform.host, platform.name),Log.WARNING)
         if issues != "":
-            platform.connected = False
             raise AutosubmitCritical(
                 "Issues while checking the connectivity of platforms.", 7010, issues+"\n"+ssh_config_issues)
 
@@ -2221,7 +2220,7 @@ class Autosubmit:
                                 "Submission failed, this can be due a failure on the platform", 6015, e.message)
                         if jobs_id is None or len(jobs_id) <= 0:
                             raise AutosubmitError(
-                                "Submission failed, this can be due a failure on the platform\n{0}\n{1}".format(e.message,e.trace), 6015)
+                                "Submission failed, this can be due a failure on the platform\n{0}\n{1}".format(str(e),""), 6015)
                         i = 0
                         if hold:
                             sleep(10)
@@ -2677,9 +2676,9 @@ class Autosubmit:
                             job.platform_name = hpcarch
                         job.platform = submitter.platforms[job.platform_name.lower()]
                         platforms_to_test.add(job.platform)
+                        job.platform.send_command(job.platform.cancel_cmd + " " + str(job.id), ignore_log=True)
                     for platform in platforms_to_test:
                         platform.test_connection()
-                    job.platform.send_command(job.platform.cancel_cmd + " " + str(job.id), ignore_log=True)
                 if not force:
                     raise AutosubmitCritical(
                         "Experiment can't be recovered due being {0} active jobs in your experiment, If you want to recover the experiment, please use the flag -f and all active jobs will be cancelled".format(
@@ -3235,16 +3234,16 @@ class Autosubmit:
             # Preparation for section parameters
             no_load_sections = False
             no_load_platforms = False
-            try:
-                job_list = Autosubmit.load_job_list(
-                    expid, as_conf, notransitive=False)
-            except Exception as e:
-                no_load_sections = True
+
+            job_list = Autosubmit.load_job_list(
+                expid, as_conf, notransitive=False)
+
             try:
                 submitter = Autosubmit._get_submitter(as_conf)
                 submitter.load_platforms(as_conf)
             except Exception as e:
                 no_load_platforms = True
+                submitter = Autosubmit._get_submitter(as_conf)
                 submitter.load_local_platform(as_conf)
             try:
                 # Gathering parameters of autosubmit and expdef config files
@@ -4049,7 +4048,7 @@ class Autosubmit:
                     Log.warning("Experiment folder renamed to: {0}".format(
                         exp_folder + "_to_delete "))
                 except Exception as e:
-                    Autosubmit.unarchive(expid, uncompress=False)
+                    Autosubmit.unarchive(expid, uncompressed=False)
                     raise AutosubmitCritical(
                         "Can not remove or rename experiments folder", 7012, str(e))
 

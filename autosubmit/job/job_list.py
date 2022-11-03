@@ -437,13 +437,13 @@ class JobList(object):
                 # If job doesn't have any parent after a first search, search in all dependency.section. This is to avoid +1 being added only to the last one.
                 if len(job.parents) <= 0:
                     for relation_indx in chunk_relations_to_add:
-                        for parent in jobs_by_section:
-                            if parent.chunk in dependency.select_chunks_dest[relation_indx] or len(
+                        for parent2 in jobs_by_section:
+                            if parent2.chunk in dependency.select_chunks_dest[relation_indx] or len(
                                     dependency.select_chunks_dest[relation_indx]) == 0:
-                                if parent not in visited_parents:
-                                    job.add_parent(parent)
-                                    JobList._add_edge(graph, job, parent)
-                            visited_parents.add(parent)
+                                if parent2 not in visited_parents:
+                                    job.add_parent(parent2)
+                                    JobList._add_edge(graph, job, parent2)
+                            visited_parents.add(parent2)
             JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member,
                                                            member_list, dependency.section, graph, other_parents)
 
@@ -2040,7 +2040,7 @@ class JobList(object):
 
         # root exists
         if root is not None:
-            result += self._recursion_print(root, 0)
+            result += self._recursion_print(root, 0,[])
         else:
             result += "\nCannot find root."
 

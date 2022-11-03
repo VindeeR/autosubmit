@@ -385,6 +385,8 @@ class JobList(object):
             # Get current job dependency relations. Used for select chunk option. This is the job in where select chunks option is defined
             if len(dependency.select_chunks_orig) > 0:  # find chunk relation
                 other_parents = dic_jobs.get_jobs(dependency.section, date, member, None)
+                jobs_by_section = [p for p in other_parents if p.section == dependency.section]
+
                 chunk_relation_indx = 0
                 while chunk_relation_indx < len(dependency.select_chunks_orig):
                     if job.running in ["once"] or len(dependency.select_chunks_orig[chunk_relation_indx]) == 0 or job.chunk in dependency.select_chunks_orig[chunk_relation_indx]:

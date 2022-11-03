@@ -624,6 +624,7 @@ class Job(object):
                 as_conf.reload()
                 submitter = self._get_submitter(as_conf)
                 submitter.load_platforms(as_conf)
+                platform = submitter.platforms[platform_name.lower()]
                 success = True
             except BaseException as e:
                 error_message = str(e)
@@ -632,31 +633,31 @@ class Job(object):
             count=count+1
         if not success:
             raise AutosubmitError("Couldn't load the autosubmit platforms, seems that the local platform has some issue\n:{0}".format(error_message),6006)
-        platform = submitter.platforms[platform_name.lower()]
-        try:
-            platform.test_connection()
+        else:
             max_logs = int(as_conf.get_retrials()) - fail_count
             last_log = int(as_conf.get_retrials()) - fail_count
-            if self.wrapper_type is not None and self.wrapper_type == "vertical":
-                found = False
-                retrials = 0
-                while retrials < 3 and not found:
-                    if platform.check_stat_file_by_retrials(stat_file + str(max_logs)):
-                        found = True
-                    retrials = retrials + 1
-                for i in range(max_logs-1,-1,-1):
-                    if platform.check_stat_file_by_retrials(stat_file + str(i)):
-                        last_log = i
-                    else:
-                        break
-                remote_logs = (self.script_name + ".out." + str(last_log), self.script_name + ".err." + str(last_log))
+            try:
+                platform.test_connection()
+                if self.wrapper_type is not None and self.wrapper_type == "vertical":
+                    found = False
+                    retrials = 0
+                    while retrials < 3 and not found:
+                        if platform.check_stat_file_by_retrials(stat_file + str(max_logs)):
+                            found = True
+                        retrials = retrials + 1
+                    for i in range(max_logs-1,-1,-1):
+                        if platform.check_stat_file_by_retrials(stat_file + str(i)):
+                            last_log = i
+                        else:
+                            break
+                    remote_logs = (self.script_name + ".out." + str(last_log), self.script_name + ".err." + str(last_log))
 
-            else:
-                remote_logs = (self.script_name + ".out."+str(fail_count), self.script_name + ".err." + str(fail_count))
+                else:
+                    remote_logs = (self.script_name + ".out."+str(fail_count), self.script_name + ".err." + str(fail_count))
 
-        except BaseException as e:
-            Log.printlog(
-                "{0} \n Couldn't connect to the remote platform for {1} job err/out files. ".format(str(e), self.name), 6001)
+            except BaseException as e:
+                Log.printlog(
+                    "{0} \n Couldn't connect to the remote platform for {1} job err/out files. ".format(str(e), self.name), 6001)
         out_exist = False
         err_exist = False
         retries = 3
@@ -1730,7 +1731,7 @@ class WrapperJob(Job):
                     self.name, reason), 6009)
                 # while running jobs?
                 self._check_running_jobs()
-                self.update_failed_jobs(canceled_wrapper=True)
+                self.update_failed_jobs()
                 self.cancel_failed_wrapper_job()
 
                 return
@@ -1760,8 +1761,8 @@ class WrapperJob(Job):
                 job.hold = self.hold
                 job.status = self.status
                 if self.status == Status.WAITING:
-                    for job in self.job_list:
-                        job.packed = False
+                    for job2 in self.job_list:
+                        job2.packed = False
 
     def _check_inner_job_wallclock(self, job):
         start_time = self.running_jobs_start[job]

@@ -118,7 +118,7 @@ class ParamikoPlatform(Platform):
             raise
         except BaseException as e:
             self.connected = False
-            raise AutosubmitCritical(message,7051)
+            raise AutosubmitCritical(str(e),7051)
             #raise AutosubmitError("[{0}] connection failed for host: {1}".format(self.name, self.host), 6002, e.message)
 
     def restore_connection(self):
@@ -226,7 +226,7 @@ class ParamikoPlatform(Platform):
                 raise AutosubmitCritical("Authentication Failed, please check the platform.conf of {0}".format(
                     self._host_config['hostname']), 7050, str(e))
             if not reconnect and "," in self._host_config['hostname']:
-                self.restore_connection(reconnect=True)
+                self.restore_connection()
             else:
                 raise AutosubmitError(
                     "Couldn't establish a connection to the specified host, wrong configuration?", 6003, e.message)
@@ -283,8 +283,8 @@ class ParamikoPlatform(Platform):
             self._ftpChannel.chmod(remote_path, os.stat(local_path).st_mode)
             return True
         except IOError as e:
-            raise AutosubmitError('Can not send file {0} to {1}'.format(os.path.join(
-                self.tmp_path, filename)), os.path.join(self.get_files_path(), filename), 6004, str(e))
+
+            raise AutosubmitError('Can not send file {0} to {1}'.format(os.path.join(self.tmp_path,filename), code=6004, trace=str(e)))
         except BaseException as e:
             raise AutosubmitError(
                 'Send file failed. Connection seems to no be active', 6004)
@@ -594,19 +594,20 @@ class ParamikoPlatform(Platform):
                             sleep_time = sleep_time + 5
                     # URi: define status list in HPC Queue Class
                 else:
-                    if job.status != Status.RUNNING:
-                        job.start_time = datetime.datetime.now() # URi: start time
-                    if job.start_time is not None and str(job.wrapper_type).lower() == "none":
-                        wallclock = job.wallclock
-                        if job.wallclock == "00:00":
-                            wallclock == job.platform.max_wallclock
-                        if wallclock != "00:00" and wallclock != "00:00:00" and wallclock != "":
-                            if job.is_over_wallclock(job.start_time,wallclock):
-                                try:
-                                    job.platform.get_completed_files(job.name)
-                                    job_status = job.check_completion(over_wallclock=True)
-                                except:
-                                    job_status = Status.FAILED
+                    job_status = job.status
+                if job.status != Status.RUNNING:
+                    job.start_time = datetime.datetime.now() # URi: start time
+                if job.start_time is not None and str(job.wrapper_type).lower() == "none":
+                    wallclock = job.wallclock
+                    if job.wallclock == "00:00":
+                        wallclock == job.platform.max_wallclock
+                    if wallclock != "00:00" and wallclock != "00:00:00" and wallclock != "":
+                        if job.is_over_wallclock(job.start_time,wallclock):
+                            try:
+                                job.platform.get_completed_files(job.name)
+                                job_status = job.check_completion(over_wallclock=True)
+                            except:
+                                job_status = Status.FAILED
                 if job_status in self.job_status['COMPLETED']:
                     job_status = Status.COMPLETED
                 elif job_status in self.job_status['RUNNING']:
@@ -989,7 +990,7 @@ class ParamikoPlatform(Platform):
         """
         raise NotImplementedError
 
-    def parse_queue_reason(self, output):
+    def parse_queue_reason(self, output, job_id):
         raise NotImplementedError
 
     def get_ssh_output(self):

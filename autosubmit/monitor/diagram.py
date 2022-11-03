@@ -66,14 +66,18 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
         exp_stats.calculate_statistics()
         exp_stats.calculate_summary()
         exp_stats.make_old_format()    
-        failed_jobs_dict = exp_stats.build_failed_jobs_only_list()        
+        failed_jobs_dict = exp_stats.build_failed_jobs_only_list()
+        # Stats variables definition
+        normal_plots_count = int(np.ceil(len(exp_stats.jobs_stat) / MAX_JOBS_PER_PLOT))
+        failed_jobs_plots_count = int(np.ceil(len(failed_jobs_dict) / MAX_JOBS_PER_PLOT))
     except Exception as exp:
+        if not isinstance(normal_plots_count,int):
+            normal_plots_count = 0
+        if not isinstance(failed_jobs_plots_count,int):
+            failed_jobs_plots_count = 0
         print(exp)
         print(traceback.format_exc())
 
-    # Stats variables definition
-    normal_plots_count = int(np.ceil(len(exp_stats.jobs_stat) / MAX_JOBS_PER_PLOT))
-    failed_jobs_plots_count = int(np.ceil(len(failed_jobs_dict) / MAX_JOBS_PER_PLOT))
     total_plots_count = normal_plots_count + failed_jobs_plots_count
     # num_plots = norma 
     # ind = np.arange(int(MAX_JOBS_PER_PLOT))

@@ -203,7 +203,7 @@ class AutosubmitGit:
                 command_0 = "cd {0} ; {1}".format(project_path, command_0)
                 output_0 = subprocess.check_output(command_0, shell=True)
             else:
-                command_0 = "cd {0} ; {1}".format(git_remote_path, command_0)
+                command_0 = "cd {0} ; {1}".format(project_path, command_0)
                 hpcarch.send_command(command_0)
             ##command 1
             if os.path.exists(os.path.join(git_path, ".githooks")):
@@ -233,7 +233,7 @@ class AutosubmitGit:
                     submodule_failure = True
                     Log.printlog("Trace: {0}".format(str(e)), 6014)
                     Log.printlog(
-                        "Submodule {0} has a wrong configuration".format(submodule), 6014)
+                        "Submodule has a wrong configuration.\n{0}".format(command_1), 6014)
             else:
                 command_1 = "cd {0}; {1} ".format(git_remote_path, command_1)
                 hpcarch.send_command(command_1)

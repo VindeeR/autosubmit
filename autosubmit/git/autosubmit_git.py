@@ -146,6 +146,10 @@ class AutosubmitGit:
             git_project_branch = 'master'
         git_project_commit = as_conf.get_git_project_commit()
         git_project_submodules = as_conf.get_submodules_list()
+        git_project_submodules_depth = as_conf.get_project_submodules_depth()
+        max_depth = -1
+        if len(git_project_submodules_depth) > 0:
+            max_depth = max(git_project_submodules_depth)
         if as_conf.get_fetch_single_branch() != "true":
             git_single_branch = False
         else:
@@ -218,12 +222,27 @@ class AutosubmitGit:
                 command_1 += "git checkout {0};".format(git_project_commit)
             else:
                 command_1 += "git checkout; "
+
             if git_project_submodules.__len__() <= 0:
-                command_1 += " git submodule update --init --recursive;"
+                if len(git_project_submodules_depth) > 0:
+                    command_1 += "git submodule update --init --recursive --depth {0};".format(
+                        max_depth)
+                else:
+                    command_1 += " git submodule update --init --recursive;"
             else:
                 command_1 += " git submodule init;".format(project_destination)
+                index_submodule = 0
                 for submodule in git_project_submodules:
-                    command_1 += " git submodule update --init --recursive {0};".format(submodule)
+                    if len(git_project_submodules_depth) > 0:
+                        if index_submodule < len(git_project_submodules_depth):
+                            command_1 += " git submodule update --init --recursive --depth {0} {1};".format(
+                                git_project_submodules_depth[index_submodule], submodule)
+                        else:
+                            command_1 += " git submodule update --init --recursive --depth {0} {1};".format(
+                                max_depth, submodule)
+                    else:
+                        command_1 += " git submodule update --init --recursive {0};".format(submodule)
+                    index_submodule += 1
             if git_remote_project_path == '':
                 try:
                     command_1 = "cd {0}; {1} ".format(git_path,command_1)
@@ -235,7 +254,7 @@ class AutosubmitGit:
                     Log.printlog(
                         "Submodule has a wrong configuration.\n{0}".format(command_1), 6014)
             else:
-                command_1 = "cd {0}; {1} ".format(git_remote_path, command_1)
+                command_1 = "cd {0}; {1} ".format(project_path, command_1)
                 hpcarch.send_command(command_1)
         except subprocess.CalledProcessError as e:
             shutil.rmtree(project_path)

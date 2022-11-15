@@ -188,7 +188,7 @@ class AutosubmitConfig(object):
             matches = re.findall('%(?<!%%)\w+%(?!%%)', content)
             for match in matches:
                 #replace all '%(?<!%%)\w+%(?!%%)' with parameters value
-                content = content.replace(match, parameters[match[1:-1]])
+                content = content.replace(match, parameters.get(match[1:-1],""))
             with open(githook_file, 'w') as f:
                 f.write(content)
         pass

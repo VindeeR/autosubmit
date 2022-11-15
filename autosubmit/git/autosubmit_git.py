@@ -228,7 +228,7 @@ class AutosubmitGit:
                 command_1 += "git checkout; "
 
             if git_project_submodules.__len__() <= 0:
-                if len(git_project_submodules_depth) > 0:
+                if max_depth > 0:
                     Log.info("Depth is incompatible with --recursive, ignoring recursive option")
                     command_1 += "git submodule update --init; "
                 else:
@@ -237,7 +237,7 @@ class AutosubmitGit:
                 command_1 += " git submodule init; ".format(project_destination)
                 index_submodule = 0
                 for submodule in git_project_submodules:
-                    if len(git_project_submodules_depth) > 0:
+                    if max_depth > 0:
                         Log.info("Depth is incompatible with --recursive, ignoring recursive option")
 
                         if index_submodule < len(git_project_submodules_depth):

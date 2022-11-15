@@ -165,6 +165,38 @@ class AutosubmitConfig(object):
          """
         return self._conf_parser.get_option(wrapper_section_name, 'EXPORT', 'none')
 
+    def parse_githooks(self):
+        """
+        Parse githooks section in configuration file
+
+        :return: dictionary with githooks configuration
+        :rtype: dict
+        """
+        proj_dir = os.path.join(
+            BasicConfig.LOCAL_ROOT_DIR, self.expid, BasicConfig.LOCAL_PROJ_DIR)
+        #get project_name
+        project_name = str(self.get_project_destination())
+
+        #get githook files from proj_dir
+        githook_files = [os.path.join(os.path.join(os.path.join(proj_dir,project_name),".githooks"), f) for f in os.listdir(os.path.join(os.path.join(proj_dir,project_name),".githooks")) ]
+        parameters = self.load_parameters()
+
+        #find all '%(?<!%%)\w+%(?!%%)' in githook files
+        for githook_file in githook_files:
+            with open(githook_file, 'r') as f:
+                content = f.read()
+            matches = re.findall('%(?<!%%)\w+%(?!%%)', content)
+            for match in matches:
+                #replace all '%(?<!%%)\w+%(?!%%)' with parameters value
+                content = content.replace(match, parameters[match[1:-1]])
+            with open(githook_file, 'w') as f:
+                f.write(content)
+        pass
+
+
+
+
+
     def get_full_config_as_json(self):
         """
         Return config as json object

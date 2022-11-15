@@ -22,6 +22,8 @@ import os
 from shutil import rmtree
 import subprocess
 import shutil
+from autosubmit.config.config_common import AutosubmitConfig
+from bscearth.utils.config_parser import ConfigParserFactory
 import zipfile
 #from autosubmit import Autosubmit
 from autosubmit.config.basicConfig import BasicConfig
@@ -181,7 +183,9 @@ class AutosubmitGit:
         os.mkdir(project_path)
         Log.debug("The project folder {0} has been created.", project_path)
         command_0 = ""
+        command_githook = ""
         command_1 = ""
+
         if git_remote_project_path != '':
             if git_remote_project_path[-1] == '/':
                 git_remote_path = os.path.join(
@@ -216,35 +220,41 @@ class AutosubmitGit:
                         os.chmod(os.path.join(root_dir, f_dir), 0o750)
                     for f_file in files:
                         os.chmod(os.path.join(root_dir, f_file), 0o750)
-                command_1 += " git config core.hooksPath ./.githooks ; ".format(
+                command_githook += " git config core.hooksPath ./.githooks ; ".format(
                     git_path)
             if git_project_commit:
-                command_1 += "git checkout {0};".format(git_project_commit)
+                command_1 += "git checkout {0}; ".format(git_project_commit)
             else:
                 command_1 += "git checkout; "
 
             if git_project_submodules.__len__() <= 0:
                 if len(git_project_submodules_depth) > 0:
-                    command_1 += "git submodule update --init --recursive --depth {0};".format(
-                        max_depth)
+                    Log.info("Depth is incompatible with --recursive, ignoring recursive option")
+                    command_1 += "git submodule update --init; "
                 else:
-                    command_1 += " git submodule update --init --recursive;"
+                    command_1 += " git submodule update --init --recursive; "
             else:
-                command_1 += " git submodule init;".format(project_destination)
+                command_1 += " git submodule init; ".format(project_destination)
                 index_submodule = 0
                 for submodule in git_project_submodules:
                     if len(git_project_submodules_depth) > 0:
+                        Log.info("Depth is incompatible with --recursive, ignoring recursive option")
+
                         if index_submodule < len(git_project_submodules_depth):
-                            command_1 += " git submodule update --init --recursive --depth {0} {1};".format(
+                            command_1 += " git submodule update --init --depth {0} {1}; ".format(
                                 git_project_submodules_depth[index_submodule], submodule)
                         else:
-                            command_1 += " git submodule update --init --recursive --depth {0} {1};".format(
+                            command_1 += " git submodule update --init --depth {0} {1}; ".format(
                                 max_depth, submodule)
                     else:
-                        command_1 += " git submodule update --init --recursive {0};".format(submodule)
+                        command_1 += " git submodule update --init --recursive {0}; ".format(submodule)
                     index_submodule += 1
             if git_remote_project_path == '':
                 try:
+                    if len(command_githook) > 0:
+                        command_githook = "cd {0} ; {1}".format(git_path, command_githook)
+                        as_conf.parse_githooks()
+                        subprocess.check_output(command_githook, shell=True)
                     command_1 = "cd {0}; {1} ".format(git_path,command_1)
                     Log.debug('Githook + Checkout and Submodules: {0}', command_1)
                     output_1 = subprocess.check_output(command_1, shell=True)
@@ -254,6 +264,10 @@ class AutosubmitGit:
                     Log.printlog(
                         "Submodule has a wrong configuration.\n{0}".format(command_1), 6014)
             else:
+                if len(command_githook) > 0:
+                    command_githook = "cd {0} ; {1}".format(project_path, command_githook)
+                    as_conf.parse_githooks()
+                    hpcarch.send_command(command_githook)
                 command_1 = "cd {0}; {1} ".format(project_path, command_1)
                 hpcarch.send_command(command_1)
         except subprocess.CalledProcessError as e:

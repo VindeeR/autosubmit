@@ -3,7 +3,7 @@ configparser
 argparse>=1.2,<2
 python-dateutil>2
 matplotlib
-numpy
+numpy<1.17
 pydotplus>=2
 pyparsing>=2.0.1
 paramiko

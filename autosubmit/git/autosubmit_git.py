@@ -230,7 +230,7 @@ class AutosubmitGit:
             if git_project_submodules.__len__() <= 0:
                 if max_depth > 0:
                     Log.info("Depth is incompatible with --recursive, ignoring recursive option")
-                    command_1 += "git submodule update --init --depth {0}; ".format(max_depth)
+                    command_1 += " git submodule update --init --depth {0}; ".format(max_depth)
                 else:
                     command_1 += " git submodule update --init --recursive; "
             else:

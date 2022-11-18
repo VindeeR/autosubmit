@@ -111,12 +111,17 @@ class StatisticsSnippetBash:
             # Autosubmit header
             ###################
             locale_to_set=$(locale -a | grep ^C.)
-            if [ -z "$var" ] ; then
+            if [ -z "$locale_to_set" ] ; then
                 # locale installed...
                 export LC_ALL=$locale_to_set
             else
                 # locale not installed...
-                export LC_ALL=C
+                locale_to_set=$(locale -a | grep ^en_GB.utf8)
+                if [ -z "$locale_to_set" ] ; then
+                    export LC_ALL=$locale_to_set
+                else
+                    export LC_ALL=C
+                fi 
             fi
             
             set -xuve
@@ -171,9 +176,15 @@ class StatisticsSnippetPython:
             try:
                 try:
                     locale.setlocale(locale.LC_ALL,'C.utf8')
-                except:
-                    locale.setlocale(locale.LC_ALL, 'C.UTF-8')
-            except:
+                except Exception as e:
+                    try:
+                        locale.setlocale(locale.LC_ALL, 'C.UTF-8')
+                    except Exception as e:
+                        try:
+                            locale.setlocale(locale.LC_ALL, 'en_GB')
+                        except Exception as e:
+                            locale.setlocale(locale.LC_ALL, 'es_ES')
+            except Exception as e:
                 locale.setlocale(locale.LC_ALL, 'C')
             job_name_ptrn = '%CURRENT_LOGDIR%/%JOBNAME%'
             stat_file = open(job_name_ptrn + '_STAT', 'w')
@@ -225,7 +236,7 @@ class StatisticsSnippetR:
             oldw <- getOption("warn")
             options( warn = -1 )
             leave = F
-            langs <- c("C.utf8","C.UTF-8","C")
+            langs <- c("C.utf8","C.UTF-8","C","en_GB","es_ES")
             i = 1
             e=""
             while (nchar(e) == 0 || leave)

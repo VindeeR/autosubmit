@@ -21,6 +21,7 @@
 """Script for handling experiment monitoring"""
 import os
 import sys
+import traceback
 
 scriptdir = os.path.abspath(os.path.dirname(sys.argv[0]))
 sys.path.append(scriptdir)
@@ -63,7 +64,8 @@ def main():
                 "{0}\nAnother instance of autosubmit is running on this experiment. If this is not the case, delete autosubmit.lock".format(str(e)), 7000)
         else:
             Log.critical(
-                "{0}\nUnhandled error: If you see this message, please report it in Autosubmit's GitLab project".format(str(e)), 7000)
+                "{1}{0}\nUnhandled error: If you see this message, please report it in Autosubmit's GitLab project".format(str(e),traceback.print_exc()
+), 7000)
         os._exit(1)
 
 

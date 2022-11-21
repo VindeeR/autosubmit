@@ -800,7 +800,6 @@ class Autosubmit:
         Log.info(
             "Autosubmit is running with {0}", Autosubmit.autosubmit_version)
 
-
     @staticmethod
     def _check_ownership(expid,raise_error=False):
         """

@@ -24,7 +24,7 @@ class ConfigParserFactory:
 class ConfigParser(ConfPar, object):
 
     def __init__(self):
-        super(ConfigParser, self).__init__(interpolation=None)
+        super(ConfigParser, self).__init__()
 
     def get_option(self, section, option, default=None):
         """

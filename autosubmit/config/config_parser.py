@@ -24,7 +24,7 @@ class ConfigParserFactory:
 class ConfigParser(ConfPar, object):
 
     def __init__(self):
-        super(ConfigParser, self).__init__()
+        super(ConfigParser, self).__init__(interpolation=None)
 
     def get_option(self, section, option, default=None):
         """
@@ -41,6 +41,7 @@ class ConfigParser(ConfPar, object):
         :return: option value
         :rtype: str
         """
+
         if self.has_option(section, option):
             return self.get(section, option)
         else:

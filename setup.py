@@ -41,7 +41,7 @@ setup(
     keywords=['climate', 'weather', 'workflow', 'HPC'],
     install_requires=['argparse>=1.2,<2','six>=1.10.0', 'python-dateutil>2', 'pydotplus>=2', 'pyparsing>=2.0.1',
                       'numpy<1.17', 'matplotlib', 'typing', 'paramiko == 2.7.1',
-                      'mock>=1.3.0', 'portalocker==0.5.7', 'networkx', 'bscearth.utils', 'Xlib == 0.21', 'requests'],
+                      'mock>=1.3.0', 'portalocker==0.5.7', 'networkx', 'bscearth.utils', 'Xlib == 0.21', 'requests','configparser'],
     extras_require={
         'dialog': ["python2-pythondialog>=3.3.0"]
     },

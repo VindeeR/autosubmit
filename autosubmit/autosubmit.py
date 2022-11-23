@@ -692,22 +692,28 @@ class Autosubmit:
             else:
                 expid_less.append("migrate")  # pickup
         import platform
-        host = platform.node()
+        fullhost = platform.node()
+        if "." in fullhost:
+            host = fullhost.split(".")[0]
+        elif "," in fullhost:
+            host = fullhost.split(",")[0]
+        else:
+            host = fullhost
         forbidden = BasicConfig.DENIED_HOSTS
         authorized = BasicConfig.ALLOWED_HOSTS
-        message = "Command: {0} is not allowed to run in host: {1}.\n".format(args.command.upper(),host)
+        message = "Command: {0} is not allowed to run in host: {1}.\n".format(args.command.upper(),fullhost)
         message += "List of permissions as follows:Command | hosts \nAllowed hosts\n"
         for command in BasicConfig.ALLOWED_HOSTS:
             message += "   {0}:{1} \n".format(command,BasicConfig.ALLOWED_HOSTS[command])
         message += "Denied hosts\n"
         for command in BasicConfig.DENIED_HOSTS:
             message += "   {0}:{1} \n".format(command,BasicConfig.DENIED_HOSTS[command])
-        message += "[Command: autosubmit {0}] is not allowed to run in [host: {1}].".format(args.command.upper(), host)
+        message += "[Command: autosubmit {0}] is not allowed to run in [host: {1}].".format(args.command.upper(), fullhost)
         if args.command in BasicConfig.DENIED_HOSTS:
-            if 'all' in BasicConfig.DENIED_HOSTS[args.command] or host in BasicConfig.DENIED_HOSTS[args.command]:
+            if 'all' in BasicConfig.DENIED_HOSTS[args.command] or host in BasicConfig.DENIED_HOSTS[args.command] or fullhost in BasicConfig.DENIED_HOSTS[args.command]:
                 raise AutosubmitCritical(message, 7071)
         if args.command in BasicConfig.ALLOWED_HOSTS:
-            if 'all' not in BasicConfig.ALLOWED_HOSTS[args.command] and host not in BasicConfig.ALLOWED_HOSTS[args.command]:
+            if 'all' not in BasicConfig.ALLOWED_HOSTS[args.command] and (host not in BasicConfig.ALLOWED_HOSTS[args.command] or fullhost not in BasicConfig.ALLOWED_HOSTS[args.command]):
                 raise AutosubmitCritical(message, 7071)
         if expid != 'None' and args.command not in expid_less and args.command not in global_log_command:
             as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())

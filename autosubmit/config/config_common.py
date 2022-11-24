@@ -183,14 +183,16 @@ class AutosubmitConfig(object):
 
         #find all '%(?<!%%)\w+%(?!%%)' in githook files
         for githook_file in githook_files:
-            with open(githook_file, 'r') as f:
-                content = f.read()
-            matches = re.findall('%(?<!%%)\w+%(?!%%)', content)
-            for match in matches:
-                #replace all '%(?<!%%)\w+%(?!%%)' with parameters value
-                content = content.replace(match, parameters.get(match[1:-1],""))
-            with open(githook_file, 'w') as f:
-                f.write(content)
+            f_name,ext = os.path.splitext(githook_file)
+            if ext == ".tmpl":
+                with open(githook_file, 'r') as f:
+                    content = f.read()
+                matches = re.findall('%(?<!%%)\w+%(?!%%)', content)
+                for match in matches:
+                    #replace all '%(?<!%%)\w+%(?!%%)' with parameters value
+                    content = content.replace(match, parameters.get(match[1:-1],""))
+                with open(f_name, 'w') as f:
+                    f.write(content)
         pass
 
 

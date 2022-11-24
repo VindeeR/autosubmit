@@ -193,6 +193,7 @@ class AutosubmitConfig(object):
                     content = content.replace(match, parameters.get(match[1:-1],""))
                 with open(f_name, 'w') as f:
                     f.write(content)
+                    os.chmod(f_name, 0o750)
         pass
 
 

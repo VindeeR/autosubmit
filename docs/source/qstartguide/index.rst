@@ -165,10 +165,13 @@ Now open platforms.conf. Note: This will be an example for marenostrum4
 
     [marenostrum4]
     # Queue type. Options: ps, SGE, LSF, SLURM, PBS, eceaccess
-    TYPE = slurm # scheduler type
+    # scheduler type
+    TYPE = slurm
     HOST = mn1.bsc.es,mn2.bsc.es,mn3.bsc.es
-    PROJECT = bsc32 # <- your project
-    USER = bsc32070 # <- your user
+    # <- your project ( usually is the user name without the last 3 digits, however check your hpc)
+    PROJECT = bsc32
+    # <- your user name
+    USER = bsc32070
     SCRATCH_DIR = /gpfs/scratch
     ADD_PROJECT_TO_HOST = False
     # use 72:00 if you are using a PRACE account, 48:00 for the bsc account

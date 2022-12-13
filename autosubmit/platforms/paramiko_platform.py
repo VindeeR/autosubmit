@@ -571,30 +571,29 @@ class ParamikoPlatform(Platform):
                 retries -= 1
                 sleep(sleep_time)
                 sleep_time = sleep_time + 5
-
+        if slurm_error:
+            raise AutosubmitError("Remote pooling failed with error:{0}\n Resetting platforms connections...".format(e_msg))
         job_list_status = self.get_ssh_output()
         if retries >= 0:
             Log.debug('Successful check job command')
             in_queue_jobs = []
             list_queue_jobid = ""
             for job in job_list:
-                if not slurm_error:
-                    job_id = job.id
+                job_id = job.id
+                job_status = self.parse_Alljobs_output(job_list_status, job_id)
+                while len(job_status) <= 0 and retries >= 0:
+                    retries -= 1
+                    self.send_command(cmd)
+                    job_list_status = self.get_ssh_output()
                     job_status = self.parse_Alljobs_output(job_list_status, job_id)
-                    while len(job_status) <= 0 and retries >= 0:
-                        retries -= 1
-                        self.send_command(cmd)
-                        job_list_status = self.get_ssh_output()
-                        job_status = self.parse_Alljobs_output(job_list_status, job_id)
-                        if len(job_status) <= 0:
-                            Log.debug('Retrying check job command: {0}', cmd)
-                            Log.debug('retries left {0}', retries)
-                            Log.debug('Will be retrying in {0} seconds', sleep_time)
-                            sleep(sleep_time)
-                            sleep_time = sleep_time + 5
-                    # URi: define status list in HPC Queue Class
-                else:
-                    job_status = job.status
+                    if len(job_status) <= 0:
+                        Log.debug('Retrying check job command: {0}', cmd)
+                        Log.debug('retries left {0}', retries)
+                        Log.debug('Will be retrying in {0} seconds', sleep_time)
+                        sleep(sleep_time)
+                        sleep_time = sleep_time + 5
+                # URi: define status list in HPC Queue Class
+
                 if job.status != Status.RUNNING:
                     job.start_time = datetime.datetime.now() # URi: start time
                 if job.start_time is not None and str(job.wrapper_type).lower() == "none":
@@ -668,8 +667,7 @@ class ParamikoPlatform(Platform):
                     'check_job() The job id ({0}) from platform {1} has an status of {2}.', job.id, self.name, job_status)
             raise AutosubmitError("Some Jobs are in Unknown status", 6008)
             # job.new_status=job_status
-        if slurm_error:
-            raise AutosubmitError(e_msg, 6000)
+
 
     def get_jobid_by_jobname(self,job_name,retries=2):
         """

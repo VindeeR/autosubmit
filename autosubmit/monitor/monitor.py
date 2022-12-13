@@ -153,7 +153,6 @@ class Monitor:
         for job in joblist:
             if job.has_parents():
                 continue
-
             if not groups or job.name not in groups['jobs'] or (job.name in groups['jobs'] and len(groups['jobs'][job.name]) == 1):
                 node_job = pydotplus.Node(job.name, shape='box', style="filled",
                                           fillcolor=self.color_status(job.status))
@@ -299,6 +298,7 @@ class Monitor:
         :param job_list_object: Object that has the main txt generation method
         :type job_list_object: JobList object
         """
+        error_msg = ""
         try:
             Log.info('Plotting...')
             now = time.localtime()
@@ -347,13 +347,14 @@ class Monitor:
             raise
         except BaseException as e:
             try:
-                e.message += "\n"+e.value
-                if "GraphViz" in e.message:
-                    e.message= "Graphviz is not installed. Autosubmit need this system package in order to plot the workflow."
+                if "GraphViz" in str(e):
+                    error_msg="Graphviz is not installed. Autosubmit need this system package in order to plot the workflow."
+                else:
+                    error_msg = str(e)
             except:
                 pass
 
-            Log.printlog("{0}\nSpecified output doesn't have an available viewer installed or graphviz is not installed. The output was only written in txt".format(e.message),7014)
+            Log.printlog("{0}\nSpecified output doesn't have an available viewer installed. The output was only written in txt".format(error_msg),7014)
 
 
     def generate_output_txt(self, expid, joblist, path, classictxt=False, job_list_object=None):

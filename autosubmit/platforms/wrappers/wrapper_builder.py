@@ -44,8 +44,14 @@ class WrapperDirector:
         return wrapper_script
 class WrapperBuilder(object):
     def __init__(self, **kwargs):
+        # Vertical wrapper
         if "retrials" in kwargs.keys():
             self.retrials = kwargs['retrials']
+        # rest of wrappers
+        if "fail_count" in kwargs.keys():
+            self.fail_count = kwargs['fail_count']
+        else:
+            self.fail_count = 0
         self.header_directive = kwargs['header_directive']
         self.job_scripts = kwargs['jobs_scripts']
         self.threads = kwargs['threads']
@@ -148,16 +154,19 @@ class PythonWrapperBuilder(WrapperBuilder):
                 Thread.__init__(self)
                 self.template = template
                 self.id_run = id_run
+                self.fail_count = {0}
 
             def run(self):
                 jobname = self.template.replace('.cmd', '')
                 #os.system("echo $(date +%s) > "+jobname+"_STAT")
-                out = str(self.template) + ".out." + str(self.retrials)
-                err = str(self.template) + ".err." + str(self.retrials)
+                out = str(self.template) + ".out." + str(self.fail_count)
+                err = str(self.template) + ".err." + str(self.fail_count)
                 print(out+"\\n")
                 command = "./" + str(self.template) + " " + str(self.id_run) + " " + os.getcwd()
                 (self.status) = getstatusoutput(command + " > " + out + " 2> " + err)
-        """).format('\n'.ljust(13))
+        """).format(self.fail_count,'\n'.ljust(13))
+
+
 
     # hybrids
     def build_joblist_thread(self):

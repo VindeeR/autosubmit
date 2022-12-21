@@ -663,12 +663,15 @@ class JobPackageHorizontal(JobPackageThread):
         self._jobs_resources = jobs_resources
 
     def _common_script_content(self):
+        fail_count = 0
+        if len(self.jobs) > 0:
+            fail_count = self.jobs[0].fail_count
         return self._wrapper_factory.get_wrapper(self._wrapper_factory.horizontal_wrapper, name=self._name,
                                                  queue=self._queue, project=self._project, wallclock=self._wallclock,
                                                  num_processors=self._num_processors, jobs_scripts=self._jobs_scripts,
                                                  dependency=self._job_dependency, jobs_resources=self._jobs_resources,
                                                  expid=self._expid, rootdir=self.platform.root_dir,
-                                                 directives=self._custom_directives,threads=self._threads,method=self.method.lower())
+                                                 directives=self._custom_directives,threads=self._threads,method=self.method.lower(),fail_count=fail_count)
 
 class JobPackageHybrid(JobPackageThread):
     """
@@ -708,21 +711,27 @@ class JobPackageHybrid(JobPackageThread):
 class JobPackageVerticalHorizontal(JobPackageHybrid):
 
     def _common_script_content(self):
+        fail_count = 0
+        if len(self.jobs) > 0:
+            fail_count = self.jobs[0].fail_count
         return self._wrapper_factory.get_wrapper(self._wrapper_factory.hybrid_wrapper_vertical_horizontal,
                                                  name=self._name, queue=self._queue, project=self._project,
                                                  wallclock=self._wallclock, num_processors=self._num_processors,
                                                  jobs_scripts=self._jobs_scripts, dependency=self._job_dependency,
                                                  jobs_resources=self._jobs_resources, expid=self._expid,
-                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower())
+                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower(),fail_count=fail_count)
 
 
 class JobPackageHorizontalVertical(JobPackageHybrid):
 
     def _common_script_content(self):
+        fail_count = 0
+        if len(self.jobs) > 0:
+            fail_count = self.jobs[0].fail_count
         return self._wrapper_factory.get_wrapper(self._wrapper_factory.hybrid_wrapper_horizontal_vertical,
                                                  name=self._name, queue=self._queue, project=self._project,
                                                  wallclock=self._wallclock, num_processors=self._num_processors,
                                                  jobs_scripts=self._jobs_scripts, dependency=self._job_dependency,
                                                  jobs_resources=self._jobs_resources, expid=self._expid,
-                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower())
+                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower(),fail_count=fail_count)
 

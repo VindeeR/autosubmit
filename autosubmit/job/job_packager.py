@@ -652,9 +652,10 @@ class JobPackager(object):
                     horizontal_packager.wrapper_limits["max_by_section"][section] = horizontal_packager.wrapper_limits["max_by_section"][section] - 1
         horizontal_packager.wrapper_limits["max"] = horizontal_packager.wrapper_limits["max"] - actual_wrapped_jobs
         for job in horizontal_package:
-            job_list = JobPackagerVerticalSimple([job], job.wallclock, horizontal_packager.wrapper_limits["max"],
+            #jobs_list, total_wallclock, max_jobs, wrapper_limits, max_wallclock, wrapper_info
+            job_list = JobPackagerVertical([job], job.wallclock, horizontal_packager.wrapper_limits["max"],
                                                  horizontal_packager.wrapper_limits,
-                                                 self._platform.max_wallclock).build_vertical_package(job)
+                                                 self._platform.max_wallclock,self.wrapper_info).build_vertical_package(job)
 
             current_package.append(job_list)
 

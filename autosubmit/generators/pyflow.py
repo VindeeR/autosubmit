@@ -1,6 +1,7 @@
 import argparse
 import os
 import re
+import tempfile
 from enum import Enum
 from typing import List
 
@@ -55,6 +56,7 @@ def _parse_args(args) -> argparse.Namespace:
     )
     parser.add_argument('-e', '--experiment', required=True, help='Autosubmit experiment ID')
     parser.add_argument('-d', '--deploy', default=False, action='store_true', help='Deploy to ecFlow or not')
+    parser.add_argument('-o', '--output', default=tempfile.gettempdir(), help='Output directory')
     parser.add_argument('-s', '--server', default='localhost',
                         help='ecFlow server hostname or IP (only used if deploy=True)')
     parser.add_argument('-p', '--port', default=3141, help='ecFlow server port (only used if deploy=True)')
@@ -70,19 +72,20 @@ def _create_ecflow_suite(
         members: List[str],
         chunks: [int],
         jobs: List[Job],
-        server_host: str) -> Suite:
+        server_host: str,
+        output_dir: str) -> Suite:
     """Replicate the vanilla workflow graph structure."""
 
     # From: https://pyflow-workflow-generator.readthedocs.io/en/latest/content/introductory-course/getting-started.html
-    scratchdir = os.path.join(os.path.abspath(''), 'scratch')
-    filesdir = os.path.join(scratchdir, 'files')
-    outdir = os.path.join(scratchdir, 'out')
+    scratch_dir = os.path.join(os.path.abspath(output_dir), 'scratch')
+    files_dir = os.path.join(scratch_dir, 'files')
+    out_dir = os.path.join(scratch_dir, 'out')
 
-    if not os.path.exists(filesdir):
-        os.makedirs(filesdir, exist_ok=True)
+    if not os.path.exists(files_dir):
+        os.makedirs(files_dir, exist_ok=True)
 
-    if not os.path.exists(outdir):
-        os.makedirs(outdir, exist_ok=True)
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir, exist_ok=True)
 
     # First we create a suite with the same ID as the Autosubmit experiment,
     # and families for each Autosubmit hierarchy level.
@@ -91,15 +94,15 @@ def _create_ecflow_suite(
             experiment_id,
             host=pf.LocalHost(server_host),
             defstatus=pf.state.suspended,  # type: ignore
-            home=outdir,  # type: ignore
-            files=filesdir  # type: ignore
+            home=out_dir,  # type: ignore
+            files=files_dir  # type: ignore
     ) as s:  # typing: ignore
         for start_date in start_dates:
-            with Family(start_date, START_DATE=start_date):  # type: ignore
+            with AnchorFamily(start_date, START_DATE=start_date):  # type: ignore
                 for member in members:
-                    with Family(member, MEMBER=member) as m:  # type: ignore
+                    with AnchorFamily(member, MEMBER=member) as m:  # type: ignore
                         for chunk in chunks:
-                            Family(str(chunk), CHUNK=chunk)
+                            AnchorFamily(str(chunk), CHUNK=chunk)
                             # TODO: splits
         # PyFlow API makes it very easy to create tasks having the ecFlow ID.
         # Due to how we expanded the Autosubmit graph to include the ID's, and how
@@ -124,6 +127,7 @@ def _create_ecflow_suite(
             if t.name not in list(parent_node.children.mapping.keys()):
                 parent_node.add_node(t)
 
+            # Dependencies
             for parent in job.parents:
                 dependency_node = _autosubmit_id_to_ecflow_id(parent.long_name, parent.running)
                 parent_node = s
@@ -133,6 +137,24 @@ def _create_ecflow_suite(
 
                 # Operator overloaded in PyFlow. This creates a dependency.
                 dependency_node >> t
+
+            # Script
+            # N.B.: The PyFlow documentation states that it is recommended
+            # to minimize the number of variables exposed to scripts. We
+            # are exposing every parameter available in AS, which is not
+            # really recommended. Maybe there is a better way?
+            # Note too, that we need to use ``job.file``, not ``job.script_name``,
+            # as ``script_name`` is the final generated AS script name, not the
+            # job script from the job configuration.
+            autosubmit_project_script = os.path.join(files_dir, job.file)
+            script = pf.FileScript(autosubmit_project_script)
+
+            for key, value in [(k, v) for k, v in job.parameters.items() if k.isupper()]:
+                script.define_environment_variable(key, value)
+            for variable in job.undefined_variables:
+                script.define_environment_variable(variable, '')
+            t.script = script
+
 
         return s
 
@@ -161,7 +183,8 @@ def generate(job_list: JobList, options: List[str]) -> None:
         members=members,
         chunks=chunks,
         jobs=job_list.get_all(),
-        server_host=args.server
+        server_host=args.server,
+        output_dir=args.output
     )
 
     suite.check_definition()

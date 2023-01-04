@@ -6183,9 +6183,26 @@ class Autosubmit:
             Log.info("Getting job list...")
             as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
             as_conf.check_conf_files(False)
-            # Getting output type from configuration
-            # pkl_dir = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, 'pkl')
+
+            submitter = Autosubmit._get_submitter(as_conf)
+            submitter.load_platforms(as_conf)
+            if len(submitter.platforms) == 0:
+                raise ValueError('Missing platform!')
+
+            packages_persistence = JobPackagePersistence(
+                os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"), "job_packages_" + expid)
             job_list = Autosubmit.load_job_list(expid, as_conf, notransitive=False, monitor=False)
+
+            Autosubmit._load_parameters(as_conf, job_list, submitter.platforms)
+
+            hpc_architecture = as_conf.get_platform()
+            for job in job_list.get_job_list():
+                if job.platform_name is None or job.platform_name == '':
+                    job.platform_name = hpc_architecture
+                job.platform = submitter.platforms[job.platform_name]
+                job.update_parameters(as_conf, job_list.parameters)
+
+            job_list.check_scripts(as_conf)
         except AutosubmitError as e:
             raise AutosubmitCritical(e.message, e.code, e.trace)
         except AutosubmitCritical as e:
@@ -6193,5 +6210,6 @@ class Autosubmit:
         except BaseException as e:
             raise AutosubmitCritical("Error while checking the configuration files or loading the job_list", 7040,
                                      str(e))
-        get_engine_generator(engine)(job_list, [f'--experiment={expid}', *options])
+
+        get_engine_generator(engine)(job_list, as_conf, [f'--experiment={expid}', *options])
 

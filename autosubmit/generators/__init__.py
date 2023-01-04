@@ -2,6 +2,7 @@ from enum import Enum
 from importlib import import_module
 from typing import Callable, cast, Protocol
 
+"""This module provides generators to produce workflow configurations for different backend engines."""
 
 class Engine(Enum):
     """Workflow Manager engine flavors."""

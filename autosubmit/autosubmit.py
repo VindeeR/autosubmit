@@ -6176,8 +6176,8 @@ class Autosubmit:
 
     @staticmethod
     def generate_workflow(expid: str, engine: Engine, options: List[str]) -> None:
-        """Generate the workflow configuration for a different Workflow Manager engine."""
-        Log.info(f'Generated workflow configuration for {engine}')
+        """Generate the workflow configuration for a different backend engine."""
+        Log.info(f'Generate workflow configuration for {engine}')
 
         try:
             Log.info("Getting job list...")

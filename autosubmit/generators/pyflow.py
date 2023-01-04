@@ -6,9 +6,12 @@ from enum import Enum
 from typing import List
 
 import pyflow as pf
+from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from pyflow import *
 
 from autosubmit.job.job_list import JobList, Job
+
+"""The PyFlow generator for Autosubmit."""
 
 # Pattern used to verify if a TASK name includes the previous CHUNK number, with a separator.
 PREVIOUS_CHUNK_PATTERN = re.compile(r'''
@@ -16,6 +19,7 @@ PREVIOUS_CHUNK_PATTERN = re.compile(r'''
     -                   # TASK and CHUNK separator, i.e. TASK-1 (the hyphen between TASK and 1);
     ([\d]+)             # The Chunk name (e.g. 1).
 ''', re.X)
+
 
 # Autosubmit Task name separator (not to be confused with task and chunk name separator).
 DEFAULT_SEPARATOR = '_'
@@ -42,7 +46,7 @@ REPLACE_COUNT = {
 }
 
 
-def _autosubmit_id_to_ecflow_id(job_id, running):
+def _autosubmit_id_to_ecflow_id(job_id: str, running: str):
     """Given an Autosubmit ID, create the node ID for ecFlow (minus heading ``/``)."""
     replace_count = REPLACE_COUNT[running]
     return job_id.replace(DEFAULT_SEPARATOR, '/', replace_count)
@@ -73,7 +77,8 @@ def _create_ecflow_suite(
         chunks: [int],
         jobs: List[Job],
         server_host: str,
-        output_dir: str) -> Suite:
+        output_dir: str,
+        as_conf: AutosubmitConfig) -> Suite:
     """Replicate the vanilla workflow graph structure."""
 
     # From: https://pyflow-workflow-generator.readthedocs.io/en/latest/content/introductory-course/getting-started.html
@@ -100,7 +105,7 @@ def _create_ecflow_suite(
         for start_date in start_dates:
             with AnchorFamily(start_date, START_DATE=start_date):  # type: ignore
                 for member in members:
-                    with AnchorFamily(member, MEMBER=member) as m:  # type: ignore
+                    with AnchorFamily(member, MEMBER=member):  # type: ignore
                         for chunk in chunks:
                             AnchorFamily(str(chunk), CHUNK=chunk)
                             # TODO: splits
@@ -139,27 +144,20 @@ def _create_ecflow_suite(
                 dependency_node >> t
 
             # Script
-            # N.B.: The PyFlow documentation states that it is recommended
-            # to minimize the number of variables exposed to scripts. We
-            # are exposing every parameter available in AS, which is not
-            # really recommended. Maybe there is a better way?
-            # Note too, that we need to use ``job.file``, not ``job.script_name``,
-            # as ``script_name`` is the final generated AS script name, not the
-            # job script from the job configuration.
-            autosubmit_project_script = os.path.join(files_dir, job.file)
-            script = pf.FileScript(autosubmit_project_script)
-
-            for key, value in [(k, v) for k, v in job.parameters.items() if k.isupper()]:
-                script.define_environment_variable(key, value)
-            for variable in job.undefined_variables:
-                script.define_environment_variable(variable, '')
-            t.script = script
+            script_name = job.create_script(as_conf)
+            script_text = open(os.path.join(job._tmp_path, script_name)).read()
+            # Let's drop the Autosubmit header and tailed.
+            script_text = re.findall(
+                r'# Autosubmit job(.*)# Autosubmit tailer',
+                script_text,
+                flags=re.DOTALL | re.MULTILINE)[0][1:-1]
+            t.script = script_text
 
 
         return s
 
 
-def generate(job_list: JobList, options: List[str]) -> None:
+def generate(job_list: JobList, as_conf: AutosubmitConfig, options: List[str]) -> None:
     """Generates a PyFlow workflow using Autosubmit database.
 
     The ``autosubmit create`` command must have been already executed prior
@@ -167,6 +165,7 @@ def generate(job_list: JobList, options: List[str]) -> None:
     to produce the PyFlow workflow.
 
     :param job_list: ``JobList`` Autosubmit object, that contains the parameters, jobs, and graph
+    :param as_conf: Autosubmit configuration
     :param options: a list of strings with arguments (equivalent to sys.argv), passed to argparse
     """
     args: argparse.Namespace = _parse_args(options)
@@ -184,7 +183,8 @@ def generate(job_list: JobList, options: List[str]) -> None:
         chunks=chunks,
         jobs=job_list.get_all(),
         server_host=args.server,
-        output_dir=args.output
+        output_dir=args.output,
+        as_conf=as_conf
     )
 
     suite.check_definition()
@@ -194,3 +194,8 @@ def generate(job_list: JobList, options: List[str]) -> None:
     if args.deploy:
         suite.deploy_suite(overwrite=True)  # type: ignore
         suite.replace_on_server(host=args.server, port=args.port)
+
+
+__all__ = [
+    'generate'
+]

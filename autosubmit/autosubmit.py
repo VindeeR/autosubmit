@@ -6178,5 +6178,20 @@ class Autosubmit:
     def generate_workflow(expid: str, engine: Engine, options: List[str]) -> None:
         """Generate the workflow configuration for a different Workflow Manager engine."""
         Log.info(f'Generated workflow configuration for {engine}')
-        get_engine_generator(engine)([f'--experiment={expid}', *options])
+
+        try:
+            Log.info("Getting job list...")
+            as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
+            as_conf.check_conf_files(False)
+            # Getting output type from configuration
+            # pkl_dir = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, 'pkl')
+            job_list = Autosubmit.load_job_list(expid, as_conf, notransitive=False, monitor=False)
+        except AutosubmitError as e:
+            raise AutosubmitCritical(e.message, e.code, e.trace)
+        except AutosubmitCritical as e:
+            raise
+        except BaseException as e:
+            raise AutosubmitCritical("Error while checking the configuration files or loading the job_list", 7040,
+                                     str(e))
+        get_engine_generator(engine)(job_list, [f'--experiment={expid}', *options])
 

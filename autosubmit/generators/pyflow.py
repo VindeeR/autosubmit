@@ -69,7 +69,7 @@ def _autosubmit_id_to_ecflow_id(job_id, running):
     return job_id.replace(DEFAULT_SEPARATOR, '/', replace_count)
 
 
-def parse_args(args) -> argparse.Namespace:
+def _parse_args(args) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog='autosubmit generate ... engine=pyflow',
         description='Produces a valid PyFlow workflow configuration given an Autosubmit experiment ID',
@@ -335,7 +335,13 @@ def _expand_autosubmit_graph(
     return jobs
 
 
-def generate(args) -> None:
+def generate(options: List[str]) -> None:
+    """Generates a PyFlow workflow using Autosubmit database.
+
+    :param options: a list of strings with arguments (equivalent to sys.argv), passed to argparse
+    """
+    args: argparse.Namespace = _parse_args(options)
+
     # Init the configuration object where expid = experiment identifier that you want to load.
     as_conf = AutosubmitConfig(args.experiment)
     # This will load the data from the experiment.
@@ -397,26 +403,8 @@ def generate(args) -> None:
         suite.replace_on_server(host=args.server, port=args.port)
 
 
-## OLD: not used... for now?
-
-
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        prog='autosubmit2pyflow',
-        description='Produces a valid PyFlow workflow configuration given an Autosubmit experiment ID',
-        epilog='This program needs access to an Autosubmit installation'
-    )
-    parser.add_argument('-e', '--experiment', required=True, help='Autosubmit experiment ID')
-    parser.add_argument('-d', '--deploy', default=False, action='store_true', help='Deploy to ecFlow or not')
-    parser.add_argument('-s', '--server', default='localhost', help='ecFlow server hostname or IP (only used if deploy=True)')
-    parser.add_argument('-p', '--port', default=3141, help='ecFlow server port (only used if deploy=True)')
-    parser.add_argument('-g', '--graph', default=False, action='store_true', help='Print the DOT plot')
-    parser.add_argument('-q', '--quiet', default=False, action='store_true')
-
-    args = parser.parse_args()
-
-    generate(args)
-
+    generate(sys.argv)
     sys.exit(0)
 
 

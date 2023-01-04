@@ -6177,8 +6177,6 @@ class Autosubmit:
     @staticmethod
     def generate_workflow(expid: str, engine: Engine, options: List[str]) -> None:
         """Generate the workflow configuration for a different Workflow Manager engine."""
-        generator = get_engine_generator(engine)
-        args = generator.parse_args([f'--experiment={expid}', *options])
-        generator.generate(args)
         Log.info(f'Generated workflow configuration for {engine}')
+        get_engine_generator(engine)([f'--experiment={expid}', *options])
 

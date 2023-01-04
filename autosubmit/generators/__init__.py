@@ -14,13 +14,12 @@ class Engine(Enum):
 class GenerateProto(Protocol):
     """Need a protocol to define the type returned by importlib."""
     generate: Callable
-    parse_args: Callable
 
 
-def get_engine_generator(engine: Engine) -> GenerateProto:
+def get_engine_generator(engine: Engine) -> Callable:
     """Dynamically loads the engine generate function."""
     generator_function = cast(GenerateProto, import_module(f'autosubmit.generators.{engine.value}'))
-    return generator_function
+    return generator_function.generate
 
 
 __all__ = [

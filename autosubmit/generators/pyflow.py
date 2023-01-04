@@ -1,14 +1,13 @@
 import argparse
-from enum import Enum
-from itertools import groupby
-from typing import List, Dict, Any, TypedDict, Union
-import re
-
-from autosubmit.job.job_list import JobList, Job
-from pyflow import *
 import os
+import re
+from enum import Enum
+from typing import List
 
 import pyflow as pf
+from pyflow import *
+
+from autosubmit.job.job_list import JobList, Job
 
 # Pattern used to verify if a TASK name includes the previous CHUNK number, with a separator.
 PREVIOUS_CHUNK_PATTERN = re.compile(r'''
@@ -31,7 +30,8 @@ class Running(Enum):
     def __str__(self):
         return self.value
 
-# TODO: split
+
+# TODO: split?
 # Defines how many ``-``'s are replaced by a ``/`` for
 # each Autosubmit hierarchy level (to avoid using an if/elif/else).
 REPLACE_COUNT = {
@@ -86,17 +86,18 @@ def _create_ecflow_suite(
 
     # First we create a suite with the same ID as the Autosubmit experiment,
     # and families for each Autosubmit hierarchy level.
-    with Suite(
-        experiment_id,
-        host=pf.LocalHost(server_host),
-        defstatus=pf.state.suspended,
-        home=outdir,
-        files=filesdir
-    ) as s:
+    # NOTE: PyFlow does not work very well with MyPy: https://github.com/ecmwf/pyflow/issues/5
+    with Suite(  # typing: ignore
+            experiment_id,
+            host=pf.LocalHost(server_host),
+            defstatus=pf.state.suspended,  # type: ignore
+            home=outdir,  # type: ignore
+            files=filesdir  # type: ignore
+    ) as s:  # typing: ignore
         for start_date in start_dates:
             with Family(start_date, START_DATE=start_date):  # type: ignore
                 for member in members:
-                    with Family(member, MEMBER=member) as m:
+                    with Family(member, MEMBER=member) as m:  # type: ignore
                         for chunk in chunks:
                             Family(str(chunk), CHUNK=chunk)
                             # TODO: splits
@@ -168,5 +169,5 @@ def generate(job_list: JobList, options: List[str]) -> None:
         print(suite)
 
     if args.deploy:
-        suite.deploy_suite(overwrite=True)
+        suite.deploy_suite(overwrite=True)  # type: ignore
         suite.replace_on_server(host=args.server, port=args.port)

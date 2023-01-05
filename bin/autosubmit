@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# PYTHON_ARGCOMPLETE_OK
 
 # Copyright 2015 Earth Sciences Department, BSC-CNS
 
@@ -21,6 +20,7 @@
 """Script for handling experiment monitoring"""
 import os
 import sys
+import traceback
 
 scriptdir = os.path.abspath(os.path.dirname(sys.argv[0]))
 sys.path.append(scriptdir)
@@ -44,26 +44,29 @@ def main():
             if e.trace != "": # trace might be int.
                 Log.error("Trace: {0}", e.trace)
         Log.critical("{1} [eCode={0}]", e.code, e.message)
-        Log.info("More info at https://autosubmit.readthedocs.io/en/latest/faq.html")
+        Log.info("More info at https://autosubmit.readthedocs.io/en/master/troubleshooting/error-codes.html")
         os._exit(1)
     except AutosubmitCritical as e:
         if os.path.exists(os.path.join(Log.file_path, "autosubmit.lock")):
             os.remove(os.path.join(Log.file_path, "autosubmit.lock"))
+        Log.error(str(traceback.print_exc()))
         if e.trace is not None:
             Log.error("Trace: {0}", e.trace)
         Log.critical("{1} [eCode={0}]", e.code, e.message)
-        Log.info("More info at https://autosubmit.readthedocs.io/en/latest/faq.html")
+
+        Log.info("More info at https://autosubmit.readthedocs.io/en/master/troubleshooting/error-codes.html")
         os._exit(1)
     except Exception as e:
         if os.path.exists(os.path.join(Log.file_path, "autosubmit.lock")):
             os.remove(os.path.join(Log.file_path, "autosubmit.lock"))
-        Log.error("Trace: {0}", str(e.message))
-        if "temporarily unavailable" in str(e.message):
+        Log.error("Trace: {0}", str(e))
+        if "temporarily unavailable" in str(e):
             Log.critical(
-                "Another instance of autosubmit is running on this experiment. If this is not the case, delete autosubmit.lock", 7000)
+                "{0}\nAnother instance of autosubmit is running on this experiment. If this is not the case, delete autosubmit.lock".format(str(e)), 7000)
         else:
             Log.critical(
-                "Unhandled error: If you see this message, please report it in Autosubmit's GitLab project")
+                "{1}{0}\nUnhandled error: If you see this message, please report it in Autosubmit's GitLab project".format(str(e),str(traceback.print_exc())
+), 7000)
         os._exit(1)
 
 

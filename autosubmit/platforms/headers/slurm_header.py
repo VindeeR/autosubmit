@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -39,6 +39,20 @@ class SlurmHeader(object):
         else:
             return "SBATCH --qos={0}".format(job.parameters['CURRENT_QUEUE'])
 
+    def get_partition_directive(self, job):
+        """
+        Returns partition directive for the specified job
+
+        :param job: job to create partition directive for
+        :type job: Job
+        :return: partition directive
+        :rtype: str
+        """
+        # There is no partition, so directive is empty
+        if job.partition == '':
+            return ""
+        else:
+            return "SBATCH --partition={0}".format(job.partition)
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def get_account_directive(self, job):
         """
@@ -116,16 +130,17 @@ class SlurmHeader(object):
         :return: tasks per node directive
         :rtype: str
         """
-        if job.parameters['TASKS_PER_NODE'] != '' and job.parameters['TASKS_PER_NODE'] != '0':
+        if int(job.parameters['TASKS']) > 1:
             return "SBATCH --tasks-per-node={0}".format(job.parameters['TASKS'])
         return ""
 
     SERIAL = textwrap.dedent("""\
 ###############################################################################
-#                   %TASKTYPE% %EXPID% EXPERIMENT
+#                   %TASKTYPE% %DEFAULT.EXPID% EXPERIMENT
 ###############################################################################
 #
 #%QUEUE_DIRECTIVE%
+#%PARTITION_DIRECTIVE%
 #%ACCOUNT_DIRECTIVE%
 #%MEMORY_DIRECTIVE%
 
@@ -134,8 +149,8 @@ class SlurmHeader(object):
 #SBATCH -n %NUMPROC%
 #SBATCH -t %WALLCLOCK%:00
 #SBATCH -J %JOBNAME%
-#SBATCH --output=%CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%OUT_LOG_DIRECTIVE%
-#SBATCH --error=%CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%ERR_LOG_DIRECTIVE%
+#SBATCH --output=%CURRENT_SCRATCH_DIR%/%CURRENT_PROJ_DIR%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%OUT_LOG_DIRECTIVE%
+#SBATCH --error=%CURRENT_SCRATCH_DIR%/%CURRENT_PROJ_DIR%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%ERR_LOG_DIRECTIVE%
 %CUSTOM_DIRECTIVES%
 #%X11%
 #
@@ -144,10 +159,11 @@ class SlurmHeader(object):
 
     PARALLEL = textwrap.dedent("""\
 ###############################################################################
-#                   %TASKTYPE% %EXPID% EXPERIMENT
+#                   %TASKTYPE% %DEFAULT.EXPID% EXPERIMENT
 ###############################################################################
 #
 #%QUEUE_DIRECTIVE%
+#%PARTITION_DIRECTIVE%
 #%ACCOUNT_DIRECTIVE%
 #%MEMORY_DIRECTIVE%
 #%MEMORY_PER_TASK_DIRECTIVE%
@@ -156,8 +172,8 @@ class SlurmHeader(object):
 #%TASKS_PER_NODE_DIRECTIVE%
 #SBATCH -t %WALLCLOCK%:00
 #SBATCH -J %JOBNAME%
-#SBATCH --output=%CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%OUT_LOG_DIRECTIVE%
-#SBATCH --error=%CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%ERR_LOG_DIRECTIVE%
+#SBATCH --output=%CURRENT_SCRATCH_DIR%/%CURRENT_PROJ_DIR%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%OUT_LOG_DIRECTIVE%
+#SBATCH --error=%CURRENT_SCRATCH_DIR%/%CURRENT_PROJ_DIR%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%ERR_LOG_DIRECTIVE%
 %CUSTOM_DIRECTIVES%
 #%X11%
 #

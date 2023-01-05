@@ -15,24 +15,22 @@
 
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
-import os
 import traceback
-from autosubmit.history.data_classes import job_data
-import database_managers.database_models as Models
-import utils as HUtils
+import autosubmit.history.database_managers.database_models as Models
+import autosubmit.history.utils as HUtils
 from time import time, sleep
-from database_managers.experiment_history_db_manager import ExperimentHistoryDbManager
-from database_managers.database_manager import DEFAULT_JOBDATA_DIR, DEFAULT_HISTORICAL_LOGS_DIR
-from strategies import PlatformInformationHandler, SingleAssociationStrategy, StraightWrapperAssociationStrategy, TwoDimWrapperDistributionStrategy, GeneralizedWrapperDistributionStrategy
-from data_classes.job_data import JobData
-from data_classes.experiment_run import ExperimentRun
-from platform_monitor.slurm_monitor import SlurmMonitor
-from internal_logging import Logging
-from autosubmit.config.basicConfig import BasicConfig
+from .database_managers.experiment_history_db_manager import ExperimentHistoryDbManager
+from .database_managers.database_manager import DEFAULT_JOBDATA_DIR, DEFAULT_HISTORICAL_LOGS_DIR
+from .strategies import PlatformInformationHandler, SingleAssociationStrategy, StraightWrapperAssociationStrategy, TwoDimWrapperDistributionStrategy, GeneralizedWrapperDistributionStrategy
+from .data_classes.job_data import JobData
+from .data_classes.experiment_run import ExperimentRun
+from .platform_monitor.slurm_monitor import SlurmMonitor
+from .internal_logging import Logging
+from autosubmitconfigparser.config.basicconfig import BasicConfig
 
 SECONDS_WAIT_PLATFORM = 60
 
-class ExperimentHistory():
+class ExperimentHistory:
   def __init__(self, expid, jobdata_dir_path=DEFAULT_JOBDATA_DIR, historiclog_dir_path=DEFAULT_HISTORICAL_LOGS_DIR):    
     self.expid = expid
     BasicConfig.read()
@@ -196,7 +194,7 @@ class ExperimentHistory():
       current_experiment_run_dc = self.manager.get_experiment_run_dc_with_max_id()      
       update_these_changes = self._get_built_list_of_changes(job_list)
       should_create_new_run = self.should_we_create_a_new_run(job_list, len(update_these_changes), current_experiment_run_dc, chunk_unit, chunk_size,create)
-      if len(update_these_changes) > 0 and should_create_new_run == False:
+      if len(update_these_changes) > 0 and should_create_new_run is False:
         self.manager.update_many_job_data_change_status(update_these_changes)
       if should_create_new_run:
         return self.create_new_experiment_run(chunk_unit, chunk_size, current_config, job_list)
@@ -296,7 +294,7 @@ class ExperimentHistory():
         return Models.RowType.NORMAL
   
   def _get_defined_queue_name(self, wrapper_queue, wrapper_code, qos):
-    if wrapper_code and wrapper_code > 2 and wrapper_queue is not None:
+    if wrapper_code and wrapper_code > 2 and wrapper_queue is not None and len(str(wrapper_queue)) > 0:
       return wrapper_queue
     return qos
 

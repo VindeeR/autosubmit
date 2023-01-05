@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -99,7 +99,7 @@ class LsfHeader(object):
     @classmethod
     def thread_header(cls, filename, wallclock, num_processors, job_scripts, dependency_directive, **kwargs):
         return textwrap.dedent("""\
-            #!/usr/bin/env python
+            #!/usr/bin/env python3
             ###############################################################################
             #              {0}
             ###############################################################################
@@ -140,22 +140,22 @@ class LsfHeader(object):
                 completed_filename = scripts[i].replace('.cmd', '_COMPLETED')
                 completed_path = os.path.join(os.getcwd(), completed_filename)
                 if os.path.exists(completed_path):
-                    print "The job ", current.template," has been COMPLETED"
+                    print("The job ", current.template," has been COMPLETED")
                 else:
-                    print "The job ", current.template," has FAILED"
+                    print("The job ", current.template," has FAILED")
                     os._exit(1)
             """.format(filename, wallclock, num_processors, str(job_scripts), dependency_directive,
                        '\n'.join(str(s) for s in kwargs['directives'])))
 
     SERIAL = textwrap.dedent("""\
             ###############################################################################
-            #                   %TASKTYPE% %EXPID% EXPERIMENT
+            #                   %TASKTYPE% %DEFAULT.EXPID% EXPERIMENT
             ###############################################################################
             #
             #%QUEUE_DIRECTIVE%
             #BSUB -J %JOBNAME%
-            #BSUB -oo %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%OUT_LOG_DIRECTIVE%
-            #BSUB -eo %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%ERR_LOG_DIRECTIVE%
+            #BSUB -oo %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%OUT_LOG_DIRECTIVE%
+            #BSUB -eo %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%ERR_LOG_DIRECTIVE%
             #BSUB -W %WALLCLOCK%
             #BSUB -n %NUMPROC%
             %EXCLUSIVITY_DIRECTIVE%
@@ -166,13 +166,13 @@ class LsfHeader(object):
 
     PARALLEL = textwrap.dedent("""\
             ###############################################################################
-            #                   %TASKTYPE% %EXPID% EXPERIMENT
+            #                   %TASKTYPE% %DEFAULT.EXPID% EXPERIMENT
             ###############################################################################
             #
             #%QUEUE_DIRECTIVE%
             #BSUB -J %JOBNAME%
-            #BSUB -oo %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%OUT_LOG_DIRECTIVE%
-            #BSUB -eo %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%ERR_LOG_DIRECTIVE%
+            #BSUB -oo %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%OUT_LOG_DIRECTIVE%
+            #BSUB -eo %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%ERR_LOG_DIRECTIVE%
             #BSUB -W %WALLCLOCK%
             #BSUB -n %NUMPROC%
             %TASKS_PER_NODE_DIRECTIVE%

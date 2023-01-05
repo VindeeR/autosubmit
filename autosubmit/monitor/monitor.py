@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2015-2020Earth Sciences Department, BSC-CNS
 
@@ -18,15 +18,14 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import datetime
 import os
-import pwd
-from pydoc import Helper
 import time
+import sys
 from os import path
 from os import chdir
 from os import listdir
 from os import remove
 
-import pydotplus
+import py3dotplus as pydotplus
 import copy
 
 import subprocess
@@ -35,13 +34,13 @@ import autosubmit.helpers.utils as HelperUtils
 
 from autosubmit.job.job_common import Status
 from autosubmit.job.job import Job
-from autosubmit.config.basicConfig import BasicConfig
-from autosubmit.config.config_common import AutosubmitConfig
+from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 
-from log.log import Log, AutosubmitError, AutosubmitCritical
-from bscearth.utils.config_parser import ConfigParserFactory
+from log.log import Log, AutosubmitCritical
+from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 
-from diagram import create_bar_diagram
+from .diagram import create_bar_diagram
 from typing import Dict, List
 
 GENERAL_STATS_OPTION_MAX_LENGTH = 1000
@@ -52,6 +51,9 @@ class Monitor:
                    (Status.SUBMITTED, 'cyan'), (Status.HELD,
                                                 'salmon'), (Status.QUEUING, 'pink'), (Status.RUNNING, 'green'),
                    (Status.COMPLETED, 'yellow'), (Status.FAILED, 'red'), (Status.DELAYED,'lightcyan') ,(Status.SUSPENDED, 'orange'), (Status.SKIPPED, 'lightyellow')])
+
+    def __init__(self):
+        self.nodes_ploted = None
 
     @staticmethod
     def color_status(status):
@@ -94,6 +96,9 @@ class Monitor:
         """
         Create graph from joblist
 
+        :param hide_groups:
+        :param groups:
+        :param packages:
         :param expid: experiment's identifier
         :type expid: str
         :param joblist: joblist to plot
@@ -144,7 +149,7 @@ class Monitor:
         Log.debug('Creating job graph...')
 
         jobs_packages_dict = dict()
-        if packages != None and packages:
+        if packages is not None and len(str(packages)) > 0:
             for (exp_id, package_name, job_name) in packages:
                 jobs_packages_dict[job_name] = package_name
 
@@ -184,7 +189,7 @@ class Monitor:
                         if len(subgraph.get_node(group[0])) == 0:
                             subgraph.add_node(previous_node)
 
-                        for i in xrange(1, len(group)):
+                        for i in range(1, len(group)):
                             node = exp.get_node(group[i])[0]
                             if len(subgraph.get_node(group[i])) == 0:
                                 subgraph.add_node(node)
@@ -210,7 +215,7 @@ class Monitor:
             graph.set_strict(True)
 
         graph.add_subgraph(exp)
-
+        #Wrapper visualization
         for node in exp.get_nodes():
             name = node.obj_dict['name']
             if name in jobs_packages_dict:
@@ -240,7 +245,7 @@ class Monitor:
                     node_child = self._create_node(child, groups, hide_groups)
                     if node_child:
                         exp.add_node(node_child)
-                        if job.section is not None and job.section+"?" in child.dependencies:
+                        if job.name in child.edge_info and child.edge_info[job.name].get('optional', False):
                             exp.add_edge(pydotplus.Edge(node_job, node_child,style="dashed"))
                         else:
                             exp.add_edge(pydotplus.Edge(node_job, node_child))
@@ -248,7 +253,7 @@ class Monitor:
                         skip = True
                 elif not skip:
                     node_child = node_child[0]
-                    if job.section is not None and job.section + "?" in child.dependencies:
+                    if job.name in child.edge_info and child.edge_info[job.name].get('optional', False):
                         exp.add_edge(pydotplus.Edge(node_job, node_child,style="dashed"))
                     else:
                         exp.add_edge(pydotplus.Edge(node_job, node_child))
@@ -288,6 +293,10 @@ class Monitor:
         """
         Plots graph for joblist and stores it in a file
 
+        :param hide_groups:
+        :param groups:
+        :param packages:
+        :param path:
         :param expid: experiment's identifier
         :type expid: str
         :param joblist: list of jobs to plot
@@ -299,6 +308,7 @@ class Monitor:
         :param job_list_object: Object that has the main txt generation method
         :type job_list_object: JobList object
         """
+        message = ""
         try:
             Log.info('Plotting...')
             now = time.localtime()
@@ -339,26 +349,41 @@ class Monitor:
 
             if show and output_format != "txt":
                 try:
-                    subprocess.check_output(['xdg-open', output_file])
+                    if sys.platform != "linux":
+                        try:
+                            subprocess.check_output(["open", output_file])
+                        except Exception as e:
+                            try:
+                                subprocess.check_output(["xdg-open", output_file])
+                            except Exception as e:
+                                subprocess.check_output(["mimeopen", output_file])
+                    else:
+                        try:
+                            subprocess.check_output(["xdg-open", output_file])
+                        except Exception as e:
+                            subprocess.check_output(["mimeopen", output_file])
+
                 except subprocess.CalledProcessError:
-                    raise AutosubmitCritical(
-                        'File {0} could not be opened'.format(output_file), 7068)
+                    Log.printlog('File {0} could not be opened, only the txt option will show'.format(output_file), 7068)
         except AutosubmitCritical:
             raise
         except BaseException as e:
             try:
-                e.message += "\n"+e.value
-                if "GraphViz" in e.message:
-                    e.message= "Graphviz is not installed. Autosubmit need this system package in order to plot the workflow."
-            except:
+                message= str(e)
+                message += "\n"+str(e)
+                if "GraphViz" in message:
+                    message= "Graphviz is not installed. Autosubmit need this system package in order to plot the workflow."
+            except Exception as e:
                 pass
 
-            Log.printlog("{0}\nSpecified output doesn't have an available viewer installed or graphviz is not installed. The output was only written in txt".format(e.message),7014)
+            Log.printlog("{0}\nSpecified output doesn't have an available viewer installed or graphviz is not installed. The output was only written in txt".format(message),7014)
 
 
     def generate_output_txt(self, expid, joblist, path, classictxt=False, job_list_object=None):
         """
         Function that generates a representation of the jobs in a txt file
+        :param classictxt:
+        :param path:
         :param expid: experiment's identifier
         :type expid: str
         :param joblist: experiment's list of jobs
@@ -420,6 +445,7 @@ class Monitor:
         """
         Plots stats for joblist and stores it in a file
 
+        :param queue_time_fixes:
         :param expid: experiment's identifier
         :type expid: str
         :param joblist: joblist to plot
@@ -459,10 +485,23 @@ class Monitor:
         Log.result('Stats created at {0}', output_complete_path)
         if show:
             try:
-                subprocess.check_call(['xdg-open', output_complete_path])
+                if sys.platform != "linux":
+                    try:
+                        subprocess.check_output(["open", output_complete_path])
+                    except Exception as e:
+                        try:
+                            subprocess.check_output(["xdg-open", output_complete_path])
+                        except Exception as e:
+                            subprocess.check_output(["mimeopen", output_complete_path])
+                else:
+                    try:
+                        subprocess.check_output(["xdg-open", output_complete_path])
+                    except Exception as e:
+                        subprocess.check_output(["mimeopen", output_complete_path])
+
             except subprocess.CalledProcessError:
-                raise AutosubmitCritical(
-                    'File {0} could not be opened'.format(output_complete_path), 7068)
+                Log.printlog('File {0} could not be opened, only the txt option will show'.format(output_complete_path), 7068)
+
 
     @staticmethod
     def clean_plot(expid):
@@ -475,7 +514,7 @@ class Monitor:
         """
         search_dir = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "plot")
         chdir(search_dir)
-        files = filter(path.isfile, listdir(search_dir))
+        files = list(filter(path.isfile, listdir(search_dir)))
         files = [path.join(search_dir, f)
                  for f in files if 'statistics' not in f]
         files.sort(key=lambda x: path.getmtime(x))
@@ -496,7 +535,7 @@ class Monitor:
         """
         search_dir = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "plot")
         chdir(search_dir)
-        files = filter(path.isfile, listdir(search_dir))
+        files = list(filter(path.isfile, listdir(search_dir)))
         files = [path.join(search_dir, f) for f in files if 'statistics' in f]
         files.sort(key=lambda x: path.getmtime(x))
         remain = files[-1:]
@@ -521,10 +560,10 @@ class Monitor:
             BasicConfig.LOCAL_ROOT_DIR, expid, "tmp", expid + "_GENERAL_STATS")
         if os.path.exists(general_stats_path):
             parser = AutosubmitConfig.get_parser(
-                ConfigParserFactory(), general_stats_path)
+                YAMLParserFactory(), general_stats_path)
             for section in parser.sections():
                 general_stats.append((section, ''))
-                general_stats += parser.items(section)                
+                general_stats += parser.items(section)
         result = []
         for stat_item in general_stats:
             try:
@@ -533,6 +572,6 @@ class Monitor:
                     Log.critical("General Stats {}: The value for the key \"{}\" is too long ({} characters) and won't be added to the general_stats plot. Maximum length allowed: {} characters.".format(general_stats_path, key, len(value), GENERAL_STATS_OPTION_MAX_LENGTH))
                     continue
                 result.append(stat_item)
-            except:
+            except Exception as e:
                 Log.error("Error while processing general_stats of {}".format(expid))
         return result

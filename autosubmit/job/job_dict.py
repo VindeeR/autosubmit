@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -21,15 +21,14 @@ from autosubmit.job.job import Job
 from bscearth.utils.date import date2str
 from autosubmit.job.job_common import Status, Type
 from log.log import Log, AutosubmitError, AutosubmitCritical
-
+from collections.abc import Iterable
 class DicJobs:
     """
     Class to create jobs from conf file and to find jobs by start date, member and chunk
 
     :param jobs_list: jobs list to use
-    :type job_list: JobList
-    :param parser: jobs conf file parser
-    :type parser: SafeConfigParser
+    :type jobs_list: Joblist
+
     :param date_list: start dates
     :type date_list: list
     :param member_list: member
@@ -40,95 +39,20 @@ class DicJobs:
     :type date_format: str
     :param default_retrials: default retrials for ech job
     :type default_retrials: int
-
+    :type default_retrials: config_common
     """
 
-    def __init__(self, jobs_list, parser, date_list, member_list, chunk_list, date_format, default_retrials):
+    def __init__(self, jobs_list, date_list, member_list, chunk_list, date_format, default_retrials,jobs_data,experiment_data):
         self._date_list = date_list
         self._jobs_list = jobs_list
         self._member_list = member_list
         self._chunk_list = chunk_list
-        self._parser = parser
+        self._jobs_data = jobs_data
         self._date_format = date_format
         self.default_retrials = default_retrials
         self._dic = dict()
+        self.experiment_data = experiment_data
 
-    def parse_relation(self, section,member=True, unparsed_option=[],called_from=""):
-        """
-        function to parse a list of chunks or members to be compressible for autosubmit member_list or chunk_list.
-
-        :param section: Which section is being parsed.
-        :type section: str
-        :param member: Is a member or chunk list?
-        :type member: bool
-        :param unparsed_option: List obtained from configuration files.
-        :type unparsed_option: list
-        :param called_from: Parameter used to show a more complete error message if something is not working correctly..
-        :type unparsed_option: str
-        """
-        parsed_list = []
-        offset = 1
-        if len(unparsed_option) > 0:
-            if '-' in unparsed_option or ':' in unparsed_option:
-                start_end = [-1, -1]
-                count = 0
-                if '-' in unparsed_option:
-                    for location in unparsed_option.split('-'):
-                        location = location.strip('[').strip(']').strip(':')
-                        if location == "":
-                            location = "-1"
-                        start_end[count] = int(location)
-                        count = count + 1
-                elif ':' in unparsed_option:
-                    for location in unparsed_option.split(':'):
-                        location = location.strip('[').strip(']').strip(':')
-                        if location == "":
-                            location = "-1"
-                        start_end[count] = int(location)
-                        count = count + 1
-                if start_end[0] == -1 and start_end[1] == -1:
-                    raise AutosubmitCritical(
-                        "Wrong format for excluded_member parameter in section {0}\nindex was not found".format(
-                            section), 7000)
-                elif start_end[0] > -1 and start_end[1] == -1:
-                    if member:
-                        for member_number in xrange(int(start_end[0]), len(self._member_list)):
-                            parsed_list.append(member_number)
-                    else:
-                        for chunk in xrange(int(start_end[0]), len(self._chunk_list) + 1):  # chunk starts in 1
-                            parsed_list.append(chunk)
-                elif start_end[0] > -1 and start_end[1] > -1:
-                    for item in xrange(int(start_end[0]), int(start_end[1]) + offset):
-                        parsed_list.append(item)
-
-                elif start_end[0] == -1 and start_end[1] > -1:
-                    if member:
-                        for item in xrange(0, int(start_end[1]) + offset):  # include last element
-                            parsed_list.append(item)
-                    else:
-                        for item in xrange(1, int(start_end[1]) + offset):  # include last element
-                            parsed_list.append(item)
-                elif start_end[0] > start_end[1]:
-                    raise AutosubmitCritical(
-                        "Wrong format for {1} parameter in section {0}\nStart index is greater than ending index".format(
-                            section,called_from), 7011)
-                else:
-                    raise AutosubmitCritical(
-                        "Wrong format for {1} parameter in section {0}\nindex weren't found".format(
-                            section), 7011)
-            elif ',' in unparsed_option:
-                for item in unparsed_option.split(','):
-                    parsed_list.append(int(item.strip(": -[]")))
-            else:
-                try:
-                    for item in unparsed_option.split(" "):
-                        parsed_list.append(int(item.strip(": -[]")))
-                except BaseException as e:
-                    raise AutosubmitCritical(
-                        "Wrong format for {1} parameter in section {0}".format(section,called_from), 7011,
-                        str(e))
-            pass
-        return parsed_list
     def read_section(self, section, priority, default_job_type, jobs_data=dict()):
         """
         Read a section from jobs conf and creates all jobs for it
@@ -137,63 +61,30 @@ class DicJobs:
         :type default_job_type: str
         :param jobs_data: dictionary containing the plain data from jobs
         :type jobs_data: dict
-        :param section: section to read
-        :type section: str
+        :param section: section to read, and it's info
+        :type section: tuple(str,dict)
         :param priority: priority for the jobs
         :type priority: int
         """
-        running = 'once'
-        splits = int(self.get_option(section, "SPLITS", -1))
-        if self._parser.has_option(section, 'RUNNING'):
-            running = self._parser.get(section, 'RUNNING').lower()
-        frequency = int(self.get_option(section, "FREQUENCY", 1))
+        parameters = self.experiment_data["JOBS"]
+
+        splits = int(parameters[section].get("SPLITS", -1))
+        running = str(parameters[section].get('RUNNING',"once")).lower()
+        frequency = int(parameters[section].get("FREQUENCY", 1))
         if running == 'once':
             self._create_jobs_once(section, priority, default_job_type, jobs_data,splits)
         elif running == 'date':
             self._create_jobs_startdate(section, priority, frequency, default_job_type, jobs_data,splits)
         elif running == 'member':
-            self._create_jobs_member(section, priority, frequency, default_job_type, jobs_data,splits, \
-                                     self.parse_relation(section,True,self.get_option(section, "EXCLUDED_MEMBERS", []),"EXCLUDED_MEMBERS"), \
-                                     self.parse_relation(section,True,self.get_option(section, "INCLUDED_MEMBERS", []),"INCLUDED_MEMBERS"))
-
+            self._create_jobs_member(section, priority, frequency, default_job_type, jobs_data,splits)
         elif running == 'chunk':
-            synchronize = self.get_option(section, "SYNCHRONIZE", None)
-            delay = int(self.get_option(section, "DELAY", -1))
-            self._create_jobs_chunk(section, priority, frequency, default_job_type, synchronize, delay, splits, jobs_data, \
-                                    excluded_chunks=self.parse_relation(section,False,self.get_option(section, "EXCLUDED_CHUNKS", []),"EXCLUDED_CHUNKS"), \
-                                    excluded_members=self.parse_relation(section,True,self.get_option(section, "EXCLUDED_MEMBERS", []),"EXCLUDED_MEMBERS"), \
-                                    included_chunks=self.parse_relation(section,False,self.get_option(section, "INCLUDED_CHUNKS", []),"INCLUDED_CHUNKS"), \
-                                    included_members=self.parse_relation(section,True,self.get_option(section, "INCLUDED_MEMBERS", []),"INCLUDED_MEMBERS"))
+            synchronize = str(parameters[section].get("SYNCHRONIZE", ""))
+            delay = int(parameters[section].get("DELAY", -1))
+            self._create_jobs_chunk(section, priority, frequency, default_job_type, synchronize, delay, splits, jobs_data)
+
+
 
         pass
-
-    def _create_jobs_once(self, section, priority, default_job_type, jobs_data=dict(),splits=0):
-        """
-        Create jobs to be run once
-
-        :param section: section to read
-        :type section: str
-        :param priority: priority for the jobs
-        :type priority: int
-        """
-
-
-        if splits <= 0:
-            job = self.build_job(section, priority, None, None, None, default_job_type, jobs_data, -1)
-            self._dic[section] = job
-            self._jobs_list.graph.add_node(job.name)
-        else:
-            self._dic[section] = []
-        total_jobs = 1
-        while total_jobs <= splits:
-            job = self.build_job(section, priority, None, None, None, default_job_type, jobs_data, total_jobs)
-            self._dic[section].append(job)
-            self._jobs_list.graph.add_node(job.name)
-            total_jobs += 1
-        pass
-
-        #self._dic[section] = self.build_job(section, priority, None, None, None, default_job_type, jobs_data)
-        #self._jobs_list.graph.add_node(self._dic[section].name)
 
     def _create_jobs_startdate(self, section, priority, frequency, default_job_type, jobs_data=dict(), splits=-1):
         """
@@ -224,9 +115,7 @@ class DicJobs:
                                             default_job_type, jobs_data, tmp_dic[section][date])
                     self._dic[section][date] = tmp_dic[section][date]
 
-
-
-    def _create_jobs_member(self, section, priority, frequency, default_job_type, jobs_data=dict(),splits=-1,excluded_members=[],included_members=[]):
+    def _create_jobs_member(self, section, priority, frequency, default_job_type, jobs_data=dict(),splits=-1):
         """
         Create jobs to be run once per member
 
@@ -245,23 +134,9 @@ class DicJobs:
         tmp_dic = dict()
         tmp_dic[section] = dict()
         for date in self._date_list:
-            tmp_dic[section][date] = dict()
             self._dic[section][date] = dict()
             count = 0
-            if splits > 0:
-                for member in self._member_list:
-                    if len(included_members) == 0:
-                        if self._member_list.index(member) not in excluded_members:
-                            tmp_dic[section][date][member] = []
-                    else:
-                        if self._member_list.index(member) in included_members:
-                            tmp_dic[section][date][member] = []
             for member in self._member_list:
-                if self._member_list.index(member)  in excluded_members:
-                    continue
-                if len(included_members) > 0:
-                    if self._member_list.index(member) not in included_members:
-                        continue
                 count += 1
                 if count % frequency == 0 or count == len(self._member_list):
                     if splits <= 0:
@@ -272,9 +147,34 @@ class DicJobs:
                                                 default_job_type, jobs_data, tmp_dic[section][date][member])
                         self._dic[section][date][member] = tmp_dic[section][date][member]
 
+    def _create_jobs_once(self, section, priority, default_job_type, jobs_data=dict(),splits=0):
+        """
+        Create jobs to be run once
+
+        :param section: section to read
+        :type section: str
+        :param priority: priority for the jobs
+        :type priority: int
+        """
 
 
-    def _create_jobs_chunk(self, section, priority, frequency, default_job_type, synchronize=None, delay=0, splits=0, jobs_data=dict(),excluded_chunks=[],excluded_members=[],included_chunks=[],included_members=[]):
+        if splits <= 0:
+            job = self.build_job(section, priority, None, None, None, default_job_type, jobs_data, -1)
+            self._dic[section] = job
+            self._jobs_list.graph.add_node(job.name)
+        else:
+            self._dic[section] = []
+        total_jobs = 1
+        while total_jobs <= splits:
+            job = self.build_job(section, priority, None, None, None, default_job_type, jobs_data, total_jobs)
+            self._dic[section].append(job)
+            self._jobs_list.graph.add_node(job.name)
+            total_jobs += 1
+        pass
+
+        #self._dic[section] = self.build_job(section, priority, None, None, None, default_job_type, jobs_data)
+        #self._jobs_list.graph.add_node(self._dic[section].name)
+    def _create_jobs_chunk(self, section, priority, frequency, default_job_type, synchronize=None, delay=0, splits=0, jobs_data=dict()):
         """
         Create jobs to be run once per chunk
 
@@ -290,16 +190,10 @@ class DicJobs:
         :type delay: int
         """
         # Temporally creation for unified jobs in case of synchronize
-
-        if synchronize is not None:
-            tmp_dic = dict()
+        tmp_dic = dict()
+        if synchronize is not None and len(str(synchronize)) > 0:
             count = 0
             for chunk in self._chunk_list:
-                if chunk in excluded_chunks:
-                    continue
-                if len(included_chunks) > 0:
-                    if chunk not in included_chunks:
-                        continue
                 count += 1
                 if delay == -1 or delay < chunk:
                     if count % frequency == 0 or count == len(self._chunk_list):
@@ -329,41 +223,33 @@ class DicJobs:
         for date in self._date_list:
             self._dic[section][date] = dict()
             for member in self._member_list:
-                if len(included_members) > 0:
-                    if self._member_list.index(member) not in included_members:
-                        continue
-                if self._member_list.index(member) in excluded_members:
-                    continue
                 self._dic[section][date][member] = dict()
                 count = 0
                 for chunk in self._chunk_list:
-                    if chunk in excluded_chunks:
-                        continue
-                    if len(included_chunks) > 0:
-                        if chunk not in included_chunks:
-                            continue
                     count += 1
                     if delay == -1 or delay < chunk:
                         if count % frequency == 0 or count == len(self._chunk_list):
                             if synchronize == 'date':
-                                self._dic[section][date][member][chunk] = tmp_dic[chunk]
+                                if chunk in tmp_dic:
+                                    self._dic[section][date][member][chunk] = tmp_dic[chunk]
                             elif synchronize == 'member':
-                                self._dic[section][date][member][chunk] = tmp_dic[chunk][date]
+                                if chunk in tmp_dic:
+                                    self._dic[section][date][member][chunk] = tmp_dic[chunk][date]
 
-                            if splits > 1 and synchronize is None:
+                            if splits > 1 and (synchronize is None or not synchronize):
                                 self._dic[section][date][member][chunk] = []
                                 self._create_jobs_split(splits, section, date, member, chunk, priority, default_job_type, jobs_data, self._dic[section][date][member][chunk])
                                 pass
-                            elif synchronize is None:
+                            elif synchronize is None or not synchronize:
                                 self._dic[section][date][member][chunk] = self.build_job(section, priority, date, member,
                                                                                              chunk, default_job_type, jobs_data)
                                 self._jobs_list.graph.add_node(self._dic[section][date][member][chunk].name)
 
-    def _create_jobs_split(self, splits, section, date, member, chunk, priority, default_job_type, jobs_data, dict):
+    def _create_jobs_split(self, splits, section, date, member, chunk, priority, default_job_type, jobs_data, dict_):
         total_jobs = 1
         while total_jobs <= splits:
             job = self.build_job(section, priority, date, member, chunk, default_job_type, jobs_data, total_jobs)
-            dict.append(job)
+            dict_.append(job)
             self._jobs_list.graph.add_node(job.name)
             total_jobs += 1
 
@@ -396,18 +282,17 @@ class DicJobs:
         elif type(dic) is not dict:
             jobs.append(dic)
         else:
-            if date is not None:
+            if date is not None and len(str(date)) > 0:
                 self._get_date(jobs, dic, date, member, chunk)
             else:
                 for d in self._date_list:
                     self._get_date(jobs, dic, d, member, chunk)
-        try:
-            if len(jobs) > 0:
-                if type(jobs[0]) is list:
-                    jobs_flattened = [job for jobs_to_flatten in jobs for job in jobs_to_flatten]
-                    jobs = jobs_flattened
-        except BaseException as e:
-            pass
+        if len(jobs) > 1 and isinstance(jobs[0], Iterable):
+            try:
+                jobs_flattened = [job for jobs_to_flatten in jobs for job in jobs_to_flatten]
+                jobs = jobs_flattened
+            except TypeError as e:
+                pass
         return jobs
 
     def _get_date(self, jobs, dic, date, member, chunk):
@@ -420,7 +305,7 @@ class DicJobs:
         elif type(dic) is not dict:
             jobs.append(dic)
         else:
-            if member is not None:
+            if member is not None and len(str(member)) > 0:
                 self._get_member(jobs, dic, member, chunk)
             else:
                 for m in self._member_list:
@@ -435,7 +320,7 @@ class DicJobs:
         if type(dic) is not dict:
             jobs.append(dic)
         else:
-            if chunk is not None:
+            if chunk is not None and len(str(chunk)) > 0:
                 if chunk in dic:
                     jobs.append(dic[chunk])
             else:
@@ -446,12 +331,13 @@ class DicJobs:
         return jobs
 
     def build_job(self, section, priority, date, member, chunk, default_job_type, jobs_data=dict(), split=-1):
+        parameters = self.experiment_data["JOBS"]
         name = self._jobs_list.expid
-        if date is not None:
+        if date is not None and len(str(date)) > 0:
             name += "_" + date2str(date, self._date_format)
-        if member is not None:
+        if member is not None and len(str(member)) > 0:
             name += "_" + member
-        if chunk is not None:
+        if chunk is not None and len(str(chunk)) > 0:
             name += "_{0}".format(chunk)
         if split > -1:
             name += "_{0}".format(split)
@@ -470,80 +356,65 @@ class DicJobs:
         job.member = member
         job.chunk = chunk
         job.date_format = self._date_format
+        job.delete_when_edgeless = str(parameters[section].get("DELETE_WHEN_EDGELESS", "true")).lower()
 
         if split > -1:
             job.split = split
 
-        job.frequency = int(self.get_option(section, "FREQUENCY", 1))
-        job.delay = int(self.get_option(section, "DELAY", -1))
-        job.wait = self.get_option(section, "WAIT", 'true').lower() == 'true'
-        job.rerun_only = self.get_option(section, "RERUN_ONLY", 'false').lower() == 'true'
-        job_type = self.get_option(section, "TYPE", default_job_type).lower()
-        job.dependencies = self.get_option(section, "DEPENDENCIES", "").split()
+        job.frequency = int(parameters[section].get( "FREQUENCY", 1))
+        job.delay = int(parameters[section].get( "DELAY", -1))
+        job.wait = str(parameters[section].get( "WAIT", True)).lower()
+        job.rerun_only = str(parameters[section].get( "RERUN_ONLY", False)).lower()
+        job_type = str(parameters[section].get( "TYPE", default_job_type)).lower()
+
+        job.dependencies = parameters[section].get( "DEPENDENCIES", "")
+        if job.dependencies and type(job.dependencies) is not dict:
+            job.dependencies = str(job.dependencies).split()
         if job_type == 'bash':
             job.type = Type.BASH
-        elif job_type == 'python' or job_type == 'python2':
-            job.type = Type.PYTHON2
-        elif job_type == 'python3':
+        elif job_type == 'python' or job_type == 'python3':
             job.type = Type.PYTHON3
+        elif job_type == 'python2':
+            job.type = Type.PYTHON2
         elif job_type == 'r':
             job.type = Type.R
-        job.executable = self.get_option(section, "EXECUTABLE", None)
+        job.executable = str(parameters[section].get( "EXECUTABLE", ""))
+        job.platform_name = str(parameters[section].get( "PLATFORM", "")).upper()
+        job.file = str(parameters[section].get( "FILE", ""))
+        job.additional_files = parameters[section].get( "ADDITIONAL_FILES", [])
 
-        job.platform_name = self.get_option(section, "PLATFORM", None)
-        if job.platform_name is not None:
-            job.platform_name = job.platform_name
-        job.file = self.get_option(section, "FILE", None)
-        job.queue = self.get_option(section, "QUEUE", None)
-        job.check = str(self.get_option(section, "CHECK", 'True')).lower()
-        job.export = str(self.get_option(section, "EXPORT", None))
-        job.processors = str(self.get_option(section, "PROCESSORS", 1))
-        job.threads = str(self.get_option(section, "THREADS", 1))
-        job.tasks = str(self.get_option(section, "TASKS", '0'))
-        job.memory = self.get_option(section, "MEMORY", '')
-        job.memory_per_task = self.get_option(section, "MEMORY_PER_TASK", '')
-        if job.wallclock is None:
-            job.wallclock = self.get_option(section, "WALLCLOCK", None)
-        #if job.wallclock is None and job.platform_name.lower() != "local":
-        #    job.wallclock = "01:59"
-        #elif job.wallclock is None and job.platform_name.lower() == "local":
-        #    job.wallclock = "00:00"
-        job.retrials = int(self.get_option(section, 'RETRIALS', -1))
-        job.delay_retrials = str(self.get_option(section, 'DELAY_RETRY_TIME', "-1"))
+        job.queue = str(parameters[section].get( "QUEUE", ""))
+        job.partition = str(parameters[section].get( "PARTITION", ""))
+        if job.partition == "" and job.platform_name.upper() not in ["LOCAL",""]:
+            job.partition = str(self.experiment_data["PLATFORMS"][job.platform_name].get("PARTITION",""))
+        job.check = str(parameters[section].get( "CHECK", "true")).lower()
+        job.export = str(parameters[section].get( "EXPORT", ""))
+        job.processors = str(parameters[section].get( "PROCESSORS", ""))
+        job.threads = str(parameters[section].get( "THREADS", ""))
+        job.tasks = str(parameters[section].get( "TASKS", ""))
+        job.memory = str(parameters[section].get("MEMORY", ""))
+        job.memory_per_task = str(parameters[section].get("MEMORY_PER_TASK", ""))
+        job.wallclock = parameters[section].get("WALLCLOCK", None)
+        job.retrials = int(parameters[section].get( 'RETRIALS', 0))
+        job.delay_retrials = int(parameters[section].get( 'DELAY_RETRY_TIME', "-1"))
+        if job.wallclock is None and job.platform_name.upper() != "LOCAL":
+            job.wallclock = "01:59"
+        elif job.wallclock is None and job.platform_name.upper() != "LOCAL":
+            job.wallclock = "00:00"
         if job.retrials == -1:
             job.retrials = None
-        job.notify_on = [x.upper() for x in self.get_option(section, "NOTIFY_ON", '').split(' ')]
-        job.synchronize = self.get_option(section, "SYNCHRONIZE", None)
-        job.check_warnings = str(self.get_option(section, "SHOW_CHECK_WARNINGS", 'false')).lower()
-        job.running = self.get_option(section, 'RUNNING', 'once').lower()
-        job.x11 = bool(self.get_option(section, 'X11', False ))
-
-        if self.get_option(section, "SKIPPABLE", "False").lower() == "true":
-            job.skippable = True
+        notify_on = parameters[section].get("NOTIFY_ON",None)
+        if type(notify_on) == str:
+            job.notify_on = [x.upper() for x in notify_on.split(' ')]
         else:
-            job.skippable = False
-        if job.check_warnings == 'true':
-            job.check_warnings = True
-        else:
-            job.check_warnings = False
-
+            job.notify_on = ""
+        job.synchronize = str(parameters[section].get( "SYNCHRONIZE", ""))
+        job.check_warnings = str(parameters[section].get("SHOW_CHECK_WARNINGS", False)).lower()
+        job.running = str(parameters[section].get( 'RUNNING', 'once'))
+        job.x11 = str(parameters[section].get( 'X11', False )).lower()
+        job.skippable = str(parameters[section].get( "SKIPPABLE", False)).lower()
         self._jobs_list.get_job_list().append(job)
 
         return job
 
-    def get_option(self, section, option, default):
-        """
-        Returns value for a given option
-
-        :param section: section name
-        :type section: str
-        :param option: option to return
-        :type option: str
-        :param default: value to return if not defined in configuration file
-        :type default: object
-        """
-        if self._parser.has_option(section, option):
-            return self._parser.get(section, option)
-        else:
-            return default
 

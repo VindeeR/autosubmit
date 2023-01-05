@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
 # This file is part of Autosubmit.
@@ -17,12 +17,12 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 from abc import ABCMeta, abstractmethod
-import database_managers.database_models as Models
+import autosubmit.history.database_managers.database_models as Models
 import traceback
-from internal_logging import Logging
-from database_managers.database_manager import DEFAULT_LOCAL_ROOT_DIR, DEFAULT_HISTORICAL_LOGS_DIR
+from .internal_logging import Logging
+from .database_managers.database_manager import DEFAULT_LOCAL_ROOT_DIR, DEFAULT_HISTORICAL_LOGS_DIR
 
-class PlatformInformationHandler():
+class PlatformInformationHandler:
   def __init__(self, strategy):
     self._strategy = strategy
   
@@ -38,9 +38,8 @@ class PlatformInformationHandler():
     return self._strategy.apply_distribution(job_data_dc, job_data_dcs_in_wrapper, slurm_monitor)
   
 
-class Strategy():
+class Strategy(metaclass=ABCMeta):
   """ Strategy Interface """
-  __metaclass__ = ABCMeta
 
   def __init__(self, historiclog_dir_path=DEFAULT_HISTORICAL_LOGS_DIR):
     self.historiclog_dir_path = historiclog_dir_path
@@ -62,7 +61,9 @@ class Strategy():
   def get_calculated_weights_of_jobs_in_wrapper(self, job_data_dcs_in_wrapper):
     """ Based on computational weight: running time in seconds * number of cpus. """
     total_weight = sum(job.computational_weight for job in job_data_dcs_in_wrapper)
-    return {job.job_name: round(job.computational_weight/total_weight, 4) for job in job_data_dcs_in_wrapper}    
+    if total_weight == 0:
+      total_weight = 1
+    return {job.job_name: round(job.computational_weight/total_weight, 4) for job in job_data_dcs_in_wrapper}
 
 
 class SingleAssociationStrategy(Strategy):
@@ -151,6 +152,7 @@ class TwoDimWrapperDistributionStrategy(Strategy):
 
   def __init__(self, historiclog_dir_path=DEFAULT_HISTORICAL_LOGS_DIR):
     super(TwoDimWrapperDistributionStrategy, self).__init__(historiclog_dir_path=historiclog_dir_path)
+    self.jobs_per_level = None
 
   def apply_distribution(self, job_data_dc, job_data_dcs_in_wrapper, slurm_monitor):
     try:

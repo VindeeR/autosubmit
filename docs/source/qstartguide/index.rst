@@ -2,7 +2,6 @@
 Tutorial start guide
 ====================
 
-
 This tutorial is a starter’s guide to run a dummy experiment with Autosubmit.
 
 Dummy experiments run workflows with inexpensive empty tasks and therefore are ideal for teaching and testing purposes.
@@ -18,6 +17,15 @@ Ensure that you have a **password-less** connection to all platforms you want to
 
 - Open a terminal and prompt ``ssh-keygen -t rsa -b 4096 -C "email@email.com" -m PEM``
 - Copy the resulting key to your platform of choice. Via SCP or ssh-copy-key.
+
+.. code-block:: bash
+
+        # Generate a key pair for password-less ssh, PEM format is recommended as others can cause problems
+        ssh-keygen -t rsa -b 4096 -C "email@email.com" -m PEM
+        # Copy the public key to the remote machine
+        ssh-copy-id -i ~/.ssh/id_rsa.pub user@remotehost
+        # Add your key to ssh agent ( if encrypted )
+        ssh-add ~/.ssh/id_rsa
 
 Description of most used commands
 =================================
@@ -79,11 +87,12 @@ Then, execute ``autosubmit create <expid> -np`` and Autosubmit will generate the
 
 Run and monitoring:
 ===============
+
  To run an experiment, use ```autosubmit run <expid>```. Autosubmit runs experiments performing the following operations:
 
  - First, it **checks the experiment configuration**. If it is wrong, it won't proceed further.
  - Second, it **runs the experiment while retrieving all logs** from completed or failed tasks as they run.
- - Third, it manages all the **workflow steps by following the dependencies defined by the user** until all jobs are in COMPLETED or FAILED status. There can be jobs left in WAITING status if their dependencies are in FAILED status.
+ - Third, it manages all the **workflow steps by following the dependencies defined by the user** until all jobs are in COMPLETED or FAILED status. There can be jobs left in **WAITING** status if their dependencies are in **FAILED** status.
 
 While the experiment is running, it can be visualized via ``autosubmit monitor <expid>``.
 
@@ -111,28 +120,28 @@ Configuration summary:
 
     * - File
       - Content
-    * - ``expdef.conf``
+    * - ``expdef.yml``
       -
         * It contains the default platform, the one set with -H.
         * Allows changing the start dates, members and chunks.
         * Allows changing the experiment project source ( git, local, svn or dummy)
-    * - ``platforms.conf``
+    * - ``platforms.yml``
       -
         * It contains the list of platforms to use in the experiment.
         * This file contains the definitions for managing clusters, fat-nodes and support computers.
         * This file must be filled-up with the platform(s) configuration(s).
         * Several platforms can be defined and used in the same experiment.
-    * - ``jobs.conf``
+    * - ``jobs.yml``
       -
         - It contains the tasks' definitions in sections. Depending on the parameters, one section can generate multiple similar tasks.
         - This file must be filled-up with the tasks' definitions.
         - Several sections can be defined and used in the same experiment.
-    * - ``autosubmit.conf``
+    * - ``autosubmit.yml``
       -
         - This file contains the definitions that impact the workflow behavior.
         - It changes workflow behavior with parameters such as job limitations, remote_dependendies and retrials.
         - It extends autosubmit functionalities with parameters such as wrappers and mail notification.
-    * - ``proj.conf``
+    * - ``proj.yml``
       -
         - This file contains the configuration used by the user scripts.
         - This file is fully customizable for the current experiment. Allows setting user- parameters that will be readable by the autosubmit jobs.
@@ -144,39 +153,47 @@ Final step: Modify and run
 
  It is time to look into the configuration files of the dummy experiment and modify them with a remote platform to run a workflow with a few more chunks.
 
- Open expdef.conf
+ Open expdef.yml
 
-.. code-block:: INI
+.. code-block:: yaml
 
-    [DEFAULT]
-    EXPID = a000 #<- don't change
-    HPCARCH = local # Change for your new main platform name, ej. marenostrum4
+    DEFAULT:
+        # Don't change
+        EXPID: "a000"
+        # Change for your new main platform name, ej. marenostrum4
+        HPCARCH: "local"
+        # Locate and  change these parameters, per ej. numchunks: 3
+        EXPERIMENT:
+            DATELIST: 20000101
+            MEMBERS: fc0
+            NUMCHUNKS: 1
+        (...)
 
-    # Locate and  change these parameters, per ej. numchunks = 3
-    [experiment]
-    DATELIST = 20000101
-    MEMBERS = fc0
-    NUMCHUNKS = 1
-    (...)
+Now open platforms.yml. Note: This will be an example for marenostrum4
 
-Now open platforms.conf. Note: This will be an example for marenostrum4
+.. code-block:: yaml
 
-.. code-block:: INI
-
-    [marenostrum4]
-    # Queue type. Options: ps, SGE, LSF, SLURM, PBS, eceaccess
-    TYPE = slurm # scheduler type
-    HOST = mn1.bsc.es,mn2.bsc.es,mn3.bsc.es
-    PROJECT = bsc32 # <- your project
-    USER = bsc32070 # <- your user
-    SCRATCH_DIR = /gpfs/scratch
-    ADD_PROJECT_TO_HOST = False
-    # use 72:00 if you are using a PRACE account, 48:00 for the bsc account
-    MAX_WALLCLOCK = 02:00
-    # use 19200 if you are using a PRACE account, 2400 for the bsc account
-    MAX_PROCESSORS = 2400
-    PROCESSORS_PER_NODE = 48
-    SERIAL_QUEUE = debug
-    QUEUE = debug
+    PLATFORMS:
+        marenostrum4:
+            # Queue type. Options: ps, SGE, LSF, SLURM, PBS, eceaccess
+            # scheduler type
+            TYPE: slurm
+            HOST: mn1.bsc.es,mn2.bsc.es,mn3.bsc.es
+            # your project
+            PROJECT: bsc32
+            # <- your user
+            USER: bsc32070
+            SCRATCH_DIR: /gpfs/scratch
+            ADD_PROJECT_TO_HOST: False
+            # use 72:00 if you are using a PRACE account, 48:00 for the bsc account
+            MAX_WALLCLOCK: 02:00
+            # use 19200 if you are using a PRACE account, 2400 for the bsc account
+            MAX_PROCESSORS: 2400
+            PROCESSORS_PER_NODE: 48
+            SERIAL_QUEUE: debug
+            QUEUE: debug
 
 ``autosubmit create <expid>** (without -np)`` will generate the new workflow and ``autosubmit run <expid>`` will run the experiment with the latest changes.
+
+.. warning::
+    If you are using an encrypted key, you will need to add it to the ssh-agent before running the experiment. To do so, run ``ssh-add <path_to_key>``.

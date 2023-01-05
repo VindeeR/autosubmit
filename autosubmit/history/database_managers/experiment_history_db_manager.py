@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
 # This file is part of Autosubmit.
@@ -15,17 +15,13 @@
 
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
-import sqlite3
 import os
-import traceback
 import textwrap
 import autosubmit.history.utils as HUtils
-import database_models as Models
+from . import database_models as Models
 from autosubmit.history.data_classes.job_data import JobData
 from autosubmit.history.data_classes.experiment_run import ExperimentRun
-from abc import ABCMeta, abstractmethod
-from database_manager import DatabaseManager, DEFAULT_JOBDATA_DIR
-from datetime import datetime
+from .database_manager import DatabaseManager, DEFAULT_JOBDATA_DIR
 
 CURRENT_DB_VERSION = 18
 DB_EXPERIMENT_HEADER_SCHEMA_CHANGES = 14
@@ -364,10 +360,10 @@ class ExperimentHistoryDbManager(DatabaseManager):
       max_counter = Models.MaxCounterRow(*counter_result[0]).maxcounter
       return max_counter if max_counter else DEFAULT_MAX_COUNTER
 
-  def delete_job_data(self, id):
+  def delete_job_data(self, id_):
     """ Deletes row from job_data by id. Useful for testing. """
     statement = ''' DELETE FROM job_data WHERE id=? '''
-    arguments = (id, )
+    arguments = (id_, )
     self.execute_statement_with_arguments_on_dbfile(self.historicaldb_file_path, statement, arguments)
   
   def delete_experiment_run(self, run_id):

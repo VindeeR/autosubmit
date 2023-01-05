@@ -23,7 +23,7 @@ Unable to recover remote logs files.
 ========================================================
 
 *Explanation*: If there are limitations on the remote platform regarding multiple connections,
-*Solution*:  You can try DISABLE_RECOVERY_THREADS = TRUE under the [platform_name] section in the platform.conf.
+*Solution*:  You can try DISABLE_RECOVERY_THREADS: TRUE under the platform_name: section in the platform.yml.
 
 Error on create caused by a configuration parsing error
 =======================================================
@@ -54,3 +54,8 @@ Error codes
 ===========
 
 The latest version of **Autosubmit** implements a code system that guides you through the process of fixing some of the common problems you might find. Check :ref:`errorcodes`, where you will find the list of error codes, their descriptions, and solutions.
+
+Changelog
+=========
+
+review :ref:`changelog`.

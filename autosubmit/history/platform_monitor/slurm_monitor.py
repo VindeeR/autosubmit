@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
 # This file is part of Autosubmit.
@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-from platform_monitor import PlatformMonitor
-from slurm_monitor_item import SlurmMonitorItem
+from .platform_monitor import PlatformMonitor
+from .slurm_monitor_item import SlurmMonitorItem
 
 class SlurmMonitor(PlatformMonitor):
   """ Manages Slurm commands interpretation. """
@@ -47,16 +47,31 @@ class SlurmMonitor(PlatformMonitor):
 
   @property
   def header(self):
-    return next((header for header in self.input_items if header.is_header), None)  
+    # test
+    headers = [header for header in self.input_items if header.is_header]
+    if len(headers) > 0:
+        return headers[0]
+    else:
+        return None
   
   @property
   def batch(self):
-    return next((batch for batch in self.input_items if batch.is_batch), None)
+    #test
+    batch = [batch for batch in self.input_items if batch.is_batch]
+    if len(batch) > 0:
+        return batch[0]
+    else:
+        return None
 
   @property
   def extern(self):
-    return next((extern for extern in self.input_items if extern.is_extern), None)
-  
+    #test
+    extern = [extern for extern in self.input_items if extern.is_extern]
+    if len(extern) > 0:
+        return extern[0]
+    else:
+        return None
+
   def steps_plus_extern_approximate_header_energy(self):
     return abs(self.steps_energy + self.extern.energy - self.header.energy) <= 0.01*self.header.energy
 

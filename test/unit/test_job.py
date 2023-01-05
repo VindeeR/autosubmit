@@ -1,7 +1,7 @@
 from unittest import TestCase
 import os
 import sys
-from autosubmit.config.config_common import AutosubmitConfig
+from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from autosubmit.job.job_common import Status
 from autosubmit.job.job import Job
 from autosubmit.platforms.platform import Platform
@@ -12,7 +12,7 @@ from mock import patch
 from sys import version_info
 
 if version_info.major == 2:
-    import __builtin__ as builtins
+    import builtins as builtins
 else:
     import builtins
 
@@ -23,9 +23,15 @@ class TestJob(TestCase):
         self.job_name = 'random-name'
         self.job_id = 999
         self.job_priority = 0
-
+        self.as_conf = Mock()
+        self.as_conf.experiment_data = dict()
+        self.as_conf.experiment_data["JOBS"] = dict()
+        self.as_conf.jobs_data = self.as_conf.experiment_data["JOBS"]
+        self.as_conf.experiment_data["PLATFORMS"] = dict()
         self.job = Job(self.job_name, self.job_id, Status.WAITING, self.job_priority)
         self.job.processors = 2
+        self.as_conf.load_project_parameters = Mock(return_value=dict())
+
 
     def test_when_the_job_has_more_than_one_processor_returns_the_parallel_platform(self):
         platform = Platform(self.experiment_id, 'parallel-platform', FakeBasicConfig)
@@ -36,7 +42,7 @@ class TestJob(TestCase):
 
         returned_platform = self.job.platform
 
-        self.assertEquals(platform, returned_platform)
+        self.assertEqual(platform, returned_platform)
 
     def test_when_the_job_has_only_one_processor_returns_the_serial_platform(self):
         platform = Platform(self.experiment_id, 'parallel-platform', FakeBasicConfig)
@@ -47,15 +53,15 @@ class TestJob(TestCase):
 
         returned_platform = self.job.platform
 
-        self.assertEquals('serial-platform', returned_platform)
+        self.assertEqual('serial-platform', returned_platform)
 
     def test_set_platform(self):
         dummy_platform = Platform('whatever', 'rand-name', FakeBasicConfig)
-        self.assertNotEquals(dummy_platform, self.job.platform)
+        self.assertNotEqual(dummy_platform, self.job.platform)
 
         self.job.platform = dummy_platform
 
-        self.assertEquals(dummy_platform, self.job.platform)
+        self.assertEqual(dummy_platform, self.job.platform)
 
     def test_when_the_job_has_a_queue_returns_that_queue(self):
         dummy_queue = 'whatever'
@@ -63,7 +69,7 @@ class TestJob(TestCase):
 
         returned_queue = self.job.queue
 
-        self.assertEquals(dummy_queue, returned_queue)
+        self.assertEqual(dummy_queue, returned_queue)
 
     def test_when_the_job_has_not_a_queue_and_some_processors_returns_the_queue_of_the_platform(self):
         dummy_queue = 'whatever-parallel'
@@ -76,7 +82,7 @@ class TestJob(TestCase):
         returned_queue = self.job.queue
 
         self.assertIsNotNone(returned_queue)
-        self.assertEquals(dummy_queue, returned_queue)
+        self.assertEqual(dummy_queue, returned_queue)
 
     def test_when_the_job_has_not_a_queue_and_one_processor_returns_the_queue_of_the_serial_platform(self):
         serial_queue = 'whatever-serial'
@@ -88,6 +94,8 @@ class TestJob(TestCase):
         dummy_platform = Platform('whatever', 'parallel', FakeBasicConfig)
         dummy_platform.serial_platform = dummy_serial_platform
         dummy_platform.queue = parallel_queue
+        dummy_platform.processors_per_node = "1"
+        #dummy_platform.hyperthreading = "false"
 
         self.job._platform = dummy_platform
         self.job.processors = '1'
@@ -97,23 +105,23 @@ class TestJob(TestCase):
         returned_queue = self.job.queue
 
         self.assertIsNotNone(returned_queue)
-        self.assertEquals(serial_queue, returned_queue)
-        self.assertNotEquals(parallel_queue, returned_queue)
+        self.assertEqual(serial_queue, returned_queue)
+        self.assertNotEqual(parallel_queue, returned_queue)
 
     def test_set_queue(self):
         dummy_queue = 'whatever'
-        self.assertNotEquals(dummy_queue, self.job._queue)
+        self.assertNotEqual(dummy_queue, self.job._queue)
 
         self.job.queue = dummy_queue
 
-        self.assertEquals(dummy_queue, self.job.queue)
+        self.assertEqual(dummy_queue, self.job.queue)
 
     def test_that_the_increment_fails_count_only_adds_one(self):
         initial_fail_count = self.job.fail_count
         self.job.inc_fail_count()
         incremented_fail_count = self.job.fail_count
 
-        self.assertEquals(initial_fail_count + 1, incremented_fail_count)
+        self.assertEqual(initial_fail_count + 1, incremented_fail_count)
 
     def test_parents_and_children_management(self):
         random_job1 = Job('dummy-name', 111, Status.WAITING, 0)
@@ -125,10 +133,10 @@ class TestJob(TestCase):
                             random_job3)
 
         # assert added
-        self.assertEquals(3, len(self.job.parents))
-        self.assertEquals(1, len(random_job1.children))
-        self.assertEquals(1, len(random_job2.children))
-        self.assertEquals(1, len(random_job3.children))
+        self.assertEqual(3, len(self.job.parents))
+        self.assertEqual(1, len(random_job1.children))
+        self.assertEqual(1, len(random_job2.children))
+        self.assertEqual(1, len(random_job3.children))
 
         # assert contains
         self.assertTrue(self.job.parents.__contains__(random_job1))
@@ -145,10 +153,10 @@ class TestJob(TestCase):
 
         # assert deletions
         self.job.delete_parent(random_job3)
-        self.assertEquals(2, len(self.job.parents))
+        self.assertEqual(2, len(self.job.parents))
 
         random_job1.delete_child(self.job)
-        self.assertEquals(0, len(random_job1.children))
+        self.assertEqual(0, len(random_job1.children))
 
     def test_create_script(self):
         # arrange
@@ -159,7 +167,7 @@ class TestJob(TestCase):
 
         self.job._tmp_path = '/dummy/tmp/path'
 
-        update_content_mock = Mock(return_value='some-content: %NUMPROC%, %NUMTHREADS%, %NUMTASK% %% %%')
+        update_content_mock = Mock(return_value=('some-content: %NUMPROC%, %NUMTHREADS%, %NUMTASK% %% %%','some-content: %NUMPROC%, %NUMTHREADS%, %NUMTASK% %% %%'))
         self.job.update_content = update_content_mock
 
         config = Mock(spec=AutosubmitConfig)
@@ -175,15 +183,15 @@ class TestJob(TestCase):
             self.job.create_script(config)
         # assert
         update_content_mock.assert_called_with(config)
-        open_mock.assert_called_with(os.path.join(self.job._tmp_path, self.job.name + '.cmd'), 'w')
-        write_mock.write.assert_called_with('some-content: 999, 777, 666 % %')
+        open_mock.assert_called_with(os.path.join(self.job._tmp_path, self.job.name + '.cmd'), 'wb')
+        write_mock.write.assert_called_with(b'some-content: 999, 777, 666 % %some-content: 999, 777, 666 % %')
         chmod_mock.assert_called_with(os.path.join(self.job._tmp_path, self.job.name + '.cmd'), 0o755)
 
     def test_that_check_script_returns_false_when_there_is_an_unbound_template_variable(self):
         # arrange
-        update_content_mock = Mock(return_value='some-content: %UNBOUND%')
+        update_content_mock = Mock(return_value=('some-content: %UNBOUND%','some-content: %UNBOUND%'))
         self.job.update_content = update_content_mock
-
+        #template_content = update_content_mock
         update_parameters_mock = Mock(return_value=self.job.parameters)
         self.job.update_parameters = update_parameters_mock
 
@@ -205,7 +213,8 @@ class TestJob(TestCase):
         self.job.parameters['NUMTHREADS'] = 777
         self.job.parameters['NUMTASK'] = 666
 
-        update_content_mock = Mock(return_value='some-content: %NUMPROC%, %NUMTHREADS%, %NUMTASK%')
+        update_content_mock = Mock(return_value=('some-content: %NUMPROC%, %NUMTHREADS%, %NUMTASK%','some-content: %NUMPROC%, %NUMTHREADS%, %NUMTASK%'))
+        #todo
         self.job.update_content = update_content_mock
 
         update_parameters_mock = Mock(return_value=self.job.parameters)
@@ -232,7 +241,7 @@ class TestJob(TestCase):
 
         # assert
         exists_mock.assert_called_once_with(os.path.join(self.job._tmp_path, self.job.name + '_COMPLETED'))
-        self.assertEquals(Status.COMPLETED, self.job.status)
+        self.assertEqual(Status.COMPLETED, self.job.status)
 
     def test_completed_file_not_exists_then_sets_status_to_failed(self):
         # arrange
@@ -244,41 +253,51 @@ class TestJob(TestCase):
 
         # assert
         exists_mock.assert_called_once_with(os.path.join(self.job._tmp_path, self.job.name + '_COMPLETED'))
-        self.assertEquals(Status.FAILED, self.job.status)
+        self.assertEqual(Status.FAILED, self.job.status)
 
     def test_job_script_checking_contains_the_right_default_variables(self):
         # This test (and feature) was implemented in order to avoid
         # false positives on the checking process with auto-ecearth3
         # Arrange
-        as_conf = Mock()
-        as_conf.get_processors = Mock(return_value=80)
-        as_conf.get_threads = Mock(return_value=1)
-        as_conf.get_tasks = Mock(return_value=16)
-        as_conf.get_memory = Mock(return_value=80)
-        as_conf.get_wallclock = Mock(return_value=None)
-        as_conf.get_member_list = Mock(return_value=[])
-        as_conf.get_custom_directives = Mock(return_value='["whatever"]')
-        as_conf.load_project_parameters = Mock(return_value=dict())
+        section = "random-section"
+        self.job.section = "random-section"
         self.job.parameters['PROJECT_TYPE'] = "none"
-        dummy_serial_platform = Mock()
+        processors = 80
+        threads = 1
+        tasks = 16
+        memory = 80
+        wallclock = "00:30"
+        self.as_conf.get_member_list = Mock(return_value = [])
+        custom_directives = '["whatever"]'
+        options = {
+            'PROCESSORS': processors,
+            'THREADS': threads,
+            'TASKS': tasks,
+            'MEMORY': memory,
+            'WALLCLOCK': wallclock,
+            'CUSTOM_DIRECTIVES': custom_directives
+        }
+        self.as_conf.jobs_data[section] = options
+
+        dummy_serial_platform = MagicMock()
         dummy_serial_platform.name = 'serial'
-        dummy_platform = Mock()
+        dummy_platform = MagicMock()
         dummy_platform.serial_platform = dummy_serial_platform
         dummy_platform.custom_directives = '["whatever"]'
-
+        self.as_conf.dynamic_variables = MagicMock()
         self.job._platform = dummy_platform
 
         # Act
-        parameters = self.job.update_parameters(as_conf, dict())
+        parameters = self.job.update_parameters(self.as_conf, dict())
         # Assert
         self.assertTrue('d' in parameters)
         self.assertTrue('d_' in parameters)
         self.assertTrue('Y' in parameters)
         self.assertTrue('Y_' in parameters)
-        self.assertEquals('%d%', parameters['d'])
-        self.assertEquals('%d_%', parameters['d_'])
-        self.assertEquals('%Y%', parameters['Y'])
-        self.assertEquals('%Y_%', parameters['Y_'])
+        self.assertEqual('%d%', parameters['d'])
+        self.assertEqual('%d_%', parameters['d_'])
+        self.assertEqual('%Y%', parameters['Y'])
+        self.assertEqual('%Y_%', parameters['Y_'])
 
 
 class FakeBasicConfig:

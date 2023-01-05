@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -20,8 +20,7 @@
 import traceback
 import numpy as np
 import matplotlib as mtp
-from numpy.core.fromnumeric import trace
-from pkg_resources import normalize_path
+
 mtp.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -29,9 +28,10 @@ import matplotlib.patches as mpatches
 # from autosubmit.experiment.statistics import ExperimentStats
 from autosubmit.statistics.statistics import Statistics
 from autosubmit.job.job import Job
-from log.log import Log, AutosubmitCritical, AutosubmitError
+from log.log import Log, AutosubmitCritical
 from datetime import datetime
 from typing import Dict, List
+
 Log.get_logger("Autosubmit")
 
 # Autosubmit stats constants
@@ -40,17 +40,19 @@ MAX_JOBS_PER_PLOT = 12.0
 MAX_NUM_PLOTS = 40
 
 
-
-def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, period_ini=None, period_fi=None, queue_time_fixes=None):
+def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, period_ini=None, period_fi=None,
+                       queue_time_fixes=None):
     # type: (str, List[Job], List[str], str, datetime, datetime, Dict[str, int]) -> None
     """
     Creates a bar diagram of the statistics.
 
-    :param experiment_id: experiment's identifier  
-    :type experiment_id: str  
-    :param job_list: list of jobs (filtered)  
-    :type job_list: list of Job objects  
-    :param general_stats: list of sections and options in the %expid%_GENERAL_STATS file  
+    :param queue_time_fixes:
+    :param experiment_id: experiment's identifier
+    :type experiment_id: str
+    :param jobs_list: list of jobs
+    :type jobs_list: List[Job]
+
+    :param general_stats: list of sections and options in the %DEFAULT.EXPID%_GENERAL_STATS file
     :type general_stats: list of tuples  
     :param output_file: path to the output file  
     :type output_file: str  
@@ -61,26 +63,27 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
     """
     # Error prevention
     plt.close('all')
+    normal_plots_count = 0
+    failed_jobs_plots_count = 0
+    exp_stats = None
     try:
         exp_stats = Statistics(jobs_list, period_ini, period_fi, queue_time_fixes)
         exp_stats.calculate_statistics()
         exp_stats.calculate_summary()
-        exp_stats.make_old_format()    
+        exp_stats.make_old_format()
+
         failed_jobs_dict = exp_stats.build_failed_jobs_only_list()
         # Stats variables definition
         normal_plots_count = int(np.ceil(len(exp_stats.jobs_stat) / MAX_JOBS_PER_PLOT))
         failed_jobs_plots_count = int(np.ceil(len(failed_jobs_dict) / MAX_JOBS_PER_PLOT))
     except Exception as exp:
-        if not isinstance(normal_plots_count,int):
-            normal_plots_count = 0
-        if not isinstance(failed_jobs_plots_count,int):
-            failed_jobs_plots_count = 0
         print(exp)
-        print(traceback.format_exc())
+        print((traceback.format_exc()))
 
+    # Plotting
     total_plots_count = normal_plots_count + failed_jobs_plots_count
     # num_plots = norma 
-    # ind = np.arange(int(MAX_JOBS_PER_PLOT))
+    # ind = np.arrange(int(MAX_JOBS_PER_PLOT))
     width = 0.16
     # Creating stats figure + sanity check
     if total_plots_count > MAX_NUM_PLOTS:
@@ -89,8 +92,6 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
         suppose it is noon, if you supply -fp 5 the query will consider changes starting from 7:00 am. If you really wish to query the whole experiment, refer to Autosubmit GUI."
         Log.info(message)
         raise AutosubmitCritical("Stats query out of bounds", 7061, message)
-
-
 
     fig = plt.figure(figsize=(RATIO * 4, 3 * RATIO * total_plots_count))
 
@@ -103,7 +104,7 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
     # print("Total plots: {}".format(total_plots_count))
     grid_spec = gridspec.GridSpec(RATIO * total_plots_count + 2, 1)
     i_plot = 0
-    for plot in xrange(1, normal_plots_count + 1):
+    for plot in range(1, normal_plots_count + 1):
         try:
             # Calculating jobs inside the given plot
             l1 = int((plot - 1) * MAX_JOBS_PER_PLOT)
@@ -119,19 +120,20 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
                 [job.name for job in jobs_list[l1:l2]], rotation='vertical')
             ax[plot - 1].set_title(experiment_id, fontsize=20)
             upper_limit = round(1.10 * exp_stats.max_time, 4)
-            ax[plot - 1].set_yticks(np.arange(0, upper_limit, round(upper_limit/10, 4)))
+            ax[plot - 1].set_yticks(np.arange(0, upper_limit, round(upper_limit / 10, 4)))
             ax[plot - 1].set_ylim(0, float(1.10 * exp_stats.max_time))
-            # Building rects
+            # Building reacts
             rects[0] = ax[plot - 1].bar(ind, exp_stats.queued[l1:l2], width, color='lightpink')
             rects[1] = ax[plot - 1].bar(ind + width, exp_stats.run[l1:l2], width, color='green')
             rects[2] = ax[plot - 1].bar(ind + width * 3, exp_stats.fail_queued[l1:l2], width, color='lightsalmon')
             rects[3] = ax[plot - 1].bar(ind + width * 4, exp_stats.fail_run[l1:l2], width, color='salmon')
-            rects[4] = ax[plot - 1].plot([0., width * 6 * MAX_JOBS_PER_PLOT], [exp_stats.threshold, exp_stats.threshold], "k--", label='wallclock sim')
+            rects[4] = ax[plot - 1].plot([0., width * 6 * MAX_JOBS_PER_PLOT],
+                                         [exp_stats.threshold, exp_stats.threshold], "k--", label='wallclock sim')
             i_plot = plot
         except Exception as exp:
-            print(traceback.format_exc())
+            print((traceback.format_exc()))
             print(exp)
-    
+
     job_names_in_failed = [name for name in exp_stats.failed_jobs_dict]
     failed_jobs_rects = [None]
     for j_plot in range(1, failed_jobs_plots_count + 1):
@@ -141,7 +143,7 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
             if l2 - l1 <= 0:
                 continue
             ind = np.arange(l2 - l1)
-            plot = i_plot + j_plot 
+            plot = i_plot + j_plot
             ax.append(fig.add_subplot(grid_spec[RATIO * plot - RATIO + 2:RATIO * plot + 1]))
             ax[plot - 1].set_ylabel('# failed attempts')
             ax[plot - 1].set_xticks(ind + width)
@@ -149,12 +151,11 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
             ax[plot - 1].set_title(experiment_id, fontsize=20)
             ax[plot - 1].set_ylim(0, float(1.10 * exp_stats.max_fail))
             ax[plot - 1].set_yticks(range(0, exp_stats.max_fail + 2))
-            failed_jobs_rects[0] = ax[plot - 1].bar(ind + width * 2, [exp_stats.failed_jobs_dict[name] for name in job_names_in_failed[l1:l2]], width, color='red')
+            failed_jobs_rects[0] = ax[plot - 1].bar(ind + width * 2, [exp_stats.failed_jobs_dict[name] for name in
+                                                                      job_names_in_failed[l1:l2]], width, color='red')
         except Exception as exp:
-            print(traceback.format_exc())
+            print((traceback.format_exc()))
             print(exp)
-
-
 
     # Building legends subplot
     legends_plot = fig.add_subplot(grid_spec[0, 0])
@@ -166,7 +167,7 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
         # Building legends
         # print("Legends")
         build_legends(legends_plot, rects, exp_stats, general_stats)
-        
+
         # Saving output figure
         grid_spec.tight_layout(fig, rect=[0, 0.03, 1, 0.97])
         plt.savefig(output_file)
@@ -174,7 +175,7 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
         create_csv_stats(exp_stats, jobs_list, output_file)
     except Exception as exp:
         print(exp)
-        print(traceback.format_exc())
+        print((traceback.format_exc()))
 
 
 def create_csv_stats(exp_stats, jobs_list, output_file):
@@ -185,10 +186,10 @@ def create_csv_stats(exp_stats, jobs_list, output_file):
     running_times = exp_stats.run
 
     output_file = output_file.replace('pdf', 'csv')
-    with open(output_file, 'wb') as file:
+    with open(output_file, 'w') as file:
         file.write(
             "Job,Started,Ended,Queuing time (hours),Running time (hours)\n")
-        for i in xrange(len(job_names)):
+        for i in range(len(jobs_list)):
             file.write("{0},{1},{2},{3},{4}\n".format(
                 job_names[i], start_times[i], end_times[i], queuing_times[i], running_times[i]))
 
@@ -225,7 +226,7 @@ def build_legends(plot, rects, experiment_stats, general_stats):
 
 def create_legends(plot, rects, titles, locs, handlelengths):
     legends = []
-    for i in xrange(len(rects)):
+    for i in range(len(rects)):
         legends.append(create_legend(
             plot, rects[i], titles[i], locs[i], handlelengths[i]))
     return legends
@@ -237,4 +238,4 @@ def create_legend(plot, rects, titles, loc, handlelength=None):
 
 def get_whites_array(length):
     white = mpatches.Rectangle((0, 0), 0, 0, alpha=0.0)
-    return [white for _ in xrange(length)]
+    return [white for _ in range(length)]

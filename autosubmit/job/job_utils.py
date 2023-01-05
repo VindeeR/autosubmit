@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -25,7 +25,7 @@ from networkx import DiGraph
 from networkx import dfs_edges
 from networkx import NetworkXError
 from autosubmit.job.job_package_persistence import JobPackagePersistence
-from autosubmit.config.basicConfig import BasicConfig
+from autosubmitconfigparser.config.basicconfig import BasicConfig
 from typing import Dict
 
 
@@ -50,12 +50,10 @@ def get_job_package_code(expid, job_name):
     """
     Finds the package code and retrieves it. None if no package.
 
-    :param BasicConfig: Basic configuration 
-    :type BasicConfig: Configuration Object
-    :param expid: Experiment Id
+    :param job_name:
+    :param expid: Experiment ID
     :type expid: String
-    :param current_job_name: Name of job
-    :type current_jobs: string
+
     :return: package code, None if not found
     :rtype: int or None
     """
@@ -64,13 +62,13 @@ def get_job_package_code(expid, job_name):
         basic_conf.read()
         packages_wrapper = JobPackagePersistence(os.path.join(basic_conf.LOCAL_ROOT_DIR, expid, "pkl"),"job_packages_" + expid).load(wrapper=True)
         packages_wrapper_plus = JobPackagePersistence(os.path.join(basic_conf.LOCAL_ROOT_DIR, expid, "pkl"),"job_packages_" + expid).load(wrapper=False)
-        if (packages_wrapper or packages_wrapper_plus):
+        if packages_wrapper or packages_wrapper_plus:
             packages = packages_wrapper if len(packages_wrapper) > len(packages_wrapper_plus) else packages_wrapper_plus
             for exp, package_name, _job_name in packages:
                 if job_name == _job_name:
                     code = int(package_name.split("_")[2])
                     return code            
-    except:
+    except Exception as e:
         pass
     return 0
 
@@ -81,29 +79,14 @@ class Dependency(object):
 
     """
 
-    def __init__(self, section, distance=None, running=None, sign=None, delay=-1, splits=None, select_chunks=list(), select_members=list()):
+    def __init__(self, section, distance=None, running=None, sign=None, delay=-1, splits=None,relationships=None):
         self.section = section
         self.distance = distance
         self.running = running
         self.sign = sign
         self.delay = delay
         self.splits = splits
-        self.select_chunks_dest = list()
-        self.select_chunks_orig = list()
-        self.select_members_dest = list()
-        self.select_members_orig = list()
-        for chunk_relation in select_chunks:
-            self.select_chunks_dest.append(chunk_relation[0])
-            if len(chunk_relation) > 1:
-                self.select_chunks_orig.append(chunk_relation[1])
-            else:
-                self.select_chunks_orig.append([])
-        for member_relation in select_members:
-            self.select_members_dest.append(member_relation[0])
-            if len(member_relation) > 1:
-                self.select_members_orig.append(member_relation[1])
-            else:
-                self.select_members_orig.append([])
+        self.relationships = relationships
 
 
 class SimpleJob(object):
@@ -160,8 +143,8 @@ class SubJobManager(object):
     def process_times(self):
         """
         """
-        if (self.job_to_package) and (self.package_to_jobs):
-            if(self.current_structure) and len(self.current_structure.keys()) > 0:
+        if self.job_to_package and self.package_to_jobs:
+            if self.current_structure and len(list(self.current_structure.keys())) > 0:
                 # Structure exists
                 new_queues = dict()
                 fixes_applied = dict()
@@ -170,8 +153,8 @@ class SubJobManager(object):
                     local_structure = dict()
                     # SubJob Name -> SubJob Object
                     local_index = dict()
-                    subjobs_in_package = filter(lambda x: x.package ==
-                                                package, self.subjobList)
+                    subjobs_in_package = [x for x in self.subjobList if x.package ==
+                                                package]
                     local_jobs_in_package = [job for job in subjobs_in_package]
                     # Build index
                     for sub in local_jobs_in_package:
@@ -193,7 +176,7 @@ class SubJobManager(object):
                         sub.parents) == 0]
 
                     # While roots exists (consider pop)
-                    while(len(roots) > 0):
+                    while len(roots) > 0:
                         sub = roots.pop(0)
                         if len(sub.children) > 0:
                             for sub_children_name in sub.children:
@@ -222,8 +205,8 @@ class SubJobManager(object):
                 # There is no structure
                 for package in self.package_to_jobs:
                     # Filter only jobs in the current package
-                    filtered = filter(lambda x: x.package ==
-                                      package, self.subjobList)
+                    filtered = [x for x in self.subjobList if x.package ==
+                                      package]
                     # Order jobs by total time (queue + run)
                     filtered = sorted(
                         filtered, key=lambda x: x.total, reverse=False)
@@ -247,7 +230,7 @@ class SubJobManager(object):
                         positive = len(
                             [job for job in filtered if job.transit >= 0])
 
-                        if (positive > 1):
+                        if positive > 1:
                             for i in range(0, len(filtered)):
                                 if filtered[i].transit >= 0:
                                     temp_index = i

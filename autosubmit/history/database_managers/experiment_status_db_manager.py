@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
@@ -18,14 +18,12 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import sqlite3
-import traceback
 import textwrap
 import time
-from database_manager import DatabaseManager, DEFAULT_LOCAL_ROOT_DIR
-from autosubmit.config.basicConfig import BasicConfig
+from .database_manager import DatabaseManager, DEFAULT_LOCAL_ROOT_DIR
+from autosubmitconfigparser.config.basicconfig import BasicConfig
 import autosubmit.history.utils as HUtils
-import database_models as Models
+from . import database_models as Models
 
 BasicConfig.read()
 
@@ -37,8 +35,7 @@ class ExperimentStatusDbManager(DatabaseManager):
       self._ecearth_file_path = os.path.join(db_dir_path, main_db_name)
       self._pkl_file_path = os.path.join(local_root_dir_path, self.expid, "pkl", "job_list_{0}.pkl".format(self.expid))
       self._validate_status_database()
-      # self.current_experiment_row = self._get_current_experiment_row(self.expid)
-      # self.current_experiment_status_row =self._get_current_experiment_status_row(self.current_experiment_row.id)
+
 
   def _validate_status_database(self):
       """ Creates experiment_status table if it does not exist """        
@@ -58,18 +55,18 @@ class ExperimentStatusDbManager(DatabaseManager):
       for experiment in self._get_experiment_status_content():
           print(experiment)
       if self.current_experiment_status_row:
-          print("Current Row:\n\t" + self.current_experiment_status_row.name + "\n\t" +
-                str(self.current_experiment_status_row.exp_id) + "\n\t" + self.current_experiment_status_row.status)
+          print(("Current Row:\n\t" + self.current_experiment_status_row.name + "\n\t" +
+                str(self.current_experiment_status_row.exp_id) + "\n\t" + self.current_experiment_status_row.status))
 
   def is_running(self, time_condition=600):
       # type : (int) -> bool
       """ True if experiment is running, False otherwise. """
-      if (os.path.exists(self._pkl_file_path)):
+      if os.path.exists(self._pkl_file_path):
           current_stat = os.stat(self._pkl_file_path)
           timest = int(current_stat.st_mtime)
           timesys = int(time.time())
           time_diff = int(timesys - timest)
-          if (time_diff < time_condition):
+          if time_diff < time_condition:
               return True
           else:
               return False

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
 # This file is part of Autosubmit.
@@ -17,31 +17,31 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
-import platform_utils as utils
-from slurm_monitor import SlurmMonitor
+from . import platform_utils as utils
+from .slurm_monitor import SlurmMonitor
 
 class TestSlurmMonitor(unittest.TestCase):
   def test_reader_on_simple_wrapper_example_1(self):
     ssh_output = utils.read_example("wrapper1.txt")
     slurm_monitor = SlurmMonitor(ssh_output)      
     # Header
-    self.assertTrue(slurm_monitor.input_items[0].is_batch == False)
-    self.assertTrue(slurm_monitor.input_items[0].is_detail == False)
-    self.assertTrue(slurm_monitor.input_items[0].is_extern == False)
-    self.assertTrue(slurm_monitor.input_items[0].is_header == True)
-    self.assertTrue(slurm_monitor.input_items[0].is_detail == False)
+    self.assertTrue(slurm_monitor.input_items[0].is_batch is False)
+    self.assertTrue(slurm_monitor.input_items[0].is_detail is False)
+    self.assertTrue(slurm_monitor.input_items[0].is_extern is False)
+    self.assertTrue(slurm_monitor.input_items[0].is_header is True)
+    self.assertTrue(slurm_monitor.input_items[0].is_detail is False)
     # Batch
-    self.assertTrue(slurm_monitor.input_items[1].is_batch == True)
-    self.assertTrue(slurm_monitor.input_items[1].is_detail == True)
-    self.assertTrue(slurm_monitor.input_items[1].is_extern == False)
-    self.assertTrue(slurm_monitor.input_items[1].is_header == False)
-    self.assertTrue(slurm_monitor.input_items[1].is_detail == True)
+    self.assertTrue(slurm_monitor.input_items[1].is_batch is True)
+    self.assertTrue(slurm_monitor.input_items[1].is_detail is True)
+    self.assertTrue(slurm_monitor.input_items[1].is_extern is False)
+    self.assertTrue(slurm_monitor.input_items[1].is_header is False)
+    self.assertTrue(slurm_monitor.input_items[1].is_detail is True)
     # Extern
-    self.assertTrue(slurm_monitor.input_items[2].is_batch == False)
-    self.assertTrue(slurm_monitor.input_items[2].is_detail == True)
-    self.assertTrue(slurm_monitor.input_items[2].is_extern == True)
-    self.assertTrue(slurm_monitor.input_items[2].is_header == False)
-    self.assertTrue(slurm_monitor.input_items[2].is_detail == True)
+    self.assertTrue(slurm_monitor.input_items[2].is_batch is False)
+    self.assertTrue(slurm_monitor.input_items[2].is_detail is True)
+    self.assertTrue(slurm_monitor.input_items[2].is_extern is True)
+    self.assertTrue(slurm_monitor.input_items[2].is_header is False)
+    self.assertTrue(slurm_monitor.input_items[2].is_detail is True)
     header = slurm_monitor.header
     batch = slurm_monitor.batch
     extern = slurm_monitor.extern
@@ -58,23 +58,23 @@ class TestSlurmMonitor(unittest.TestCase):
     ssh_output = utils.read_example("wrapper2.txt") # not real
     slurm_monitor = SlurmMonitor(ssh_output)         
     # Header
-    self.assertTrue(slurm_monitor.input_items[0].is_batch == False)
-    self.assertTrue(slurm_monitor.input_items[0].is_detail == False)
-    self.assertTrue(slurm_monitor.input_items[0].is_step == False)
-    self.assertTrue(slurm_monitor.input_items[0].is_extern == False)
-    self.assertTrue(slurm_monitor.input_items[0].is_header == True)
+    self.assertTrue(slurm_monitor.input_items[0].is_batch is False)
+    self.assertTrue(slurm_monitor.input_items[0].is_detail is False)
+    self.assertTrue(slurm_monitor.input_items[0].is_step is False)
+    self.assertTrue(slurm_monitor.input_items[0].is_extern is False)
+    self.assertTrue(slurm_monitor.input_items[0].is_header is True)
     # Batch
-    self.assertTrue(slurm_monitor.input_items[1].is_batch == True)
-    self.assertTrue(slurm_monitor.input_items[1].is_detail == True)
-    self.assertTrue(slurm_monitor.input_items[1].is_step == False)
-    self.assertTrue(slurm_monitor.input_items[1].is_extern == False)
-    self.assertTrue(slurm_monitor.input_items[1].is_header == False)
+    self.assertTrue(slurm_monitor.input_items[1].is_batch is True)
+    self.assertTrue(slurm_monitor.input_items[1].is_detail is True)
+    self.assertTrue(slurm_monitor.input_items[1].is_step is False)
+    self.assertTrue(slurm_monitor.input_items[1].is_extern is False)
+    self.assertTrue(slurm_monitor.input_items[1].is_header is False)
     # Step 0
-    self.assertTrue(slurm_monitor.input_items[2].is_batch == False)
-    self.assertTrue(slurm_monitor.input_items[2].is_detail == True)
-    self.assertTrue(slurm_monitor.input_items[2].is_step == True)
-    self.assertTrue(slurm_monitor.input_items[2].is_extern == False)
-    self.assertTrue(slurm_monitor.input_items[2].is_header == False)
+    self.assertTrue(slurm_monitor.input_items[2].is_batch is False)
+    self.assertTrue(slurm_monitor.input_items[2].is_detail is True)
+    self.assertTrue(slurm_monitor.input_items[2].is_step is True)
+    self.assertTrue(slurm_monitor.input_items[2].is_extern is False)
+    self.assertTrue(slurm_monitor.input_items[2].is_header is False)
     self.assertTrue(slurm_monitor.input_items[2].step_number >= 0)
   
   def test_reader_on_big_wrapper(self):

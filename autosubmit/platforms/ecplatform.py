@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -16,11 +16,11 @@
 
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
-
+import locale
 import os
 import subprocess
 from autosubmit.platforms.paramiko_platform import ParamikoPlatform, ParamikoPlatformException
-from log.log import Log,AutosubmitCritical,AutosubmitError
+from log.log import Log,AutosubmitError
 from autosubmit.platforms.headers.ec_header import EcHeader
 from autosubmit.platforms.headers.ec_cca_header import EcCcaHeader
 from autosubmit.platforms.headers.slurm_header import SlurmHeader
@@ -36,6 +36,18 @@ class EcPlatform(ParamikoPlatform):
     :param scheduler: scheduler to use
     :type scheduler: str (pbs, loadleveler)
     """
+
+    def parse_Alljobs_output(self, output, job_id):
+        pass
+
+    def parse_queue_reason(self, output, job_id):
+        pass
+
+    def get_checkAlljobs_cmd(self, jobs_id):
+        pass
+
+    def submit_Script(self, hold=False):
+        pass
 
     def __init__(self, expid, name, config, scheduler):
         ParamikoPlatform.__init__(self, expid, name, config)
@@ -57,13 +69,26 @@ class EcPlatform(ParamikoPlatform):
         self._allow_arrays = False
         self._allow_wrappers = False # TODO
         self._allow_python_jobs = False
+        self.root_dir = ""
+        self.remote_log_dir = ""
+        self.cancel_cmd = ""
+        self._checkjob_cmd = ""
+        self._checkhost_cmd = ""
+        self._submit_cmd = ""
+        self._submit_command_name = ""
+        self.put_cmd = ""
+        self.get_cmd = ""
+        self.del_cmd = ""
+        self.mkdir_cmd = ""
+        self.check_remote_permissions_cmd = ""
+        self.check_remote_permissions_remove_cmd = ""
         self.update_cmds()
 
     def update_cmds(self):
         """
         Updates commands for platforms
         """
-        self.root_dir = os.path.join(self.scratch, self.project, self.user, self.expid)
+        self.root_dir = os.path.join(self.scratch, self.project_dir, self.user, self.expid)
         self.remote_log_dir = os.path.join(self.root_dir, "LOG_" + self.expid)
         self.cancel_cmd = "eceaccess-job-delete"
         self._checkjob_cmd = "ecaccess-job-list "
@@ -74,11 +99,11 @@ class EcPlatform(ParamikoPlatform):
         self.put_cmd = "ecaccess-file-put"
         self.get_cmd = "ecaccess-file-get"
         self.del_cmd = "ecaccess-file-delete"
-        self.mkdir_cmd = ("ecaccess-file-mkdir " + self.host + ":" + self.scratch + "/" + self.project + "/" +
+        self.mkdir_cmd = ("ecaccess-file-mkdir " + self.host + ":" + self.scratch + "/" + self.project_dir + "/" +
                           self.user + "/" + self.expid + "; " + "ecaccess-file-mkdir " + self.host + ":" +
                           self.remote_log_dir)
-        self.check_remote_permissions_cmd = "ecaccess-file-mkdir " + os.path.join(self.scratch,self.project,self.user,"_permission_checker_azxbyc")
-        self.check_remote_permissions_remove_cmd = "ecaccess-file-rmdir " + os.path.join(self.scratch,self.project,self.user,"_permission_checker_azxbyc")
+        self.check_remote_permissions_cmd = "ecaccess-file-mkdir " + os.path.join(self.scratch,self.project_dir,self.user,"_permission_checker_azxbyc")
+        self.check_remote_permissions_remove_cmd = "ecaccess-file-rmdir " + os.path.join(self.scratch,self.project_dir,self.user,"_permission_checker_azxbyc")
 
     def get_checkhost_cmd(self):
         return self._checkhost_cmd
@@ -88,6 +113,10 @@ class EcPlatform(ParamikoPlatform):
 
     def get_mkdir_cmd(self):
         return self.mkdir_cmd
+
+    def check_Alljobs(self, job_list, as_conf, retries=5):
+        for job,prev_status in job_list:
+            self.check_job(job)
 
     def parse_job_output(self, output):
         job_state = output.split('\n')
@@ -113,13 +142,13 @@ class EcPlatform(ParamikoPlatform):
         return self._checkjob_cmd + str(job_id)
 
     def get_submit_cmd(self, job_script, job, hold=False, export=""):
-        if export == "none" or export == "None" or export is None or export == "":
+        if (export is None or export == "none") or len(export) == 0:
             export = ""
         else:
             export += " ; "
         return export + self._submit_cmd + job_script
 
-    def connect(self):
+    def connect(self, reconnect=False):
         """
         In this case, it does nothing because connection is established for each command
 
@@ -148,13 +177,13 @@ class EcPlatform(ParamikoPlatform):
         try:
             try:
                 output = subprocess.check_output(self.check_remote_permissions_remove_cmd, shell=True)
-            except:
+            except Exception as e:
                 pass
             output = subprocess.check_output(self.check_remote_permissions_cmd, shell=True)
             pass
             output = subprocess.check_output(self.check_remote_permissions_remove_cmd, shell=True)
             return True
-        except:
+        except Exception as e:
             return False
 
     def send_command(self, command, ignore_log=False, x11 = False):
@@ -162,9 +191,14 @@ class EcPlatform(ParamikoPlatform):
             output = subprocess.check_output(command, shell=True)
         except subprocess.CalledProcessError as e:
             if not ignore_log:
-                raise AutosubmitError('Could not execute command {0} on {1}'.format(e.cmd, self.host),7500,e.message)
+                raise AutosubmitError('Could not execute command {0} on {1}'.format(e.cmd, self.host),7500,str(e))
             return False
-        self._ssh_output = output
+        lang = locale.getlocale()[1]
+        if lang is None:
+            lang = locale.getdefaultlocale()[1]
+            if lang is None:
+                lang = 'UTF-8'
+        self._ssh_output = output.decode(lang)
         return True
 
     def send_file(self, filename, check=True):
@@ -175,7 +209,7 @@ class EcPlatform(ParamikoPlatform):
         try:
             subprocess.check_call(command, shell=True)
         except subprocess.CalledProcessError as e:
-            raise AutosubmitError('Could not send file {0} to {1}'.format(os.path.join(self.tmp_path, filename),os.path.join(self.get_files_path(), filename)),6005,e.message)
+            raise AutosubmitError('Could not send file {0} to {1}'.format(os.path.join(self.tmp_path, filename),os.path.join(self.get_files_path(), filename)),6005,str(e))
         return True
 
     def move_file(self, src, dest, must_exist = False):
@@ -250,7 +284,7 @@ class EcPlatform(ParamikoPlatform):
     def get_ssh_output_err(self):
         return self._ssh_output_err
     @staticmethod
-    def wrapper_header(filename, queue, project, wallclock, num_procs, expid, dependency, rootdir, directives):
+    def wrapper_header(filename, queue, project, wallclock, num_procs, expid, dependency, rootdir, directives, partition=""):
         return """\
         #!/bin/bash
         ###############################################################################

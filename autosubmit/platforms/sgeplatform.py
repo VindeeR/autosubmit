@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -33,8 +33,25 @@ class SgePlatform(ParamikoPlatform):
     :param expid: experiment's identifier
     :type expid: str
     """
+
+    def get_checkAlljobs_cmd(self, jobs_id):
+        pass
+
+    def parse_Alljobs_output(self, output, job_id):
+        pass
+
+    def parse_queue_reason(self, output, job_id):
+        pass
+
     def __init__(self, expid, name, config):
         ParamikoPlatform.__init__(self, expid, name, config)
+        self.mkdir_cmd = None
+        self.get_cmd = None
+        self.put_cmd = None
+        self._submit_command_name = None
+        self._submit_cmd = None
+        self._checkhost_cmd = None
+        self.cancel_cmd = None
         self._header = SgeHeader()
         self.job_status = dict()
         self.job_status['COMPLETED'] = ['c']
@@ -45,11 +62,14 @@ class SgePlatform(ParamikoPlatform):
         self._pathdir = "\$HOME/LOG_" + self.expid
         self.update_cmds()
 
+    def submit_Script(self, hold=False):
+        pass
+
     def update_cmds(self):
         """
         Updates commands for platforms
         """
-        self.root_dir = os.path.join(self.scratch, self.project, self.user, self.expid)
+        self.root_dir = os.path.join(self.scratch, self.project_dir, self.user, self.expid)
         self.remote_log_dir = os.path.join(self.root_dir, "LOG_" + self.expid)
         self.cancel_cmd = "qdel"
         self._checkhost_cmd = "echo 1"
@@ -71,6 +91,10 @@ class SgePlatform(ParamikoPlatform):
     def parse_job_output(self, output):
         return output
 
+    def check_Alljobs(self, job_list, as_conf, retries=5):
+        for job,prev_status in job_list:
+            self.check_job(job)
+
     def get_submitted_job_id(self, output, x11 = False):
         return output.split(' ')[2]
 
@@ -80,8 +104,8 @@ class SgePlatform(ParamikoPlatform):
         jobs_xml = dom.getElementsByTagName("JB_job_number")
         return [int(element.firstChild.nodeValue) for element in jobs_xml]
 
-    def get_submit_cmd(self, job_script, job, export=""):
-        if export == "none" or export == "None" or export is None or export == "":
+    def get_submit_cmd(self, job_script, job, hold=False, export=""):
+        if (export is None or export.lower() == "none") or len(export) == 0:
             export = ""
         else:
             export += " ; "
@@ -90,7 +114,7 @@ class SgePlatform(ParamikoPlatform):
     def get_checkjob_cmd(self, job_id):
         return self.get_qstatjob(job_id)
 
-    def connect(self):
+    def connect(self,reconnect=False):
         """
         In this case, it does nothing because connection is established for each command
 

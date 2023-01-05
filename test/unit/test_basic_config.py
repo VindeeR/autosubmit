@@ -4,7 +4,7 @@ import os
 from mock import Mock
 from mock import patch
 
-from autosubmit.config.basicConfig import BasicConfig
+from autosubmitconfigparser.config.basicconfig import BasicConfig
 
 '''
     This class has a static private (__named) method which is impossible to be tested.
@@ -22,11 +22,11 @@ class TestBasicConfig(TestCase):
         # act
         BasicConfig._update_config()
         # assert
-        self.assertEquals(os.path.join(BasicConfig.DB_DIR, BasicConfig.DB_FILE), BasicConfig.DB_PATH)
+        self.assertEqual(os.path.join(BasicConfig.DB_DIR, BasicConfig.DB_FILE), BasicConfig.DB_PATH)
 
     def test_read_makes_the_right_method_calls(self):
         # arrange
-        with patch('autosubmit.config.basicConfig.BasicConfig._update_config', Mock()):
+        with patch('autosubmitconfigparser.config.basicconfig.BasicConfig._update_config', Mock()):
             # act
             BasicConfig.read()
             # assert

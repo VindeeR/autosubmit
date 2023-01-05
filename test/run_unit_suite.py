@@ -1,4 +1,4 @@
 import os
+#--with-coverage --cover-package=autosubmit --cover-inclusive --cover-xml --cover-xml-file=test/coverage.xml
+os.system("python3 -m nose --verbosity=3 unit")
 
-os.system("nosetests --with-coverage --cover-erase --cover-package=autosubmit --cover-html test/unit")
-# os.system("nosetests --exclude=regression --with-coverage --cover-package=autosubmit --cover-inclusive --cover-xml --cover-xml-file=test/coverage.xml test")

@@ -35,11 +35,19 @@ Welcome to autosubmit's documentation!
    /userguide/create/index
    /userguide/configure/index
    /userguide/defining workflows/index
-   /userguide/wrappers/index.rst
+   /userguide/wrappers/index
    /userguide/run/index
-   /userguide/modifying workflows/index.rst
+   /userguide/modifying workflows/index
    /userguide/manage/index
    /userguide/monitor and check/index
+   /userguide/set and share the configuration/index
+
+.. toctree::
+   :caption: Database Documentation
+   :maxdepth: 1
+   :hidden:
+
+   /database/index
 
 .. toctree::
    :caption: Developer Guide
@@ -55,6 +63,7 @@ Welcome to autosubmit's documentation!
 
    /troubleshooting/index
    /troubleshooting/error-codes
+   /troubleshooting/changelog
 
 .. toctree::
    :caption: Module Documentation

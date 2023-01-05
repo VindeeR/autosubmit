@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -31,8 +31,29 @@ class LsfPlatform(ParamikoPlatform):
     :param expid: experiment's identifier
     :type expid: str
     """
+
+    def submit_Script(self, hold=False):
+        pass
+
+    def get_checkAlljobs_cmd(self, jobs_id):
+        pass
+
+    def parse_queue_reason(self, output, job_id):
+        pass
+
+    def parse_Alljobs_output(self, output, job_id):
+        pass
+
     def __init__(self, expid, name, config):
         ParamikoPlatform.__init__(self, expid, name, config)
+        self.mkdir_cmd = None
+        self.get_cmd = None
+        self.put_cmd = None
+        self._submit_command_name = None
+        self._submit_cmd = None
+        self._checkhost_cmd = None
+        self._checkjob_cmd = None
+        self.cancel_cmd = None
         self._header = LsfHeader()
         self._wrapper = LSFWrapperFactory(self)
         self.job_status = dict()
@@ -48,7 +69,7 @@ class LsfPlatform(ParamikoPlatform):
         """
         Updates commands for platforms
         """
-        self.root_dir = os.path.join(self.scratch, self.project, self.user, self.expid)
+        self.root_dir = os.path.join(self.scratch, self.project_dir, self.user, self.expid)
         self.remote_log_dir = os.path.join(self.root_dir, "LOG_" + self.expid)
         self.cancel_cmd = "bkill"
         self._checkjob_cmd = "bjobs "
@@ -68,6 +89,9 @@ class LsfPlatform(ParamikoPlatform):
     def get_remote_log_dir(self):
         return self.remote_log_dir
 
+    def check_Alljobs(self, job_list, as_conf, retries=5):
+        for job,prev_status in job_list:
+            self.check_job(job)
     def parse_job_output(self, output):
         job_state = output.split('\n')
         if len(job_state) > 1:
@@ -87,17 +111,17 @@ class LsfPlatform(ParamikoPlatform):
     def get_checkjob_cmd(self, job_id):
         return self._checkjob_cmd + str(job_id)
 
-    def get_submit_cmd(self, job_script, job, export=""):
-        if export == "none" or export == "None" or export is None or export == "":
+    def get_submit_cmd(self, job_script, job, hold=False, export=""):
+        if (export is None or export.lower() == "none") or len(export) == 0:
             export = ""
         else:
             export += " ; "
         return export + self._submit_cmd + job_script
 
     @staticmethod
-    def wrapper_header(filename, queue, project, wallclock, num_procs, dependency, directives):
+    def wrapper_header(filename, queue, project, wallclock, num_procs, dependency, directives, partition=""):
         return """\
-        #!/usr/bin/env python
+        #!/usr/bin/env python3
         ###############################################################################
         #              {0}
         ###############################################################################

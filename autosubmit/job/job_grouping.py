@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -58,7 +58,7 @@ class JobGrouping(object):
                 if group not in blacklist:
                     while group in groups_map:
                         group = groups_map[group]
-                    # to remove the jobs belonging to groups that should be expanded
+                    # to remove the jobs belonging to group that should be expanded
                     if group in self.group_status_dict:
                         if job not in final_jobs_group:
                             final_jobs_group[job] = list()
@@ -89,7 +89,7 @@ class JobGrouping(object):
 
         out = nestedExpr('[', ']').parseString(text).asList()
 
-        depth = lambda L: isinstance(L, list) and max(map(depth, L)) + 1
+        depth = lambda L: isinstance(L, list) and max(list(map(depth, L))) + 1
 
         if self.group_by == 'date':
             if depth(out) == 2:
@@ -127,7 +127,7 @@ class JobGrouping(object):
                                 for chunk in member_chunks[member_count + 1]:
                                     if chunk.find("-") != -1:
                                         numbers = chunk.split("-")
-                                        for count in xrange(int(numbers[0]), int(numbers[1]) + 1):
+                                        for count in range(int(numbers[0]), int(numbers[1]) + 1):
                                             chunks.append(count)
                                     else:
                                         chunks.append(int(chunk))
@@ -163,23 +163,23 @@ class JobGrouping(object):
                 return Status.UNKNOWN
 
     def _create_groups(self, jobs_group_dict, blacklist=list()):
-        for i in reversed(xrange(len(self.jobs))):
+        for i in reversed(range(len(self.jobs))):
             job = self.jobs[i]
 
             groups = []
             if not self._check_synchronized_job(job, groups):
                 if self.group_by == 'split':
-                    if job.split is not None:
+                    if job.split is not None and len(str(job.split)) > 0:
                         idx = job.name.rfind("_")
                         groups.append(job.name[:idx - 1] + job.name[idx + 1:])
                 elif self.group_by == 'chunk':
-                    if job.chunk is not None:
+                    if job.chunk is not None and len(str(job.chunk)) > 0:
                         groups.append(date2str(job.date, self.date_format) + '_' + job.member + '_' + str(job.chunk))
                 elif self.group_by == 'member':
-                    if job.member is not None:
+                    if job.member is not None and len(str(job.member)) > 0:
                         groups.append(date2str(job.date, self.date_format) + '_' + job.member)
                 elif self.group_by == 'date':
-                    if job.date is not None:
+                    if job.date is not None and len(str(job.date)) > 0:
                         groups.append(date2str(job.date, self.date_format))
 
             if groups:
@@ -204,8 +204,8 @@ class JobGrouping(object):
 
     def _check_synchronized_job(self, job, groups):
         synchronized = False
-        if job.chunk is not None:
-            if job.date is None and job.member is None:
+        if job.chunk is not None and len(str(job.chunk)) > 0:
+            if job.date is None and len(str(job.date)) > 0 and job.member is None and len(str(job.member)) > 0:
                 synchronized = True
                 for date in self.job_list.get_date_list():
                     group_name = date2str(date, self.date_format)
@@ -218,7 +218,7 @@ class JobGrouping(object):
                             group_name = date2str(date, self.date_format)
                     else:
                         groups.append(group_name)
-            elif job.member is None:
+            elif job.member is None :
                 synchronized = True
                 if self.group_by == 'date':
                     groups.append(date2str(job.date, self.date_format))
@@ -247,11 +247,11 @@ class JobGrouping(object):
             status = self._set_group_status(statuses)
             self.group_status_dict[group] = status
 
-        self._create_higher_level_group(self.group_status_dict.keys(), groups_map)
+        self._create_higher_level_group(list(self.group_status_dict.keys()), groups_map)
         self._fix_splits_automatic_grouping(split_groups, split_groups_status, jobs_group_dict)
 
         # check if remaining jobs can be grouped
-        for i in reversed(xrange(len(self.jobs))):
+        for i in reversed(range(len(self.jobs))):
             job = self.jobs[i]
             for group, status in self.group_status_dict.items():
                 if group in job.name and status == job.status:
@@ -270,8 +270,8 @@ class JobGrouping(object):
     def _fix_splits_automatic_grouping(self, split_groups, split_groups_status, jobs_group_dict):
         if split_groups and split_groups_status:
             group_maps = dict()
-            for group in self.group_status_dict.keys():
-                matching_groups = [split_group for split_group in split_groups_status.keys() if group in split_group]
+            for group in list(self.group_status_dict.keys()):
+                matching_groups = [split_group for split_group in list(split_groups_status.keys()) if group in split_group]
                 for matching_group in matching_groups:
                     group_maps[matching_group] = group
                     split_groups_status.pop(matching_group)

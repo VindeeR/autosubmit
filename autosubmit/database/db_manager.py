@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
 
@@ -162,7 +162,7 @@ class DbManager(object):
 
     def _initialize_database(self):
         """
-        Initialize the database with an options table
+        Initialize the database with an option's table
         with the name and the version of the DB
 
         """

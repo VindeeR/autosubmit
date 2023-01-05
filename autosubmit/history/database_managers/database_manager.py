@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
 # This file is part of Autosubmit.
@@ -20,14 +20,13 @@ import sqlite3
 import os
 import autosubmit.history.utils as HUtils
 import autosubmit.history.database_managers.database_models as Models
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 DEFAULT_JOBDATA_DIR = os.path.join('/esarchive', 'autosubmit', 'as_metadata', 'data')
 DEFAULT_HISTORICAL_LOGS_DIR = os.path.join('/esarchive', 'autosubmit', 'as_metadata', 'logs')
 DEFAULT_LOCAL_ROOT_DIR = os.path.join('/esarchive', 'autosubmit')
-class DatabaseManager():
+class DatabaseManager(metaclass=ABCMeta):
   """ Simple database manager. Needs expid. """
-  __metaclass__ = ABCMeta
   AS_TIMES_DB_NAME = "as_times.db" # default AS_TIMES location
   ECEARTH_DB_NAME = "ecearth.db" # default EC_EARTH_DB_NAME location
   def __init__(self, expid, jobdata_dir_path=DEFAULT_JOBDATA_DIR, local_root_dir_path=DEFAULT_LOCAL_ROOT_DIR):    
@@ -63,7 +62,7 @@ class DatabaseManager():
   
   def execute_statement_with_arguments_on_dbfile(self, path, statement, arguments):
     # type : (str, str, Tuple) -> None
-    """ Executes an statement with arguments on a database file specified by path. """
+    """ Executes a statement with arguments on a database file specified by path. """
     conn = self.get_connection(path)
     cursor = conn.cursor()
     cursor.execute(statement, arguments)

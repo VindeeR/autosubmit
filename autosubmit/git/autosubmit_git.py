@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
 
@@ -22,9 +22,8 @@ import os
 from shutil import rmtree
 import subprocess
 import shutil
-import zipfile
-#from autosubmit import Autosubmit
-from autosubmit.config.basicConfig import BasicConfig
+# from autosubmit import Autosubmit
+from autosubmitconfigparser.config.basicconfig import BasicConfig
 from time import time
 from log.log import Log, AutosubmitCritical, AutosubmitError
 Log.get_logger("Autosubmit")
@@ -47,7 +46,7 @@ class AutosubmitGit:
         Function to clean space on BasicConfig.LOCAL_ROOT_DIR/git directory.
 
         :param as_conf: experiment configuration
-        :type as_conf: autosubmit.config.AutosubmitConfig
+        :type as_conf: autosubmitconfigparser.config.AutosubmitConfig
         """
         proj_dir = os.path.join(
             BasicConfig.LOCAL_ROOT_DIR, as_conf.expid, BasicConfig.LOCAL_PROJ_DIR)
@@ -88,7 +87,7 @@ class AutosubmitGit:
         Function to check uncommited changes
 
         :param as_conf: experiment configuration
-        :type as_conf: autosubmit.config.AutosubmitConfig
+        :type as_conf: autosubmitconfigparser.config.AutosubmitConfig
         """
         proj_dir = os.path.join(
             BasicConfig.LOCAL_ROOT_DIR, as_conf.expid, BasicConfig.LOCAL_PROJ_DIR)
@@ -146,6 +145,10 @@ class AutosubmitGit:
             git_project_branch = 'master'
         git_project_commit = as_conf.get_git_project_commit()
         git_project_submodules = as_conf.get_submodules_list()
+        git_project_submodules_depth = as_conf.get_project_submodules_depth()
+        max_depth = -1
+        if len(git_project_submodules_depth) > 0:
+            max_depth = max(git_project_submodules_depth)
         if as_conf.get_fetch_single_branch() != "true":
             git_single_branch = False
         else:
@@ -177,7 +180,9 @@ class AutosubmitGit:
         os.mkdir(project_path)
         Log.debug("The project folder {0} has been created.", project_path)
         command_0 = ""
+        command_githook = ""
         command_1 = ""
+
         if git_remote_project_path != '':
             if git_remote_project_path[-1] == '/':
                 git_remote_path = os.path.join(
@@ -198,7 +203,15 @@ class AutosubmitGit:
         try:
             ##command 0
             Log.debug('Clone command: {0}', command_0)
-
+            try:
+                git_version = subprocess.check_output("git --version",shell=True)
+                git_version = git_version.split(" ")[2].strip("\n")
+                version_int = ""
+                for number in git_version.split("."):
+                    version_int += number
+                git_version = int(version_int)
+            except:
+                git_version = 2251
             if git_remote_project_path == '':
                 command_0 = "cd {0} ; {1}".format(project_path, command_0)
                 output_0 = subprocess.check_output(command_0, shell=True)
@@ -206,28 +219,49 @@ class AutosubmitGit:
                 command_0 = "cd {0} ; {1}".format(project_path, command_0)
                 hpcarch.send_command(command_0)
             ##command 1
-            if os.path.exists(os.path.join(git_path, ".githooks")):
+
+            if os.path.exists(os.path.join(git_path, ".githooks")) and git_version > 2136:
                 for root_dir, dirs, files in os.walk(os.path.join(git_path, ".githooks")):
                     for f_dir in dirs:
                         os.chmod(os.path.join(root_dir, f_dir), 0o750)
                     for f_file in files:
                         os.chmod(os.path.join(root_dir, f_file), 0o750)
-                command_1 += " git config core.hooksPath ./.githooks ; ".format(
+                command_githook += " git config core.hooksPath ./.githooks ; ".format(
                     git_path)
             if git_project_commit:
-                command_1 += "git checkout {0};".format(git_project_commit)
+                command_1 += "git checkout {0}; ".format(git_project_commit)
             else:
                 command_1 += "git checkout; "
+
             if git_project_submodules.__len__() <= 0:
-                command_1 += " git submodule update --init --recursive;"
+                if max_depth > 0:
+                    Log.info("Depth is incompatible with --recursive, ignoring recursive option")
+                    command_1 += " git submodule update --init --depth {0}; ".format(max_depth)
+                else:
+                    command_1 += " git submodule update --init --recursive; "
             else:
-                command_1 += " git submodule init;".format(project_destination)
+                command_1 += " git submodule init; ".format(project_destination)
+                index_submodule = 0
                 for submodule in git_project_submodules:
-                    command_1 += " git submodule update --init --recursive {0};".format(submodule)
+                    if max_depth > 0:
+                        Log.info("Depth is incompatible with --recursive, ignoring recursive option")
+                        if index_submodule < len(git_project_submodules_depth):
+                            command_1 += " git submodule update --init --depth {0} {1}; ".format(
+                                git_project_submodules_depth[index_submodule], submodule)
+                        else:
+                            command_1 += " git submodule update --init --depth {0} {1}; ".format(
+                                max_depth, submodule)
+                    else:
+                        command_1 += " git submodule update --init --recursive {0}; ".format(submodule)
+                    index_submodule += 1
             if git_remote_project_path == '':
                 try:
+                    if len(command_githook) > 0:
+                        command_githook = "cd {0} ; {1}".format(git_path, command_githook)
+                        as_conf.parse_githooks()
+                        subprocess.check_output(command_githook, shell=True)
                     command_1 = "cd {0}; {1} ".format(git_path,command_1)
-                    Log.debug('Githook + Checkout and Submodules: {0}', command_1)
+                    Log.debug('Githook + Checkout and Submodules: {0}', command_githook, command_1)
                     output_1 = subprocess.check_output(command_1, shell=True)
                 except BaseException as e:
                     submodule_failure = True
@@ -235,7 +269,11 @@ class AutosubmitGit:
                     Log.printlog(
                         "Submodule has a wrong configuration.\n{0}".format(command_1), 6014)
             else:
-                command_1 = "cd {0}; {1} ".format(git_remote_path, command_1)
+                if len(command_githook) > 0:
+                    command_githook = "cd {0} ; {1}".format(project_path, command_githook)
+                    as_conf.parse_githooks()
+                    hpcarch.send_command(command_githook)
+                command_1 = "cd {0}; {1} ".format(project_path, command_1)
                 hpcarch.send_command(command_1)
         except subprocess.CalledProcessError as e:
             shutil.rmtree(project_path)
@@ -253,3 +291,5 @@ class AutosubmitGit:
             shutil.rmtree(project_backup_path)
 
         return True
+
+

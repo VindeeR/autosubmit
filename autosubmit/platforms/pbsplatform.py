@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -18,10 +18,9 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from log.log import Log, AutosubmitCritical, AutosubmitError
 
 from autosubmit.platforms.paramiko_platform import ParamikoPlatform
-from log.log import Log
+from log.log import Log, AutosubmitCritical
 
 from autosubmit.platforms.headers.pbs10_header import Pbs10Header
 from autosubmit.platforms.headers.pbs11_header import Pbs11Header
@@ -38,8 +37,25 @@ class PBSPlatform(ParamikoPlatform):
     :type version: str
     """
 
+    def submit_Script(self, hold=False):
+        pass
+
+    def get_checkAlljobs_cmd(self, jobs_id):
+        pass
+
+    def parse_Alljobs_output(self, output, job_id):
+        pass
+
     def __init__(self, expid, name, config, version):
         ParamikoPlatform.__init__(self, expid, name, config)
+        self._checkjob_cmd = None
+        self._submit_command_name = None
+        self._submit_cmd = None
+        self.mkdir_cmd = None
+        self.get_cmd = None
+        self.put_cmd = None
+        self._checkhost_cmd = None
+        self.cancel_cmd = None
         self._version = version
 
         if str.startswith(version, '10'):
@@ -50,7 +66,7 @@ class PBSPlatform(ParamikoPlatform):
             self._header = Pbs12Header()
         else:
             Log.error('PBS version {0} not supported'.format(version))
-            raise AutosubmitError('PBS version {0} not supported'.format(version))
+            raise AutosubmitCritical('PBS version {0} not supported'.format(version))
 
         self.job_status = dict()
         self.job_status['COMPLETED'] = ['F', 'E', 'c', 'C']
@@ -59,11 +75,14 @@ class PBSPlatform(ParamikoPlatform):
         self.job_status['FAILED'] = ['Failed', 'Node_fail', 'Timeout']
         self.update_cmds()
 
+    def parse_queue_reason(self, output, job_id):
+        pass
+
     def update_cmds(self):
         """
         Updates commands for platforms
         """
-        self.root_dir = os.path.join(self.scratch, self.project, self.user, self.expid)
+        self.root_dir = os.path.join(self.scratch, self.project_dir, self.user, self.expid)
         self.remote_log_dir = os.path.join(self.root_dir, "LOG_" + self.expid)
         self.cancel_cmd = "ssh " + self.host + " qdel"
         self._checkhost_cmd = "ssh " + self.host + " echo 1"
@@ -82,6 +101,10 @@ class PBSPlatform(ParamikoPlatform):
     def get_remote_log_dir(self):
         return self.remote_log_dir
 
+    def check_Alljobs(self, job_list, as_conf, retries=5):
+        for job,prev_status in job_list:
+            self.check_job(job)
+
     def get_mkdir_cmd(self):
         return self.mkdir_cmd
 
@@ -94,7 +117,7 @@ class PBSPlatform(ParamikoPlatform):
     def jobs_in_queue(self):
         return ''.split()
 
-    def get_submit_cmd(self, job_script, job, export=""):
+    def get_submit_cmd(self, job_script, job,hold=False, export=""):
         if export == "none" or export == "None" or export is None or export == "":
             export = ""
         else:

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
 # This file is part of Autosubmit.
@@ -18,7 +18,7 @@
 
 from autosubmit.history.utils import get_current_datetime_if_none
 
-class ExperimentRun():
+class ExperimentRun:
   """
   Class that represents an experiment run
   """

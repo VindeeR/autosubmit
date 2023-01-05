@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
 # This file is part of Autosubmit.
@@ -40,7 +40,7 @@ class RunningStatus:
 
 class RowType:
     NORMAL = 2
-    #PACKED = 2
+    # PACKED = 2
 
 class RowStatus:
     INITIAL = 0

@@ -1,18 +1,15 @@
 import unittest
-import os
 from autosubmit.statistics.statistics import Statistics
-from autosubmit.monitor.monitor import Monitor
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_utils import SubJobManager, SubJob
-from autosubmit.config.basicConfig import BasicConfig
-from autosubmit.config.config_common import AutosubmitConfig
+from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from bscearth.utils.config_parser import ConfigParserFactory
 from autosubmit.autosubmit import Autosubmit
 from autosubmit.job.job_list import JobList
 # import autosubmit.experiment.common_db_requests as DbRequests
 import autosubmit.database.db_structure as DbStructure
 # from autosubmit.database.db_jobdata import JobDataStructure, ExperimentGraphDrawing
-import statistics
 
 class TestStatistics(unittest.TestCase):
   def setUp(self):
@@ -29,15 +26,15 @@ class TestStatistics(unittest.TestCase):
     BasicConfig.read()
     path_structure = BasicConfig.STRUCTURES_DIR
     path_local_root = BasicConfig.LOCAL_ROOT_DIR
-    as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
-    as_conf.reload()
+    as_conf = AutosubmitConfig(expid)
+    as_conf.reload(first_load=True)
     job_list = Autosubmit.load_job_list(expid, as_conf, False)
     jobs_considered = [job for job in job_list.get_job_list() if job.status not in [
             Status.READY, Status.WAITING]]
     job_to_package, package_to_jobs, _, _ = JobList.retrieve_packages(
             BasicConfig, expid, [job.name for job in job_list.get_job_list()])
     queue_time_fixes = {}
-    if (job_to_package):
+    if job_to_package:
       current_table_structure = DbStructure.get_structure(expid, BasicConfig.STRUCTURES_DIR)
       subjobs = []
       for job in job_list.get_job_list():

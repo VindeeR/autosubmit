@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2014 Climate Forecasting Unit, IC3
 
@@ -32,19 +32,19 @@ setup(
     license='GNU GPL v3',
     platforms=['GNU/Linux Debian'],
     version=version,
-    description='Autosubmit: a versatile tool to manage Weather and Climate Experiments in diverse '
-                'Supercomputing Environments',
+    description='Autosubmit is a Python-based workflow manager to create, manage and monitor complex tasks involving different substeps, such as scientific computational experiments. These workflows may involve multiple computing systems for their completion, from HPCs to post-processing clusters or workstations. Autosubmit can orchestrate all the tasks integrating the workflow by managing their dependencies, interfacing with all the platforms involved, and handling eventual errors.',
+    long_description=open('README_PIP.md').read(),
     author='Daniel Beltran Mora',
     author_email='daniel.beltran@bsc.es',
     url='http://www.bsc.es/projects/earthscience/autosubmit/',
     download_url='https://earth.bsc.es/wiki/doku.php?id=tools:autosubmit',
     keywords=['climate', 'weather', 'workflow', 'HPC'],
-    install_requires=['argparse>=1.2,<2','six>=1.10.0', 'python-dateutil>2', 'pydotplus>=2', 'pyparsing>=2.0.1',
-                      'numpy', 'matplotlib', 'typing', 'paramiko == 2.7.1',
-                      'mock>=1.3.0', 'portalocker==0.5.7', 'networkx', 'bscearth.utils', 'Xlib == 0.21', 'requests'],
-    extras_require={
-        'dialog': ["python2-pythondialog>=3.3.0"]
-    },
+    install_requires=['packaging>19','six>=1.10.0','configobj>=5.0.6','argparse>=1.4.0','python-dateutil>=2.8.2','matplotlib==3.4.3','numpy==1.21.6','py3dotplus>=1.1.0','pyparsing>=3.0.7','paramiko>=2.9.2','mock>=4.0.3','portalocker>=2.3.2','networkx==2.6.3','requests>=2.27.1','bscearth.utils>=0.5.2','cryptography>=36.0.1','setuptools>=60.8.2','xlib>=0.21','pip>=22.0.3','ruamel.yaml','pythondialog','pytest','nose','coverage','PyNaCl==1.4.0','Pygments','autosubmitconfigparser==0.0.74'],
+    classifiers=[
+        "Programming Language :: Python :: 3.7",
+        "License :: OSI Approved :: GNU General Public License (GPL)",
+        "Operating System :: POSIX :: Linux",
+    ],
     packages=find_packages(),
     include_package_data=True,
     package_data={'autosubmit': [

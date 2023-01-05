@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -16,7 +16,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
-
+import locale
 import os
 from xml.dom.minidom import parseString
 import subprocess
@@ -25,7 +25,7 @@ import subprocess
 from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.headers.local_header import LocalHeader
 
-from autosubmit.config.basicConfig import BasicConfig
+from autosubmitconfigparser.config.basicconfig import BasicConfig
 from time import sleep
 from log.log import Log, AutosubmitError, AutosubmitCritical
 
@@ -37,8 +37,26 @@ class LocalPlatform(ParamikoPlatform):
     :type expid: str
     """
 
+    def submit_Script(self, hold=False):
+        pass
+
+    def parse_Alljobs_output(self, output, job_id):
+        pass
+
+    def parse_queue_reason(self, output, job_id):
+        pass
+
+    def get_checkAlljobs_cmd(self, jobs_id):
+        pass
+
     def __init__(self, expid, name, config):
         ParamikoPlatform.__init__(self, expid, name, config)
+        self.cancel_cmd = None
+        self.mkdir_cmd = None
+        self.del_cmd = None
+        self.get_cmd = None
+        self.put_cmd = None
+        self._checkhost_cmd = None
         self.type = 'local'
         self._header = LocalHeader()
         self.job_status = dict()
@@ -93,25 +111,34 @@ class LocalPlatform(ParamikoPlatform):
     def get_checkjob_cmd(self, job_id):
         return self.get_pscall(job_id)
 
-    def connect(self):
+    def connect(self, reconnect=False):
         self.connected = True
     def test_connection(self):
         self.connected = True
     def restore_connection(self):
         self.connected = True
 
+    def check_Alljobs(self, job_list, as_conf, retries=5):
+        for job,prev_job_status in job_list:
+            self.check_job(job)
     def send_command(self, command,ignore_log=False, x11 = False):
+        lang = locale.getlocale()[1]
+        if lang is None:
+            lang = locale.getdefaultlocale()[1]
+            if lang is None:
+                lang = 'UTF-8'
         try:
-            output = subprocess.check_output(command, shell=True)
+            output = subprocess.check_output(command.encode(lang), shell=True)
         except subprocess.CalledProcessError as e:
             if not ignore_log:
                 Log.error('Could not execute command {0} on {1}'.format(e.cmd, self.host))
             return False
-        Log.debug("Command '{0}': {1}", command, output)
-        self._ssh_output = output
+        self._ssh_output = output.decode(lang)
+        Log.debug("Command '{0}': {1}", command, self._ssh_output)
+
         return True
 
-    def send_file(self, filename):
+    def send_file(self, filename, check=True):
         self.check_remote_log_dir()
         self.delete_file(filename,del_cmd=True)
         command = '{0} {1} {2}'.format(self.put_cmd, os.path.join(self.tmp_path, filename),
@@ -125,8 +152,6 @@ class LocalPlatform(ParamikoPlatform):
             raise
         return True
 
-    def check_file_exists(self,filename,wrapper_failed=False):
-        return True
 
     def get_file(self, filename, must_exist=True, relative_path='',ignore_log = False,wrapper_failed=False):
         local_path = os.path.join(self.tmp_path, relative_path)
@@ -155,9 +180,9 @@ class LocalPlatform(ParamikoPlatform):
         Moves a file on the platform
         :param src: source name
         :type src: str
-        :param dest: destination name
-        :param must_exist: ignore if file exist or not
-        :type dest: str
+        :param: wrapper_failed: if True, the wrapper failed.
+        :type wrapper_failed: bool
+
         """
         file_exist = False
         sleeptime = 5
@@ -167,7 +192,7 @@ class LocalPlatform(ParamikoPlatform):
         while not file_exist and retries < max_retries:
             try:
                 file_exist = os.path.isfile(os.path.join(self.get_files_path(),src))
-                if not file_exist:  # File doesn't exist, retry in sleeptime
+                if not file_exist:  # File doesn't exist, retry in sleep-time
                     Log.debug("{2} File still no exists.. waiting {0}s for a new retry ( retries left: {1})", sleeptime,
                              max_retries - retries, remote_path)
                     if not wrapper_failed:
@@ -203,16 +228,17 @@ class LocalPlatform(ParamikoPlatform):
         :param must_exist: ignore if file exist or not
         :type dest: str
         """
+        path_root = ""
         try:
             path_root = self.get_files_path()
             os.rename(os.path.join(path_root, src),os.path.join(path_root, dest))
             return True
         except IOError as e:
             raise AutosubmitError('File {0} does not exists, something went wrong with the platform'.format(
-                path_root), 6004, e.message)
+                path_root), 6004, str(e))
             if must_exist:
                 raise AutosubmitError("File {0} does not exists".format(
-                    os.path.join(path_root,src)), 6004, e.message)
+                    os.path.join(path_root,src)), 6004, str(e))
             else:
                 Log.debug("File {0} doesn't exists ".format(path_root))
                 return False

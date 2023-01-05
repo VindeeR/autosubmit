@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
@@ -83,7 +83,7 @@ class EcCcaHeader(object):
         :rtype: str
         """
         # There is no memory per task, so directive is empty
-        if job.parameters['HYPERTHREADING'] == 'true':
+        if job.parameters['HYPERTHREADING'] == "true":
             return "#PBS -l EC_hyperthreads=2"
         return "#PBS -l EC_hyperthreads=1"
 
@@ -105,13 +105,13 @@ class EcCcaHeader(object):
 
     SERIAL = textwrap.dedent("""\
              ###############################################################################
-             #                   %TASKTYPE% %EXPID% EXPERIMENT
+             #                   %TASKTYPE% %DEFAULT.EXPID% EXPERIMENT
              ###############################################################################
              #
              #%QUEUE_DIRECTIVE%
              #PBS -N %JOBNAME%
-             #PBS -o %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%OUT_LOG_DIRECTIVE%
-             #PBS -e %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%ERR_LOG_DIRECTIVE%
+             #PBS -o %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%OUT_LOG_DIRECTIVE%
+             #PBS -e %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%ERR_LOG_DIRECTIVE%
              #PBS -l walltime=%WALLCLOCK%:00
              #PBS -l EC_billing_account=%CURRENT_BUDG%
              %CUSTOM_DIRECTIVES%
@@ -122,13 +122,13 @@ class EcCcaHeader(object):
 
     PARALLEL = textwrap.dedent("""\
              ###############################################################################
-             #                   %TASKTYPE% %EXPID% EXPERIMENT
+             #                   %TASKTYPE% %DEFAULT.EXPID% EXPERIMENT
              ###############################################################################
              #
              #%QUEUE_DIRECTIVE%
              #PBS -N %JOBNAME%
-             #PBS -o %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%OUT_LOG_DIRECTIVE%
-             #PBS -e %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%ERR_LOG_DIRECTIVE%
+             #PBS -o %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%OUT_LOG_DIRECTIVE%
+             #PBS -e %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%ERR_LOG_DIRECTIVE%
              #PBS -l EC_total_tasks=%NUMPROC%
              %THREADS_PER_TASK_DIRECTIVE%
              %TASKS_PER_NODE_DIRECTIVE%

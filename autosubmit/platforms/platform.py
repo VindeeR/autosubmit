@@ -1,10 +1,12 @@
+import locale
 import os
 
-from log.log import Log
 import traceback
 from autosubmit.job.job_common import Status
 from typing import List, Union
 
+from autosubmit.job.job_exceptions import WrongTemplateException
+from log.log import AutosubmitCritical, AutosubmitError, Log
 
 class Platform(object):
     """
@@ -17,6 +19,7 @@ class Platform(object):
         :param expid:
         :param name:
         """
+        self.connected = False
         self.expid = expid # type: str
         self.name = name # type: str
         self.config = config
@@ -25,7 +28,7 @@ class Platform(object):
         self._serial_platform = None
         self._serial_queue = None
         self._default_queue = None
-        self.processors_per_node = None
+        self.processors_per_node = "1"
         self.scratch_free_space = None
         self.custom_directives = None
         self.host = ''
@@ -36,18 +39,137 @@ class Platform(object):
         self.exclusivity = ''
         self.type = ''
         self.scratch = ''
+        self.project_dir = ''
         self.temp_dir = ''
         self.root_dir = ''
         self.service = None
         self.scheduler = None
         self.directory = None
-        self.hyperthreading = 'false'
-        self.max_wallclock = ''
-        self.total_jobs = None
-        self.max_processors = None
+        self.hyperthreading = False
+        self.max_wallclock = '2:00'
+        self.total_jobs = 20
+        self.max_processors = "480"
         self._allow_arrays = False
         self._allow_wrappers = False
         self._allow_python_jobs = True
+
+    def get_multiple_jobids(self,job_list,valid_packages_to_submit,failed_packages,error_message="",hold=False):
+        return False,valid_packages_to_submit
+        #raise NotImplementedError
+
+    def process_batch_ready_jobs(self, valid_packages_to_submit, failed_packages, error_message="", hold=False):
+        return True, valid_packages_to_submit
+
+    def submit_ready_jobs(self, as_conf, job_list, platforms_to_test, packages_persistence, packages_to_submit,
+                          inspect=False, only_wrappers=False, hold=False):
+
+        """
+        Gets READY jobs and send them to the platforms if there is available space on the queues
+
+        :param hold:
+        :param packages_to_submit:
+        :param as_conf: autosubmit config object \n
+        :type as_conf: AutosubmitConfig object  \n
+        :param job_list: job list to check  \n
+        :type job_list: JobList object  \n
+        :param platforms_to_test: platforms used  \n
+        :type platforms_to_test: set of Platform Objects, e.g. SgePlatform(), LsfPlatform().  \n
+        :param packages_persistence: Handles database per experiment. \n
+        :type packages_persistence: JobPackagePersistence object \n
+        :param inspect: True if coming from generate_scripts_andor_wrappers(). \n
+        :type inspect: Boolean \n
+        :param only_wrappers: True if it comes from create -cw, False if it comes from inspect -cw. \n
+        :type only_wrappers: Boolean \n
+        :return: True if at least one job was submitted, False otherwise \n
+        :rtype: Boolean
+        """
+        save = False
+        failed_packages = list()
+        error_message = ""
+        if not inspect:
+            job_list.save()
+        if not hold:
+            Log.debug("\nJobs ready for {1}: {0}", len(
+                job_list.get_ready(self, hold=hold)), self.name)
+            ready_jobs = job_list.get_ready(self, hold=hold)
+        else:
+            Log.debug("\nJobs prepared for {1}: {0}", len(
+                job_list.get_prepared(self)), self.name)
+        if not inspect:
+            self.open_submit_script()
+        valid_packages_to_submit = []  # type: List[JobPackageBase]
+        for package in packages_to_submit:
+            try:
+                # If called from inspect command or -cw
+                if only_wrappers or inspect:
+                    if hasattr(package, "name"):
+                        job_list.packages_dict[package.name] = package.jobs
+                        from ..job.job import WrapperJob
+                        wrapper_job = WrapperJob(package.name, package.jobs[0].id, Status.READY, 0,
+                                                 package.jobs,
+                                                 package._wallclock, package._num_processors,
+                                                 package.platform, as_conf, hold)
+                        job_list.job_package_map[package.jobs[0].id] = wrapper_job
+                        packages_persistence.save(
+                            package.name, package.jobs, package._expid, inspect)
+                    for innerJob in package._jobs:
+                        # Setting status to COMPLETED, so it does not get stuck in the loop that calls this function
+                        innerJob.status = Status.COMPLETED
+
+                # If called from RUN or inspect command
+                if not only_wrappers:
+                    try:
+                        package.submit(as_conf, job_list.parameters, inspect, hold=hold)
+                        save = True
+                        if not inspect:
+                            job_list.save()
+                        valid_packages_to_submit.append(package)
+                        # Log.debug("FD end-submit: {0}".format(log.fd_show.fd_table_status_str(open()))
+                    except (IOError, OSError):
+                        if package.jobs[0].id != 0:
+                            failed_packages.append(package.jobs[0].id)
+                        continue
+                    except AutosubmitError as e:
+                        if package.jobs[0].id != 0:
+                            failed_packages.append(package.jobs[0].id)
+                        self.connected = False
+                        if e.message.lower().find("bad parameters") != -1 or e.message.lower().find(
+                                "scheduler is not installed") != -1:
+                            error_msg = ""
+                            for package_tmp in valid_packages_to_submit:
+                                for job_tmp in package_tmp.jobs:
+                                    if job_tmp.section not in error_msg:
+                                        error_msg += job_tmp.section + "&"
+                            for job_tmp in package.jobs:
+                                if job_tmp.section not in error_msg:
+                                    error_msg += job_tmp.section + "&"
+                            if e.message.lower().find("bad parameters") != -1:
+                                error_message += "\ncheck job and queue specified in jobs.conf. Sections that could be affected: {0}".format(
+                                    error_msg[:-1])
+                            else:
+                                error_message += "\ncheck that {1} platform has set the correct scheduler. Sections that could be affected: {0}".format(
+                                    error_msg[:-1], self.name)
+
+                    except WrongTemplateException as e:
+                        raise AutosubmitCritical("Invalid parameter substitution in {0} template".format(
+                            e.job_name), 7014, e.message)
+                    except AutosubmitCritical:
+                        raise
+                    except Exception as e:
+                        self.connected = False
+                        raise AutosubmitError(
+                            "{0} submission failed. May be related to running a job with check=on_submission and another that affect this job template".format(
+                                self.name), 6015, str(e))
+            except WrongTemplateException as e:
+                raise AutosubmitCritical(
+                    "Invalid parameter substitution in {0} template".format(e.job_name), 7014)
+            except AutosubmitCritical as e:
+                raise AutosubmitCritical(e.message, e.code, e.trace)
+            except AutosubmitError as e:
+                raise
+            except Exception as e:
+                raise
+        return save, failed_packages, error_message, valid_packages_to_submit
 
     @property
     def serial_platform(self):
@@ -96,15 +218,21 @@ class Platform(object):
 
     @property
     def allow_arrays(self):
-        return self._allow_arrays is True
+        if type(self._allow_arrays) is bool and self._allow_arrays:
+            return True
+        return self._allow_arrays == "true"
 
     @property
     def allow_wrappers(self):
-        return self._allow_wrappers is True
+        if type(self._allow_wrappers) is bool and self._allow_wrappers:
+            return True
+        return self._allow_wrappers == "true"
 
     @property
     def allow_python_jobs(self):
-        return self._allow_python_jobs is True
+        if type(self._allow_python_jobs) is bool and self._allow_python_jobs:
+            return True
+        return self._allow_python_jobs == "true"
 
     def add_parameters(self, parameters, main_hpc=False):
         """
@@ -138,9 +266,10 @@ class Platform(object):
 
         parameters['{0}LOGDIR'.format(prefix)] = self.get_files_path()
 
-    def send_file(self, filename):
+    def send_file(self, filename, check=True):
         """
         Sends a local file to the platform
+        :param check:
         :param filename: name of the file to send
         :type filename: str
         """
@@ -160,6 +289,8 @@ class Platform(object):
         """
         Copies a file from the current platform to experiment's tmp folder
 
+        :param wrapper_failed:
+        :param ignore_log:
         :param filename: file name
         :type filename: str
         :param must_exist: If True, raises an exception if file can not be copied
@@ -193,7 +324,7 @@ class Platform(object):
 
         :param filename: file name
         :type filename: str
-        :return: True if succesful or file does no exists
+        :return: True if successful or file does not exist
         :rtype: bool
         """
         raise NotImplementedError
@@ -211,21 +342,13 @@ class Platform(object):
         (job_out_filename, job_err_filename) = remote_logs
         self.get_files([job_out_filename, job_err_filename], False, 'LOG_{0}'.format(exp_id))
 
-    def get_stat_file(self, exp_id, job_name):
-        """
-        Get the given stat files for all retrials
-        :param exp_id: experiment id
-        :type exp_id: str
-        :param remote_logs: names of the log files
-        :type remote_logs: (str, str)
-        """
-        self.get_files(job_name,False, 'LOG_{0}'.format(exp_id))
-
     def get_completed_files(self, job_name, retries=0, recovery=False, wrapper_failed=False):
         """
         Get the COMPLETED file of the given job
 
 
+        :param wrapper_failed:
+        :param recovery:
         :param job_name: name of the job
         :type job_name: str
         :param retries: Max number of tries to get the file
@@ -311,7 +434,7 @@ class Platform(object):
             os.remove(stat_local_path)
         if self.check_file_exists(filename):
             if self.get_file(filename, True):
-                Log.debug('{0}_STAT file have been transfered', job_name)
+                Log.debug('{0}_STAT file have been transferred', job_name)
                 return True
         Log.debug('{0}_STAT file not found', job_name)
         return False
@@ -377,20 +500,27 @@ class Platform(object):
 
         :param job: job object
         :type job: autosubmit.job.job.Job
-        :param scriptname: job script's name
-        :rtype scriptname: str
+        :param script_name: job script's name
+        :rtype script_name: str
+        :param hold: if True, the job will be submitted in hold state
+        :type hold: bool
+        :param export: export environment variables
+        :type export: str
         :return: job id for the submitted job
         :rtype: int
         """
         raise NotImplementedError
-
+    def check_Alljobs(self, job_list, as_conf, retries=5):
+        for job,job_prev_status in job_list:
+            self.check_job(job)
     def check_job(self, job, default_status=Status.COMPLETED, retries=5, submit_hold_check=False, is_wrapper=False):
         """
         Checks job running status
 
+        :param is_wrapper:
+        :param submit_hold_check:
+        :param job:
         :param retries: retries
-        :param jobid: job id
-        :type jobid: str
         :param default_status: status to assign if it can be retrieved from the platform
         :type default_status: autosubmit.job.job_common.Status
         :return: current job status
@@ -413,21 +543,26 @@ class Platform(object):
         :rtype: Boolean
         """
         try:
-            title_job = "[INFO] JOBID=" + str(jobid)
+            lang = locale.getlocale()[1]
+            if lang is None:
+                lang = locale.getdefaultlocale()[1]
+                if lang is None:
+                    lang = 'UTF-8'
+            title_job = b"[INFO] JOBID=" + str(jobid).encode(lang)
             if os.path.exists(complete_path):
                 file_type = complete_path[-3:]
                 if file_type == "out" or file_type == "err":
-                    with open(complete_path, "r+") as f:
+                    with open(complete_path, "rb+") as f:
                         # Reading into memory (Potentially slow)
                         first_line = f.readline()
                         # Not rewrite
-                        if not first_line.startswith("[INFO] JOBID="):
+                        if not first_line.startswith(b'[INFO] JOBID='):
                             content = f.read()
                             # Write again (Potentially slow)
                             # start = time()
                             # Log.info("Attempting job identification of " + str(jobid))
                             f.seek(0, 0)
-                            f.write(title_job + "\n\n" + first_line + content)
+                            f.write(title_job + b"\n\n" + first_line + content)
                         f.close()
                         # finish = time()
                         # Log.info("Job correctly identified in " + str(finish - start) + " seconds")
@@ -452,7 +587,7 @@ class Platform(object):
                 file_type = complete_path[-3:]
                 # print("Detected file type {0}".format(file_type))
                 if file_type == "out" or file_type == "err":
-                    with open(complete_path, "a") as f:
+                    with open(complete_path, "ab") as f:
                         job_footer_info = "[INFO] HDATA={0}".format(job_hdata)
                         f.write(job_footer_info)
                         f.close()

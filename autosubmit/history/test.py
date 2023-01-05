@@ -22,11 +22,11 @@ import os
 import time
 from shutil import copy2
 from collections import namedtuple
-from experiment_history import ExperimentHistory
-from internal_logging import Logging
-from strategies import StraightWrapperAssociationStrategy, GeneralizedWrapperDistributionStrategy, PlatformInformationHandler
-from autosubmit.config.basicConfig import BasicConfig
-from platform_monitor.slurm_monitor import SlurmMonitor
+from .experiment_history import ExperimentHistory
+from .internal_logging import Logging
+from .strategies import StraightWrapperAssociationStrategy, GeneralizedWrapperDistributionStrategy, PlatformInformationHandler
+from autosubmitconfigparser.config.basicconfig import BasicConfig
+from .platform_monitor.slurm_monitor import SlurmMonitor
 EXPID_TT00_SOURCE = "test_database.db~"
 EXPID_TT01_SOURCE = "test_database_no_run.db~"
 EXPID = "tt00"
@@ -75,13 +75,13 @@ class TestExperimentHistory(unittest.TestCase):
   def test_db_exists(self):
     exp_history = ExperimentHistory("tt00")
     exp_history.initialize_database()
-    self.assertTrue(exp_history.manager.my_database_exists() == True)
+    self.assertTrue(exp_history.manager.my_database_exists() is True)
     exp_history = ExperimentHistory("tt99")
-    self.assertTrue(exp_history.manager.my_database_exists() == False)
+    self.assertTrue(exp_history.manager.my_database_exists() is False)
   
   def test_is_header_ready(self):
     exp_history = ExperimentHistory("tt00")
-    self.assertTrue(exp_history.is_header_ready() == True)
+    self.assertTrue(exp_history.is_header_ready() is True)
 
   def test_detect_differences_job_list(self):
     exp_history = ExperimentHistory("tt00")
@@ -114,22 +114,22 @@ class TestExperimentHistory(unittest.TestCase):
     current_experiment_run_dc = exp_history.manager.get_experiment_run_dc_with_max_id()    
     current_experiment_run_dc.total = TOTAL_COUNT
     should_we = exp_history.should_we_create_a_new_run(self.job_list, CHANGES_COUNT, current_experiment_run_dc, current_experiment_run_dc.chunk_unit, current_experiment_run_dc.chunk_size)
-    self.assertTrue(should_we == False)
+    self.assertTrue(should_we is False)
     TOTAL_COUNT_DIFF = 5
     current_experiment_run_dc.total = TOTAL_COUNT_DIFF
     should_we = exp_history.should_we_create_a_new_run(self.job_list, CHANGES_COUNT, current_experiment_run_dc, current_experiment_run_dc.chunk_unit, current_experiment_run_dc.chunk_size)
-    self.assertTrue(should_we == True)
+    self.assertTrue(should_we is True)
     CHANGES_COUNT = 5
     should_we = exp_history.should_we_create_a_new_run(self.job_list, CHANGES_COUNT, current_experiment_run_dc, current_experiment_run_dc.chunk_unit, current_experiment_run_dc.chunk_size)
-    self.assertTrue(should_we == True)
+    self.assertTrue(should_we is True)
     CHANGES_COUNT = 1
     current_experiment_run_dc.total = TOTAL_COUNT
     should_we = exp_history.should_we_create_a_new_run(self.job_list, CHANGES_COUNT, current_experiment_run_dc, current_experiment_run_dc.chunk_unit, current_experiment_run_dc.chunk_size*20)
-    self.assertTrue(should_we == True)
+    self.assertTrue(should_we is True)
     should_we = exp_history.should_we_create_a_new_run(self.job_list, CHANGES_COUNT, current_experiment_run_dc, current_experiment_run_dc.chunk_unit, current_experiment_run_dc.chunk_size)
-    self.assertTrue(should_we == False)
+    self.assertTrue(should_we is False)
     should_we = exp_history.should_we_create_a_new_run(self.job_list, CHANGES_COUNT, current_experiment_run_dc, "day", current_experiment_run_dc.chunk_size)
-    self.assertTrue(should_we == True)
+    self.assertTrue(should_we is True)
 
   def test_status_counts(self):
     exp_history = ExperimentHistory("tt00")
@@ -295,7 +295,7 @@ class TestLogging(unittest.TestCase):
     message = "No Message"
     try:
       raise Exception("Setup test exception")
-    except:
+    except Exception as e:
       message = traceback.format_exc()
     self.log = Logging("tt00")
     self.exp_message = "Exception message"

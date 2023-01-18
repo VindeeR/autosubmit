@@ -36,7 +36,6 @@ class Running(Enum):
         return self.value
 
 
-# TODO: split?
 # Defines how many ``-``'s are replaced by a ``/`` for
 # each Autosubmit hierarchy level (to avoid using an if/elif/else).
 REPLACE_COUNT = {
@@ -108,7 +107,6 @@ def _create_ecflow_suite(
                     with AnchorFamily(member, MEMBER=member):  # type: ignore
                         for chunk in chunks:
                             AnchorFamily(str(chunk), CHUNK=chunk)
-                            # TODO: splits
         # PyFlow API makes it very easy to create tasks having the ecFlow ID.
         # Due to how we expanded the Autosubmit graph to include the ID's, and how
         # we structured this suite, an Autosubmit ID can be seamlessly translated
@@ -119,7 +117,10 @@ def _create_ecflow_suite(
         # in ecFlow, `a000_20220401_fc0_INI` is `a000/20220401/fc0/INI`, and so on.
         for job in jobs:
             ecflow_node = _autosubmit_id_to_ecflow_id(job.long_name, job.running)
-            t = Task(job.section)
+            if job.split is not None:
+                t = Task(f'{job.section}_{job.split}', SPLIT=job.split)
+            else:
+                t = Task(job.section)
 
             # Find the direct parent of the task, based on the Autosubmit task ID.
             # Start from the Suite, and skip the first (suite), and the last (task)
@@ -174,7 +175,6 @@ def generate(job_list: JobList, as_conf: AutosubmitConfig, options: List[str]) -
     start_dates = [d.strftime("%Y%m%d") for d in job_list.get_date_list()]
     members = job_list.get_member_list()
     chunks = job_list.get_chunk_list()
-    # TODO: splits?
 
     suite = _create_ecflow_suite(
         experiment_id=expid,

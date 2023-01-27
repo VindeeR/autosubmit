@@ -128,8 +128,6 @@ class ParamikoPlatform(Platform):
             retry = 0
             try:
                 self.connect()
-            except SSHException as e:
-                raise
             except Exception as e:
                 if ',' in self.host:
                     Log.printlog("Connection Failed to {0}, will test another host".format(

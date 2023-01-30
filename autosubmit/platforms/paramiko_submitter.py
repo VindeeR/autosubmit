@@ -181,12 +181,15 @@ class ParamikoSubmitter(Submitter):
                 section, 'TEMP_DIR', None)
             remote_platform._default_queue = parser.get_option(
                 section, 'QUEUE', None)
+
+            remote_platform.ec_queue =parser.get_option('EC_QUEUE', "hpc")
             remote_platform._serial_queue = parser.get_option(
                 section, 'SERIAL_QUEUE', None)
             remote_platform.processors_per_node = parser.get_option(section, 'PROCESSORS_PER_NODE',
                                                                     None)
             remote_platform.custom_directives = parser.get_option(section, 'CUSTOM_DIRECTIVES',
                                                                   None)
+
             if remote_platform.custom_directives is not None and remote_platform.custom_directives != '' and remote_platform.custom_directives != 'None':
                 Log.debug("Custom directives from platform.conf: {0}".format(
                     remote_platform.custom_directives))

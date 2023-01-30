@@ -90,6 +90,9 @@ class EcPlatform(ParamikoPlatform):
 
     def get_mkdir_cmd(self):
         return self.mkdir_cmd
+    def set_submit_cmd(self,ec_queue="hpc"):
+        self._submit_cmd = ("ecaccess-job-submit -distant -queueName " + ec_queue + " " + self.host + ":" +
+                            self.remote_log_dir + "/")
 
     def parse_job_output(self, output):
         job_state = output.split('\n')
@@ -115,6 +118,7 @@ class EcPlatform(ParamikoPlatform):
         return self._checkjob_cmd + str(job_id)
 
     def get_submit_cmd(self, job_script, job, hold=False, export=""):
+        self.set_submit_cmd(job.ec_queue)
         if export == "none" or export == "None" or export is None or export == "":
             export = ""
         else:

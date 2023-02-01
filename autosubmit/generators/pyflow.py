@@ -13,6 +13,10 @@ from autosubmit.job.job_list import JobList, Job
 
 """The PyFlow generator for Autosubmit."""
 
+# N.B.: Avoid causing conflicts with variables defined in ecFlow, such
+#       as ECF_FILES, ECF_HOME, SUITE, DAY, MONTH, FAMILY, etc.
+#       Ref: https://ecflow.readthedocs.io/en/latest/ug/user_manual/ecflow_variables/generated_variables.html#generated-variables
+
 # Pattern used to verify if a TASK name includes the previous CHUNK number, with a separator.
 PREVIOUS_CHUNK_PATTERN = re.compile(r'''
     ([a-zA-Z0-9_\-\.]+) # The Task name (e.g. TASK);
@@ -81,8 +85,11 @@ def _create_ecflow_suite(
     """Replicate the vanilla workflow graph structure."""
 
     # From: https://pyflow-workflow-generator.readthedocs.io/en/latest/content/introductory-course/getting-started.html
+    # /scratch is a base directory for ECF_FILES and ECF_HOME
     scratch_dir = os.path.join(os.path.abspath(output_dir), 'scratch')
+    # /scratch/files is the ECF_FILES, where ecflow_server looks for ecf scripts if they are not in their default location
     files_dir = os.path.join(scratch_dir, 'files')
+    # /scratch/out is the ECF_HOME, the home of all ecFlow files, $CWD
     out_dir = os.path.join(scratch_dir, 'out')
 
     if not os.path.exists(files_dir):
@@ -92,7 +99,10 @@ def _create_ecflow_suite(
         os.makedirs(out_dir, exist_ok=True)
 
     # First we create a suite with the same ID as the Autosubmit experiment,
-    # and families for each Autosubmit hierarchy level.
+    # and families for each Autosubmit hierarchy level. We use control variables
+    # such as home (ECF_HOME), and files (ECF_FILES), but there are others that
+    # can be used too, like include (ECF_INCLUDE), out (ECF_OUT), and extn
+    # (ECF_EXTN, defaults to the extension .ecf).
     # NOTE: PyFlow does not work very well with MyPy: https://github.com/ecmwf/pyflow/issues/5
     with Suite(  # typing: ignore
             experiment_id,

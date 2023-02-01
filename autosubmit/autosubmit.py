@@ -673,7 +673,7 @@ class Autosubmit:
                     print(f.read())
                     return True
             return False
-        elif args.command == 'dbfix':            
+        elif args.command == 'dbfix':
             return Autosubmit.database_fix(args.expid)
         elif args.command == 'pklfix':
             return Autosubmit.pkl_fix(args.expid)
@@ -2030,7 +2030,7 @@ class Autosubmit:
             message = "We have detected that there is another Autosubmit instance using the experiment\n. Stop other Autosubmit instances that are using the experiment or delete autosubmit.lock file located on tmp folder"
             raise AutosubmitCritical(message, 7000)
         except AutosubmitCritical as e:
-            raise AutosubmitCritical(e.message, e.code, e.trace)
+            raise
         except BaseException as e:
             raise AutosubmitCritical("This seems like a bug in the code, please contact AS developers", 7070,e.message)
 
@@ -2076,8 +2076,12 @@ class Autosubmit:
             if platform_issues == "":
                 Log.result("[{1}] Connection successful to host {0}", platform.host, platform.name)
             else:
-                platform.connected = False
-                Log.printlog("[{1}] Connection failed to host {0}".format( platform.host, platform.name),Log.WARNING)
+                if platform.connected:
+                    platform.connected = False
+                    Log.printlog("[{1}] Connection sucessful to host {0}, however there are issues with %hpcroot%".format(platform.host, platform.name),
+                                 Log.WARNING)
+                else:
+                    Log.printlog("[{1}] Connection failed to host {0}".format(platform.host, platform.name), Log.WARNING)
         if issues != "":
             raise AutosubmitCritical(
                 "Issues while checking the connectivity of platforms.", 7010, issues+"\n"+ssh_config_issues)
@@ -2550,7 +2554,7 @@ class Autosubmit:
             job_list = Autosubmit.load_job_list(expid, as_conf, notransitive=notransitive)
             Log.debug("Job list restored from {0} files", pkl_dir)
             jobs = StatisticsUtils.filter_by_section(job_list.get_job_list(), filter_type)
-            jobs, period_ini, period_fi = StatisticsUtils.filter_by_time_period(jobs, filter_period)            
+            jobs, period_ini, period_fi = StatisticsUtils.filter_by_time_period(jobs, filter_period)
             # Package information
             job_to_package, package_to_jobs, _, _ = JobList.retrieve_packages(BasicConfig, expid, [job.name for job in job_list.get_job_list()])
             queue_time_fixes = {}
@@ -3954,7 +3958,7 @@ class Autosubmit:
         :type expid: str
         :return:
         :rtype:        
-        """     
+        """
         os.umask(0) # Overrides user permissions
         current_time = int(time.time())
         corrupted_db_path = os.path.join(BasicConfig.JOBDATA_DIR, "job_data_{0}_corrupted.db".format(expid))
@@ -3983,7 +3987,7 @@ class Autosubmit:
                 exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR,
                                                 historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)
                 exp_history.initialize_database()
-        except Exception as exp:            
+        except Exception as exp:
             Log.critical(str(exp))
 
     @staticmethod

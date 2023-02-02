@@ -313,6 +313,16 @@ class AutosubmitConfig(object):
         """
         return str(self._jobs_parser.get_option(section, 'TASKS', '0'))
 
+    def get_nodes(self, section):
+        """
+        Gets tasks needed for the given job type
+        :param section: job type
+        :type section: str
+        :return: tasks (processes) per host
+        :rtype: str
+        """
+        return str(self._jobs_parser.get_option(section, 'NODES', ''))
+
     def get_scratch_free_space(self, section):
         """
         Gets scratch free space needed for the given job type

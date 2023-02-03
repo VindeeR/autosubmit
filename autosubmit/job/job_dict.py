@@ -495,7 +495,7 @@ class DicJobs:
             job.platform_name = job.platform_name
         job.file = self.get_option(section, "FILE", None)
         job.queue = self.get_option(section, "QUEUE", None)
-        job.ec_queue = self.get_option(section, "EC_QUEUE", "")
+        job.ec_queue = self.get_option(section, "EC_QUEUE", "hpc")
         job.check = str(self.get_option(section, "CHECK", 'True')).lower()
         job.export = str(self.get_option(section, "EXPORT", None))
         job.processors = str(self.get_option(section, "PROCESSORS", 1))

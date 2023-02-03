@@ -182,7 +182,7 @@ class ParamikoSubmitter(Submitter):
             remote_platform._default_queue = parser.get_option(
                 section, 'QUEUE', None)
 
-            remote_platform.ec_queue =parser.get_option('EC_QUEUE', "hpc")
+            remote_platform.ec_queue = parser.get_option(section,'EC_QUEUE', "hpc")
             remote_platform._serial_queue = parser.get_option(
                 section, 'SERIAL_QUEUE', None)
             remote_platform.processors_per_node = parser.get_option(section, 'PROCESSORS_PER_NODE',

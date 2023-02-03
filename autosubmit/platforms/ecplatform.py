@@ -40,6 +40,7 @@ class EcPlatform(ParamikoPlatform):
     def __init__(self, expid, name, config, scheduler):
         ParamikoPlatform.__init__(self, expid, name, config)
         #version=scheduler
+        self.ec_queue = "hpc"
         if scheduler == 'pbs':
             self._header = EcCcaHeader()
         elif scheduler == 'loadleveler':
@@ -58,6 +59,21 @@ class EcPlatform(ParamikoPlatform):
         self._allow_arrays = False
         self._allow_wrappers = False # TODO
         self._allow_python_jobs = False
+        self.root_dir = ""
+        self.remote_log_dir = ""
+        self.cancel_cmd = ""
+        self._checkjob_cmd = ""
+        self._checkhost_cmd = ""
+        self._submit_cmd = ""
+        self._submit_command_name = ""
+        self.put_cmd = ""
+        self.get_cmd = ""
+        self.del_cmd = ""
+        self.mkdir_cmd = ""
+        self.check_remote_permissions_cmd = ""
+        self.check_remote_permissions_remove_cmd = ""
+
+
         self.update_cmds()
 
     def update_cmds(self):
@@ -79,8 +95,8 @@ class EcPlatform(ParamikoPlatform):
         self.mkdir_cmd = ("ecaccess-file-mkdir " + self.host + ":" + self.scratch + "/" + self.project + "/" +
                           self.user + "/" + self.expid + "; " + "ecaccess-file-mkdir " + self.host + ":" +
                           self.remote_log_dir)
-        self.check_remote_permissions_cmd = "ecaccess-file-mkdir " + os.path.join(self.scratch,self.project,self.user,"_permission_checker_azxbyc")
-        self.check_remote_permissions_remove_cmd = "ecaccess-file-rmdir " + os.path.join(self.scratch,self.project,self.user,"_permission_checker_azxbyc")
+        self.check_remote_permissions_cmd = "ecaccess-file-mkdir " + self.host+":"+os.path.join(self.scratch,self.project,self.user,"_permission_checker_azxbyc")
+        self.check_remote_permissions_remove_cmd = "ecaccess-file-rmdir " + self.host+":"+os.path.join(self.scratch,self.project,self.user,"_permission_checker_azxbyc")
 
     def get_checkhost_cmd(self):
         return self._checkhost_cmd
@@ -175,7 +191,7 @@ class EcPlatform(ParamikoPlatform):
             pass
             subprocess.check_output(self.check_remote_permissions_remove_cmd, shell=True)
             return True
-        except:
+        except Exception as e:
             return False
 
     def send_command(self, command, ignore_log=False, x11 = False):

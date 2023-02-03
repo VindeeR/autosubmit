@@ -611,7 +611,7 @@ class Job(object):
         return
 
     @threaded
-    def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0):
+    def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0,job_id=""):
         max_logs = 0
         sleep(5)
         stat_file = self.script_name[:-4] + "_STAT_"
@@ -746,7 +746,7 @@ class Job(object):
                         # Update the logs with Autosubmit Job Id Brand
                         try:
                             for local_log in local_logs:
-                                platform.write_jobid(self.id, os.path.join(
+                                platform.write_jobid(job_id, os.path.join(
                                     self._tmp_path, 'LOG_' + str(self.expid), local_log))
                         except BaseException as e:
                             Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(
@@ -899,7 +899,7 @@ class Job(object):
             if as_conf.get_disable_recovery_threads(self.platform.name) == "true":
                 self.retrieve_logfiles_unthreaded(copy_remote_logs, local_logs)
             else:
-                self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count))
+                self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count),job_id=self.id)
             if self.wrapper_type == "vertical":
                 max_logs = int(as_conf.get_retrials())
                 for i in range(0,max_logs):

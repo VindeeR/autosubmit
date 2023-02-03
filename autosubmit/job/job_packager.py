@@ -226,13 +226,17 @@ class JobPackager(object):
             for wrapper_section in self.jobs_in_wrapper:
                 if "&" in self.jobs_in_wrapper[wrapper_section]:
                     char = "&"
-                else:
-                    char = " "
-                for section_inside_wrapper in self.jobs_in_wrapper[wrapper_section].split(char):
-                    if section == section_inside_wrapper:
+                    if section == self.jobs_in_wrapper[wrapper_section]:
                         wrapper_defined = True
                         self.current_wrapper_section = wrapper_section
                         break
+                else:
+                    char = " "
+                    for section_inside_wrapper in self.jobs_in_wrapper[wrapper_section].split(char):
+                        if section == section_inside_wrapper:
+                            wrapper_defined = True
+                            self.current_wrapper_section = wrapper_section
+                            break
             if wrapper_defined and self._platform.allow_wrappers and self.wrapper_type[self.current_wrapper_section] in ['horizontal', 'vertical','vertical-horizontal', 'horizontal-vertical'] :
                 # Trying to find the value in jobs_parser, if not, default to an autosubmit_.conf value (Looks first in [wrapper] section)
                 wrapper_limits = dict()

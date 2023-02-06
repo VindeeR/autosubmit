@@ -1,6 +1,6 @@
 from enum import Enum
 from importlib import import_module
-from typing import Callable, cast, Protocol
+from typing import Callable, cast
 
 """This module provides generators to produce workflow configurations for different backend engines."""
 
@@ -12,7 +12,8 @@ class Engine(Enum):
         return self.value
 
 
-class GenerateProto(Protocol):
+# TODO: use typing.Protocol instead of object when Py>=3.8
+class GenerateProto(object):
     """Need a protocol to define the type returned by importlib."""
     generate: Callable
 

@@ -45,6 +45,7 @@ Welcome to autosubmit's documentation!
    /userguide/variables
    /userguide/expids
    /userguide/provenance
+   /userguide/generate/index
 
 .. toctree::
    :caption: Database Documentation

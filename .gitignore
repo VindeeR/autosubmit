@@ -10,6 +10,7 @@ autosubmit/simple_test.py
 .idea/
 autosubmit.egg-info/
 docs/build/
+docs/_build/
 dist/
 build/
 .cache

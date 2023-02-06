@@ -140,7 +140,8 @@ def _create_ecflow_suite(
                 parent_node = parent_node[node]
             # We just need to prevent adding a node twice since creating a task automatically adds
             # it to the suite in the context. And simply call ``add_node`` and we should have it.
-            if t.name not in list(parent_node.children.mapping.keys()):
+            # TODO: use mapping.keys when Py>=3.8 or 3.9? if t.name not in list(parent_node.children.mapping.keys()):
+            if t.name not in [child.name for child in parent_node.children]:
                 parent_node.add_node(t)
 
             # Dependencies

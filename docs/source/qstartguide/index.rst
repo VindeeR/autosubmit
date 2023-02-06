@@ -57,6 +57,8 @@ Description of most used commands
       - Recovers the experiment workflow obtaining the last run complete jobs.
     * - **setstatus <expid>**
       - Sets one or multiple jobs status to a given value.
+    * - **generate <expid>**
+      - Generate workflow configuration for a different workflow backend engine (e.g. PyFlow/ecFlow).
 
 
 Create a new experiment

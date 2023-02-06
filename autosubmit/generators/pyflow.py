@@ -1,6 +1,5 @@
 import argparse
 import os
-import re
 import tempfile
 from enum import Enum
 from typing import List
@@ -13,18 +12,6 @@ from autosubmit.job.job_list import JobList, Job
 
 """The PyFlow generator for Autosubmit."""
 
-# N.B.: Avoid causing conflicts with variables defined in ecFlow, such
-#       as ECF_FILES, ECF_HOME, SUITE, DAY, MONTH, FAMILY, etc.
-#       Ref: https://ecflow.readthedocs.io/en/latest/ug/user_manual/ecflow_variables/generated_variables.html#generated-variables
-
-# Pattern used to verify if a TASK name includes the previous CHUNK number, with a separator.
-PREVIOUS_CHUNK_PATTERN = re.compile(r'''
-    ([a-zA-Z0-9_\-\.]+) # The Task name (e.g. TASK);
-    -                   # TASK and CHUNK separator, i.e. TASK-1 (the hyphen between TASK and 1);
-    ([\d]+)             # The Chunk name (e.g. 1).
-''', re.X)
-
-
 # Autosubmit Task name separator (not to be confused with task and chunk name separator).
 DEFAULT_SEPARATOR = '_'
 
@@ -34,7 +21,6 @@ class Running(Enum):
     ONCE = 'once'
     MEMBER = 'member'
     CHUNK = 'chunk'
-    SPLIT = 'split'
 
     def __str__(self):
         return self.value
@@ -156,14 +142,7 @@ def _create_ecflow_suite(
                 dependency_node >> t
 
             # Script
-            script_name = job.create_script(as_conf)
-            script_text = open(os.path.join(job._tmp_path, script_name)).read()
-            # Let's drop the Autosubmit header and tailed.
-            script_text = re.findall(
-                r'# Autosubmit job(.*)# Autosubmit tailer',
-                script_text,
-                flags=re.DOTALL | re.MULTILINE)[0][1:-1]
-            t.script = script_text
+            t.script = job.file
 
 
         return s

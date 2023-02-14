@@ -2,20 +2,26 @@
 Variables reference
 ###################
 
-Autosubmit uses a variable substitution system to facilitate the development of the templates. This variables can be
-used on the template in the form %VARIABLE_NAME%.
+Autosubmit uses a variable substitution system to ease the development of templates.
+These variables can be used on the template in the form ``%VARIABLE_NAME%``.
 
-All configuration variables non related to current_job or platform are accesible by calling first to their parents. ex: %PROJECT.PROJECT_TYPE% or %DEFAULT.EXPID%
+All configuration variables not related to a job or platform are accessible through
+their parents e.g.: ``%PROJECT.PROJECT_TYPE%``, ``%DEFAULT.EXPID%``.
 
-You can review all variables at any given time by using the command :ref:`report`:
+You can view all variables with the command :ref:`report`:
+
+.. code-block:: bash
+   :caption: Autosubmit report sub-command syntax
 
     $ autosubmit report expid -all
 
+.. automodule:: autosubmit.job.variables
+   :members:
 
 Job variables
 =============
 
-This variables are relatives to the current job.
+These variables are relatives to the current job.
 
 - **TASKTYPE**: type of the job, as given on job configuration file.
 - **JOBNAME**: current job full name.

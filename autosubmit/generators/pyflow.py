@@ -1,11 +1,12 @@
 import argparse
-import os
 import tempfile
 from enum import Enum
+from pathlib import Path
 from typing import List
 
 import pyflow as pf
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
+from autosubmitconfigparser.config.basicconfig import BasicConfig
 from pyflow import *
 
 from autosubmit.job.job_list import JobList, Job
@@ -72,17 +73,17 @@ def _create_ecflow_suite(
 
     # From: https://pyflow-workflow-generator.readthedocs.io/en/latest/content/introductory-course/getting-started.html
     # /scratch is a base directory for ECF_FILES and ECF_HOME
-    scratch_dir = os.path.join(os.path.abspath(output_dir), 'scratch')
+    scratch_dir = Path(Path(output_dir).absolute(), 'scratch')
     # /scratch/files is the ECF_FILES, where ecflow_server looks for ecf scripts if they are not in their default location
-    files_dir = os.path.join(scratch_dir, 'files')
+    files_dir = scratch_dir / 'files'
     # /scratch/out is the ECF_HOME, the home of all ecFlow files, $CWD
-    out_dir = os.path.join(scratch_dir, 'out')
+    out_dir = scratch_dir / 'out'
 
-    if not os.path.exists(files_dir):
-        os.makedirs(files_dir, exist_ok=True)
+    if not files_dir.exists():
+        files_dir.mkdir(parents=True, exist_ok=True)
 
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir, exist_ok=True)
+    if not out_dir.exists():
+        out_dir.mkdir(parents=True, exist_ok=True)
 
     # First we create a suite with the same ID as the Autosubmit experiment,
     # and families for each Autosubmit hierarchy level. We use control variables
@@ -94,8 +95,8 @@ def _create_ecflow_suite(
             experiment_id,
             host=pf.LocalHost(server_host),
             defstatus=pf.state.suspended,  # type: ignore
-            home=out_dir,  # type: ignore
-            files=files_dir  # type: ignore
+            home=str(out_dir),  # type: ignore
+            files=str(files_dir)  # type: ignore
     ) as s:  # typing: ignore
         for start_date in start_dates:
             with AnchorFamily(start_date, START_DATE=start_date):  # type: ignore
@@ -138,12 +139,39 @@ def _create_ecflow_suite(
                     parent_node = parent_node[node]
                 dependency_node = parent_node[parent.section]
 
+                # In case we ever need to use the pre-processed file.
+                #
+                # script_name = job.create_script(as_conf)
+                # script_text = open(Path(job._tmp_path, script_name)).read()
+                # # Let's drop the Autosubmit header and tailed.
+                # script_text = re.findall(
+                #     r'# Autosubmit job(.*)# Autosubmit tailer',
+                #     script_text,
+                #     flags=re.DOTALL | re.MULTILINE)[0][1:-1]
+                # t.script = script_text
+
                 # Operator overloaded in PyFlow. This creates a dependency.
                 dependency_node >> t
 
             # Script
-            t.script = job.file
-
+            # N.B.: We used the code below in the beginning, but later we realized it would
+            #       not work. In Autosubmit, the FILE: $FILE is a file, relative to the AS
+            #       Project folder. The $FILE template script is then pre-processed to be
+            #       executed by AS. That is different than ecFlow, where the Task Script is
+            #       value is pre-processed (i.e. if the value is ``templates/local_script.sh``
+            #       that value is treated as a string when included in the final job file)
+            #       to generate the ecFlow job file. So ecFlow pre-processes the ``.script``
+            #       value, whereas Autosubmit loads the ``FILE`` script and pre-processes it.
+            #
+            #       In order to have a similar behavior, we insert the contents of the AS
+            #       template script as the ecFlow task. That way, the template script (now
+            #       a Task Script in ecFlow) will be pre-processed by ecFlow.
+            #
+            #       The variables may still need to be manually adjusted, but once that is
+            #       done, the script should then be ready to be executed (i.e. ported).
+            # t.script = job.file
+            with open(Path(as_conf.get_local_project_path(), job.file)) as f:
+                t.script = f.read()
 
         return s
 

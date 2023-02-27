@@ -63,7 +63,7 @@ that is used to preprocess task scripts. For example:
 
     echo "The root dir is %ROOTDIR%"
 
-The ``ROOTDIR`` variable is :doc:`replaced by Autosubmit </devguide/variables>`, before Bash shell executes the script
+The ``ROOTDIR`` variable is :doc:`replaced by Autosubmit </userguide/variables>`, before Bash shell executes the script
 (i.e. it is not an environment variable). The ``ROOTDIR`` is a variable provided by the
 Autosubmit runtime, that may exist in other workflow managers, but it may have a different
 name.

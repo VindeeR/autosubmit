@@ -548,7 +548,7 @@ class ParamikoPlatform(Platform):
             job.new_status = job_status
 
     def _check_jobid_in_queue(self, ssh_output, job_list_cmd):
-        for job in job_list_cmd[:-1].split(','):
+        for job in job_list_cmd.split('+'):
             if job not in ssh_output:
                 return False
         return True
@@ -1202,7 +1202,7 @@ class ParamikoPlatform(Platform):
             return False
 
 
-    
+
     def check_remote_log_dir(self):
         """
         Creates log dir on remote host

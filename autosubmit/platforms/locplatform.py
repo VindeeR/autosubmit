@@ -171,8 +171,8 @@ class LocalPlatform(ParamikoPlatform):
         while not file_exist and retries < max_retries:
             try:
                 file_exist = os.path.isfile(os.path.join(self.get_files_path(),src))
-                if not file_exist:  # File doesn't exist, retry in sleeptime
-                    Log.debug("{2} File still no exists.. waiting {0}s for a new retry ( retries left: {1})", sleeptime,
+                if not file_exist:  # File doesn't exist, retry in sleep-time
+                    Log.debug("{2} File does not exist.. waiting {0}s for a new retry (retries left: {1})", sleeptime,
                              max_retries - retries, remote_path)
                     if not wrapper_failed:
                         sleep(sleeptime)

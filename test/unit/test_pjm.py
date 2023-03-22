@@ -36,18 +36,12 @@ class TestPJM(TestCase):
         self.as_conf.experiment_data = dict()
         self.as_conf.experiment_data["DEFAULT"] = dict()
         self.as_conf.experiment_data["DEFAULT"]["HPCARCH"] = "ARM"
-        yml_file = Path("files/fake-jobs.yml")
-        if not yml_file.exists():
-            yml_file = Path("test/files/fake-jobs.yml")
-
+        yml_file = Path(__file__).resolve().parent / "files/fake-jobs.yml"
         factory = YAMLParserFactory()
         parser = factory.create_parser()
         parser.data = parser.load(yml_file)
         self.as_conf.experiment_data.update(parser.data)
-        yml_file = Path("files/fake-platforms.yml")
-        yml_file.exists()
-        if not yml_file.exists():
-            yml_file = Path("test/files/fake-platforms.yml")
+        yml_file = Path(__file__).resolve().parent / "files/fake-platforms.yml"
         factory = YAMLParserFactory()
         parser = factory.create_parser()
         parser.data = parser.load(yml_file)

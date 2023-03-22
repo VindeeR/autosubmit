@@ -2929,7 +2929,7 @@ class Autosubmit:
                 Log.result(f"Platform [{platform.name}] has been successfully migrated")
 
         # At this point, all remote platforms has been migrated.
-
+        # TODO set user_to and project_to to the correct values
         try:
             if not only_remote:
                 if not Autosubmit.archive(experiment_id, True, True):

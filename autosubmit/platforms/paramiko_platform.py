@@ -740,6 +740,22 @@ class ParamikoPlatform(Platform):
             sys.stderr.write(session.recv_stderr(4096))
 
     def x11_handler(self, channel, (src_addr, src_port)):
+    def get_jobid_by_jobname_cmd(self, job_name):
+        """
+        Returns command to get job id by job name on remote platforms
+        :param job_name:
+        :return: str
+        """
+        return NotImplementedError
+
+    def get_queue_status_cmd(self, job_name):
+        """
+        Returns command to get queue status on remote platforms
+        :return: str
+        """
+        return NotImplementedError
+
+    def x11_handler(self, channel, xxx_todo_changeme):
         '''handler for incoming x11 connections
         for each x11 incoming connection,
         - get a connection to the local display

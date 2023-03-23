@@ -2848,8 +2848,19 @@ class Autosubmit:
             raise AutosubmitCritical(f"Invalid migrate configuration for platforms: {platforms_with_missconfiguration}", 7014)
         else:
             return platforms_to_migrate
+
     @staticmethod
-    def migrate_offer(experiment_id,only_remote):
+    def migrate_offer_local(experiment_id):
+        try:
+            if not Autosubmit.archive(experiment_id, True, True):
+                raise AutosubmitCritical(f"Error archiving the experiment", 7014)
+            Log.result("The experiment has been successfully offered.")
+        except Exception as e:
+            # todo put the IO error code
+            raise AutosubmitCritical(f"[LOCAL] Error offering the experiment: {str(e)}\n"
+                                     f"Please, try again", 7000)
+    @staticmethod
+    def migrate_offer_remote():
         as_conf = AutosubmitConfig(
             experiment_id, BasicConfig, YAMLParserFactory())
         as_conf.check_conf_files(True)
@@ -2876,8 +2887,6 @@ class Autosubmit:
         Log.info("Checking remote platforms")
         platforms = [x for x in submitter.platforms if x not in [
             'local', 'LOCAL']]
-        backup_files = []
-        backup_conf = []
         # Checks and annotates the platforms to migrate ( one per directory if they share it )
         platforms_to_migrate = Autosubmit.check_migrate_config(as_conf, platforms)
         platforms_without_issues = list()
@@ -2930,25 +2939,12 @@ class Autosubmit:
 
         # At this point, all remote platforms has been migrated.
         # TODO set user_to and project_to to the correct values
-        try:
-            if not only_remote:
-                if not Autosubmit.archive(experiment_id, True, True):
-                    for platform in backup_files:
-                        p = submitter.platforms[platform]
-                        p.move_file(os.path.join(
-                            p.temp_dir, experiment_id), p.root_dir, True)
-                    for platform in backup_conf:
-                        as_conf.set_new_user(platform[0], platform[1])
-                        if platform[2] is not None and len(str(platform[2])) > 0:
-                            as_conf.set_new_project(
-                                platform[0], platform[2])
-                    raise AutosubmitCritical(
-                        "The experiment cannot be offered, changes are reverted", 7014)
-            Log.result("The experiment has been successfully offered.")
-        except Exception as e:
-            # todo put the IO error code
-            raise AutosubmitCritical(f"[LOCAL] Error offering the experiment: {str(e)}\n"
-                                     f"Please, try again", 7000)
+    @staticmethod
+    def migrate_offer(experiment_id,only_remote):
+        Autosubmit.migrate_offer_remote()
+        if not only_remote:
+            Autosubmit.migrate_offer_local(experiment_id)
+
     @staticmethod
     def migrate_pickup(experiment_id, only_remote):
         Log.info('Migrating experiment {0}'.format(experiment_id))

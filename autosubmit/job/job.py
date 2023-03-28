@@ -1199,7 +1199,7 @@ class Job(object):
                 template_file.close()
             else:
                 if self.type == Type.BASH:
-                    template = 'sleep 360'
+                    template = 'sleep 5'
                 elif self.type == Type.PYTHON:
                     template = 'time.sleep(5)'
                 elif self.type == Type.R:

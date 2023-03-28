@@ -2200,7 +2200,9 @@ class Autosubmit:
                         try:
                             jobs_id = platform.submit_Script(hold=hold)
                         except AutosubmitError as e:
-                            jobnames = [job.name for job in valid_packages_to_submit[0].jobs]
+                            jobnames = []
+                            for package in valid_packages_to_submit:
+                                jobnames += [job.name for job in package.jobs]
                             for jobname in jobnames:
                                 jobid = platform.get_jobid_by_jobname(jobname)
                                 #cancel bad submitted job if jobid is encountered
@@ -2212,7 +2214,7 @@ class Autosubmit:
                                 has_trace_bad_parameters = str(e.trace).lower().find("bad parameters") != -1
                             else:
                                 has_trace_bad_parameters = False
-                            if has_trace_bad_parameters or e.message.lower().find("invalid partition") != -1 or e.message.lower().find(" invalid qos") != -1 or e.message.lower().find("scheduler is not installed") != -1 or e.message.lower().find("failed") != -1 or e.message.lower().find("not available") != -1:
+                            if has_trace_bad_parameters or e.message.lower().find("invalid partition") != -1 or e.message.lower().find("invalid qos") != -1 or e.message.lower().find("scheduler is not installed") != -1 or e.message.lower().find("failed") != -1 or e.message.lower().find("not available") != -1:
                                 error_msg = ""
                                 for package_tmp in valid_packages_to_submit:
                                     for job_tmp in package_tmp.jobs:
@@ -2236,7 +2238,7 @@ class Autosubmit:
                                 "Submission failed, this can be due a failure on the platform", 6015, e.message)
                         if jobs_id is None or len(jobs_id) <= 0:
                             raise AutosubmitError(
-                                "Submission failed, this can be due a failure on the platform\n{0}\n{1}".format(str(e),""), 6015)
+                                "Submission failed, this can be due a failure on the platform\n{0}\n{1}".format(str(platform.name),""), 6015)
                         i = 0
                         if hold:
                             sleep(10)

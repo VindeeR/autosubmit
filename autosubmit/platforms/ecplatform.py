@@ -203,7 +203,10 @@ class EcPlatform(ParamikoPlatform):
             if not ignore_log:
                 raise AutosubmitError('Could not execute command {0} on {1}'.format(e.cmd, self.host),7500,e.message)
             return False
-        self._ssh_output = output
+        if output.startswith(self.bashrc_output):
+            self._ssh_output = output[len(self.bashrc_output):]
+        else:
+            self._ssh_output = output
         return True
 
     def send_file(self, filename, check=True):

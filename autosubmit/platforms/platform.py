@@ -49,6 +49,8 @@ class Platform(object):
         self._allow_arrays = False
         self._allow_wrappers = False
         self._allow_python_jobs = True
+        self.bashrc_output = ""
+        self.bashrc_err = ""
 
     @property
     def serial_platform(self):
@@ -247,6 +249,17 @@ class Platform(object):
             else:
                 return False
         else:
+            return False
+    def get_bashrc_output(self):
+        """
+        Checks remote bashrc output/err to strip out any unwanted output
+        """
+        try:
+            self.send_command("sleep 1")
+            self.bashrc_output = self.get_ssh_output()
+            self.bashrc_err = self.get_ssh_output_err()
+            return True
+        except:
             return False
 
     def remove_stat_file(self, job_name):

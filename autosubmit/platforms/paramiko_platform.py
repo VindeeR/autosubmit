@@ -35,6 +35,7 @@ class ParamikoPlatform(Platform):
         """
 
         Platform.__init__(self, expid, name, config)
+
         self._ssh_output_err = ""
         self.connected = False
         self._default_queue = None
@@ -232,6 +233,8 @@ class ParamikoPlatform(Platform):
             else:
                 raise AutosubmitError("File can't be located due an slow or timeout connection", 6016, str(e))
         except BaseException as e:
+            if "Garbage packet received" in str(e):
+                Log.error("Couldn't connect to ftp channel due to the stdout given by the {0}:~/.bashrc\nCheck {0}:~/.bashrc for commands that could give output or error".format(self.host))
             self.connected = False
             if "Authentication failed." in str(e):
                 raise AutosubmitCritical("Authentication Failed, please check the platform.conf of {0}".format(
@@ -869,7 +872,6 @@ class ParamikoPlatform(Platform):
         :return: True if executed, False if failed
         :rtype: bool
         """
-
         if "rsync" in command or "find" in command or "convertLink" in command:
             timeout = None  # infinite timeout on migrate command
         elif "rm" in command:
@@ -916,8 +918,6 @@ class ParamikoPlatform(Platform):
             if not x11:
                 stdout.close()
                 stderr.close()
-
-
             self._ssh_output = ""
             self._ssh_output_err = ""
             for s in stdout_chunks:
@@ -925,23 +925,24 @@ class ParamikoPlatform(Platform):
                     self._ssh_output += s
             for errorLineCase in stderr_readlines:
                 self._ssh_output_err += errorLineCase
-
-            for errorLineCase in stderr_readlines:
-                errorLine = errorLineCase.lower()
-                if "not active" in errorLine:
-                    raise AutosubmitError(
-                        'SSH Session not active, will restart the platforms', 6005)
-                if errorLine.find("command not found") != -1:
-                    raise AutosubmitCritical("scheduler is not installed.",7052,self._ssh_output_err)
-                elif errorLine.find("refused") != -1 or errorLine.find("slurm_persist_conn_open_without_init") != -1 or errorLine.find("slurmdbd") != -1 or errorLine.find("submission failed") != -1 or errorLine.find("git clone") != -1 or errorLine.find("sbatch: error: ") != -1 or errorLine.find("not submitted") != -1 or errorLine.find("invalid") != -1:
-                    if (self._submit_command_name == "sbatch" and (errorLine.find("policy") != -1 or errorLine.find("invalid") != -1) ) or (self._submit_command_name == "sbatch" and errorLine.find("argument") != -1) or (self._submit_command_name == "bsub" and errorLine.find("job not submitted") != -1) or self._submit_command_name == "ecaccess-job-submit" or self._submit_command_name == "qsub ":
-                        raise AutosubmitError(errorLine, 7014, "Bad Parameters.")
-                    raise AutosubmitError('Command {0} in {1} warning: {2}'.format(command, self.host,self._ssh_output_err, 6005))
+            # if self._bashrc_output matchs the start of self.ssh_output, then strip it from self.ssh_output
+            if self._ssh_output.startswith(self.bashrc_output):
+                self._ssh_output = self._ssh_output[len(self.bashrc_output):]
+            if self._ssh_output_err.startswith(self.bashrc_err):
+                self._ssh_output_err = self._ssh_output_err[len(self.bashrc_err):]
+            if "not active" in self._ssh_output_err:
+                raise AutosubmitError(
+                    'SSH Session not active, will restart the platforms', 6005)
+            if self._ssh_output_err.find("command not found") != -1:
+                raise AutosubmitCritical("scheduler is not installed.",7052,self._ssh_output_err)
+            elif self._ssh_output_err.find("refused") != -1 or self._ssh_output_err.find("slurm_persist_conn_open_without_init") != -1 or self._ssh_output_err.find("slurmdbd") != -1 or self._ssh_output_err.find("submission failed") != -1 or self._ssh_output_err.find("git clone") != -1 or self._ssh_output_err.find("sbatch: error: ") != -1 or self._ssh_output_err.find("not submitted") != -1 or self._ssh_output_err.find("invalid") != -1:
+                if (self._submit_command_name == "sbatch" and (self._ssh_output_err.find("policy") != -1 or self._ssh_output_err.find("invalid") != -1) ) or (self._submit_command_name == "sbatch" and self._ssh_output_err.find("argument") != -1) or (self._submit_command_name == "bsub" and self._ssh_output_err.find("job not submitted") != -1) or self._submit_command_name == "ecaccess-job-submit" or self._submit_command_name == "qsub ":
+                    raise AutosubmitError(self._ssh_output_err, 7014, "Bad Parameters.")
+                raise AutosubmitError('Command {0} in {1} warning: {2}'.format(command, self.host,self._ssh_output_err, 6005))
 
             if not ignore_log:
-                if len(stderr_readlines) > 0:
-                    Log.printlog('Command {0} in {1} warning: {2}'.format(
-                        command, self.host, '\n'.join(stderr_readlines)), 6006)
+                if self._ssh_output_err != '':
+                    Log.printlog('Command {0} in {1} warning: {2}'.format(command, self.host, self._ssh_output_err), 6006)
                 else:
                     pass
                     #Log.debug('Command {0} in {1} successful with out message: {2}', command, self.host, self._ssh_output)
@@ -1199,6 +1200,8 @@ class ParamikoPlatform(Platform):
             return True
         except:
             return False
+
+
     
     def check_remote_log_dir(self):
         """

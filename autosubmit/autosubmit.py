@@ -2074,6 +2074,10 @@ class Autosubmit:
                 platform_issues += "\n[{0}] has configuration issues.\n Check that the connection is passwd-less.(ssh {1}@{4})\n Check the parameters that build the root_path are correct:{{scratch_dir/project/user}} = {{{3}/{2}/{1}}}".format(
                     platform.name, platform.user, platform.project, platform.scratch,platform.host)
                 issues += platform_issues
+            # Checks if bashrc is provinding output that could mess with Autosubmit remote pooling, if so, warns the user but continues as Autosubmit should be able to strip the output
+            platform.get_bashrc_output()
+            if platform.bashrc_output != "" or platform.bashrc_err != "":
+                Log.warning("Bashrc is providing output that could mess with Autosubmit remote pooling\nHINT: add [ -z \"$PS1\" ] && return. at the header of {1}:~/.bashrc".format(platform.name,platform.host))
             if platform_issues == "":
                 Log.result("[{1}] Connection successful to host {0}", platform.host, platform.name)
             else:

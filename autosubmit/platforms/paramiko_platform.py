@@ -563,7 +563,7 @@ class ParamikoPlatform(Platform):
         :rtype: str
         """
         job_list_cmd = ""
-        for job,job_prev_status in job_list:
+        for job in job_list:
             if job.id is None:
                 job_str = "0"
             else:

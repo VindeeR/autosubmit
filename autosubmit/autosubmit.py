@@ -1770,10 +1770,9 @@ class Autosubmit:
                         # Check slurm single jobs, the other platforms has already been checked.
                         for platform_jobs in slurm:
                             platform = platform_jobs[0]
-                            jobs_to_check = platform_jobs[1]
                             Log.debug("Checking all jobs at once")
                             platform.check_Alljobs(
-                                platform_jobs[3], jobs_to_check, as_conf.get_copy_remote_logs())
+                                platform_jobs[3], as_conf)
                             #Log.info("FD slurm jobs: {0}".format(log.fd_show.fd_table_status_str()))
 
                             for j_Indx in xrange(0, len(platform_jobs[3])):

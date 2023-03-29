@@ -739,7 +739,6 @@ class ParamikoPlatform(Platform):
         while session.recv_stderr_ready():
             sys.stderr.write(session.recv_stderr(4096))
 
-    def x11_handler(self, channel, (src_addr, src_port)):
     def get_jobid_by_jobname_cmd(self, job_name):
         """
         Returns command to get job id by job name on remote platforms

@@ -18,7 +18,6 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import locale
 import os
-from contextlib import suppress
 from time import sleep
 from typing import List, Union
 
@@ -308,7 +307,7 @@ class PJMPlatform(ParamikoPlatform):
         for job in in_queue_jobs:
             reason = self.parse_queue_reason(queue_status, job.id)
             if job.queuing_reason_cancel(reason):
-                Log.printlog(f"Job {job.name} will be cancelled and set to FAILED as it was queuing due to {reason}",6000)
+                Log.printlog("Job {0} will be cancelled and set to FAILED as it was queuing due to {1}".format(job.name,reason),6000)
                 self.send_command(self.cancel_cmd + " {0}".format(job.id))
                 job.new_status = Status.FAILED
                 job.update_status(as_conf)
@@ -372,7 +371,7 @@ class PJMPlatform(ParamikoPlatform):
             export += " ; "
 
 
-        with suppress(BaseException):
+        try:
             lang = locale.getlocale()[1]
             if lang is None:
                 lang = locale.getdefaultlocale()[1]
@@ -382,7 +381,8 @@ class PJMPlatform(ParamikoPlatform):
                 self._submit_script_file.write((export + self._submit_cmd + job_script + "\n").encode(lang))
             else:
                 self._submit_script_file.write((export + self._submit_hold_cmd + job_script + "\n").encode(lang))
-
+        except:
+            pass
 
     def get_checkAlljobs_cmd(self, jobs_id):
         # jobs_id = "jobid1+jobid2+jobid3"

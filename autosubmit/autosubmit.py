@@ -833,8 +833,8 @@ class Autosubmit:
         message+= " Note that this action does not delete any data written by the experiment.\n"
         message+= "Complete list of files/directories deleted:\n"
         for root, dirs, files in os.walk(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid_delete)):
-            for dir in dirs:
-                message += os.path.join(root, dir) + "\n"
+            for dir_ in dirs:
+                message += os.path.join(root, dir_) + "\n"
         message += os.path.join(BasicConfig.LOCAL_ROOT_DIR, BasicConfig.STRUCTURES_DIR,
                                 "structure_{0}.db".format(expid_delete)) + "\n"
         message += os.path.join(BasicConfig.LOCAL_ROOT_DIR, BasicConfig.JOBDATA_DIR,
@@ -957,7 +957,7 @@ class Autosubmit:
                 Autosubmit._prepare_conf_files(
                     exp_id, hpc, Autosubmit.autosubmit_version, dummy, copy_id)
             except (OSError, IOError) as e:
-                Autosubmit._delete_expid(exp_id)
+                Autosubmit._delete_expid(exp_id, True)
                 raise AutosubmitCritical(
                     "Couldn't create a new experiment, permissions?", 7012, e.message)
             except BaseException as e:

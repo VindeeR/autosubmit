@@ -915,6 +915,7 @@ class AutosubmitConfig(object):
         Creates parser objects for configuration files
         """
         try:
+            Log.debug("Reloading configuration each Autosubmit iteration")
             self._conf_parser = AutosubmitConfig.get_parser(
                 self.parser_factory, self._conf_parser_file)
             self._platforms_parser = AutosubmitConfig.get_parser(

@@ -1990,7 +1990,7 @@ class Autosubmit:
                         message = "We have detected that there is another Autosubmit instance using the experiment\n. Stop other Autosubmit instances that are using the experiment or delete autosubmit.lock file located on tmp folder"
                         raise AutosubmitCritical(message, 7000)
                     except BaseException as e:  # If this happens, there is a bug in the code or an exception not-well caught
-                        raise AutosubmitCritical("There is a bug in the code, please contact via git",7070,e.message)
+                        raise AutosubmitCritical("There is a bug in the code, please contact via gitlab",str(e),7070)
                 Log.result("No more jobs to run.")
                 # Updating job data header with current information when experiment ends
                 try:
@@ -2203,14 +2203,17 @@ class Autosubmit:
                         try:
                             jobs_id = platform.submit_Script(hold=hold)
                         except AutosubmitError as e:
-                            jobnames = []
-                            for package in valid_packages_to_submit:
-                                jobnames += [job.name for job in package.jobs]
-                            for jobname in jobnames:
-                                jobid = platform.get_jobid_by_jobname(jobname)
-                                #cancel bad submitted job if jobid is encountered
-                                for id in jobid:
-                                    platform.cancel_job(id)
+                            try:
+                                jobnames = []
+                                for package in valid_packages_to_submit:
+                                    jobnames += [job.name for job in package.jobs]
+                                for jobname in jobnames:
+                                    jobid = platform.get_jobid_by_jobname(jobname)
+                                    #cancel bad submitted job if jobid is encountered
+                                    for id in jobid:
+                                        platform.cancel_job(id)
+                            except:
+                                pass
                             jobs_id = None
                             platform.connected = False
                             if e.trace is not None:
@@ -2240,6 +2243,19 @@ class Autosubmit:
                             raise AutosubmitError(
                                 "Submission failed, this can be due a failure on the platform", 6015, e.message)
                         if jobs_id is None or len(jobs_id) <= 0:
+                            try:
+                                jobnames = []
+                                for package in valid_packages_to_submit:
+                                    jobnames += [job.name for job in package.jobs]
+                                for jobname in jobnames:
+                                    jobid = platform.get_jobid_by_jobname(jobname)
+                                    #cancel bad submitted job if jobid is encountered
+                                    for id in jobid:
+                                        platform.cancel_job(id)
+                            except:
+                                pass
+                            platform.connected = False
+
                             raise AutosubmitError(
                                 "Submission failed, this can be due a failure on the platform\n{0}\n{1}".format(str(platform.name),""), 6015)
                         i = 0
@@ -2280,11 +2296,11 @@ class Autosubmit:
                                 job.status = Status.SUBMITTED
                                 job.write_submit_time(hold=hold)
                             i += 1
-                    save = True
+                    if not inspect:
+                        job_list.save()
                     if len(failed_packages) > 0:
                         for job_id in failed_packages:
-                            package.jobs[0].platform.send_command(
-                                package.jobs[0].platform.cancel_cmd + " {0}".format(job_id))
+                            platform.send_command( platform.cancel_cmd + " {0}".format(job_id))
                         raise AutosubmitError(
                             "{0} submission failed, some hold jobs failed to be held".format(platform.name), 6015)
                 except WrongTemplateException as e:

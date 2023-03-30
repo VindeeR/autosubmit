@@ -216,12 +216,10 @@ class ParamikoPlatform(Platform):
                     self._ssh.connect(self._host_config['hostname'], port, username=self.user,
                                       key_filename=self._host_config_id, timeout=60 , banner_timeout=60,disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']})
             self.transport = self._ssh.get_transport()
-            #self.transport = paramiko.Transport((self._host_config['hostname'], 22))
-            #self.transport.connect(username=self.user)
-            window_size = pow(4, 12)  # about ~16MB chunks
-            max_packet_size = pow(4, 12)
-            #self._ftpChannel = self._ssh.open_sftp()
-            self._ftpChannel = paramiko.SFTPClient.from_transport(self.transport,window_size=window_size,max_packet_size=max_packet_size)
+            self.transport.banner_timeout = 60
+
+            self._ftpChannel = paramiko.SFTPClient.from_transport(self.transport,window_size=pow(4, 12) ,max_packet_size=pow(4, 12) )
+            self._ftpChannel.get_channel().settimeout(120)
             self.connected = True
         except SSHException as e:
             raise

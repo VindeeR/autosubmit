@@ -240,7 +240,7 @@ class PJMPlatform(ParamikoPlatform):
         Updates commands for platforms
         """
         self.root_dir = os.path.join(
-            self.scratch, self.project_dir, self.user, self.expid)
+            self.scratch, self.project, self.user, self.expid)
         self.remote_log_dir = os.path.join(self.root_dir, "LOG_" + self.expid)
         self.cancel_cmd = "pjdel "
         self._checkhost_cmd = "echo 1"
@@ -388,6 +388,10 @@ class PJMPlatform(ParamikoPlatform):
         # jobs_id = "jobid1+jobid2+jobid3"
         # -H == sacct
         return "pjstat -H -v --choose jid,st,ermsg --filter \"jid={0}\" > as_checkalljobs.txt ; pjstat -v --choose jid,st,ermsg --filter \"jid={0}\" >> as_checkalljobs.txt ; cat as_checkalljobs.txt ; rm as_checkalljobs.txt".format(jobs_id)
+    def get_checkjob_cmd(self, jobs_id):
+        # jobs_id = "jobid1+jobid2+jobid3"
+        # -H == sacct
+        return self.get_checkAlljobs_cmd(self, jobs_id)
 
     def get_queue_status_cmd(self, job_id):
         return self.get_checkAlljobs_cmd(job_id)

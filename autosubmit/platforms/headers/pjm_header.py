@@ -128,7 +128,7 @@ class PJMHeader(object):
 
     SERIAL = textwrap.dedent("""\
 ###############################################################################
-#                   %TASKTYPE% %DEFAULT.EXPID% EXPERIMENT
+#                   %TASKTYPE% %EXPID% EXPERIMENT
 ###############################################################################
 #
 #PJM -N %JOBNAME%
@@ -137,8 +137,8 @@ class PJMHeader(object):
 #%ACCOUNT_DIRECTIVE%
 #%MEMORY_DIRECTIVE%
 %CUSTOM_DIRECTIVES%
-#PJM -o %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ_DIR%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%OUT_LOG_DIRECTIVE%
-#PJM -e %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ_DIR%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%ERR_LOG_DIRECTIVE%
+#PJM -o %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%OUT_LOG_DIRECTIVE%
+#PJM -e %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%ERR_LOG_DIRECTIVE%
 #%X11%
 #
 ###############################################################################
@@ -146,7 +146,7 @@ class PJMHeader(object):
 
     PARALLEL = textwrap.dedent("""\
 ###############################################################################
-#                   %TASKTYPE% %DEFAULT.EXPID% EXPERIMENT
+#                   %TASKTYPE% %EXPID% EXPERIMENT
 ###############################################################################
 #
 #PJM -N %JOBNAME%
@@ -158,8 +158,8 @@ class PJMHeader(object):
 #%ACCOUNT_DIRECTIVE%
 #%MEMORY_DIRECTIVE%
 #%MEMORY_PER_TASK_DIRECTIVE%
-#PJM -o %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ_DIR%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%OUT_LOG_DIRECTIVE%
-#PJM -e %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ_DIR%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%ERR_LOG_DIRECTIVE%
+#PJM -o %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%OUT_LOG_DIRECTIVE%
+#PJM -e %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%ERR_LOG_DIRECTIVE%
 %CUSTOM_DIRECTIVES%
 #
 ###############################################################################

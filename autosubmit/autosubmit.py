@@ -2145,7 +2145,9 @@ class Autosubmit:
                             package.submit(as_conf, job_list.parameters, inspect, hold=hold)
                             save=True
                             if not inspect:
-                                job_list.save()
+                                if platform.type.lower() != "slurm":
+                                    job_list.update_list(as_conf)
+                                    job_list.save()
                             valid_packages_to_submit.append(package)
                         except (IOError, OSError):
                             if package.jobs[0].id != 0:
@@ -2192,17 +2194,32 @@ class Autosubmit:
                 try:
                     valid_packages_to_submit = [ package for package in valid_packages_to_submit if package.x11 != True]
                     if len(valid_packages_to_submit) > 0:
+                        submit_time = int(time.time() / 60)
                         try:
                             jobs_id = platform.submit_Script(hold=hold)
                         except AutosubmitError as e:
-                            jobnames = []
                             for package in valid_packages_to_submit:
-                                jobnames += [job.name for job in package.jobs]
-                            for jobname in jobnames:
-                                jobid = platform.get_jobid_by_jobname(jobname)
-                                #cancel bad submitted job if jobid is encountered
-                                for id in jobid:
-                                    platform.cancel_job(id)
+                                try:
+                                    elapsed_time_minutes = str(int(round(int(time.time() / 60) - submit_time)+2))
+                                    job_historic = platform.get_jobid_by_jobname(package.jobs[0].name,minutes=elapsed_time_minutes)
+                                except:
+                                    job_historic = []
+                                #Recover jobid from jobname
+                                if len(job_historic) > 0 and isinstance(job_historic, list):
+                                    job_id = job_historic[-1]
+                                    for job_id_historic in job_historic:
+                                        if job_id_historic != job_id:
+                                            try:
+                                                platform.cancel_job(job_id_historic)
+                                            except:
+                                                pass
+                                    for job in package.jobs:
+                                        job.hold = hold
+                                        job.id = str(job_id)
+                                        job.status = Status.SUBMITTED
+                                        job.write_submit_time(hold=hold)
+                                #job_list.update_list(as_conf)
+                            job_list.save()
                             jobs_id = None
                             platform.connected = False
                             if e.trace is not None:
@@ -2275,8 +2292,11 @@ class Autosubmit:
                     if not inspect:
                         job_list.save()
                     if len(failed_packages) > 0:
-                        for job_id in failed_packages:
-                            platform.send_command( platform.cancel_cmd + " {0}".format(job_id))
+                        try:
+                            for job_id in failed_packages:
+                                platform.send_command( platform.cancel_cmd + " {0}".format(job_id))
+                        except:
+                            pass
                         raise AutosubmitError(
                             "{0} submission failed, some hold jobs failed to be held".format(platform.name), 6015)
                 except WrongTemplateException as e:

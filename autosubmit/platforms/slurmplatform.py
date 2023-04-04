@@ -377,8 +377,8 @@ class SlurmPlatform(ParamikoPlatform):
     def get_queue_status_cmd(self, job_id):
         return 'squeue -j {0} -o %A,%R'.format(job_id)
 
-    def get_jobid_by_jobname_cmd(self, job_name):
-        return 'squeue -o %A,%.50j -n {0}'.format(job_name)
+    def get_jobid_by_jobname_cmd(self, job_name,minutes="5"):
+        return "sacct --name {0} -o JobID -n -X --starttime=$(date -d '{1} minutes ago' +'%Y-%m-%dT%H:%M:%S')".format(job_name,minutes)
 
 
     def cancel_job(self, job_id):

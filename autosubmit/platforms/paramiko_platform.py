@@ -683,8 +683,10 @@ class ParamikoPlatform(Platform):
             raise AutosubmitError("Some Jobs are in Unknown status", 6008)
             # job.new_status=job_status
 
+    def get_jobid_by_jobname_cmd(self, job_name,minutes="5"):
+        return ""
 
-    def get_jobid_by_jobname(self,job_name,retries=2):
+    def get_jobid_by_jobname(self,job_name,retries=2,minutes="5"):
         """
         Get job id by job name
         :param retries: retries
@@ -692,7 +694,7 @@ class ParamikoPlatform(Platform):
         :return: job id
         """
         #sleep(5)
-        cmd = self.get_jobid_by_jobname_cmd(job_name)
+        cmd = self.get_jobid_by_jobname_cmd(job_name,minutes)
         self.send_command(cmd)
         job_id_name = self.get_ssh_output()
         while len(job_id_name) <= 0 and retries > 0:
@@ -704,8 +706,11 @@ class ParamikoPlatform(Platform):
             #get id last line
             job_ids_names = job_id_name.split('\n')[1:-1]
             #get all ids by jobname
-            job_ids = [job_id.split(',')[0] for job_id in job_ids_names]
-        return job_ids
+            job_ids = [job_id.split(' ')[0] for job_id in job_ids_names]
+            return job_ids
+        else:
+            return []
+
 
     def get_checkjob_cmd(self, job_id):
         """

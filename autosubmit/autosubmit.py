@@ -2208,28 +2208,31 @@ class Autosubmit:
                         try:
                             jobs_id = platform.submit_Script(hold=hold)
                         except AutosubmitError as e:
-                            for package in valid_packages_to_submit:
-                                try:
-                                    elapsed_time_minutes = str(int(round(int(time.time() / 60) - submit_time)+2))
-                                    job_historic = platform.get_jobid_by_jobname(package.jobs[0].name,minutes=elapsed_time_minutes)
-                                except:
-                                    job_historic = []
-                                #Recover jobid from jobname
-                                if len(job_historic) > 0 and isinstance(job_historic, list):
-                                    job_id = job_historic[-1]
-                                    for job_id_historic in job_historic:
-                                        if job_id_historic != job_id:
-                                            try:
-                                                platform.cancel_job(job_id_historic)
-                                            except:
-                                                pass
-                                    for job in package.jobs:
-                                        job.hold = hold
-                                        job.id = str(job_id)
-                                        job.status = Status.SUBMITTED
-                                        job.write_submit_time(hold=hold)
-                                #job_list.update_list(as_conf)
+                            try:
+                                for package in valid_packages_to_submit:
+                                    try:
+                                        elapsed_time_minutes = str(int(round(int(time.time() / 60) - submit_time)+1))
+                                        job_historic = platform.get_jobid_by_jobname(package.jobs[0].name,minutes=elapsed_time_minutes)
+                                    except:
+                                        job_historic = []
+                                    #Recover jobid from jobname
+                                    if len(job_historic) > 0 and isinstance(job_historic, list):
+                                        job_id = job_historic[-1]
+                                        for job_id_historic in job_historic:
+                                            if job_id_historic != job_id:
+                                                try:
+                                                    platform.send_command(platform.cancel_cmd + " {0}".format(job_id_historic))
+                                                except:
+                                                    pass
+                                        for job in package.jobs:
+                                            job.hold = hold
+                                            job.id = str(job_id)
+                                            job.status = Status.SUBMITTED
+                                            job.write_submit_time(hold=hold)
+                            except:
+                                pass
                             job_list.save()
+                            job_list.update_list(as_conf,store_change=True)
                             jobs_id = None
                             platform.connected = False
                             if e.trace is not None:

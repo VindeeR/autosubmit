@@ -1204,7 +1204,7 @@ class Job(object):
             else:
                 if self.type == Type.BASH:
                     template = 'sleep 5'
-                elif self.type == Type.PYTHON:
+                elif self.type == Type.PYTHON or self.type == Type.PYTHON2 or self.type == Type.PYTHON3:
                     template = 'time.sleep(5)'
                 elif self.type == Type.R:
                     template = 'Sys.sleep(5)'

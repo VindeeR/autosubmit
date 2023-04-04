@@ -155,7 +155,8 @@ class Platform(object):
         :type dest: str
         """
         raise NotImplementedError
-
+    def get_jobid_by_jobname_cmd(self, job_name,minutes="5"):
+        return ""
     def get_file(self, filename, must_exist=True, relative_path='', ignore_log=False, wrapper_failed=False):
         """
         Copies a file from the current platform to experiment's tmp folder

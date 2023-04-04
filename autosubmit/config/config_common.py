@@ -1727,7 +1727,7 @@ class AutosubmitConfig(object):
          :return: machinefiles function to use
          :rtype: string
          """
-        return self._conf_parser.get_option(wrapper_section_name, 'MACHINEFILES', '')
+        return self._conf_parser.get_option(wrapper_section_name, 'MACHINEFILES', 'STANDARD')
     def get_export(self, section):
         """
         Gets command line for being submitted with

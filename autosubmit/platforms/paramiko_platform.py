@@ -147,7 +147,7 @@ class ParamikoPlatform(Platform):
                 raise AutosubmitCritical(
                     'Experiment cant no continue without unexpected behaviour, Stopping Autosubmit', 7050, trace)
 
-        except AutosubmitCritical:
+        except AutosubmitCritical as e:
             raise
         except SSHException as e:
             raise
@@ -212,9 +212,9 @@ class ParamikoPlatform(Platform):
         except SSHException as e:
             raise
         except IOError as e:
-            if "refused" in e.strerror.lower():
+            if "refused" in str(e.strerror).lower():
                 raise SSHException(" {0} doesn't accept remote connections. Check if there is an typo in the hostname".format(self.host))
-            elif "name or service not known" in e.strerror.lower():
+            elif "name or service not known" in str(e.strerror).lower():
                 raise SSHException(" {0} doesn't accept remote connections. Check if there is an typo in the hostname".format(self.host))
             else:
                 raise AutosubmitError("File can't be located due an slow connection", 6016, str(e))
@@ -612,8 +612,8 @@ class ParamikoPlatform(Platform):
                                 job_status = job.check_completion(over_wallclock=True)
                                 if job_status is Status.FAILED:
                                     try:
-                                        job.platform.send_command(
-                                            job.platform.cancel_cmd + " " + str(job.id))
+                                        if job.platform.cancel_cmd is not None:
+                                            job.platform.send_command(job.platform.cancel_cmd + " " + str(job.id))
                                     except:
                                         pass
                             except:

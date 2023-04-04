@@ -774,7 +774,7 @@ class Autosubmit:
                                 "Current experiment uses ({0}) which is not the running Autosubmit version  \nPlease, update the experiment version if you wish to continue using AutoSubmit {1}\nYou can achieve this using the command autosubmit updateversion {2} \n"
                                 "Or with the -v parameter: autosubmit {3} {2} -v ".format(as_conf.get_version(),
                                                                                           Autosubmit.autosubmit_version, expid,args.command),
-                                7067)
+                                7014)
         else:
             if expid == 'None':
                 exp_id = ""
@@ -1990,7 +1990,7 @@ class Autosubmit:
                         message = "We have detected that there is another Autosubmit instance using the experiment\n. Stop other Autosubmit instances that are using the experiment or delete autosubmit.lock file located on tmp folder"
                         raise AutosubmitCritical(message, 7000)
                     except BaseException as e:  # If this happens, there is a bug in the code or an exception not-well caught
-                        raise AutosubmitCritical("There is a bug in the code, please contact via git",7070,e.message)
+                        raise AutosubmitCritical("There is a bug in the code, please contact via gitlab",7070,str(e))
                 Log.result("No more jobs to run.")
                 # Updating job data header with current information when experiment ends
                 try:
@@ -2032,7 +2032,7 @@ class Autosubmit:
         except AutosubmitCritical as e:
             raise AutosubmitCritical(e.message, e.code, e.trace)
         except BaseException as e:
-            raise AutosubmitCritical("This seems like a bug in the code, please contact AS developers", 7070,e.message)
+            raise AutosubmitCritical("This seems like a bug in the code, please contact AS developers", 7070,str(e))
 
     @staticmethod
     def restore_platforms(platform_to_test,mail_notify=False,as_conf=None,expid=expid):
@@ -2272,11 +2272,11 @@ class Autosubmit:
                                 job.status = Status.SUBMITTED
                                 job.write_submit_time(hold=hold)
                             i += 1
-                    save = True
+                    if not inspect:
+                        job_list.save()
                     if len(failed_packages) > 0:
                         for job_id in failed_packages:
-                            package.jobs[0].platform.send_command(
-                                package.jobs[0].platform.cancel_cmd + " {0}".format(job_id))
+                            platform.send_command( platform.cancel_cmd + " {0}".format(job_id))
                         raise AutosubmitError(
                             "{0} submission failed, some hold jobs failed to be held".format(platform.name), 6015)
                 except WrongTemplateException as e:

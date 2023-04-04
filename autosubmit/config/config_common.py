@@ -915,7 +915,6 @@ class AutosubmitConfig(object):
         Creates parser objects for configuration files
         """
         try:
-            Log.debug("Reloading configuration each Autosubmit iteration")
             self._conf_parser = AutosubmitConfig.get_parser(
                 self.parser_factory, self._conf_parser_file)
             self._platforms_parser = AutosubmitConfig.get_parser(
@@ -1738,7 +1737,7 @@ class AutosubmitConfig(object):
          :return: machinefiles function to use
          :rtype: string
          """
-        return self._conf_parser.get_option(wrapper_section_name, 'MACHINEFILES', '')
+        return self._conf_parser.get_option(wrapper_section_name, 'MACHINEFILES', 'STANDARD')
     def get_export(self, section):
         """
         Gets command line for being submitted with

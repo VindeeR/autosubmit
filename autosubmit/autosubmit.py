@@ -1620,6 +1620,7 @@ class Autosubmit:
                 # AUTOSUBMIT - MAIN LOOP
                 #########################
                 # Main loop. Finishing when all jobs have been submitted
+
                 while job_list.get_active():
                     #Log.info("FD: {0}".format(log.fd_show.fd_table_status_str()))
                     try:
@@ -1794,6 +1795,7 @@ class Autosubmit:
                             as_conf, submitter=submitter)
                         job_list.save()
                         if len(job_list.get_ready()) > 0:
+                            Log.debug("Reloading configuration each Autosubmit iteration")
                             save = Autosubmit.submit_ready_jobs(
                                 as_conf, job_list, platforms_to_test, packages_persistence, hold=False)
                             job_list.update_list(as_conf, submitter=submitter)
@@ -1990,7 +1992,7 @@ class Autosubmit:
                         message = "We have detected that there is another Autosubmit instance using the experiment\n. Stop other Autosubmit instances that are using the experiment or delete autosubmit.lock file located on tmp folder"
                         raise AutosubmitCritical(message, 7000)
                     except BaseException as e:  # If this happens, there is a bug in the code or an exception not-well caught
-                        raise AutosubmitCritical("There is a bug in the code, please contact via gitlab",str(e),7070)
+                        raise AutosubmitCritical("There is a bug in the code, please contact via gitlab",7070,str(e))
                 Log.result("No more jobs to run.")
                 # Updating job data header with current information when experiment ends
                 try:
@@ -2032,7 +2034,7 @@ class Autosubmit:
         except AutosubmitCritical as e:
             raise
         except BaseException as e:
-            raise AutosubmitCritical("This seems like a bug in the code, please contact AS developers", 7070,e.message)
+            raise AutosubmitCritical("This seems like a bug in the code, please contact AS developers", 7070,str(e))
 
     @staticmethod
     def restore_platforms(platform_to_test,mail_notify=False,as_conf=None,expid=expid):

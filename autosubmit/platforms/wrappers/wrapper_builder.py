@@ -115,7 +115,7 @@ class PythonWrapperBuilder(WrapperBuilder):
         sample_list = list(sample_str)
         random.shuffle(sample_list)
         final_string = ''.join(sample_list)
-        return final_string+"_FAILED"
+        return final_string
     def build_imports(self):
 
         return textwrap.dedent("""
@@ -142,7 +142,8 @@ class PythonWrapperBuilder(WrapperBuilder):
                return getattr(self.stream, attr)
         
         sys.stdout = Unbuffered(sys.stdout)
-        wrapper_id = "{1}"
+        wrapper_id = "{1}_FAILED"
+        node_id = "node_list_{1}"
         # Defining scripts to be run
         scripts= {0}
         """).format(str(self.job_scripts), self.get_random_alphanumeric_string(5,5),'\n'.ljust(13))
@@ -182,7 +183,7 @@ class PythonWrapperBuilder(WrapperBuilder):
         {0}
         os.system("mkdir -p machinefiles")
 
-        with open('node_list', 'r') as file:
+        with open('{{0}}'.format(node_id), 'r') as file:
              all_nodes = file.read()
 
         all_nodes = all_nodes.split("_NEWLINE_")
@@ -687,7 +688,7 @@ class SrunWrapperBuilder(WrapperBuilder):
         {0}
         os.system("mkdir -p machinefiles")
 
-        with open('node_list', 'r') as file:
+        with open('{{0}}'.format(node_id), 'r') as file:
              all_nodes = file.read()
 
         all_nodes = all_nodes.split("_NEWLINE_")

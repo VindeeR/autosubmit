@@ -127,7 +127,7 @@ class PJMPlatform(ParamikoPlatform):
                         "IO issues ", 6016, str(e))
                 except BaseException as e:
                     if str(e).find("scheduler") != -1:
-                        raise AutosubmitCritical("Are you sure that [{0}] scheduler is the correct type for platform [{1}]?.\n Please, double check that {0} is loaded for {1} before autosubmit launch any job.".format(self.type.upper(),self.name.upper()),7070)
+                        raise AutosubmitCritical("Are you sure that [{0}] scheduler is the correct type for platform [{1}]?.\n Please, double check that {0} is loaded for {1} before autosubmit launch any job.".format(self.type.upper(),self.name.upper()),str(e),7070)
                     raise AutosubmitError(
                         "Submission failed, this can be due a failure on the platform", 6015, str(e))
                 if jobs_id is None or len(jobs_id) <= 0:
@@ -468,7 +468,7 @@ class PJMPlatform(ParamikoPlatform):
 
     @staticmethod
     def allocated_nodes():
-        return """os.system("scontrol show hostnames $SLURM_JOB_NODELIST > node_list_{0}".format(node_id))"""
+        return """os.system("scontrol show hostnames $SLURM_JOB_NODELIST > {0}".format(node_id))"""
 
     def check_file_exists(self, filename,wrapper_failed=False):
         file_exist = False

@@ -13,3 +13,5 @@ autosubmit.egg-info/
 venv/
 .pytest_cache/
 .cache/
+teeeest.py
+test-unthreaded.py

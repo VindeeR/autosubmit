@@ -427,7 +427,7 @@ class JobPackageThread(JobPackageBase):
 
     def _send_files(self):
         Log.debug("Check remote dir")
-        self.platform.check_remote_log_dir()
+        #self.platform.check_remote_log_dir()
         compress_type = "w"
         output_filepath = '{0}.tar'.format("wrapper_scripts")
         if callable(getattr(self.platform, 'remove_multiple_files')):

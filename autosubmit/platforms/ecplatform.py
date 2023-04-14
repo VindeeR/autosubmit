@@ -193,6 +193,8 @@ class EcPlatform(ParamikoPlatform):
             return True
         except Exception as e:
             return False
+        self.check_remote_log_dir()
+
 
     def send_command(self, command, ignore_log=False, x11 = False):
         try:
@@ -210,7 +212,7 @@ class EcPlatform(ParamikoPlatform):
         return True
 
     def send_file(self, filename, check=True):
-        self.check_remote_log_dir()
+        #self.check_remote_log_dir()
         self.delete_file(filename)
         command = '{0} {1} {3}:{2}'.format(self.put_cmd, os.path.join(self.tmp_path, filename),
                                            os.path.join(self.get_files_path(), filename), self.host)

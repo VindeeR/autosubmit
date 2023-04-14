@@ -1194,7 +1194,7 @@ class Job(object):
                 template = ''
                 if as_conf.get_remote_dependencies():
                     if self.type == Type.BASH:
-                        template = 'sleep 5' + "\n"
+                        template = 'sleep 360' + "\n"
                     elif self.type == Type.PYTHON:
                         template = 'time.sleep(5)' + "\n"
                     elif self.type == Type.R:
@@ -1203,7 +1203,7 @@ class Job(object):
                 template_file.close()
             else:
                 if self.type == Type.BASH:
-                    template = 'sleep 5'
+                    template = 'sleep 360'
                 elif self.type == Type.PYTHON or self.type == Type.PYTHON2 or self.type == Type.PYTHON3:
                     template = 'time.sleep(5)'
                 elif self.type == Type.R:

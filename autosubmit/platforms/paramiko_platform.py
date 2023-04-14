@@ -217,6 +217,7 @@ class ParamikoPlatform(Platform):
                                       key_filename=self._host_config_id, timeout=60 , banner_timeout=60,disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']})
             self.transport = self._ssh.get_transport()
             self.transport.banner_timeout = 60
+            self.transport.set_keepalive(120)
 
             self._ftpChannel = paramiko.SFTPClient.from_transport(self.transport,window_size=pow(4, 12) ,max_packet_size=pow(4, 12) )
             self._ftpChannel.get_channel().settimeout(120)
@@ -285,7 +286,7 @@ class ParamikoPlatform(Platform):
         """
 
         if check:
-            self.check_remote_log_dir()
+            #self.check_remote_log_dir()
             self.delete_file(filename)
         try:
             local_path = os.path.join(os.path.join(self.tmp_path, filename))
@@ -1203,6 +1204,8 @@ class ParamikoPlatform(Platform):
             return True
         except:
             return False
+        self.check_remote_log_dir()
+
 
 
 
@@ -1210,7 +1213,7 @@ class ParamikoPlatform(Platform):
         """
         Creates log dir on remote host
         """
-
+        # TODO change it to be in the check_remote_permissions
         if self.type == "slurm":
             try:
                 # Test if remote_path exists

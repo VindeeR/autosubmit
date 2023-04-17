@@ -640,7 +640,11 @@ class Autosubmit:
         expid = "None"
         if hasattr(args, 'expid'):
             expid = args.expid
-        if args.command != "configure" and args.command != "install":
+        if args.command not in ("configure", "install", "refresh"):
+            # TODO: refresh needs to call ``_init_logs``, but at the moment ``_init_logs``
+            #       raises an Exception when the YAML file is invalid. Ideally, we would
+            #       be able to init the logs and refresh the YAML files before parsing it.
+            #       We may have to change the order (or allow doing so) in each command.
             Autosubmit._init_logs(args, args.logconsole, args.logfile, expid)
 
         if args.command == 'run':

@@ -3371,8 +3371,8 @@ class Autosubmit:
         """
         Show details for specified experiment
 
-        :param experiments_id: experiments identifier:
-        :type experiments_id: str
+        :param input_experiment_list: experiments identifier:
+        :type input_experiment_list: list[str]
         :param get_from_user: user to get the experiments from
         :type get_from_user: str
         :return: str,str,str,str
@@ -3404,15 +3404,14 @@ class Autosubmit:
                 as_conf = AutosubmitConfig(
                     experiment_id, BasicConfig, YAMLParserFactory())
                 as_conf.check_conf_files(False,no_log=True)
-                user = os.stat(as_conf.experiment_file).st_uid
+                user = os.stat(exp_path).st_uid
                 try:
                     user = pwd.getpwuid(user).pw_name
                 except Exception as e:
                     Log.warning(
                         "The user does not exist anymore in the system, using id instead")
 
-                created = datetime.datetime.fromtimestamp(
-                    os.path.getmtime(as_conf.experiment_file))
+                created = datetime.datetime.fromtimestamp(os.path.getmtime(exp_path))
 
                 project_type = as_conf.get_project_type()
                 if as_conf.get_svn_project_url():

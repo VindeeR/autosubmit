@@ -116,7 +116,6 @@ class LocalPlatform(ParamikoPlatform):
         return True
 
     def send_file(self, filename):
-        #self.check_remote_log_dir()
         self.delete_file(filename,del_cmd=True)
         command = '{0} {1} {2}'.format(self.put_cmd, os.path.join(self.tmp_path, filename),
                                        os.path.join(self.tmp_path, 'LOG_' + self.expid, filename))

@@ -1201,10 +1201,10 @@ class ParamikoPlatform(Platform):
                 pass
             self._ftpChannel.mkdir(path)
             self._ftpChannel.rmdir(path)
+            self.check_remote_log_dir()
             return True
         except:
             return False
-        self.check_remote_log_dir()
 
 
 
@@ -1213,7 +1213,6 @@ class ParamikoPlatform(Platform):
         """
         Creates log dir on remote host
         """
-        # TODO change it to be in the check_remote_permissions
         if self.type == "slurm":
             try:
                 # Test if remote_path exists

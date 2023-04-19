@@ -149,9 +149,12 @@ class EcPlatform(ParamikoPlatform):
         :rtype: bool
         """
         output = subprocess.check_output(self._checkvalidcert_cmd, shell=True).decode(locale.getlocale()[1])
-        if output.lower().find("yes") != -1:
-            self.connected = True
-        else:
+        try:
+            if output.lower().find("yes") != -1:
+                self.connected = True
+            else:
+                self.connected = False
+        except:
             self.connected = False
     def restore_connection(self):
         """
@@ -161,9 +164,12 @@ class EcPlatform(ParamikoPlatform):
         :rtype: bool
         """
         output = subprocess.check_output(self._checkvalidcert_cmd, shell=True).decode(locale.getlocale()[1])
-        if output.lower().find("yes") != -1:
-            self.connected = True
-        else:
+        try:
+            if output.lower().find("yes") != -1:
+                self.connected = True
+            else:
+                self.connected = False
+        except:
             self.connected = False
     def test_connection(self):
         """
@@ -173,13 +179,16 @@ class EcPlatform(ParamikoPlatform):
         :rtype: bool
         """
         output = subprocess.check_output(self._checkvalidcert_cmd, shell=True).decode(locale.getlocale()[1])
-        if output.lower().find("yes") != -1:
-            self.connected = True
-            return "OK"
-        else:
+        try:
+            if output.lower().find("yes") != -1:
+                self.connected = True
+                return "OK"
+            else:
+                self.connected = False
+                return "Invalid certificate"
+        except:
             self.connected = False
             return "Invalid certificate"
-
 
     def check_remote_permissions(self):
         try:
@@ -188,13 +197,12 @@ class EcPlatform(ParamikoPlatform):
             except Exception as e:
                 pass
             subprocess.check_output(self.check_remote_permissions_cmd, shell=True)
-            pass
             subprocess.check_output(self.check_remote_permissions_remove_cmd, shell=True)
+            self.check_remote_log_dir()
+
             return True
         except Exception as e:
             return False
-        self.check_remote_log_dir()
-
 
     def send_command(self, command, ignore_log=False, x11 = False):
         try:

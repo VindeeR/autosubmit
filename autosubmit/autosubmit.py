@@ -2802,12 +2802,12 @@ class Autosubmit:
         :param platforms: list of platforms
         :return: dictionary with the directory as key and a list of platforms as value
         """
-        platforms_by_dir = defaultdict([])
+        platforms_by_dir = defaultdict(list)
         for platform in platforms:
             platforms_by_dir[platform.root_dir].append(platform)
         return platforms_by_dir
     @staticmethod
-    def check_migrate_config(as_conf,platforms):
+    def check_migrate_config(as_conf,platforms,new_platform_data):
         """
         Checks if the configuration file has the necessary information to migrate the data
         :param as_conf: Autosubmit configuration file
@@ -2818,20 +2818,16 @@ class Autosubmit:
         platforms_to_migrate = list()
         platforms_with_missconfiguration = list()
         platforms_by_dir = Autosubmit.get_platforms_grouped_by_dir(platforms)
-        for platform_dir in platforms_by_dir:
+        for platform_dir,platforms_list in platforms_by_dir.items():
             platform_dir_error = True
-            for platform in platform_dir:
-                Log.info("Checking [{0}] from platforms configuration...", platform)
-                if as_conf.platforms[platform.name].get("USER",None) is None or \
-                as_conf.platforms[platform.name].get("USER_TO",as_conf.platforms[platform.name].get("USER","")) == as_conf.platforms[platform.name].get("USER","") and not as_conf.platforms[platform.name].get("SAME_USER",False) or  \
-                as_conf.platforms[platform.name].get("PROJECT",None) is None or\
-                as_conf.platforms[platform.name].get("PROJECT_TO",None) is None or \
-                as_conf.platforms[platform].get("TEMP_DIR", "") == "":
-                    Log.debug(f"Values: USER: {as_conf.platforms[platform.name].get('USER',None)}"
-                              f" USER_TO: {as_conf.platforms[platform.name].get('USER_TO',None)}"
-                              f" PROJECT: {as_conf.platforms[platform.name].get('PROJECT',None)}"
-                              f" PROJECT_TO: {as_conf.platforms[platform.name].get('PROJECT_TO',None)}"
-                              f" TEMP_DIR: {as_conf.platforms[platform].get('TEMP_DIR', '')}")
+            for platform in platforms_list:
+                Log.info(f"Checking [{platform.name}] from platforms configuration...")
+                if as_conf.platforms_data[platform.name].get("USER", None) == new_platform_data[platform.name].get("USER", None) and not as_conf.platforms_data[platform.name].get("SAME_USER",False):
+                    Log.debug(f"Values: USER: {as_conf.platforms_data[platform.name].get('USER',None)}"
+                              f" USER_TO: {new_platform_data[platform.name].get('USER_TO',None)}"
+                              f" PROJECT: {as_conf.platforms_data[platform.name].get('PROJECT',None)}"
+                              f" PROJECT_TO: {new_platform_data[platform.name].get('PROJECT_TO',None)}"
+                              f" TEMP_DIR: {as_conf.platforms_data[platform].get('TEMP_DIR', '')}")
                     Log.debug(f"Invalid configuration for platform [{platform.name}]\nTrying next platform...")
                 else:
                     Log.info("Valid configuration for platform [{0}]".format(platform.name))
@@ -2860,10 +2856,29 @@ class Autosubmit:
             raise AutosubmitCritical(f"[LOCAL] Error offering the experiment: {str(e)}\n"
                                      f"Please, try again", 7000)
     @staticmethod
-    def migrate_offer_remote():
-        as_conf = AutosubmitConfig(
-            experiment_id, BasicConfig, YAMLParserFactory())
-        as_conf.check_conf_files(True)
+    def migrate_offer_remote(experiment_id):
+        # Init the configuration
+        as_conf = AutosubmitConfig(experiment_id, BasicConfig, YAMLParserFactory())
+        as_conf.check_conf_files(False)
+        # Load migrate
+        #Find migrate file
+        new_platform_data = as_conf.platforms_data
+        migrate_file = as_conf.experiment_data.get("AS_MIGRATE", None)
+        if migrate_file is None:
+            raise AutosubmitCritical("No migrate information found\nPlease add a key named AS_MIGRATE with the path to the file", 7014)
+        # expand home if needed
+        migrate_file = Path(os.path.expanduser(migrate_file))
+        # If does not exist, raise error
+        if not migrate_file.exists():
+            raise AutosubmitCritical(f"File {migrate_file} does not exist", 7014)
+        # Merge platform keys with migrate keys that should be the old credentials
+        # Migrate file consist of:
+        # platform_name: must match the platform name in the platforms configuration file, must have the old user
+        #  USER: user
+        #  PROJECT: project
+        #  Host ( optional ) : host of the machine if using alias
+        #  TEMP_DIR: temp dir for current platform, because can be different for each of them
+        as_conf.experiment_data = as_conf.load_config_file(as_conf.experiment_data,migrate_file)
         pkl_dir = os.path.join(BasicConfig.LOCAL_ROOT_DIR, experiment_id, 'pkl')
         job_list = Autosubmit.load_job_list(experiment_id, as_conf, notransitive=True, monitor=True)
         Log.debug("Job list restored from {0} files", pkl_dir)
@@ -2885,10 +2900,9 @@ class Autosubmit:
         if submitter.platforms is None:
             return False
         Log.info("Checking remote platforms")
-        platforms = [x for x in submitter.platforms if x not in [
-            'local', 'LOCAL']]
+        #[x for x in submitter.platforms if x not in ['local', 'LOCAL']]
         # Checks and annotates the platforms to migrate ( one per directory if they share it )
-        platforms_to_migrate = Autosubmit.check_migrate_config(as_conf, platforms)
+        platforms_to_migrate = Autosubmit.check_migrate_config(as_conf,platforms_to_test,new_platform_data)
         platforms_without_issues = list()
         for platform in platforms_to_migrate:
             p = submitter.platforms[platform]
@@ -2941,7 +2955,7 @@ class Autosubmit:
         # TODO set user_to and project_to to the correct values
     @staticmethod
     def migrate_offer(experiment_id,only_remote):
-        Autosubmit.migrate_offer_remote()
+        Autosubmit.migrate_offer_remote(experiment_id)
         if not only_remote:
             Autosubmit.migrate_offer_local(experiment_id)
 

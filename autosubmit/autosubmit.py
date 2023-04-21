@@ -2816,18 +2816,21 @@ class Autosubmit:
         """
         error = False
         platforms_to_migrate = list()
-        platforms_with_missconfiguration = list()
+        platforms_with_missconfiguration = ""
         platforms_by_dir = Autosubmit.get_platforms_grouped_by_dir(platforms)
         for platform_dir,platforms_list in platforms_by_dir.items():
             platform_dir_error = True
             for platform in platforms_list:
+                if platform.name.upper() == "LOCAL":
+                    platform_dir_error = False
+                    continue
                 Log.info(f"Checking [{platform.name}] from platforms configuration...")
                 if as_conf.platforms_data[platform.name].get("USER", None) == new_platform_data[platform.name].get("USER", None) and not as_conf.platforms_data[platform.name].get("SAME_USER",False):
-                    Log.debug(f"Values: USER: {as_conf.platforms_data[platform.name].get('USER',None)}"
-                              f" USER_TO: {new_platform_data[platform.name].get('USER_TO',None)}"
-                              f" PROJECT: {as_conf.platforms_data[platform.name].get('PROJECT',None)}"
-                              f" PROJECT_TO: {new_platform_data[platform.name].get('PROJECT_TO',None)}"
-                              f" TEMP_DIR: {as_conf.platforms_data[platform].get('TEMP_DIR', '')}")
+                    Log.debug(f"Values: USER: {as_conf.platforms_data[platform.name].get('USER',None)}\n"
+                              f" USER_TO: {new_platform_data[platform.name].get('USER',None)}\n"
+                              f" PROJECT: {as_conf.platforms_data[platform.name].get('PROJECT',None)}\n"
+                              f" PROJECT_TO: {new_platform_data[platform.name].get('PROJECT',None)}\n"
+                              f" TEMP_DIR: {as_conf.platforms_data[platform.name].get('TEMP_DIR', '')}\n")
                     Log.debug(f"Invalid configuration for platform [{platform.name}]\nTrying next platform...")
                 else:
                     Log.info("Valid configuration for platform [{0}]".format(platform.name))
@@ -2841,7 +2844,7 @@ class Autosubmit:
                     platform_names = platform_names[:-2]
                     platforms_with_missconfiguration += f"{platform_dir}: {platform_names}\n"
         if error:
-            raise AutosubmitCritical(f"Invalid migrate configuration for platforms: {platforms_with_missconfiguration}", 7014)
+            raise AutosubmitCritical(f"Invalid migrate configuration for platforms: {platforms_with_missconfiguration} ", 7014)
         else:
             return platforms_to_migrate
 
@@ -2856,13 +2859,33 @@ class Autosubmit:
             raise AutosubmitCritical(f"[LOCAL] Error offering the experiment: {str(e)}\n"
                                      f"Please, try again", 7000)
     @staticmethod
+    def get_migrate_info(as_conf):
+        migrate_file = as_conf.experiment_data.get("AS_MIGRATE", None)
+        if migrate_file is None:
+            raise AutosubmitCritical(
+                "No migrate information found\nPlease add a key named AS_MIGRATE with the path to the file", 7014)
+
+        # expand home if needed
+        migrate_file = Path(os.path.expanduser(migrate_file))
+        # If does not exist, raise error
+        if not migrate_file.exists():
+            raise AutosubmitCritical(f"File {migrate_file} does not exist", 7014)
+        # Merge platform keys with migrate keys that should be the old credentials
+        # Migrate file consist of:
+        # platform_name: must match the platform name in the platforms configuration file, must have the old user
+        #  USER: user
+        #  PROJECT: project
+        #  Host ( optional ) : host of the machine if using alias
+        #  TEMP_DIR: temp dir for current platform, because can be different for each of them
+        return as_conf.load_config_file(as_conf.experiment_data, migrate_file)
+    @staticmethod
     def migrate_offer_remote(experiment_id):
         # Init the configuration
         as_conf = AutosubmitConfig(experiment_id, BasicConfig, YAMLParserFactory())
         as_conf.check_conf_files(False)
         # Load migrate
         #Find migrate file
-        new_platform_data = as_conf.platforms_data
+        new_platform_data = copy.deepcopy(as_conf.platforms_data)
         migrate_file = as_conf.experiment_data.get("AS_MIGRATE", None)
         if migrate_file is None:
             raise AutosubmitCritical("No migrate information found\nPlease add a key named AS_MIGRATE with the path to the file", 7014)
@@ -2878,7 +2901,7 @@ class Autosubmit:
         #  PROJECT: project
         #  Host ( optional ) : host of the machine if using alias
         #  TEMP_DIR: temp dir for current platform, because can be different for each of them
-        as_conf.experiment_data = as_conf.load_config_file(as_conf.experiment_data,migrate_file)
+        as_conf.experiment_data = Autosubmit.get_migrate_info(as_conf,migrate_file)
         pkl_dir = os.path.join(BasicConfig.LOCAL_ROOT_DIR, experiment_id, 'pkl')
         job_list = Autosubmit.load_job_list(experiment_id, as_conf, notransitive=True, monitor=True)
         Log.debug("Job list restored from {0} files", pkl_dir)
@@ -2905,10 +2928,8 @@ class Autosubmit:
         platforms_to_migrate = Autosubmit.check_migrate_config(as_conf,platforms_to_test,new_platform_data)
         platforms_without_issues = list()
         for platform in platforms_to_migrate:
-            p = submitter.platforms[platform]
+            p = submitter.platforms[platform.name]
             if p.root_dir != p.temp_dir and len(p.temp_dir) > 0:
-                # find /home/bsc32/bsc32070/dummy3 -type l -lname '/*' -printf ' ln -sf "$(realpath -s --relative-to="%p" $(readlink "%p")")" \n' > script.sh
-                # command = "find " + p.root_dir + " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n'"
                 Log.info(f"Converting the absolute symlinks into relatives on platform [{platform.name}] ")
                 command = f"find {p.root_dir} -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${{var:3}} && ln -sf $var \"%p\"  \\n' "
                 try:
@@ -2961,20 +2982,20 @@ class Autosubmit:
 
     @staticmethod
     def migrate_pickup(experiment_id, only_remote):
-        Log.info('Migrating experiment {0}'.format(experiment_id))
-        Log.info("Moving local files/dirs")
+        Log.info(f'Migrating experiment {experiment_id}')
         if not only_remote:
-            if not Autosubmit.unarchive(experiment_id, True):
-                raise AutosubmitCritical(
-                    "The experiment cannot be picked up", 7012)
+            Log.info("Moving local files/dirs")
+            if not Autosubmit.unarchive(experiment_id, True, False):
+                if not Path(os.path.join(BasicConfig.LOCAL_ROOT_DIR, experiment_id)).exists():
+                    raise AutosubmitCritical(
+                        "The experiment cannot be picked up", 7012)
             Log.info("Local files/dirs have been successfully picked up")
         else:
             exp_path = os.path.join(
                 BasicConfig.LOCAL_ROOT_DIR, experiment_id)
             if not os.path.exists(exp_path):
                 raise AutosubmitCritical(
-                    "Experiment seems to be archived, no action is performed", 7012)
-
+                    "Experiment seems to be archived, no action is performed\nHint: Try to pickup without the remote flag", 7012)
         as_conf = AutosubmitConfig(
             experiment_id, BasicConfig, YAMLParserFactory())
         as_conf.check_conf_files(False)
@@ -2990,11 +3011,14 @@ class Autosubmit:
         if submitter.platforms is None:
             raise AutosubmitCritical("No platforms configured!!!", 7014)
         platforms = submitter.platforms
+        job_sections_check = set()
         for job in job_list.get_job_list():
-            job.submitter = submitter
-            if job.platform_name is None:
-                job.platform_name = as_conf.get_platform()
-            platforms_to_test.add(platforms[job.platform_name])
+            if job.section not in job_sections_check:
+                job_sections_check.add(job.section)
+                job.submitter = submitter
+                if job.platform_name is None:
+                    job.platform_name = as_conf.get_platform()
+                platforms_to_test.add(platforms[job.platform_name])
 
         Log.info("Checking remote platforms")
         platforms = [x for x in submitter.platforms if x not in [
@@ -4233,7 +4257,7 @@ class Autosubmit:
         return True
 
     @staticmethod
-    def unarchive(experiment_id, uncompressed=True):
+    def unarchive(experiment_id, uncompressed=True, show_err_log = True):
         """
         Unarchives an experiment: uncompress folder from tar.gz and moves to experiment root folder
 
@@ -4262,7 +4286,8 @@ class Autosubmit:
             year -= 1
 
         if year == 2000:
-            Log.error("Experiment {0} is not archived", experiment_id)
+            if show_err_log:
+                Log.error("Experiment {0} is not archived", experiment_id)
             return False
         Log.info("Experiment located in {0} archive", year)
 
@@ -4276,7 +4301,8 @@ class Autosubmit:
                 tar.close()
         except Exception as e:
             shutil.rmtree(exp_folder, ignore_errors=True)
-            Log.printlog("Can not extract tar file: {0}".format(str(e)), 6012)
+            if show_err_log:
+                Log.printlog("Can not extract tar file: {0}".format(str(e)), 6012)
             return False
 
         Log.info("Unpacking finished")

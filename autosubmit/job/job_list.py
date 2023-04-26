@@ -407,14 +407,9 @@ class JobList(object):
             for parent in parents_jobs:
                 # Generic for all dependencies
                 if dependency.delay == -1 or chunk > dependency.delay:
-                    if isinstance(parent, list):
-                        if job.split is not None:
-                            parent = filter(
-                                lambda _parent: _parent.split == job.split, parent)[0]
-                        else:
-                            if dependency.splits is not None:
-                                parent = filter(
-                                    lambda _parent: _parent.split in dependency.splits, parent)
+                    if parent.split is not None and dependency.splits is not None:
+                        if parent.split not in dependency.splits:
+                            continue
                     #Select chunk + select member
                     if parent.running in ["once"] or ( len(dependency.select_members_orig) <= 0 and len(dependency.select_chunks_orig) <= 0):
                         job.add_parent(parent)

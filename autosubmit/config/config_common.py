@@ -322,7 +322,25 @@ class AutosubmitConfig(object):
         :rtype: str
         """
         return str(self._jobs_parser.get_option(section, 'NODES', ''))
+    def get_ec_queue_platform(self, section):
+        """
+        Gets ec_queue needed for the given job type
+        :param section: job type
+        :type section: str
+        :return: tasks (processes) per host
+        :rtype: str
+        """
+        return str(self._platforms_parser.get_option(section, 'EC_QUEUE', 'hpc'))
+    def get_ec_queue(self, job):
+        """
+        Gets ec_queue needed for the given job type
+        :param section: job type
+        :type section: str
+        :return: tasks (processes) per host
+        :rtype: str
+        """
 
+        return str(self._jobs_parser.get_option(job.section, 'EC_QUEUE', self.get_ec_queue_platform(job.platform_name)))
     def get_scratch_free_space(self, section):
         """
         Gets scratch free space needed for the given job type

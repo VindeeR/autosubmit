@@ -1049,7 +1049,7 @@ class Job(object):
         self.threads = as_conf.get_threads(self.section)
         self.tasks = as_conf.get_tasks(self.section)
         self.nodes = as_conf.get_nodes(self.section)
-
+        self.ec_queue = as_conf.get_ec_queue(self)
         self.hyperthreading = as_conf.get_hyperthreading(self.section).lower()
         if self.hyperthreading is 'none':
             self.hyperthreading = job_platform.hyperthreading.lower()
@@ -1103,6 +1103,7 @@ class Job(object):
         parameters['CURRENT_ARCH'] = job_platform.name
         parameters['CURRENT_HOST'] = job_platform.host
         parameters['CURRENT_QUEUE'] = self.queue
+        parameters['CURRENT_EC_QUEUE'] = self.ec_queue
         parameters['CURRENT_USER'] = job_platform.user
         parameters['CURRENT_PROJ'] = job_platform.project
         parameters['CURRENT_BUDG'] = job_platform.budget

@@ -1,4 +1,6 @@
 import locale
+from binascii import hexlify
+from contextlib import suppress
 from time import sleep
 import sys
 import socket
@@ -125,8 +127,11 @@ class ParamikoPlatform(Platform):
                 except BaseException as e:
                     message = str(e)
                 if message.find("t accept remote connections") == -1:
-                    transport = self._ssh.get_transport()
-                    transport.send_ignore()
+                    try:
+                        transport = self._ssh.get_transport()
+                        transport.send_ignore()
+                    except:
+                        message = "Timeout connection"
                 return message
         except EOFError as e:
             self.connected = False
@@ -147,8 +152,6 @@ class ParamikoPlatform(Platform):
             retry = 0
             try:
                 self.connect()
-            except SSHException as e:
-                raise
             except Exception as e:
                 if ',' in self.host:
                     Log.printlog("Connection Failed to {0}, will test another host".format(
@@ -168,7 +171,7 @@ class ParamikoPlatform(Platform):
                 raise AutosubmitCritical(
                     'Experiment cant no continue without unexpected behaviour, Stopping Autosubmit', 7050, trace)
 
-        except AutosubmitCritical:
+        except AutosubmitCritical as e:
             raise
         except SSHException as e:
             raise
@@ -176,7 +179,18 @@ class ParamikoPlatform(Platform):
             raise AutosubmitCritical(
                 'Cant connect to this platform due an unknown error', 7050, str(e))
 
-
+    def agent_auth(self,port):
+        """
+        Attempt to authenticate to the given SSH server using the most common authentication methods available. This will always try to use the SSH agent first, and will fall back to using the others methods if that fails.
+        :parameter port: port to connect
+        :return: True if authentication was successful, False otherwise
+        """
+        try:
+            self._ssh.connect(self._host_config['hostname'], port=port, username=self.user, timeout=60, banner_timeout=60)
+        except BaseException as e:
+            Log.warning(f'Failed to authenticate with ssh-agent due to {e}')
+            return False
+        return True
     def connect(self, reconnect=False):
         """
         Creates ssh connection to host
@@ -192,7 +206,6 @@ class ParamikoPlatform(Platform):
             self._ssh = paramiko.SSHClient()
             self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             self._ssh_config = paramiko.SSHConfig()
-
             self._user_config_file = os.path.expanduser("~/.ssh/config")
             if os.path.exists(self._user_config_file):
                 with open(self._user_config_file) as f:
@@ -203,45 +216,44 @@ class ParamikoPlatform(Platform):
                     self._host_config['hostname'] = random.choice(
                         self._host_config['hostname'].split(',')[1:])
                 else:
-                    self._host_config['hostname'] = self._host_config['hostname'].split(',')[
-                        0]
+                    self._host_config['hostname'] = self._host_config['hostname'].split(',')[0]
             if 'identityfile' in self._host_config:
                 self._host_config_id = self._host_config['identityfile']
-
-            if 'proxycommand' in self._host_config:
-                self._proxy = paramiko.ProxyCommand(
-                    self._host_config['proxycommand'])
-                try:
-                    self._ssh.connect(self._host_config['hostname'], 22, username=self.user,
-                                      key_filename=self._host_config_id, sock=self._proxy, timeout=120 , banner_timeout=120)
-                except Exception as e:
-                    self._ssh.connect(self._host_config['hostname'], 22, username=self.user,
-                                      key_filename=self._host_config_id, sock=self._proxy, timeout=120,
-                                      banner_timeout=120,disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']})
-            else:
-                try:
-                    self._ssh.connect(self._host_config['hostname'], 22, username=self.user,
-                                      key_filename=self._host_config_id, timeout=120 , banner_timeout=120)
-                except Exception as e:
-                    self._ssh.connect(self._host_config['hostname'], 22, username=self.user,
-                                      key_filename=self._host_config_id, timeout=120 , banner_timeout=120,disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']})
+            port = int(self._host_config.get('port',22))
+            # Agent Auth
+            if not self.agent_auth(port):
+                # Public Key Auth
+                if 'proxycommand' in self._host_config:
+                    self._proxy = paramiko.ProxyCommand(self._host_config['proxycommand'])
+                    try:
+                        self._ssh.connect(self._host_config['hostname'], port, username=self.user,
+                                          key_filename=self._host_config_id, sock=self._proxy, timeout=60 , banner_timeout=60)
+                    except Exception as e:
+                        self._ssh.connect(self._host_config['hostname'], port, username=self.user,
+                                          key_filename=self._host_config_id, sock=self._proxy, timeout=60,
+                                          banner_timeout=60,disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']})
+                else:
+                    try:
+                        self._ssh.connect(self._host_config['hostname'], port, username=self.user,
+                                          key_filename=self._host_config_id, timeout=60 , banner_timeout=60)
+                    except Exception as e:
+                        self._ssh.connect(self._host_config['hostname'], port, username=self.user,
+                                          key_filename=self._host_config_id, timeout=60 , banner_timeout=60,disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']})
             self.transport = self._ssh.get_transport()
-            #self.transport = paramiko.Transport((self._host_config['hostname'], 22))
-            #self.transport.connect(username=self.user)
-            window_size = pow(4, 12)  # about ~16MB chunks
-            max_packet_size = pow(4, 12)
-            #self._ftpChannel = self._ssh.open_sftp()
-            self._ftpChannel = paramiko.SFTPClient.from_transport(self.transport,window_size=window_size,max_packet_size=max_packet_size)
+            self.transport.banner_timeout = 60
+
+            self._ftpChannel = paramiko.SFTPClient.from_transport(self.transport,window_size=pow(4, 12) ,max_packet_size=pow(4, 12) )
+            self._ftpChannel.get_channel().settimeout(120)
             self.connected = True
         except SSHException as e:
             raise
         except IOError as e:
-            if "refused" in e.strerror.lower():
+            if "refused" in str(e.strerror).lower():
                 raise SSHException(" {0} doesn't accept remote connections. Check if there is an typo in the hostname".format(self.host))
-            elif "name or service not known" in e.strerror.lower():
+            elif "name or service not known" in str(e.strerror).lower():
                 raise SSHException(" {0} doesn't accept remote connections. Check if there is an typo in the hostname".format(self.host))
             else:
-                raise AutosubmitError("File can't be located due an slow connection", 6016, str(e))
+                raise AutosubmitError("File can't be located due an slow or timeout connection", 6016, str(e))
         except BaseException as e:
             self.connected = False
             if "Authentication failed." in str(e):
@@ -485,6 +497,25 @@ class ParamikoPlatform(Platform):
         """
         raise NotImplementedError
 
+    def get_estimated_queue_time_cmd(self, job_id):
+        """
+        Returns command to get estimated queue time on remote platforms
+
+        :param job_id: id of job to check
+        :param job_id: str
+        :return: command to get estimated queue time
+        """
+        raise NotImplementedError
+    def parse_estimated_time(self, output):
+        """
+        Parses estimated queue time from output of get_estimated_queue_time_cmd
+
+        :param output: output of get_estimated_queue_time_cmd
+        :type output: str
+        :return: estimated queue time
+        :rtype:
+        """
+        raise NotImplementedError
     def check_job(self, job, default_status=Status.COMPLETED, retries=5, submit_hold_check=False, is_wrapper=False):
         """
         Checks job running status
@@ -534,8 +565,8 @@ class ParamikoPlatform(Platform):
                         job.start_time = datetime.datetime.now() # URi: start time
                     if job.start_time is not None and str(job.wrapper_type).lower() == "none":
                         wallclock = job.wallclock
-                        if job.wallclock == "00:00":
-                            wallclock == job.platform.max_wallclock
+                        if job.wallclock == "00:00" or job.wallclock is None:
+                            wallclock = job.platform.max_wallclock
                         if wallclock != "00:00" and wallclock != "00:00:00" and wallclock != "":
                             if job.is_over_wallclock(job.start_time,wallclock):
                                 try:
@@ -567,7 +598,27 @@ class ParamikoPlatform(Platform):
             if job not in ssh_output:
                 return False
         return True
+    def parse_joblist(self, job_list):
+        """
+        Convert a list of job_list to job_list_cmd
+        :param job_list: list of jobs
+        :type job_list: list
+        :param ssh_output: ssh output
+        :type ssh_output: str
+        :return: job status
+        :rtype: str
+        """
+        job_list_cmd = ""
+        for job,job_prev_status in job_list:
+            if job.id is None:
+                job_str = "0"
+            else:
+                job_str = str(job.id)
+            job_list_cmd += job_str+","
+        if job_list_cmd[-1] == ",":
+            job_list_cmd=job_list_cmd[:-1]
 
+        return job_list_cmd
     def check_Alljobs(self, job_list, as_conf, retries=5):
         """
         Checks jobs running status
@@ -584,15 +635,7 @@ class ParamikoPlatform(Platform):
         """
         job_status = Status.UNKNOWN
         remote_logs = as_conf.get_copy_remote_logs()
-        job_list_cmd = ""
-        for job,job_prev_status in job_list:
-            if job.id is None:
-                job_str = "0"
-            else:
-                job_str = str(job.id)
-            job_list_cmd += job_str+","
-        if job_list_cmd[-1] == ",":
-            job_list_cmd=job_list_cmd[:-1]
+        job_list_cmd = self.parse_joblist(job_list)
         cmd = self.get_checkAlljobs_cmd(job_list_cmd)
         sleep_time = 5
         sleep(sleep_time)
@@ -601,14 +644,14 @@ class ParamikoPlatform(Platform):
         try:
             self.send_command(cmd)
         except AutosubmitError as e:
-            e_msg = str(e.trace)+" "+str(e.message)
+            e_msg = e.error_message
             slurm_error = True
         if not slurm_error:
             while not self._check_jobid_in_queue(self.get_ssh_output(), job_list_cmd) and retries > 0:
                 try:
                     self.send_command(cmd)
                 except AutosubmitError as e:
-                    e_msg = str(e.trace) + " " + str(e.message)
+                    e_msg = e.error_message
                     slurm_error = True
                     break
                 Log.debug('Retrying check job command: {0}', cmd)
@@ -652,6 +695,12 @@ class ParamikoPlatform(Platform):
                             try:
                                 job.platform.get_completed_files(job.name)
                                 job_status = job.check_completion(over_wallclock=True)
+                                if job_status is Status.FAILED:
+                                    try:
+                                        if self.cancel_cmd is not None:
+                                            job.platform.send_command(self.cancel_cmd + " " + str(job.id))
+                                    except:
+                                        pass
                             except:
                                 job_status = Status.FAILED
                 if job_status in self.job_status['COMPLETED']:
@@ -676,39 +725,9 @@ class ParamikoPlatform(Platform):
                     Log.error(
                         'check_job() The job id ({0}) status is {1}.', job.id, job_status)
                 job.new_status = job_status
-            reason = str()
-            if self.type == 'slurm' and len(in_queue_jobs) > 0:
-                cmd = self.get_queue_status_cmd(list_queue_jobid)
-                self.send_command(cmd)
-                queue_status = self._ssh_output
-                for job in in_queue_jobs:
-                    reason = self.parse_queue_reason(queue_status, job.id)
-                    if job.queuing_reason_cancel(reason):
-                        Log.error(
-                            "Job {0} will be cancelled and set to FAILED as it was queuing due to {1}", job.name, reason)
-                        self.send_command(
-                            self.platform.cancel_cmd + " {0}".format(job.id))
-                        job.new_status = Status.FAILED
-                        job.update_status(as_conf)
-                        return
-                    elif reason == '(JobHeldUser)':
-                        job.new_status = Status.HELD
-                        if not job.hold:
-                            # SHOULD BE MORE CLASS (GET_scontrol release but not sure if this can be implemented on others PLATFORMS
-                            self.send_command("scontrol release {0}".format(job.id))
-                            job.new_status = Status.QUEUING # If it was HELD and was released, it should be QUEUING next.                                                        
-                        else:
-                            pass
-                    # This shouldn't happen anymore TODO delete
-                    elif reason == '(JobHeldAdmin)':
-                        Log.debug(
-                            "Job {0} Failed to be HELD, canceling... ", job.name)
-                        job.new_status = Status.WAITING
-                        job.platform.send_command(
-                            job.platform.cancel_cmd + " {0}".format(job.id))
-
+            self.get_queue_status(in_queue_jobs,list_queue_jobid,as_conf)
         else:
-            for job in job_list:
+            for job, job_prev_status in job_list:
                 job_status = Status.UNKNOWN
                 Log.warning(
                     'check_job() The job id ({0}) from platform {1} has an status of {2}.', job.id, self.name, job_status)
@@ -741,10 +760,16 @@ class ParamikoPlatform(Platform):
             job_ids = [job_id.split(',')[0] for job_id in job_ids_names]
         return job_ids
 
+    def get_queue_status(self, in_queue_jobs, list_queue_jobid, as_conf):
+        """Get queue status for a list of jobs.
 
+        The job statuses are normally found via a command sent to the remote platform.
 
-
-
+        Each ``job`` in ``in_queue_jobs`` must be updated. Implementations may check
+        for the reason for queueing cancellation, or if the job is held, and update
+        the ``job`` status appropriately.
+        """
+        raise NotImplementedError
 
 
     def get_checkjob_cmd(self, job_id):
@@ -768,6 +793,21 @@ class ParamikoPlatform(Platform):
         :rtype: str
         """
         raise NotImplementedError
+
+    def get_jobid_by_jobname_cmd(self, job_name):
+        """
+        Returns command to get job id by job name on remote platforms
+        :param job_name:
+        :return: str
+        """
+        return NotImplementedError
+
+    def get_queue_status_cmd(self, job_name):
+        """
+        Returns command to get queue status on remote platforms
+        :return: str
+        """
+        return NotImplementedError
 
     def x11_handler(self, channel, xxx_todo_changeme):
         '''handler for incoming x11 connections
@@ -1103,7 +1143,7 @@ class ParamikoPlatform(Platform):
         """
         Gets command to check if a job is running given process identifier
 
-        :param job_id: process indentifier
+        :param job_id: process identifier
         :type job_id: int
         :return: command to check job status script
         :rtype: str
@@ -1174,6 +1214,9 @@ class ParamikoPlatform(Platform):
         if hasattr(self.header, 'get_account_directive'):
             header = header.replace(
                 '%ACCOUNT_DIRECTIVE%', self.header.get_account_directive(job))
+        if hasattr(self.header, 'get_nodes_directive'):
+            header = header.replace(
+                '%NODES_DIRECTIVE%', self.header.get_nodes_directive(job))
         if hasattr(self.header, 'get_memory_directive'):
             header = header.replace(
                 '%MEMORY_DIRECTIVE%', self.header.get_memory_directive(job))

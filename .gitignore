@@ -3,14 +3,19 @@
 .*.sw*
 .*.pyc*
 .*.log*
-/cover/
-/.coverage
 autosubmit/miniTest.py
 autosubmit/simple_test.py
 .vscode/
 .pytest_cache/
 .idea/
 autosubmit.egg-info/
-venv/
-.pytest_cache/
-.cache/
+docs/build/
+dist/
+build/
+.cache
+
+# Coverage files
+coverage/
+/.coverage
+test/coverage.xml
+

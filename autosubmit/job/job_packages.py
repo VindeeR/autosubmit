@@ -123,6 +123,7 @@ class JobPackageBase(object):
     def _create_common_script(self,filename=""):
         pass
 
+
     def submit(self, configuration, parameters,only_generate=False,hold=False):
         """
         :param hold:
@@ -161,6 +162,8 @@ class JobPackageBase(object):
                         else:
                             Log.result("Script {0} OK",job.name)
                     job.update_parameters(configuration, parameters)
+                    # Looking for special variables
+
                     # looking for directives on jobs
                     self._custom_directives = self._custom_directives | set(job.custom_directives)
             else:
@@ -173,7 +176,7 @@ class JobPackageBase(object):
             raise
         except BaseException as e: #should be IOERROR
             raise AutosubmitCritical(
-                "Error on {1}, template [{0}] still does not exists in running time(check=on_submission actived) ".format(job.file,job.name), 7014)
+                "Error on {1}, template [{0}] still does not exists in running time(check=on_submission activated) ".format(job.file,job.name), 7014)
         Log.debug("Creating Scripts")
         if not exit_:
             if len(self.jobs) < thread_number:
@@ -220,8 +223,12 @@ class JobPackageSimple(JobPackageBase):
     def _send_files(self):
         for job in self.jobs:
             self.platform.send_file(self._job_scripts[job.name])
-            for file in job.additional_files:
-                self.platform.send_file(file)
+            # TODO Ugly fix quick fix until figure another option, this is to avoid to delete the Additional file in local before sending it due sharing the same directory
+            if self.platform.type.upper() != "LOCAL":
+                for file_n in range(len(job.additional_files)):
+                    filename = os.path.basename(os.path.splitext(job.additional_files[file_n])[0])
+                    full_path = os.path.join(self._tmp_path,filename ) + "_" + job.name[5:]
+                    self.platform.send_file(os.path.join(self._tmp_path, full_path))
 
     def _do_submission(self, job_scripts="", hold=False):
         if len(job_scripts) == 0:
@@ -280,7 +287,7 @@ class JobPackageArray(JobPackageBase):
         self._common_script = None
         self._array_size_id = "[1-" + str(len(jobs)) + "]"
         self._wallclock = '00:00'
-        self._num_processors = '1'
+        self._num_processors = '0'
         for job in jobs:
             if job.wallclock > self._wallclock:
                 self._wallclock = job.wallclock
@@ -345,6 +352,7 @@ class JobPackageThread(JobPackageBase):
 
     def __init__(self, jobs, dependency=None, jobs_resources=dict(),method='ASThread',configuration=None,wrapper_section="WRAPPERS", wrapper_info= {}):
         super(JobPackageThread, self).__init__(jobs)
+        # to be pass as "configuration"
         if len(wrapper_info) > 0 :
             self.wrapper_type = wrapper_info[0]
             self.wrapper_policy = wrapper_info[1]
@@ -357,13 +365,12 @@ class JobPackageThread(JobPackageBase):
             self.wrapper_method = None
             self.jobs_in_wrapper = None
             self.extensible_wallclock = 0
-
         self._job_scripts = {}
         # Seems like this one is not used at all in the class
         self._job_dependency = dependency
         self._common_script = None
         self._wallclock = '00:00'
-        self._num_processors = '1'
+        self._num_processors = '0'
         self._jobs_resources = jobs_resources
         self._wrapper_factory = self.platform.wrapper
         self.current_wrapper_section = wrapper_section
@@ -386,10 +393,46 @@ class JobPackageThread(JobPackageBase):
                 self.partition = wr_partition
             else:
                 self.partition = jobs[0].partition
+            wr_exclusive = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,{}).get("EXCLUSIVE",False)
+            if  wr_exclusive:
+                self.exclusive = wr_exclusive
+            else:
+                self.exclusive = jobs[0].exclusive
+            wr_custom_directives = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,{}).get("CUSTOM_DIRECTIVES",[])
+            if len(str(wr_custom_directives)) > 0:
+                self.custom_directives = wr_custom_directives
+            else:
+                self.custom_directives = jobs[0].custom_directives
+            wr_executable = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,{}).get("EXECUTABLE",None)
+            if wr_executable is None:
+                self.executable = wr_executable
+            else:
+                self.executable = jobs[0].executable
         else:
             self.queue = jobs[0].queue
             self.partition = jobs[0].partition
         self.method = method
+        self._wrapper_factory.as_conf = configuration
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"] = configuration.experiment_data["WRAPPERS"][self.current_wrapper_section]
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["TYPE"] = self.wrapper_type
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["WRAPPER_POLICY"] = self.wrapper_policy
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["INNER_RETRIALS"] = self.inner_retrials
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["EXTEND_WALLCLOCK"] = self.extensible_wallclock
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["METHOD"] = self.wrapper_method
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["EXPORT"] = self.export
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["QUEUE"] = self.queue
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["PARTITION"] = self.partition
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["EXCLUSIVE"] = self.exclusive
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["EXECUTABLE"] = self.executable
+        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["CUSTOM_DIRECTIVES"] = self.custom_directives
+
+        pass
+
+
+
+
+
+
 #pipeline
     @property
     def name(self):
@@ -410,7 +453,7 @@ class JobPackageThread(JobPackageBase):
         return jobs_scripts
     @property
     def queue(self):
-        if str(self._num_processors) == '1':
+        if str(self._num_processors) == '1' or str(self._num_processors) == '0':
             return self.platform.serial_platform.serial_queue
         else:
             return self._queue
@@ -522,7 +565,7 @@ class JobPackageThreadWrapped(JobPackageThread):
 
     @property
     def queue(self):
-        if str(self._num_processors) == '1':
+        if str(self._num_processors) == '1' or str(self._num_processors) == '0':
             return self.platform.serial_platform.serial_queue
         else:
             return self.platform.queue
@@ -682,7 +725,7 @@ class JobPackageHorizontal(JobPackageThread):
                                                  num_processors=self._num_processors, jobs_scripts=self._jobs_scripts,
                                                  dependency=self._job_dependency, jobs_resources=self._jobs_resources,
                                                  expid=self._expid, rootdir=self.platform.root_dir,
-                                                 directives=self._custom_directives,threads=self._threads,method=self.method.lower())
+                                                 directives=self._custom_directives,threads=self._threads,method=self.method.lower(),partition=self.partition)
 
 class JobPackageHybrid(JobPackageThread):
     """
@@ -727,7 +770,7 @@ class JobPackageVerticalHorizontal(JobPackageHybrid):
                                                  wallclock=self._wallclock, num_processors=self._num_processors,
                                                  jobs_scripts=self._jobs_scripts, dependency=self._job_dependency,
                                                  jobs_resources=self._jobs_resources, expid=self._expid,
-                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower())
+                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower(),partition=self.partition)
 
 
 class JobPackageHorizontalVertical(JobPackageHybrid):
@@ -738,5 +781,5 @@ class JobPackageHorizontalVertical(JobPackageHybrid):
                                                  wallclock=self._wallclock, num_processors=self._num_processors,
                                                  jobs_scripts=self._jobs_scripts, dependency=self._job_dependency,
                                                  jobs_resources=self._jobs_resources, expid=self._expid,
-                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower())
+                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower(),partition=self.partition)
 

@@ -5,7 +5,6 @@ import traceback
 from autosubmit.job.job_common import Status
 from typing import List, Union
 
-from autosubmit.job.job_exceptions import WrongTemplateException
 from log.log import AutosubmitCritical, AutosubmitError, Log
 
 class Platform(object):
@@ -24,10 +23,13 @@ class Platform(object):
         self.name = name # type: str
         self.config = config
         self.tmp_path = os.path.join(
-            self.config.LOCAL_ROOT_DIR, self.expid, self.config.LOCAL_TMP_DIR)
+            self.config.get("LOCAL_ROOT_DIR"), self.expid, self.config.get("LOCAL_TMP_DIR"))
         self._serial_platform = None
         self._serial_queue = None
+        self._serial_partition = None
         self._default_queue = None
+        self._partition = None
+        self.ec_queue = "hpc"
         self.processors_per_node = "1"
         self.scratch_free_space = None
         self.custom_directives = None
@@ -52,7 +54,24 @@ class Platform(object):
         self._allow_arrays = False
         self._allow_wrappers = False
         self._allow_python_jobs = True
-
+        self.mkdir_cmd = None
+        self.get_cmd = None
+        self.put_cmd = None
+        self._submit_hold_cmd = None
+        self._submit_command_name = None
+        self._submit_cmd = None
+        self._checkhost_cmd = None
+        self.cancel_cmd = None
+    def get_exclusive_directive(self, job):
+        """
+        Returns exclusive directive for the specified job
+        :param job: job to create exclusive directive for
+        :type job: Job
+        :return: exclusive directive
+        :rtype: str
+        """
+        # only implemented for slurm
+        return ""
     def get_multiple_jobids(self,job_list,valid_packages_to_submit,failed_packages,error_message="",hold=False):
         return False,valid_packages_to_submit
         #raise NotImplementedError
@@ -149,10 +168,6 @@ class Platform(object):
                             else:
                                 error_message += "\ncheck that {1} platform has set the correct scheduler. Sections that could be affected: {0}".format(
                                     error_msg[:-1], self.name)
-
-                    except WrongTemplateException as e:
-                        raise AutosubmitCritical("Invalid parameter substitution in {0} template".format(
-                            e.job_name), 7014, e.message)
                     except AutosubmitCritical:
                         raise
                     except Exception as e:
@@ -160,9 +175,6 @@ class Platform(object):
                         raise AutosubmitError(
                             "{0} submission failed. May be related to running a job with check=on_submission and another that affect this job template".format(
                                 self.name), 6015, str(e))
-            except WrongTemplateException as e:
-                raise AutosubmitCritical(
-                    "Invalid parameter substitution in {0} template".format(e.job_name), 7014)
             except AutosubmitCritical as e:
                 raise AutosubmitCritical(e.message, e.code, e.trace)
             except AutosubmitError as e:
@@ -185,7 +197,20 @@ class Platform(object):
     @serial_platform.setter
     def serial_platform(self, value):
         self._serial_platform = value
+    @property
+    def partition(self):
+        """
+        Partition to use for jobs
+        :return: queue's name
+        :rtype: str
+        """
+        if self._partition is None:
+            return ''
+        return self._partition
 
+    @partition.setter
+    def partition(self, value):
+        self._partition = value
     @property
     def queue(self):
         """
@@ -193,7 +218,7 @@ class Platform(object):
         :return: queue's name
         :rtype: str
         """
-        if self._default_queue is None:
+        if self._default_queue is None or self._default_queue == "":
             return ''
         return self._default_queue
 
@@ -202,13 +227,28 @@ class Platform(object):
         self._default_queue = value
 
     @property
+    def serial_partition(self):
+        """
+        Partition to use for serial jobs
+        :return: partition's name
+        :rtype: str
+        """
+        if self._serial_partition is None or self._serial_partition == "":
+            return self.partition
+        return self._serial_partition
+
+    @serial_partition.setter
+    def serial_partition(self, value):
+        self._serial_partition = value
+
+    @property
     def serial_queue(self):
         """
         Queue to use for serial jobs
         :return: queue's name
         :rtype: str
         """
-        if self._serial_queue is None:
+        if self._serial_queue is None or self._serial_queue == "":
             return self.queue
         return self._serial_queue
 
@@ -252,6 +292,10 @@ class Platform(object):
         parameters['{0}ARCH'.format(prefix)] = self.name
         parameters['{0}HOST'.format(prefix)] = self.host
         parameters['{0}QUEUE'.format(prefix)] = self.queue
+        parameters['{0}EC_QUEUE'.format(prefix)] = self.ec_queue
+        parameters['{0}PARTITION'.format(prefix)] = self.partition
+
+
         parameters['{0}USER'.format(prefix)] = self.user
         parameters['{0}PROJ'.format(prefix)] = self.project
         parameters['{0}BUDG'.format(prefix)] = self.budget
@@ -424,12 +468,12 @@ class Platform(object):
         :type retries: int
         :param job_name: name of job to check
         :type job_name: str
-        :return: True if succesful, False otherwise
+        :return: True if successful, False otherwise
         :rtype: bool
         """
         filename = job_name + '_STAT'
         stat_local_path = os.path.join(
-            self.config.LOCAL_ROOT_DIR, self.expid, self.config.LOCAL_TMP_DIR, filename)
+            self.config.get("LOCAL_ROOT_DIR"), self.expid, self.config.get("LOCAL_TMP_DIR"), filename)
         if os.path.exists(stat_local_path):
             os.remove(stat_local_path)
         if self.check_file_exists(filename):
@@ -447,7 +491,7 @@ class Platform(object):
          :type retries: int
          :param job_name: name of job to check
          :type job_name: str
-         :return: True if succesful, False otherwise
+         :return: True if successful, False otherwise
          :rtype: bool
          """
         filename = job_name
@@ -464,12 +508,12 @@ class Platform(object):
         :type retries: int
         :param job_name: name of job to check
         :type job_name: str
-        :return: True if succesful, False otherwise
+        :return: True if successful, False otherwise
         :rtype: bool
         """
         filename = job_name
         stat_local_path = os.path.join(
-            self.config.LOCAL_ROOT_DIR, self.expid, self.config.LOCAL_TMP_DIR, filename)
+            self.config.get("LOCAL_ROOT_DIR"), self.expid, self.config.get("LOCAL_TMP_DIR"), filename)
         if os.path.exists(stat_local_path):
             os.remove(stat_local_path)
         if self.check_file_exists(filename):
@@ -489,7 +533,7 @@ class Platform(object):
         """
         if self.type == "local":
             path = os.path.join(
-                self.root_dir, self.config.LOCAL_TMP_DIR, 'LOG_{0}'.format(self.expid))
+                self.root_dir, self.config.get("LOCAL_TMP_DIR"), 'LOG_{0}'.format(self.expid))
         else:
             path = os.path.join(self.root_dir, 'LOG_{0}'.format(self.expid))
         return path

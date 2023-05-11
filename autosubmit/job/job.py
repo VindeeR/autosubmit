@@ -91,12 +91,15 @@ class Job(object):
         self._wrapper_queue = None
         self._platform = None
         self._queue = None
+        self._partition = None
+
         self.retry_delay = "0"
         self.platform_name = None # type: str
         self.section = None # type: str
         self.wallclock = None # type: str
         self.wchunkinc = None
         self.tasks = '1'
+        self.nodes = ""
         self.default_parameters = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
                               'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
         self.threads = '1'
@@ -155,9 +158,9 @@ class Job(object):
         self.running = "once"
         self.start_time = None
         self.edge_info = dict()
-        self.partition = ""
-
-
+        self.total_jobs = None
+        self.max_waiting_jobs = None
+        self.exclusive = ""
     def __getstate__(self):
         odict = self.__dict__
         if '_platform' in odict:
@@ -215,7 +218,7 @@ class Job(object):
 
     @property
     def is_serial(self):
-        return str(self.processors) == '1'
+        return str(self.processors) == '1' or str(self.processors) == ''
 
     @property
     def platform(self):
@@ -264,7 +267,30 @@ class Job(object):
         :type value: HPCPlatform
         """
         self._queue = value
+    @property
+    def partition(self):
+        """
+        Returns the queue to be used by the job. Chooses between serial and parallel platforms
 
+        :return HPCPlatform object for the job to use
+        :rtype: HPCPlatform
+        """
+        if self._partition is not None and len(str(self._partition)) > 0:
+            return self._partition
+        if self.is_serial:
+            return self._platform.serial_platform.serial_partition
+        else:
+            return self._platform.partition
+
+    @partition.setter
+    def partition(self, value):
+        """
+        Sets the partion to be used by the job.
+
+        :param value: partion to set
+        :type value: HPCPlatform
+        """
+        self._partition = value
     @property
     def children(self):
         """
@@ -285,7 +311,7 @@ class Job(object):
     @property
     def long_name(self):
         """
-        Job's long name. If not setted, returns name
+        Job's long name. If not set, returns name
 
         :return: long name
         :rtype: str
@@ -368,7 +394,7 @@ class Job(object):
         Add parents for the job. It also adds current job as a child for all the new parents
 
         :param parents: job's parents to add
-        :type parents: *Job
+        :type parents: Job
         """
         for parent in parents:
             num_parents = 1
@@ -635,7 +661,7 @@ class Job(object):
         return
 
     @threaded
-    def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0):
+    def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0,job_id=""):
         max_logs = 0
         last_log = 0
         sleep(5)
@@ -654,7 +680,7 @@ class Job(object):
         while (count < retries) or not success:
             try:
                 as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
-                as_conf.reload(first_load=True)
+                as_conf.reload(force_load=True)
                 max_retrials = as_conf.get_retrials()
                 max_logs = int(as_conf.get_retrials()) - fail_count
                 last_log = int(as_conf.get_retrials()) - fail_count
@@ -765,7 +791,7 @@ class Job(object):
                                     platform.get_logs_files(self.expid, l_log)
                                     try:
                                         for local_log in l_log:
-                                            platform.write_jobid(self.id, os.path.join(self._tmp_path, 'LOG_' + str(self.expid), local_log))
+                                            platform.write_jobid(job_id, os.path.join(self._tmp_path, 'LOG_' + str(self.expid), local_log))
                                     except BaseException as e:
                                         pass
                                     max_logs = max_logs - 1
@@ -782,7 +808,7 @@ class Job(object):
                         # Update the logs with Autosubmit Job ID Brand
                         try:
                             for local_log in local_logs:
-                                platform.write_jobid(self.id, os.path.join(
+                                platform.write_jobid(job_id, os.path.join(
                                     self._tmp_path, 'LOG_' + str(self.expid), local_log))
                         except BaseException as e:
                             Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(
@@ -924,7 +950,7 @@ class Job(object):
             if as_conf.get_disable_recovery_threads(self.platform.name) == "true":
                 self.retrieve_logfiles_unthreaded(copy_remote_logs, local_logs)
             else:
-                self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count))
+                self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count),job_id=self.id)
             if self.wrapper_type == "vertical":
                 max_logs = int(as_conf.get_retrials())
                 for i in range(0,max_logs):
@@ -977,132 +1003,54 @@ class Job(object):
                 self.status = default_status
             else:
                 return default_status
+    def update_platform_parameters(self,as_conf,parameters,job_platform):
+        parameters['CURRENT_ARCH'] = job_platform.name
+        parameters['CURRENT_HOST'] = job_platform.host
+        parameters['CURRENT_USER'] = job_platform.user
+        parameters['CURRENT_PROJ'] = job_platform.project
+        parameters['CURRENT_BUDG'] = job_platform.budget
+        parameters['CURRENT_RESERVATION'] = job_platform.reservation
+        parameters['CURRENT_EXCLUSIVITY'] = job_platform.exclusivity
+        parameters['CURRENT_HYPERTHREADING'] = job_platform.hyperthreading
+        parameters['CURRENT_TYPE'] = job_platform.type
+        parameters['CURRENT_SCRATCH_DIR'] = job_platform.scratch
+        parameters['CURRENT_PROJ_DIR'] = job_platform.project_dir
+        parameters['CURRENT_ROOTDIR'] = job_platform.root_dir
+        parameters['CURRENT_LOGDIR'] = job_platform.get_files_path()
 
-    def update_parameters(self, as_conf, parameters,
-                          default_parameters={'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
-                                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}):
-        """
-        Refresh parameters value
+        return parameters
+    def update_platform_associated_parameters(self,as_conf, parameters, job_platform, chunk):
+        self.executable = str(as_conf.jobs_data[self.section].get("EXECUTABLE", as_conf.platforms_data.get(job_platform.name,{}).get("EXECUTABLE","")))
+        self.total_jobs = int(as_conf.jobs_data[self.section].get("TOTALJOBS", job_platform.total_jobs))
+        self.max_waiting_jobs = int(as_conf.jobs_data[self.section].get("MAXWAITINGJOBS", job_platform.max_waiting_jobs))
 
-        :param default_parameters:
-        :type default_parameters: dict
-        :param as_conf:
-        :type as_conf: AutosubmitConfig
-        :param parameters:
-        :type parameters: dict
-        """
-        chunk = 1
-        as_conf.reload()
-        parameters = parameters.copy()
-        parameters.update(default_parameters)
-        parameters['JOBNAME'] = self.name
-        parameters['FAIL_COUNT'] = str(self.fail_count)
-        parameters['SDATE'] = date2str(self.date, self.date_format)
-        parameters['MEMBER'] = self.member
-        parameters['SPLIT'] = self.split
-        parameters['DELAY'] = self.delay
-        parameters['FREQUENCY'] = self.frequency
-        parameters['SYNCHRONIZE'] = self.synchronize
-        parameters['PACKED'] = self.packed
-        if hasattr(self, 'RETRIALS'):
-            parameters['RETRIALS'] = self.retrials
-        if hasattr(self, 'delay_retrials'):
-            parameters['DELAY_RETRIALS'] = self.delay_retrials
-        if self.date is not None and len(str(self.date)) > 0:
-            if self.chunk is None and len(str(self.chunk)) > 0:
-                chunk = 1
-            else:
-                chunk = self.chunk
-
-            parameters['CHUNK'] = chunk
-            total_chunk = int(parameters.get('EXPERIMENT.NUMCHUNKS'))
-            chunk_length = int(parameters['EXPERIMENT.CHUNKSIZE'])
-            chunk_unit = str(parameters['EXPERIMENT.CHUNKSIZEUNIT']).lower()
-            cal = str(parameters['EXPERIMENT.CALENDAR']).lower()
-            chunk_start = chunk_start_date(
-                self.date, chunk, chunk_length, chunk_unit, cal)
-            chunk_end = chunk_end_date(
-                chunk_start, chunk_length, chunk_unit, cal)
-            if chunk_unit == 'hour':
-                chunk_end_1 = chunk_end
-            else:
-                chunk_end_1 = previous_day(chunk_end, cal)
-
-            parameters['DAY_BEFORE'] = date2str(
-                previous_day(self.date, cal), self.date_format)
-
-            parameters['RUN_DAYS'] = str(
-                subs_dates(chunk_start, chunk_end, cal))
-            parameters['Chunk_End_IN_DAYS'] = str(
-                subs_dates(self.date, chunk_end, cal))
-
-            #parameters['Chunk_START_DATE'] = date2str(
-            #    chunk_start, self.date_format)
-            #parameters['Chunk_START_YEAR'] = str(chunk_start.year)
-            #parameters['Chunk_START_MONTH'] = str(chunk_start.month).zfill(2)
-            #parameters['Chunk_START_DAY'] = str(chunk_start.day).zfill(2)
-            #parameters['Chunk_START_HOUR'] = str(chunk_start.hour).zfill(2)
-            parameters['Chunk_START_DATE'] = date2str(
-                chunk_start, self.date_format)
-            parameters['Chunk_START_YEAR'] = str(chunk_start.year)
-            parameters['Chunk_START_MONTH'] = str(chunk_start.month).zfill(2)
-            parameters['Chunk_START_DAY'] = str(chunk_start.day).zfill(2)
-            parameters['Chunk_START_HOUR'] = str(chunk_start.hour).zfill(2)
-
-
-            parameters['Chunk_SECOND_TO_LAST_DATE'] = date2str(
-                chunk_end_1, self.date_format)
-            parameters['Chunk_SECOND_TO_LAST_YEAR'] = str(chunk_end_1.year)
-            parameters['Chunk_SECOND_TO_LAST_MONTH'] = str(chunk_end_1.month).zfill(2)
-            parameters['Chunk_SECOND_TO_LAST_DAY'] = str(chunk_end_1.day).zfill(2)
-            parameters['Chunk_SECOND_TO_LAST_HOUR'] = str(chunk_end_1.hour).zfill(2)
-
-            parameters['Chunk_END_DATE'] = date2str(
-                chunk_end_1, self.date_format)
-            parameters['Chunk_END_YEAR'] = str(chunk_end.year)
-            parameters['Chunk_END_MONTH'] = str(chunk_end.month).zfill(2)
-            parameters['Chunk_END_DAY'] = str(chunk_end.day).zfill(2)
-            parameters['Chunk_END_HOUR'] = str(chunk_end.hour).zfill(2)
-
-            parameters['PREV'] = str(subs_dates(self.date, chunk_start, cal))
-
-            if chunk == 1:
-                parameters['Chunk_FIRST'] = 'TRUE'
-            else:
-                parameters['Chunk_FIRST'] = 'FALSE'
-
-            if total_chunk == chunk:
-                parameters['Chunk_LAST'] = 'TRUE'
-            else:
-                parameters['Chunk_LAST'] = 'FALSE'
-
-        job_platform = self._platform
-        self.queue = self.queue
-        self.processors = str(as_conf.jobs_data[self.section].get("PROCESSORS","1"))
-        self.threads = str(as_conf.jobs_data[self.section].get("THREADS","1"))
-        self.tasks = str(as_conf.jobs_data[self.section].get("TASKS","1"))
-        self.hyperthreading = str(as_conf.jobs_data[self.section].get("HYPERTHREADING","none"))
-        if self.hyperthreading == 'none' and len(self.hyperthreading) > 0:
-            self.hyperthreading = job_platform.hyperthreading
+        self.processors = str(as_conf.jobs_data[self.section].get("PROCESSORS",as_conf.platforms_data.get(job_platform.name,{}).get("PROCESSORS","1")))
+        self.exclusive = str(as_conf.jobs_data[self.section].get("EXCLUSIVE",as_conf.platforms_data.get(job_platform.name,{}).get("EXCLUSIVE",False)))
+        self.threads = str(as_conf.jobs_data[self.section].get("THREADS",as_conf.platforms_data.get(job_platform.name,{}).get("THREADS","1")))
+        self.tasks = str(as_conf.jobs_data[self.section].get("TASKS",as_conf.platforms_data.get(job_platform.name,{}).get("TASKS","1")))
+        self.nodes = str(as_conf.jobs_data[self.section].get("NODES",as_conf.platforms_data.get(job_platform.name,{}).get("NODES","")))
+        self.hyperthreading = str(as_conf.jobs_data[self.section].get("HYPERTHREADING",as_conf.platforms_data.get(job_platform.name,{}).get("HYPERTHREADING","none")))
         if int(self.tasks) <= 1 and int(job_platform.processors_per_node) > 1 and int(self.processors) > int(job_platform.processors_per_node):
             self.tasks = job_platform.processors_per_node
-        self.memory = str(as_conf.jobs_data[self.section].get("MEMORY",""))
-        self.memory_per_task = str(as_conf.jobs_data[self.section].get("MEMORY_PER_TASK",""))
-        self.wallclock = as_conf.jobs_data[self.section].get("WALLCLOCK",None)
-        self.wchunkinc = str(as_conf.jobs_data[self.section].get("WCHUNKINC",""))
+        self.memory = str(as_conf.jobs_data[self.section].get("MEMORY",as_conf.platforms_data.get(job_platform.name,{}).get("MEMORY","")))
+        self.memory_per_task = str(as_conf.jobs_data[self.section].get("MEMORY_PER_TASK",as_conf.platforms_data.get(job_platform.name,{}).get("MEMORY_PER_TASK","")))
+        # These are to activate serial platform if neccesary
+        self.queue = self.queue
+        self.partition = self.partition
+        self.wallclock = as_conf.jobs_data[self.section].get("WALLCLOCK",as_conf.platforms_data.get(self.platform_name,{}).get("MAX_WALLCLOCK",None))
         if self.wallclock is None and job_platform.type not in ['ps',"local","PS","LOCAL"]:
             self.wallclock = "01:59"
         elif self.wallclock is None and job_platform.type in ['ps','local',"PS","LOCAL"]:
             self.wallclock = "00:00"
-        self.wchunkinc = as_conf.get_wchunkinc(self.section)
         # Increasing according to chunk
         self.wallclock = increase_wallclock_by_chunk(
             self.wallclock, self.wchunkinc, chunk)
-        self.scratch_free_space = int(as_conf.jobs_data[self.section].get("SCRATCH_FREE_SPACE",0))
-        if self.scratch_free_space == 0:
-            self.scratch_free_space = job_platform.scratch_free_space
+        self.scratch_free_space = int(as_conf.jobs_data[self.section].get("SCRATCH_FREE_SPACE",as_conf.platforms_data.get(job_platform.name,{}).get("SCRATCH_FREE_SPACE",0)))
         try:
-            self.custom_directives = as_conf.jobs_data[self.section].get("CUSTOM_DIRECTIVES","").replace("\'", "\"").strip("[]").strip(", ")
+            self.custom_directives = as_conf.jobs_data[self.section].get("CUSTOM_DIRECTIVES","")
+            if type(self.custom_directives) is list:
+                self.custom_directives = json.dumps(self.custom_directives)
+            self.custom_directives = self.custom_directives.replace("\'", "\"").strip("[]").strip(", ")
             if self.custom_directives == '':
                 if job_platform.custom_directives is None:
                     job_platform.custom_directives = ''
@@ -1127,34 +1075,17 @@ class Job(object):
         parameters['CPUS_PER_TASK'] = self.threads
         parameters['NUMTASK'] = self.tasks
         parameters['TASKS'] = self.tasks
+        parameters['NODES'] = self.nodes
         parameters['TASKS_PER_NODE'] = self.tasks
         parameters['WALLCLOCK'] = self.wallclock
         parameters['TASKTYPE'] = self.section
         parameters['SCRATCH_FREE_SPACE'] = self.scratch_free_space
         parameters['CUSTOM_DIRECTIVES'] = self.custom_directives
         parameters['HYPERTHREADING'] = self.hyperthreading
-
-
-        parameters['CURRENT_ARCH'] = job_platform.name
-        parameters['CURRENT_HOST'] = job_platform.host
         parameters['CURRENT_QUEUE'] = self.queue
-        parameters['CURRENT_USER'] = job_platform.user
-        parameters['CURRENT_PROJ'] = job_platform.project
-        parameters['CURRENT_BUDG'] = job_platform.budget
-        parameters['CURRENT_RESERVATION'] = job_platform.reservation
-        parameters['CURRENT_EXCLUSIVITY'] = job_platform.exclusivity
-        parameters['CURRENT_HYPERTHREADING'] = job_platform.hyperthreading
-        parameters['CURRENT_TYPE'] = job_platform.type
-        parameters['CURRENT_SCRATCH_DIR'] = job_platform.scratch
-        parameters['CURRENT_PROJ_DIR'] = job_platform.project_dir
-        parameters['CURRENT_ROOTDIR'] = job_platform.root_dir
-        parameters['CURRENT_LOGDIR'] = job_platform.get_files_path()
-        parameters['ROOTDIR'] = os.path.join(
-            BasicConfig.LOCAL_ROOT_DIR, self.expid)
-        parameters['PROJDIR'] = as_conf.get_project_dir()
-        parameters['NUMMEMBERS'] = len(as_conf.get_member_list())
-        parameters['DEPENDENCIES'] = str(as_conf.jobs_data[self.section].get("DEPENDENCIES",""))
-        wrappers = as_conf.experiment_data.get("WRAPPERS",{})
+        return parameters
+    def update_wrapper_parameters(self,as_conf, parameters):
+        wrappers = as_conf.experiment_data.get("WRAPPERS", {})
         if len(wrappers) > 0:
             parameters['WRAPPER'] = as_conf.get_wrapper_type()
             parameters['WRAPPER' + "_POLICY"] = as_conf.get_wrapper_policy()
@@ -1162,55 +1093,155 @@ class Job(object):
             parameters['WRAPPER' + "_JOBS"] = as_conf.get_wrapper_jobs()
             parameters['WRAPPER' + "_EXTENSIBLE"] = as_conf.get_extensible_wallclock()
 
-        for wrapper_section,wrapper_val in wrappers.items():
-            parameters[wrapper_section] = as_conf.get_wrapper_type(as_conf.experiment_data["WRAPPERS"].get(wrapper_section))
-            parameters[wrapper_section+"_POLICY"] = as_conf.get_wrapper_policy(as_conf.experiment_data["WRAPPERS"].get(wrapper_section))
-            parameters[wrapper_section+"_METHOD"] = as_conf.get_wrapper_method(as_conf.experiment_data["WRAPPERS"].get(wrapper_section)).lower()
-            parameters[wrapper_section+"_JOBS"] = as_conf.get_wrapper_jobs(as_conf.experiment_data["WRAPPERS"].get(wrapper_section))
-            parameters[wrapper_section+"_EXTENSIBLE"] = int(as_conf.get_extensible_wallclock(as_conf.experiment_data["WRAPPERS"].get(wrapper_section)))
+        for wrapper_section, wrapper_val in wrappers.items():
+            if type(wrapper_val) is not dict:
+                continue
+            parameters[wrapper_section] = as_conf.get_wrapper_type(
+                as_conf.experiment_data["WRAPPERS"].get(wrapper_section))
+            parameters[wrapper_section + "_POLICY"] = as_conf.get_wrapper_policy(
+                as_conf.experiment_data["WRAPPERS"].get(wrapper_section))
+            parameters[wrapper_section + "_METHOD"] = as_conf.get_wrapper_method(
+                as_conf.experiment_data["WRAPPERS"].get(wrapper_section)).lower()
+            parameters[wrapper_section + "_JOBS"] = as_conf.get_wrapper_jobs(
+                as_conf.experiment_data["WRAPPERS"].get(wrapper_section))
+            parameters[wrapper_section + "_EXTENSIBLE"] = int(
+                as_conf.get_extensible_wallclock(as_conf.experiment_data["WRAPPERS"].get(wrapper_section)))
+        return parameters
+    def update_job_parameters(self,as_conf, parameters):
+        parameters['JOBNAME'] = self.name
+        parameters['FAIL_COUNT'] = str(self.fail_count)
+        parameters['SDATE'] = date2str(self.date, self.date_format)
+        parameters['MEMBER'] = self.member
+        parameters['SPLIT'] = self.split
+        parameters['DELAY'] = self.delay
+        parameters['FREQUENCY'] = self.frequency
+        parameters['SYNCHRONIZE'] = self.synchronize
+        parameters['PACKED'] = self.packed
+        parameters['CHUNK'] = 1
+        if hasattr(self, 'RETRIALS'):
+            parameters['RETRIALS'] = self.retrials
+        if hasattr(self, 'delay_retrials'):
+            parameters['DELAY_RETRIALS'] = self.delay_retrials
+        if self.date is not None and len(str(self.date)) > 0:
+            if self.chunk is None and len(str(self.chunk)) > 0:
+                chunk = 1
+            else:
+                chunk = self.chunk
+
+            parameters['CHUNK'] = chunk
+            total_chunk = int(parameters.get('EXPERIMENT.NUMCHUNKS', 1))
+            chunk_length = int(parameters.get('EXPERIMENT.CHUNKSIZE', 1))
+            chunk_unit = str(parameters.get('EXPERIMENT.CHUNKSIZEUNIT', "")).lower()
+            cal = str(parameters.get('EXPERIMENT.CALENDAR', "")).lower()
+            chunk_start = chunk_start_date(
+                self.date, chunk, chunk_length, chunk_unit, cal)
+            chunk_end = chunk_end_date(
+                chunk_start, chunk_length, chunk_unit, cal)
+            if chunk_unit == 'hour':
+                chunk_end_1 = chunk_end
+            else:
+                chunk_end_1 = previous_day(chunk_end, cal)
+
+            parameters['DAY_BEFORE'] = date2str(
+                previous_day(self.date, cal), self.date_format)
+
+            parameters['RUN_DAYS'] = str(
+                subs_dates(chunk_start, chunk_end, cal))
+            parameters['CHUNK_END_IN_DAYS'] = str(
+                subs_dates(self.date, chunk_end, cal))
+
+            parameters['CHUNK_START_DATE'] = date2str(
+                chunk_start, self.date_format)
+            parameters['CHUNK_START_YEAR'] = str(chunk_start.year)
+            parameters['CHUNK_START_MONTH'] = str(chunk_start.month).zfill(2)
+            parameters['CHUNK_START_DAY'] = str(chunk_start.day).zfill(2)
+            parameters['CHUNK_START_HOUR'] = str(chunk_start.hour).zfill(2)
+
+            parameters['CHUNK_SECOND_TO_LAST_DATE'] = date2str(
+                chunk_end_1, self.date_format)
+            parameters['CHUNK_SECOND_TO_LAST_YEAR'] = str(chunk_end_1.year)
+            parameters['CHUNK_SECOND_TO_LAST_MONTH'] = str(chunk_end_1.month).zfill(2)
+            parameters['CHUNK_SECOND_TO_LAST_DAY'] = str(chunk_end_1.day).zfill(2)
+            parameters['CHUNK_SECOND_TO_LAST_HOUR'] = str(chunk_end_1.hour).zfill(2)
+
+            parameters['CHUNK_END_DATE'] = date2str(
+                chunk_end, self.date_format)
+            parameters['CHUNK_END_YEAR'] = str(chunk_end.year)
+            parameters['CHUNK_END_MONTH'] = str(chunk_end.month).zfill(2)
+            parameters['CHUNK_END_DAY'] = str(chunk_end.day).zfill(2)
+            parameters['CHUNK_END_HOUR'] = str(chunk_end.hour).zfill(2)
+
+            parameters['PREV'] = str(subs_dates(self.date, chunk_start, cal))
+
+            if chunk == 1:
+                parameters['CHUNK_FIRST'] = 'TRUE'
+            else:
+                parameters['CHUNK_FIRST'] = 'FALSE'
+
+            if total_chunk == chunk:
+                parameters['CHUNK_LAST'] = 'TRUE'
+            else:
+                parameters['CHUNK_LAST'] = 'FALSE'
+        parameters['NUMMEMBERS'] = len(as_conf.get_member_list())
+        parameters['DEPENDENCIES'] = str(as_conf.jobs_data[self.section].get("DEPENDENCIES",""))
+        # This shouldn't be necessary anymore as now all sub is done in the as_conf.reload()
+        # if len(self.export) > 0:
+        #     variables = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', self.export)
+        #     if len(variables) > 0:
+        #         variables = [variable[1:-1] for variable in variables]
+        #         for key in variables:
+        #             try:
+        #                 self.export = re.sub(
+        #                     '%(?<!%%)' + key + '%(?!%%)', parameters[key], self.export, flags=re.I)
+        #             except Exception as e:
+        #                 self.export = re.sub(
+        #                     '%(?<!%%)' + key + '%(?!%%)', "NOTFOUND", self.export, flags=re.I)
+        #                 Log.debug(
+        #                     "PARAMETER export: Variable: {0} doesn't exist".format(str(e)))
         self.dependencies = parameters['DEPENDENCIES']
-
-        if len(self.export) > 0:
-            variables = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', self.export)
-            if len(variables) > 0:
-                variables = [variable[1:-1] for variable in variables]
-                for key in variables:
-                    try:
-                        self.export = re.sub(
-                            '%(?<!%%)' + key + '%(?!%%)', parameters[key], self.export,flags=re.I)
-                    except Exception as e:
-                        self.export = re.sub(
-                            '%(?<!%%)' + key + '%(?!%%)', "NOTFOUND", self.export,flags=re.I)
-                        Log.debug(
-                            "PARAMETER export: Variable: {0} doesn't exist".format(str(e)))
-
-            parameters['EXPORT'] = self.export
+        parameters['EXPORT'] = self.export
         parameters['PROJECT_TYPE'] = as_conf.get_project_type()
-        substituted = False
-        max_deep = 25
-        dynamic_variables = []
-        backup_variables = as_conf.dynamic_variables
-        while len(as_conf.dynamic_variables) > 0 and max_deep > 0:
-            dynamic_variables = []
-            for dynamic_var in as_conf.dynamic_variables:
-                substituted,new_param = as_conf.sustitute_placeholder_variables(dynamic_var[0],dynamic_var[1],parameters)
-                if not substituted:
-                    dynamic_variables.append(dynamic_var)
-                else:
-                    parameters= new_param
-            as_conf.dynamic_variables = dynamic_variables
-            max_deep = max_deep - 1
-        as_conf.dynamic_variables = backup_variables
-        self.parameters = parameters
+        self.wchunkinc = as_conf.get_wchunkinc(self.section)
+        return parameters
+    def update_parameters(self, as_conf, parameters,
+                          default_parameters={'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
+                                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}):
+        """
+        Refresh parameters value
 
+        :param default_parameters:
+        :type default_parameters: dict
+        :param as_conf:
+        :type as_conf: AutosubmitConfig
+        :param parameters:
+        :type parameters: dict
+        """
+        chunk = 1
+        as_conf.reload()
+        parameters = parameters.copy()
+        parameters.update(as_conf.parameters)
+        parameters.update(default_parameters)
+        parameters = as_conf.substitute_dynamic_variables(parameters,25)
+        parameters['ROOTDIR'] = os.path.join(
+            BasicConfig.LOCAL_ROOT_DIR, self.expid)
+        parameters['PROJDIR'] = as_conf.get_project_dir()
+        parameters = self.update_job_parameters(as_conf,parameters)
+        parameters = self.update_platform_parameters(as_conf, parameters, self._platform)
+        parameters = self.update_platform_associated_parameters(as_conf, parameters, self._platform, parameters['CHUNK'])
+        parameters = self.update_wrapper_parameters(as_conf, parameters)
+        parameters = as_conf.substitute_dynamic_variables(parameters,25)
+        parameters = as_conf.normalize_parameters_keys(parameters,default_parameters)
+        # For some reason, there is return but the assignee is also necessary
+        self.parameters = parameters
+        # This returns is only being used by the mock , to change the mock
         return parameters
     def update_content_extra(self,as_conf,files):
         additional_templates = []
         for file in files:
-            if as_conf.get_project_type().lower() != "none":
+            if as_conf.get_project_type().lower() == "none":
                 template = "%DEFAULT.EXPID%"
             else:
-                template = open(os.path.join(as_conf.get_project_dir(), file), 'r')
+                template = open(os.path.join(as_conf.get_project_dir(), file), 'r').read()
             additional_templates += [template]
         return additional_templates
     def update_content(self, as_conf):
@@ -1337,16 +1368,19 @@ class Job(object):
         #enumerate and get value
 
         #todo revise pipeline that check this, additional templates value is not Mocked well
-        for file_n,additional_template_content in enumerate(additional_templates):
-            template_content += additional_template_content
+        for additional_file, additional_template_content in zip(self.additional_files, additional_templates):
             for key, value in parameters.items():
                 additional_template_content = re.sub('%(?<!%%)' + key + '%(?!%%)', str(parameters[key]), additional_template_content,flags=re.I)
             for variable in self.undefined_variables:
                 additional_template_content = re.sub('%(?<!%%)' + variable + '%(?!%%)', '', additional_template_content,flags=re.I)
 
             additional_template_content = additional_template_content.replace("%%", "%")
+            #Write to file
             try:
-                open(os.path.join(self._tmp_path, os.path.splitext(self.additional_files[file_n])[0]), 'wb').write(additional_template_content.encode(lang))
+
+                filename = os.path.basename(os.path.splitext(additional_file)[0])
+                full_path = os.path.join(self._tmp_path,filename ) + "_" + self.name[5:]
+                open(full_path, 'wb').write(additional_template_content.encode(lang))
             except:
                 pass
         for key, value in parameters.items():
@@ -1399,11 +1433,11 @@ class Job(object):
         parameters = self.update_parameters(as_conf, parameters)
         template_content,additional_templates = self.update_content(as_conf)
         if template_content is not False:
-            variables = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', template_content)
+            variables = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', template_content,flags=re.IGNORECASE)
             variables = [variable[1:-1] for variable in variables]
             variables = [variable for variable in variables if variable not in self.default_parameters]
             for template in additional_templates:
-                variables_tmp = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', template)
+                variables_tmp = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', template,flags=re.IGNORECASE)
                 variables_tmp = [variable[1:-1] for variable in variables_tmp]
                 variables_tmp = [variable for variable in variables_tmp if variable not in self.default_parameters]
                 variables.extend(variables_tmp)
@@ -1474,7 +1508,7 @@ class Job(object):
     def write_start_time(self, enabled = False):
         """
         Writes start date and time to TOTAL_STATS file
-        :return: True if succesful, False otherwise
+        :return: True if successful, False otherwise
         :rtype: bool
         """
         if self.wrapper_type != "vertical" or enabled:
@@ -1967,9 +2001,14 @@ class WrapperJob(Job):
         self._platform.send_command(
             self._platform.cancel_cmd + " " + str(self.id))
         for job in self.job_list:
+            #if job.status == Status.RUNNING:
+                #job.inc_fail_count()
+            #    job.packed = False
+            #    job.status = Status.FAILED
             if job.status not in [Status.COMPLETED, Status.FAILED]:
                 job.packed = False
                 job.status = Status.WAITING
+
 
     def _update_completed_jobs(self):
         for job in self.job_list:

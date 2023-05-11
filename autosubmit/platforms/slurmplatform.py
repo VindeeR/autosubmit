@@ -18,6 +18,7 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import locale
 import os
+from contextlib import suppress
 from time import sleep
 from time import mktime
 from time import time
@@ -27,7 +28,6 @@ from typing import List, Union
 from xml.dom.minidom import parseString
 
 from autosubmit.job.job_common import Status, parse_output_number
-from autosubmit.job.job_exceptions import WrongTemplateException
 from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.headers.slurm_header import SlurmHeader
 from autosubmit.platforms.wrappers.wrapper_factory import SlurmWrapperFactory
@@ -66,10 +66,10 @@ class SlurmPlatform(ParamikoPlatform):
         self._allow_wrappers = True
         self.update_cmds()
         self.config = config
-        exp_id_path = os.path.join(config.LOCAL_ROOT_DIR, self.expid)
+        exp_id_path = os.path.join(self.config.get("LOCAL_ROOT_DIR"), self.expid)
         tmp_path = os.path.join(exp_id_path, "tmp")
         self._submit_script_path = os.path.join(
-            tmp_path, config.LOCAL_ASLOG_DIR, "submit_" + self.name + ".sh")
+            tmp_path, self.config.get("LOCAL_ASLOG_DIR"), "submit_" + self.name + ".sh")
         self._submit_script_file = open(self._submit_script_path, 'wb').close()
 
     def process_batch_ready_jobs(self,valid_packages_to_submit,failed_packages,error_message="",hold=False):
@@ -112,9 +112,7 @@ class SlurmPlatform(ParamikoPlatform):
                             error_message+="\ncheck that {1} platform has set the correct scheduler. Sections that could be affected: {0}".format(
                                     error_msg[:-1], self.name)
 
-                        if e.trace is None:
-                            e.trace = ""
-                        raise AutosubmitCritical(error_message,7014,e.message+"\n"+str(e.trace))
+                        raise AutosubmitCritical(error_message, 7014, e.error_message)
                 except IOError as e:
                     raise AutosubmitError(
                         "IO issues ", 6016, str(e))
@@ -171,9 +169,6 @@ class SlurmPlatform(ParamikoPlatform):
                             package.jobs[0].platform.cancel_cmd + " {0}".format(job_id))
                     raise AutosubmitError("{0} submission failed, some hold jobs failed to be held".format(self.name), 6015)
             save = True
-        except WrongTemplateException as e:
-            raise AutosubmitCritical("Invalid parameter substitution in {0} template".format(
-                e.job_name), 7014, str(e))
         except AutosubmitError as e:
             raise
         except AutosubmitCritical as e:
@@ -189,7 +184,7 @@ class SlurmPlatform(ParamikoPlatform):
     def get_submit_script(self):
         self._submit_script_file.close()
         os.chmod(self._submit_script_path, 0o750)
-        return os.path.join(self.config.LOCAL_ASLOG_DIR, os.path.basename(self._submit_script_path))
+        return os.path.join(self.config.get("LOCAL_ASLOG_DIR"), os.path.basename(self._submit_script_path))
 
     def submit_job(self, job, script_name, hold=False, export="none"):
         """
@@ -308,13 +303,16 @@ class SlurmPlatform(ParamikoPlatform):
             self.send_command(cmd)
 
             queue_status = self._ssh_output
-            reason = str()
             reason = self.parse_queue_reason(queue_status, job.id)
-            if reason == '(JobHeldUser)':
-                return True
-            else:
+            self.send_command(self.get_estimated_queue_time_cmd(job.id))
+            estimated_time = self.parse_estimated_time(self._ssh_output)
+            if reason == '(JobHeldAdmin)':  # Job is held by the system
                 self.send_command("scancel {0}".format(job.id))
                 return False
+            else:
+                Log.info(
+                    f"The {job.name} will be elegible to run the day {estimated_time.get('date', 'Unknown')} at {estimated_time.get('time', 'Unknown')}\nQueuing reason is: {reason}")
+                return True
         except BaseException as e:
             try:
                 self.send_command("scancel {0}".format(job.id))
@@ -549,6 +547,8 @@ class SlurmPlatform(ParamikoPlatform):
 
     def get_checkAlljobs_cmd(self, jobs_id):
         return "sacct -n -X --jobs  {1} -o jobid,State".format(self.host, jobs_id)
+    def get_estimated_queue_time_cmd(self, job_id):
+        return f"scontrol -o show JobId {job_id} | grep -Po '(?<=EligibleTime=)[0-9-:T]*'"
 
     def get_queue_status_cmd(self, job_id):
         return 'squeue -j {0} -o %A,%R'.format(job_id)
@@ -564,65 +564,78 @@ class SlurmPlatform(ParamikoPlatform):
         return 'sacct -n --jobs {0} -o JobId%25,State,NCPUS,NNodes,Submit,Start,End,ConsumedEnergy,MaxRSS%25,AveRSS%25'.format(job_id)
 
     def parse_queue_reason(self, output, job_id):
+        """
+        Parses the queue reason from the output of the command
+        :param output: output of the command
+        :param job_id: job id
+        :return: queue reason
+        :rtype: str
+        """
         reason = [x.split(',')[1] for x in output.splitlines()
                   if x.split(',')[0] == str(job_id)]
-        if len(reason) > 0:
-            return reason[0]
+        if isinstance(reason,list):
+            # convert reason to str
+            return ''.join(reason)
         return reason
 
-    @staticmethod
-    def wrapper_header(filename, queue, project, wallclock, num_procs, dependency, directives, threads, method="asthreads", partition=""):
-        if method == 'srun':
-            language = "#!/bin/bash"
-            return \
-                language + """
+    def get_queue_status(self, in_queue_jobs, list_queue_jobid, as_conf):
+        if not in_queue_jobs:
+            return
+        cmd = self.get_queue_status_cmd(list_queue_jobid)
+        self.send_command(cmd)
+        queue_status = self._ssh_output
+        for job in in_queue_jobs:
+            reason = self.parse_queue_reason(queue_status, job.id)
+            if job.queuing_reason_cancel(reason): # this should be a platform method to be implemented
+                Log.error(
+                    "Job {0} will be cancelled and set to FAILED as it was queuing due to {1}", job.name, reason)
+                self.send_command(
+                    self.cancel_cmd + " {0}".format(job.id))
+                job.new_status = Status.FAILED
+                job.update_status(as_conf)
+            elif reason == '(JobHeldUser)':
+                if not job.hold:
+                    # should be self.release_cmd or something like that but it is not implemented
+                    self.send_command("scontrol release {0}".format(job.id))
+                    job.new_status = Status.QUEUING  # If it was HELD and was released, it should be QUEUING next.
+                else:
+                    job.new_status = Status.HELD
+    def wrapper_header(self,**kwargs):
+        wr_header = f"""
 ###############################################################################
-#              {0}
+#              {kwargs["name"].split("_")[0]+"_Wrapper"}
 ###############################################################################
 #
-#SBATCH -J {0}
-{1}
-{8}
-#SBATCH -A {2}
-#SBATCH --output={0}.out
-#SBATCH --error={0}.err
-#SBATCH -t {3}:00
-#SBATCH -n {4}
-#SBATCH --cpus-per-task={7}
-{5}
-{6}
+#SBATCH -J {kwargs["name"]}
+{kwargs["queue"]}
+{kwargs["partition"]}
+{kwargs["dependency"]}
+#SBATCH -A {kwargs["project"]}
+#SBATCH --output={kwargs["name"]}.out
+#SBATCH --error={kwargs["name"]}.err
+#SBATCH -t {kwargs["wallclock"]}:00
+#SBATCH -n {kwargs["num_processors"]}
+#SBATCH --cpus-per-task={kwargs["threads"]}
+{kwargs["exclusive"]}
+{kwargs["custom_directives"]}
 
 #
 ###############################################################################
-                """.format(filename, queue, project, wallclock, num_procs, dependency,
-                           '\n'.ljust(13).join(str(s) for s in directives), threads,partition)
+"""
+        if kwargs["method"] == 'srun':
+            language = kwargs["executable"]
+            if language is None or len(language) == 0:
+                language = "#!/bin/bash"
+            return language + wr_header
         else:
-            language = "#!/usr/bin/env python3"
-            return \
-                language + """
-###############################################################################
-#              {0}
-###############################################################################
-#
-#SBATCH -J {0}
-{1}
-{8}
-#SBATCH -A {2}
-#SBATCH --output={0}.out
-#SBATCH --error={0}.err
-#SBATCH -t {3}:00
-#SBATCH --cpus-per-task={7}
-#SBATCH -n {4}
-{5}
-{6}
-#
-###############################################################################
-            """.format(filename, queue, project, wallclock, num_procs, dependency,
-                       '\n'.ljust(13).join(str(s) for s in directives), threads,partition)
+            language = kwargs["executable"]
+            if language is None or len(language) == 0:
+                language = "#!/usr/bin/env python3"
+            return language + wr_header
 
     @staticmethod
     def allocated_nodes():
-        return """os.system("scontrol show hostnames $SLURM_JOB_NODELIST > node_list")"""
+        return """os.system("scontrol show hostnames $SLURM_JOB_NODELIST > node_list_{0}".format(node_id))"""
 
     def check_file_exists(self, filename,wrapper_failed=False):
         file_exist = False
@@ -636,7 +649,7 @@ class SlurmPlatform(ParamikoPlatform):
                     self.get_files_path(), filename))
                 file_exist = True
             except IOError as e:  # File doesn't exist, retry in sleeptime
-                Log.debug("{2} File still no exists.. waiting {0}s for a new retry ( retries left: {1})", sleeptime,
+                Log.debug("{2} File does not exist.. waiting {0}s for a new retry (retries left: {1})", sleeptime,
                           max_retries - retries, os.path.join(self.get_files_path(), filename))
                 if not wrapper_failed:
                     sleep(sleeptime)

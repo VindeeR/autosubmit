@@ -34,7 +34,7 @@ class TestJob(TestCase):
 
 
     def test_when_the_job_has_more_than_one_processor_returns_the_parallel_platform(self):
-        platform = Platform(self.experiment_id, 'parallel-platform', FakeBasicConfig)
+        platform = Platform(self.experiment_id, 'parallel-platform', FakeBasicConfig().props())
         platform.serial_platform = 'serial-platform'
 
         self.job._platform = platform
@@ -45,7 +45,7 @@ class TestJob(TestCase):
         self.assertEqual(platform, returned_platform)
 
     def test_when_the_job_has_only_one_processor_returns_the_serial_platform(self):
-        platform = Platform(self.experiment_id, 'parallel-platform', FakeBasicConfig)
+        platform = Platform(self.experiment_id, 'parallel-platform', FakeBasicConfig().props())
         platform.serial_platform = 'serial-platform'
 
         self.job._platform = platform
@@ -56,7 +56,7 @@ class TestJob(TestCase):
         self.assertEqual('serial-platform', returned_platform)
 
     def test_set_platform(self):
-        dummy_platform = Platform('whatever', 'rand-name', FakeBasicConfig)
+        dummy_platform = Platform('whatever', 'rand-name', FakeBasicConfig().props())
         self.assertNotEqual(dummy_platform, self.job.platform)
 
         self.job.platform = dummy_platform
@@ -73,7 +73,7 @@ class TestJob(TestCase):
 
     def test_when_the_job_has_not_a_queue_and_some_processors_returns_the_queue_of_the_platform(self):
         dummy_queue = 'whatever-parallel'
-        dummy_platform = Platform('whatever', 'rand-name', FakeBasicConfig)
+        dummy_platform = Platform('whatever', 'rand-name', FakeBasicConfig().props())
         dummy_platform.queue = dummy_queue
         self.job.platform = dummy_platform
 
@@ -88,10 +88,10 @@ class TestJob(TestCase):
         serial_queue = 'whatever-serial'
         parallel_queue = 'whatever-parallel'
 
-        dummy_serial_platform = Platform('whatever', 'serial', FakeBasicConfig)
+        dummy_serial_platform = Platform('whatever', 'serial', FakeBasicConfig().props())
         dummy_serial_platform.serial_queue = serial_queue
 
-        dummy_platform = Platform('whatever', 'parallel', FakeBasicConfig)
+        dummy_platform = Platform('whatever', 'parallel', FakeBasicConfig().props())
         dummy_platform.serial_platform = dummy_serial_platform
         dummy_platform.queue = parallel_queue
         dummy_platform.processors_per_node = "1"
@@ -166,8 +166,9 @@ class TestJob(TestCase):
         self.job.parameters['NUMTASK'] = 666
 
         self.job._tmp_path = '/dummy/tmp/path'
+        self.job.additional_files = '/dummy/tmp/path_additional_file'
 
-        update_content_mock = Mock(return_value=('some-content: %NUMPROC%, %NUMTHREADS%, %NUMTASK% %% %%','some-content: %NUMPROC%, %NUMTHREADS%, %NUMTASK% %% %%'))
+        update_content_mock = Mock(return_value=('some-content: %NUMPROC%, %NUMTHREADS%, %NUMTASK% %% %%',['some-content: %NUMPROC%, %NUMTHREADS%, %NUMTASK% %% %%']))
         self.job.update_content = update_content_mock
 
         config = Mock(spec=AutosubmitConfig)
@@ -183,8 +184,10 @@ class TestJob(TestCase):
             self.job.create_script(config)
         # assert
         update_content_mock.assert_called_with(config)
+        # TODO add assert for additional files
         open_mock.assert_called_with(os.path.join(self.job._tmp_path, self.job.name + '.cmd'), 'wb')
-        write_mock.write.assert_called_with(b'some-content: 999, 777, 666 % %some-content: 999, 777, 666 % %')
+        # Expected values: %% -> %, %KEY% -> KEY.VALUE without %
+        write_mock.write.assert_called_with(b'some-content: 999, 777, 666 % %')
         chmod_mock.assert_called_with(os.path.join(self.job._tmp_path, self.job.name + '.cmd'), 0o755)
 
     def test_that_check_script_returns_false_when_there_is_an_unbound_template_variable(self):
@@ -259,8 +262,9 @@ class TestJob(TestCase):
         # This test (and feature) was implemented in order to avoid
         # false positives on the checking process with auto-ecearth3
         # Arrange
-        section = "random-section"
-        self.job.section = "random-section"
+        section = "RANDOM-SECTION"
+        self.job.section = section
+        self.job.parameters['ROOTDIR'] = "none"
         self.job.parameters['PROJECT_TYPE'] = "none"
         processors = 80
         threads = 1
@@ -275,7 +279,8 @@ class TestJob(TestCase):
             'TASKS': tasks,
             'MEMORY': memory,
             'WALLCLOCK': wallclock,
-            'CUSTOM_DIRECTIVES': custom_directives
+            'CUSTOM_DIRECTIVES': custom_directives,
+            'SCRATCH_FREE_SPACE': 0
         }
         self.as_conf.jobs_data[section] = options
 
@@ -283,12 +288,20 @@ class TestJob(TestCase):
         dummy_serial_platform.name = 'serial'
         dummy_platform = MagicMock()
         dummy_platform.serial_platform = dummy_serial_platform
+        self.as_conf.substitute_dynamic_variables = MagicMock()
+        default = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
+                                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
+        self.as_conf.substitute_dynamic_variables.return_value = default
         dummy_platform.custom_directives = '["whatever"]'
         self.as_conf.dynamic_variables = MagicMock()
+        self.as_conf.parameters = MagicMock()
+        self.as_conf.return_value = {}
+        self.as_conf.normalize_parameters_keys = MagicMock()
+        self.as_conf.normalize_parameters_keys.return_value = default
         self.job._platform = dummy_platform
-
+        parameters = {}
         # Act
-        parameters = self.job.update_parameters(self.as_conf, dict())
+        parameters = self.job.update_parameters(self.as_conf, parameters)
         # Assert
         self.assertTrue('d' in parameters)
         self.assertTrue('d_' in parameters)
@@ -299,8 +312,18 @@ class TestJob(TestCase):
         self.assertEqual('%Y%', parameters['Y'])
         self.assertEqual('%Y_%', parameters['Y_'])
 
-
+import inspect
 class FakeBasicConfig:
+    def __init__(self):
+        pass
+    def props(self):
+        pr = {}
+        for name in dir(self):
+            value = getattr(self, name)
+            if not name.startswith('__') and not inspect.ismethod(value) and not inspect.isfunction(value):
+                pr[name] = value
+        return pr
+    #convert this to dict
     DB_DIR = '/dummy/db/dir'
     DB_FILE = '/dummy/db/file'
     DB_PATH = '/dummy/db/path'
@@ -309,6 +332,7 @@ class FakeBasicConfig:
     LOCAL_PROJ_DIR = '/dummy/local/proj/dir'
     DEFAULT_PLATFORMS_CONF = ''
     DEFAULT_JOBS_CONF = ''
+
 
 
 

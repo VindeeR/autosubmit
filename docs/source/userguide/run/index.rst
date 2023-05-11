@@ -28,7 +28,7 @@ Options:
                                 Sets the starting time for the experiment. Accepted format: 'yyyy-mm-dd HH:MM:SS' or 'HH:MM:SS' (defaults to current day).
       -sa                   --start_after 
                                 Sets a experiment expid that will be tracked for completion. When this experiment is completed, the current instance of Autosubmit run will start.
-      -rm                   --run_members
+      -rom,--run_only_members  --run_members
                                 Sets a list of members allowed to run. The list must have the format '### ###' where '###' represents the name of the member as set in the conf files.
       -h, --help  show this help message and exit
 
@@ -108,7 +108,7 @@ Once you've already loaded / installed the Autosubmit version do you want:
 
 *EXPID* is the experiment identifier.
 The most common problem when you upgrade an experiment with INI configuration to YAML is that some variables may be not automatically translated.
-Ensure that all your $EXPID/conf/*.yml files are correct and also revise the templates in $EXPID/proj/$proj_name.
+Ensure that all your $EXPID/conf/\*.yml files are correct and also revise the templates in $EXPID/proj/$proj_name.
 
 
 How to run only selected members
@@ -120,7 +120,7 @@ To run only a subset of selected members you can execute the command:
 
         # Add your key to ssh agent ( if encrypted )
         ssh-add ~/.ssh/id_rsa
-        autosubmit run EXPID -rm MEMBERS
+        autosubmit run EXPID -rom MEMBERS
 
 *EXPID* is the experiment identifier, the experiment you want to run.
 
@@ -128,17 +128,17 @@ To run only a subset of selected members you can execute the command:
 
 Then, your experiment will start running jobs belonging to those members only. If the experiment was previously running and autosubmit was stopped when some jobs belonging to other members (not the ones from your input) where running, those jobs will be tracked and finished in the new exclusive run.
 
-Furthermore, if you wish to run a sequence of only members execution; then, instead of running `autosubmit run -rm "member_1"` ... `autosubmit run -rm "member_n"`, you can make a bash file with that sequence and run the bash file. Example:
+Furthermore, if you wish to run a sequence of only members execution; then, instead of running `autosubmit run -rom "member_1"` ... `autosubmit run -rom "member_n"`, you can make a bash file with that sequence and run the bash file. Example:
 
 .. code-block:: bash
 
     # Add your key to ssh agent ( if encrypted )
     ssh-add ~/.ssh/id_rsa
-    autosubmit run EXPID -rm MEMBER_1
-    autosubmit run EXPID -rm MEMBER_2
-    autosubmit run EXPID -rm MEMBER_3
+    autosubmit run EXPID -rom MEMBER_1
+    autosubmit run EXPID -rom MEMBER_2
+    autosubmit run EXPID -rom MEMBER_3
     ...
-    autosubmit run EXPID -rm MEMBER_N
+    autosubmit run EXPID -rom MEMBER_N
 
 How to start an experiment at a given time
 ------------------------------------------
@@ -186,6 +186,8 @@ Then, your terminal will show the current status of the experiment you are waiti
 This functionality can be used together with other options supplied by the `run` command.
 
 The `-sa` command has a long version `--start_after`.
+
+.. _run_modes:
 
 How to prepare an experiment to run in two independent job_list. (Priority jobs, Two-step-run) (OLD METHOD)
 -----------------------------------------------------------------------------------------------------------
@@ -247,7 +249,7 @@ The priority jobs will be ( check TWO_STEP_START from expdef conf):
 ['a02n_20120101_000_1_SIM', 'a02n_20120101_001_1_SIM', 'a02n_COMPILE_DA', 'a02n_20120101_000_1_REDUCE']
 
 How to prepare an experiment to run in two independent job_list. (New method)
----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 
 From AS4, TWO_STEP_START is not longer needed since the users can now specify exactly which tasks of a job are needed to run the current task in the DEPENDENCIES parameter.
 
@@ -410,4 +412,4 @@ To stop immediately experiment cxxx:
     kill -9 22835
 
 .. important:: In case you want to restart the experiment, you must follow the
-    :ref:`restart` procedure, explained below, in order to properly resynchronize all completed jobs.
+    :ref:`workflow_recovery` procedure, explained below, in order to properly resynchronize all completed jobs.

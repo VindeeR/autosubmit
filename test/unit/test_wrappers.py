@@ -1,5 +1,8 @@
+import shutil
+import tempfile
+
 from unittest import TestCase
-from mock import Mock,MagicMock
+from mock import MagicMock
 from autosubmit.job.job_packager import JobPackager
 from autosubmit.job.job_packages import JobPackageVertical
 from autosubmit.job.job import Job
@@ -150,6 +153,8 @@ class TestWrappers(TestCase):
 
     def setUp(self):
         self.experiment_id = 'random-id'
+        self._wrapper_factory = MagicMock()
+
         self.config = FakeBasicConfig
         self._platform = MagicMock()
         self.as_conf = MagicMock()
@@ -159,8 +164,9 @@ class TestWrappers(TestCase):
 
         self.as_conf.experiment_data["PLATFORMS"] = dict()
         self.as_conf.experiment_data["WRAPPERS"] = dict()
+        self.temp_directory = tempfile.mkdtemp()
         self.job_list = JobList(self.experiment_id, self.config, YAMLParserFactory(),
-                                JobListPersistenceDb('.', '.'),self.as_conf)
+                                JobListPersistenceDb(self.temp_directory, 'db'),self.as_conf)
         self.parser_mock = MagicMock(spec='SafeConfigParser')
 
         self._platform.max_waiting_jobs = 100
@@ -184,9 +190,14 @@ class TestWrappers(TestCase):
             'EXTEND_WALLCLOCK': 0
         }
         self.as_conf.experiment_data["WRAPPERS"]["WRAPPERS"] = options
+        self.as_conf.experiment_data["WRAPPERS"]["CURRENT_WRAPPER"] = options
+        self._wrapper_factory.as_conf = self.as_conf
         self.job_packager = JobPackager(
             self.as_conf, self._platform, self.job_list)
         self.job_list._ordered_jobs_by_date_member["WRAPPERS"] = dict()
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.temp_directory)
 
     ### ONE SECTION WRAPPER ###
     def test_returned_packages(self):
@@ -264,8 +275,7 @@ class TestWrappers(TestCase):
         package_m2_s2 = [d1_m2_1_s2, d1_m2_2_s2, d1_m2_3_s2, d1_m2_4_s2, d1_m2_5_s2, d1_m2_6_s2, d1_m2_7_s2, d1_m2_8_s2,
                          d1_m2_9_s2, d1_m2_10_s2]
 
-        packages = [JobPackageVertical(
-            package_m1_s2), JobPackageVertical(package_m2_s2)]
+        packages = [JobPackageVertical(package_m1_s2,configuration=self.as_conf), JobPackageVertical(package_m2_s2,configuration=self.as_conf)]
 
         # returned_packages = returned_packages[]
         for i in range(0, len(returned_packages)):
@@ -347,7 +357,7 @@ class TestWrappers(TestCase):
                          d1_m2_9_s2, d1_m2_10_s2]
 
         packages = [JobPackageVertical(
-            package_m1_s2), JobPackageVertical(package_m2_s2)]
+            package_m1_s2,configuration=self.as_conf), JobPackageVertical(package_m2_s2,configuration=self.as_conf)]
 
         for i in range(0, len(returned_packages)):
             self.assertListEqual(returned_packages[i]._jobs, packages[i]._jobs)
@@ -417,7 +427,7 @@ class TestWrappers(TestCase):
                          d1_m2_3_s2, d1_m2_4_s2, d1_m2_5_s2]
 
         packages = [JobPackageVertical(
-            package_m1_s2), JobPackageVertical(package_m2_s2)]
+            package_m1_s2,configuration=self.as_conf), JobPackageVertical(package_m2_s2,configuration=self.as_conf)]
 
         #returned_packages = returned_packages[0]
         for i in range(0, len(returned_packages)):
@@ -488,7 +498,7 @@ class TestWrappers(TestCase):
                          d1_m2_3_s2, d1_m2_4_s2, d1_m2_5_s2]
 
         packages = [JobPackageVertical(
-            package_m1_s2), JobPackageVertical(package_m2_s2)]
+            package_m1_s2,configuration=self.as_conf), JobPackageVertical(package_m2_s2,configuration=self.as_conf)]
 
         #returned_packages = returned_packages[0]
         for i in range(0, len(returned_packages)):
@@ -556,7 +566,7 @@ class TestWrappers(TestCase):
         package_m2_s2 = [d1_m2_1_s3]
 
         packages = [JobPackageVertical(
-            package_m1_s2), JobPackageVertical(package_m2_s2)]
+            package_m1_s2,configuration=self.as_conf), JobPackageVertical(package_m2_s2,configuration=self.as_conf)]
 
         #returned_packages = returned_packages[0]
         for i in range(0, len(returned_packages)):
@@ -639,7 +649,7 @@ class TestWrappers(TestCase):
                             d1_m2_4_s3]
 
         packages = [JobPackageVertical(
-            package_m1_s2_s3), JobPackageVertical(package_m2_s2_s3)]
+            package_m1_s2_s3,configuration=self.as_conf), JobPackageVertical(package_m2_s2_s3,configuration=self.as_conf)]
 
         #returned_packages = returned_packages[0]
         for i in range(0, len(returned_packages)):
@@ -716,7 +726,7 @@ class TestWrappers(TestCase):
         package_m1_s2_s3 = [d1_m1_1_s2, d1_m1_1_s3, d1_m1_2_s2, d1_m1_2_s3, d1_m1_3_s2, d1_m1_3_s3, d1_m1_4_s2,
                             d1_m1_4_s3]
 
-        packages = [JobPackageVertical(package_m1_s2_s3)]
+        packages = [JobPackageVertical(package_m1_s2_s3,configuration=self.as_conf)]
 
         #returned_packages = returned_packages[0]
         for i in range(0, len(returned_packages)):
@@ -798,7 +808,7 @@ class TestWrappers(TestCase):
                             d1_m2_4_s3]
 
         packages = [JobPackageVertical(
-            package_m1_s2_s3), JobPackageVertical(package_m2_s2_s3)]
+            package_m1_s2_s3,configuration=self.as_conf), JobPackageVertical(package_m2_s2_s3,configuration=self.as_conf)]
 
         #returned_packages = returned_packages[0]
         # print("test_returned_packages_max_jobs_mixed_wrapper")
@@ -888,7 +898,7 @@ class TestWrappers(TestCase):
                             d1_m2_2_s2, d1_m2_2_s3, d1_m2_3_s2]
 
         packages = [JobPackageVertical(
-            package_m1_s2_s3), JobPackageVertical(package_m2_s2_s3)]
+            package_m1_s2_s3,configuration=self.as_conf), JobPackageVertical(package_m2_s2_s3,configuration=self.as_conf)]
 
         #returned_packages = returned_packages[0]
         for i in range(0, len(returned_packages)):
@@ -968,7 +978,7 @@ class TestWrappers(TestCase):
         package_m2_s2_s3 = [d1_m2_1_s2, d1_m2_1_s3, d1_m2_2_s2, d1_m2_2_s3]
 
         packages = [JobPackageVertical(
-            package_m1_s2_s3), JobPackageVertical(package_m2_s2_s3)]
+            package_m1_s2_s3,configuration=self.as_conf), JobPackageVertical(package_m2_s2_s3,configuration=self.as_conf)]
 
         #returned_packages = returned_packages[0]
         for i in range(0, len(returned_packages)):
@@ -1066,7 +1076,7 @@ class TestWrappers(TestCase):
         package_m2_s2_s3 = [d1_m2_3_s2, d1_m2_3_s3, d1_m2_4_s2, d1_m2_4_s3]
 
         packages = [JobPackageVertical(
-            package_m1_s2_s3), JobPackageVertical(package_m2_s2_s3)]
+            package_m1_s2_s3,configuration=self.as_conf), JobPackageVertical(package_m2_s2_s3,configuration=self.as_conf)]
 
         #returned_packages = returned_packages[0]
         for i in range(0, len(returned_packages)):
@@ -1514,11 +1524,17 @@ class TestWrappers(TestCase):
 
         return job
 
-
+import inspect
 class FakeBasicConfig:
     def __init__(self):
         pass
-
+    def props(self):
+        pr = {}
+        for name in dir(self):
+            value = getattr(self, name)
+            if not name.startswith('__') and not inspect.ismethod(value) and not inspect.isfunction(value):
+                pr[name] = value
+        return pr
     DB_DIR = '/dummy/db/dir'
     DB_FILE = '/dummy/db/file'
     DB_PATH = '/dummy/db/path'

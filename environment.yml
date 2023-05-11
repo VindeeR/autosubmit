@@ -3,25 +3,28 @@ channels:
   - conda-forge
 
 dependencies:
-- python=3
+- python=3.7
 - nose
 - nose-cov
 - paramiko
 - graphviz
 - python-dateutil
 - pyparsing
-- numpy
+- numpy<1.22
 - matplotlib
+- bcrypt
 - pip
 - mock
 - portalocker
 - networkx
+- sqlite
 - pip:
-  - autosubmitconfigparser==0.0.74
+  - autosubmitconfigparser == 1.0.27
   - argparse>=1.4.0
+  - bcrypt>=3.2.0
   - python-dateutil>=2.8.2
   - matplotlib>=3.5.1
-  - numpy
+  - numpy<1.22
   - py3dotplus>=1.1.0
   - pyparsing>=3.0.7
   - paramiko>=2.9.2

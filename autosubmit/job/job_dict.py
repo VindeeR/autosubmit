@@ -378,15 +378,22 @@ class DicJobs:
             job.type = Type.PYTHON2
         elif job_type == 'r':
             job.type = Type.R
-        job.executable = str(parameters[section].get( "EXECUTABLE", ""))
-        job.platform_name = str(parameters[section].get( "PLATFORM", "")).upper()
+        hpcarch = self.experiment_data.get("DEFAULT",{})
+        hpcarch = hpcarch.get("HPCARCH","")
+        job.platform_name = str(parameters[section].get("PLATFORM", hpcarch)).upper()
+        if self.experiment_data["PLATFORMS"].get(job.platform_name, "") == "" and job.platform_name.upper() != "LOCAL":
+            raise AutosubmitCritical("Platform does not exists, check the value of %JOBS.{0}.PLATFORM% = {1} parameter".format(job.section,job.platform_name),7000,"List of platforms: {0} ".format(self.experiment_data["PLATFORMS"].keys()) )
         job.file = str(parameters[section].get( "FILE", ""))
         job.additional_files = parameters[section].get( "ADDITIONAL_FILES", [])
 
+        job.executable = str(parameters[section].get("EXECUTABLE", self.experiment_data["PLATFORMS"].get(job.platform_name,{}).get("EXECUTABLE","")))
         job.queue = str(parameters[section].get( "QUEUE", ""))
+
+        job.ec_queue = str(parameters[section].get("EC_QUEUE", ""))
+        if job.ec_queue == "" and job.platform_name != "LOCAL":
+            job.ec_queue = str(self.experiment_data["PLATFORMS"][job.platform_name].get("EC_QUEUE","hpc"))
+
         job.partition = str(parameters[section].get( "PARTITION", ""))
-        if job.partition == "" and job.platform_name.upper() not in ["LOCAL",""]:
-            job.partition = str(self.experiment_data["PLATFORMS"][job.platform_name].get("PARTITION",""))
         job.check = str(parameters[section].get( "CHECK", "true")).lower()
         job.export = str(parameters[section].get( "EXPORT", ""))
         job.processors = str(parameters[section].get( "PROCESSORS", ""))
@@ -394,12 +401,16 @@ class DicJobs:
         job.tasks = str(parameters[section].get( "TASKS", ""))
         job.memory = str(parameters[section].get("MEMORY", ""))
         job.memory_per_task = str(parameters[section].get("MEMORY_PER_TASK", ""))
-        job.wallclock = parameters[section].get("WALLCLOCK", None)
+        remote_max_wallclock = self.experiment_data["PLATFORMS"].get(job.platform_name,{})
+        remote_max_wallclock = remote_max_wallclock.get("MAX_WALLCLOCK",None)
+        job.wallclock = parameters[section].get("WALLCLOCK", remote_max_wallclock)
         job.retrials = int(parameters[section].get( 'RETRIALS', 0))
         job.delay_retrials = int(parameters[section].get( 'DELAY_RETRY_TIME', "-1"))
         if job.wallclock is None and job.platform_name.upper() != "LOCAL":
             job.wallclock = "01:59"
         elif job.wallclock is None and job.platform_name.upper() != "LOCAL":
+            job.wallclock = "00:00"
+        elif job.wallclock is None:
             job.wallclock = "00:00"
         if job.retrials == -1:
             job.retrials = None

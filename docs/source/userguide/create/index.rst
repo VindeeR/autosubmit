@@ -15,20 +15,32 @@ To create a new experiment, just run the command:
 Options:
 ::
 
-    usage: autosubmit expid [-h] [-y COPY | -dm] [-p PATH] -H HPC -d DESCRIPTION
+    usage: autosubmit expid [-h] [-y COPY | -dm | -min [ -repo GIT_PATH -b BRANCH -config AS_CONF ] ] [-p PATH] -H HPC -d DESCRIPTION
 
         -h, --help            show this help message and exit
         -y COPY, --copy COPY  makes a copy of the specified experiment
+        -op, -operational     creates a new experiment, starting with "o"
         -dm, --dummy          creates a new experiment with default values, usually for testing
-        -H HPC, --HPC HPC     specifies the HPC to use for the experiment
+        -min, --minimal_config
+            creates a new experiment with minimal configuration files, usually for using a custom configuration
+        -repo GIT_PATH, --git_repo GIT_PATH
+            sets the git_repository
+        -b BRANCH, --git_branch BRANCH
+            sets the branch to use for the git repository
+        -config, --git_as_conf
+            sets the configuration folder to use for the experiment, relative to repo root
+        -local, --use_local_minimal obtains the minimal configuration for local files
+        -H HPC, --HPC HPC     specifies the HPC to use for the experiment, default is localhost
         -d DESCRIPTION, --description DESCRIPTION
             sets a description for the experiment to store in the database.
-        -c PATH, --config PATH
-            if specified, copies config files from a folder
+
 Example:
 ::
 
-    autosubmit expid --HPC ithaca --description "experiment is about..."
+    autosubmit expid --HPC marenostrum4 --description "experiment is about..."
+    autosubmit expid -min -repo https://earth.bsc.es/gitlab/ces/auto-advanced_config_example -b main -conf as_conf -d "minimal config example"
+    autosubmit expid -dm -d "dummy test"
+
 
 If there is an autosubmitrc or .autosubmitrc file in your home directory (cd ~), you can setup a default file from where the contents of platforms_expid.yml should be copied.
 
@@ -36,6 +48,7 @@ In this autosubmitrc or .autosubmitrc file, include the configuration setting cu
 
 Example:
 ::
+
     conf:
         custom_platforms: /home/Earth/user/custom.yml
 
@@ -55,11 +68,13 @@ It registers a new unique identifier and copies all configuration files in the n
 *COPY* is the experiment identifier to copy from.
 *Description* is a brief experiment description.
 *CONFIG* is a folder that exists.
+
 Example:
 ::
 
     autosubmit expid -y cxxx -H ithaca -d "experiment is about..."
     autosubmit expid -y cxxx -p "/esarchive/autosubmit/genericFiles/conf" -H marenostrum4 -d "experiment is about..."
+
 .. warning:: You can only copy experiments created with Autosubmit 3.11 or above.
 
 If there is an autosubmitrc or .autosubmitrc file in your home directory (cd ~), you can setup a default file from where the contents of platforms_expid.yml should be copied.
@@ -68,6 +83,7 @@ In this autosubmitrc or .autosubmitrc file, include the configuration setting cu
 
 Example:
 ::
+
     conf:
     custom_platforms: /home/Earth/user/custom.yml
 

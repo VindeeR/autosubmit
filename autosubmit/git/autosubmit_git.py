@@ -16,7 +16,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
-
+import locale
 from os import path
 import os
 from shutil import rmtree
@@ -84,7 +84,7 @@ class AutosubmitGit:
     @staticmethod
     def check_commit(as_conf):
         """
-        Function to check uncommited changes
+        Function to check uncommitted changes
 
         :param as_conf: experiment configuration
         :type as_conf: autosubmitconfigparser.config.AutosubmitConfig
@@ -104,7 +104,7 @@ class AutosubmitGit:
 
                 if output:
                     Log.printlog(
-                        "There are local changes not commited to git", 3000)
+                        "There are local changes not committed to git", 3000)
                     return True
                 else:
                     output = subprocess.check_output("cd {0}; git log --branches --not --remotes".format(dirname_path),
@@ -169,7 +169,7 @@ class AutosubmitGit:
             #shutil.make_archive(project_backup_path, 'zip', project_path)
             #project_backup_path = project_backup_path + ".zip"
 
-        if os.path.exists(project_path):
+        if os.path.exists(os.path.join(project_path,project_destination)):
             Log.info("Using project folder: {0}", project_path)
             # print("Force {0}".format(force))
             if not force:
@@ -177,8 +177,9 @@ class AutosubmitGit:
                 return True
             else:
                 shutil.rmtree(project_path)
-        os.mkdir(project_path)
-        Log.debug("The project folder {0} has been created.", project_path)
+        if not os.path.exists(project_path):
+            os.mkdir(project_path)
+            Log.debug("The project folder {0} has been created.", project_path)
         command_0 = ""
         command_githook = ""
         command_1 = ""
@@ -205,7 +206,8 @@ class AutosubmitGit:
             Log.debug('Clone command: {0}', command_0)
             try:
                 git_version = subprocess.check_output("git --version",shell=True)
-                git_version = git_version.split(" ")[2].strip("\n")
+                git_version = git_version.decode(locale.getlocale()[1]).split(" ")[-1].strip("\n")
+
                 version_int = ""
                 for number in git_version.split("."):
                     version_int += number
@@ -261,7 +263,7 @@ class AutosubmitGit:
                         as_conf.parse_githooks()
                         subprocess.check_output(command_githook, shell=True)
                     command_1 = "cd {0}; {1} ".format(git_path,command_1)
-                    Log.debug('Githook + Checkout and Submodules: {0}', command_githook, command_1)
+                    Log.debug(f'Githook + Checkout and Submodules: {command_githook} {command_1}')
                     output_1 = subprocess.check_output(command_1, shell=True)
                 except BaseException as e:
                     submodule_failure = True
@@ -280,8 +282,7 @@ class AutosubmitGit:
             if os.path.exists(project_backup_path):
                 Log.info("Restoring proj folder...")
                 shutil.move(project_backup_path, project_path)
-            raise AutosubmitCritical("Can not clone {0} into {1}".format(
-                git_project_branch + " " + git_project_origin, project_path), 7065)
+            raise AutosubmitCritical(f'Can not clone {git_project_branch+" "+git_project_origin} into {project_path}', 7065)
         if submodule_failure:
             Log.info("Some Submodule failures have been detected. Backup {0} will not be removed.".format(project_backup_path))
             return False

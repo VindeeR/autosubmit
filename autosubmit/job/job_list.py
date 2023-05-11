@@ -193,8 +193,8 @@ class JobList(object):
         :type default_retrials: int
         :param new: is it a new generation?
         :type new: bool \n
-        :param wrapper_type: Type of wrapper defined by the user in autosubmit_.yml [wrapper] section. \n
-        :param wrapper_jobs: Job types defined in autosubmit_.yml [wrapper sections] to be wrapped. \n
+        :param wrapper_type: Type of wrapper defined by the user in ``autosubmit_.yml`` [wrapper] section. \n
+        :param wrapper_jobs: Job types defined in ``autosubmit_.yml`` [wrapper sections] to be wrapped. \n
         :type wrapper_jobs: String \n
         """
         self._parameters = parameters
@@ -276,7 +276,7 @@ class JobList(object):
 
     @staticmethod
     def _add_dependencies(date_list, member_list, chunk_list, dic_jobs, graph, option="DEPENDENCIES"):
-        jobs_data = dic_jobs._jobs_data["JOBS"]
+        jobs_data = dic_jobs._jobs_data.get("JOBS",{})
         for job_section in jobs_data.keys():
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
             # If it does not have dependencies, do nothing
@@ -285,9 +285,15 @@ class JobList(object):
 
             dependencies_keys = jobs_data[job_section].get(option,{})
             if type(dependencies_keys) is str:
-                dependencies_keys = dependencies_keys.split()
+                if "," in dependencies_keys:
+                    dependencies_list = dependencies_keys.split(",")
+                else:
+                    dependencies_list = dependencies_keys.split(" ")
+                dependencies_keys = {}
+                for dependency in dependencies_list:
+                    dependencies_keys[dependency] = {}
             if dependencies_keys is None:
-                dependencies_keys = []
+                dependencies_keys = {}
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section)
 
             for job in dic_jobs.get_jobs(job_section):
@@ -857,7 +863,7 @@ class JobList(object):
 
     def _create_fake_dates_members(self, filtered_jobs_list):
         """
-        Using the list of jobs provided, creates clones of these jobs and modifies names conditionted on job.date, job.member values (testing None).
+        Using the list of jobs provided, creates clones of these jobs and modifies names conditioned on job.date, job.member values (testing None).
         The purpose is that all jobs share the same name structure.
 
         :param filtered_jobs_list: A list of jobs of only those that comply with certain criteria, e.g. those belonging to a user defined job type for wrapping. \n
@@ -896,7 +902,7 @@ class JobList(object):
                     1] + "_" + member + "_" + fake_job.name.split("_", 2)[2]
                 # Filling list of fake jobs, only difference is the name
                 filtered_jobs_fake_date_member.append(fake_job)
-                # Mapping fake jobs to orignal ones
+                # Mapping fake jobs to original ones
                 fake_original_job_map[fake_job] = job
             # There was no result
             if fake_job is None:
@@ -1113,7 +1119,7 @@ class JobList(object):
 
     def get_unsubmitted(self, platform=None, wrapper=False):
         """
-        Returns a list of unsummited jobs
+        Returns a list of unsubmitted jobs
 
         :param wrapper:
         :param platform: job platform
@@ -1951,7 +1957,7 @@ class JobList(object):
                         else:
                             job.hold = True
             jobs_to_skip = self.get_skippable_jobs(
-                as_conf.get_wrapper_jobs())  # Get A Dict with all jobs that are listed as skipabble
+                as_conf.get_wrapper_jobs())  # Get A Dict with all jobs that are listed as skippable
 
             for section in jobs_to_skip:
                 for job in jobs_to_skip[section]:
@@ -2085,7 +2091,7 @@ class JobList(object):
         :param as_conf: experiment configuration
         :type as_conf: AutosubmitConfig
         """
-        as_conf.reload(first_load=True)
+        as_conf.reload(force_load=True)
         out = True
         for job in self._job_list:
             show_logs = job.check_warnings
@@ -2165,13 +2171,16 @@ class JobList(object):
 
         self._job_list.remove(job)
 
-    def rerun(self, job_list_unparsed, monitor=False):
+    def rerun(self, job_list_unparsed,as_conf, monitor=False):
         """
         Updates job list to rerun the jobs specified by a job list
         :param job_list_unparsed: list of jobs to rerun
         :type job_list_unparsed: str
+        :param as_conf: experiment configuration
+        :type as_conf: AutosubmitConfig
         :param monitor: if True, the job list will be monitored
         :type monitor: bool
+
         """
         self.parse_jobs_by_filter(job_list_unparsed,two_step_start=False)
         member_list = set()
@@ -2196,15 +2205,18 @@ class JobList(object):
         self._member_list = list(member_list)
         self._chunk_list = list(chunk_list)
         self._date_list = list(date_list)
-        jobs_parser = self._get_jobs_parser()
         Log.info("Adding dependencies...")
         dependencies = dict()
 
         for job_section in job_sections:
             Log.debug(
                 "Reading rerun dependencies for {0} jobs".format(job_section))
-            if jobs_parser.has_option(job_section, 'DEPENDENCIES'):
-                dependencies_keys = jobs_parser.get(job_section, "DEPENDENCIES").upper().split()
+            if as_conf.jobs_data[job_section].get('DEPENDENCIES',None) is not None:
+                dependencies_keys = as_conf.jobs_data[job_section].get('DEPENDENCIES',{})
+                if type(dependencies_keys) is str:
+                    dependencies_keys = dependencies_keys.upper().split()
+                if dependencies_keys is None:
+                    dependencies_keys = []
                 dependencies = JobList._manage_dependencies(dependencies_keys, self._dic_jobs, job_section)
                 for job in self.get_jobs_by_section(job_section):
                     for key in dependencies_keys:
@@ -2266,17 +2278,19 @@ class JobList(object):
 
         # Find root
         root = None
+        roots = []
         for job in allJobs:
-            if job.has_parents() is False:
-                root = job
+            if len(job.parents) == 0:
+                roots.append(job)
         visited = list()
         #print(root)
         # root exists
-        if root is not None and len(str(root)) > 0:
-            result += self._recursion_print(root, 0, visited,
-                                            statusChange=statusChange, nocolor=nocolor)
-        else:
-            result += "\nCannot find root."
+        for root in roots:
+            if root is not None and len(str(root)) > 0:
+                result += self._recursion_print(root, 0, visited,
+                                                statusChange=statusChange, nocolor=nocolor)
+            else:
+                result += "\nCannot find root."
 
         return result
 

@@ -1605,6 +1605,8 @@ class Autosubmit:
             # for job in job_list.get_uncompleted_and_not_waiting():
             #    job.status = Status.COMPLETED
             job_list.update_list(as_conf, False)
+        for job in job_list.get_job_list():
+            job.status = Status.WAITING
 
 
     @staticmethod
@@ -1981,7 +1983,6 @@ class Autosubmit:
             # establish the connection to all platforms
             # Restore is a missleading, it is actually a "connect" function when the recover flag is not set.
             Autosubmit.restore_platforms(platforms_to_test)
-
             return job_list, submitter , exp_history, host , as_conf, platforms_to_test, packages_persistence, False
         else:
             return job_list, submitter , None, None, as_conf , platforms_to_test, packages_persistence, True
@@ -2162,7 +2163,6 @@ class Autosubmit:
                             Log.printlog("Error trying to store failed job count", Log.WARNING)
                         Log.result("Storing failed job count...done")
                         while not recovery and (recovery_retrials < max_recovery_retrials or max_recovery_retrials <= 0 ):
-
                             delay = min(15 * consecutive_retrials, 120)
                             recovery_retrials += 1
                             sleep(delay)
@@ -2242,21 +2242,17 @@ class Autosubmit:
                     except Exception as e:
                         pass
                 # Wait for all remaining threads of I/O, close remaining connections
-                timeout = 0
-                active_threads = True
-                all_threads = threading.enumerate()
-                while active_threads and timeout <= 180:
-                    active_threads = False
-                    for thread in all_threads:
-                        if "JOB_" in thread.name:
-                            if thread.is_alive():
-                                active_threads = True
-                                Log.info("{0} is still retrieving outputs, time remaining is {1} seconds.".format(
-                                    thread.name, 180 - timeout))
-                                break
-                    if active_threads:
-                        sleep(10)
-                        timeout += 10
+                timeout = 180
+                Log.info("Waiting for all logs to be updated")
+                while len(job_list.get_completed_without_logs()) > 0 and timeout > 0:
+                    for job in job_list.get_completed_without_logs():
+                        job_list.update_log_status(job)
+                    sleep(1)
+                    timeout = timeout - 1
+                    if timeout % 10 == 0:
+                        Log.info(f"Timeout: {timeout}")
+
+
                 for platform in platforms_to_test:
                     platform.closeConnection()
                 if len(job_list.get_failed()) > 0:

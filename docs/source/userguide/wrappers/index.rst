@@ -391,9 +391,9 @@ Considering the following configuration:
             DATES_FROM:
               "20120201":
                 CHUNKS_FROM:
-                1:
-                  DATES_TO: "20120101"
-                  CHUNKS_TO: "1"
+                  1:
+                    DATES_TO: "20120101"
+                    CHUNKS_TO: "1"
         RUNNING: chunk
         SYNCHRONIZE: member
         DELAY: '0'

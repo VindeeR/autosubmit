@@ -270,11 +270,6 @@ class Monitor:
         else:
             return None, None
 
-
-
-
-
-
     def _add_children(self, job, exp, node_job, groups, hide_groups):
         if job in self.nodes_plotted:
             return
@@ -458,6 +453,8 @@ class Monitor:
                 log_out = ""
                 log_err = ""
                 if job.status in [Status.FAILED, Status.COMPLETED]:
+                    if not job.local_logs[0]:
+                        job.local_logs = ("","")
                     log_out = path + "/" + job.local_logs[0]
                     log_err = path + "/" + job.local_logs[1]
 

@@ -137,34 +137,45 @@ class Job(object):
 
     CHECK_ON_SUBMISSION = 'on_submission'
 
+    # TODO
+    # This is crashing the code
+    # I added it for the assertions of unit testing... since job obj != job obj when it was saved & load
+    # since it points to another section of the memory.
+    # Unfortunatelly, this is crashing the code everywhere else
+
+    # def __eq__(self, other):
+    #     return self.name == other.name and self.id == other.id
+
     def __str__(self):
+        return "{0} STATUS: {1}".format(self.name, self.status)
+
+    def __repr__(self):
         return "{0} STATUS: {1}".format(self.name, self.status)
 
     def __init__(self, name, job_id, status, priority):
         self.splits = None
+        self.rerun_only = False
         self.script_name_wrapper = None
-        self.delay_end = datetime.datetime.now()
-        self._delay_retrials = "0"
+        self.retrials = None
+        self.delay_end = None
+        self.delay_retrials = None
         self.wrapper_type = None
         self._wrapper_queue = None
         self._platform = None
         self._queue = None
         self._partition = None
-
-        self.retry_delay = "0"
-        self.platform_name = None # type: str
+        self.retry_delay = None
         #: (str): Type of the job, as given on job configuration file. (job: TASKTYPE)
         self._section = None # type: str
         self._wallclock = None # type: str
         self.wchunkinc = None
-        self._tasks = '1'
-        self._nodes = ""
-        self.default_parameters = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
-                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
-        self._threads = '1'
-        self._processors = '1'
-        self._memory = ''
-        self._memory_per_task = ''
+        self._tasks = None
+        self._nodes = None
+        self.default_parameters = None
+        self._threads = None
+        self._processors = None
+        self._memory = None
+        self._memory_per_task = None
         self._chunk = None
         self._member = None
         self.date = None
@@ -179,9 +190,9 @@ class Job(object):
         self.long_name = name
         self.date_format = ''
         self.type = Type.BASH
-        self._hyperthreading = "none"
-        self._scratch_free_space = None
-        self._custom_directives = []
+        self.hyperthreading = None
+        self.scratch_free_space = None
+        self.custom_directives = []
         self.undefined_variables = set()
         self.log_retries = 5
         self.id = job_id
@@ -202,7 +213,7 @@ class Job(object):
         #: (int) Number of failed attempts to run this job. (FAIL_COUNT)
         self._fail_count = 0
         self.expid = name.split('_')[0] # type: str
-        self.parameters = dict()
+        self.parameters = None
         self._tmp_path = os.path.join(
             BasicConfig.LOCAL_ROOT_DIR, self.expid, BasicConfig.LOCAL_TMP_DIR)
         self.write_start = False
@@ -215,25 +226,50 @@ class Job(object):
         self.level = 0
         self._export = "none"
         self._dependencies = []
-        self.running = "once"
+        self.running = None
         self.start_time = None
-        self.ext_header_path = ''
-        self.ext_tailer_path = ''
+        self.ext_header_path = None
+        self.ext_tailer_path = None
         self.edge_info = dict()
         self.total_jobs = None
         self.max_waiting_jobs = None
         self.exclusive = ""
         self._retrials = 0
-
         # internal
         self.current_checkpoint_step = 0
         self.max_checkpoint_step = 0
-        self.reservation= ""
+        self.reservation = ""
+        self.delete_when_edgeless = False
         # hetjobs
-        self.het = dict()
-        self.het['HETSIZE'] = 0
+        self.het = None
+        self.updated_log = True
+        self.ready_start_date = None
 
+    def _init_runtime_parameters(self):
+        # hetjobs
+        self.het = {'HETSIZE': 0}
+        self.parameters = dict()
+        self._tasks = '1'
+        self._nodes = ""
+        self.default_parameters = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
+                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
+        self._threads = '1'
+        self._processors = '1'
+        self._memory = ''
+        self._memory_per_task = ''
+        self.log_retrieved = False
 
+    def _clean_runtime_parameters(self):
+        # hetjobs
+        self.het = None
+        self.parameters = None
+        self._tasks = None
+        self._nodes = None
+        self.default_parameters = None
+        self._threads = None
+        self._processors = None
+        self._memory = None
+        self._memory_per_task = None
     @property
     @autosubmit_parameter(name='tasktype')
     def section(self):
@@ -272,7 +308,8 @@ class Job(object):
 
     @retrials.setter
     def retrials(self, value):
-        self._retrials = int(value)
+        if value is not None:
+            self._retrials = int(value)
 
     @property
     @autosubmit_parameter(name='checkpoint')
@@ -496,11 +533,8 @@ class Job(object):
         self._splits = value
 
     def __getstate__(self):
-        odict = self.__dict__
-        if '_platform' in odict:
-            odict = odict.copy()  # copy the dict since we change it
-            del odict['_platform']  # remove filehandle entry
-        return odict
+        return {k: v for k, v in self.__dict__.items() if k not in ["_platform", "_children", "_parents", "submitter"]}
+
 
     def read_header_tailer_script(self, script_path: str, as_conf: AutosubmitConfig, is_header: bool):
         """
@@ -512,13 +546,15 @@ class Job(object):
         :param as_conf: Autosubmit configuration file
         :param is_header: boolean indicating if it is header extended script
         """
-
+        if not script_path:
+            return ''
         found_hashbang = False
         script_name = script_path.rsplit("/")[-1]  # pick the name of the script for a more verbose error
-        script = ''
         # the value might be None string if the key has been set, but with no value
-        if script_path == '' or script_path == "None":
-            return script
+        if not script_name:
+            return ''
+        script = ''
+
 
         # adjusts the error message to the type of the script
         if is_header:
@@ -623,7 +659,7 @@ class Job(object):
         :return HPCPlatform object for the job to use
         :rtype: HPCPlatform
         """
-        if self.is_serial:
+        if self.is_serial and self._platform:
             return self._platform.serial_platform
         else:
             return self._platform
@@ -753,7 +789,8 @@ class Job(object):
         if ':' in str(self.processors):
             return reduce(lambda x, y: int(x) + int(y), self.processors.split(':'))
         elif self.processors == "" or self.processors == "1":
-            if int(self.nodes) <= 1:
+
+            if not self.nodes or int(self.nodes) <= 1:
                 return 1
             else:
                 return ""
@@ -799,6 +836,16 @@ class Job(object):
                 self._parents.add(new_parent)
                 new_parent.__add_child(self)
 
+    def add_children(self, children):
+        """
+        Add children for the job. It also adds current job as a parent for all the new children
+
+        :param children: job's children to add
+        :type children: list of Job objects
+        """
+        for child in (child for child in children if child.name != self.name):
+            self.__add_child(child)
+            child._parents.add(self)
     def __add_child(self, new_child):
         """
         Adds a new child to the job
@@ -808,19 +855,19 @@ class Job(object):
         """
         self.children.add(new_child)
 
-    def add_edge_info(self, parent, special_variables):
+    def add_edge_info(self, parent, special_conditions):
         """
         Adds edge information to the job
 
         :param parent: parent job
         :type parent: Job
-        :param special_variables: special variables
-        :type special_variables: dict
+        :param special_conditions: special variables
+        :type special_conditions: dict
         """
-        if special_variables["STATUS"] not in self.edge_info:
-            self.edge_info[special_variables["STATUS"]] = {}
+        if special_conditions["STATUS"] not in self.edge_info:
+            self.edge_info[special_conditions["STATUS"]] = {}
 
-        self.edge_info[special_variables["STATUS"]][parent.name] = (parent,special_variables.get("FROM_STEP", 0))
+        self.edge_info[special_conditions["STATUS"]][parent.name] = (parent,special_conditions.get("FROM_STEP", 0))
 
     def delete_parent(self, parent):
         """
@@ -960,220 +1007,138 @@ class Job(object):
                 retrials_list.insert(0, retrial_dates)
         return retrials_list
 
-    def retrieve_logfiles_unthreaded(self, copy_remote_logs, local_logs):
-        remote_logs = (self.script_name + ".out."+str(self.fail_count), self.script_name + ".err."+str(self.fail_count))
-        out_exist = False
-        err_exist = False
-        retries = 3
-        sleeptime = 0
-        i = 0
-        no_continue = False
+    def get_new_remotelog(self, platform, max_logs, last_log, stat_file):
+        """
+        Checks if stat file exists on remote host
+        if it exists, remote_log variable is updated
+        """
         try:
-            while (not out_exist and not err_exist) and i < retries:
-                try:
-                    out_exist = self._platform.check_file_exists(
-                        remote_logs[0], True)
-                except IOError as e:
-                    out_exist = False
-                try:
-                    err_exist = self._platform.check_file_exists(
-                        remote_logs[1], True)
-                except IOError as e:
-                    err_exists = False
-                if not out_exist or not err_exist:
-                    sleeptime = sleeptime + 5
-                    i = i + 1
-                    sleep(sleeptime)
-            if i >= retries:
-                if not out_exist or not err_exist:
-                    Log.printlog("Failed to retrieve log files {1} and {2} e=6001".format(
-                        retries, remote_logs[0], remote_logs[1]))
-                    return
-            if str(copy_remote_logs).lower() == "true":
-                # unifying names for log files
-                if remote_logs != local_logs:
-                    self.synchronize_logs(
-                        self._platform, remote_logs, local_logs)
-                    remote_logs = copy.deepcopy(local_logs)
-                self._platform.get_logs_files(self.expid, remote_logs)
-                # Update the logs with Autosubmit Job ID Brand
-                try:
-                    for local_log in local_logs:
-                        self._platform.write_jobid(self.id, os.path.join(
-                            self._tmp_path, 'LOG_' + str(self.expid), local_log))
-                except BaseException as e:
-                    Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(
-                        str(e), self.name))
-        except AutosubmitError as e:
-            Log.printlog("Trace {0} \nFailed to retrieve log file for job {1}".format(
-                str(e), self.name), 6001)
-        except AutosubmitCritical as e:  # Critical errors can't be recovered. Failed configuration or autosubmit error
-            Log.printlog("Trace {0} \nFailed to retrieve log file for job {0}".format(
-                str(e), self.name), 6001)
-        return
-
-    @threaded
-    def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0,job_id="",auth_password=None, local_auth_password = None):
-        as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
-        as_conf.reload(force_load=True)
-        max_retrials = self.retrials
-        max_logs = 0
-        last_log = 0
-        stat_file = self.script_name[:-4] + "_STAT_"
-        lang = locale.getlocale()[1]
-        if lang is None:
-            lang = locale.getdefaultlocale()[1]
-            if lang is None:
-                lang = 'UTF-8'
-        retries = 2
-        count = 0
-        success = False
-        error_message = ""
-        platform = None
-        while (count < retries) and not success:
-            try:
-                as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
-                as_conf.reload(force_load=True)
-                max_retrials = self.retrials
-                max_logs = int(max_retrials) - fail_count
-                last_log = int(max_retrials) - fail_count
-                submitter = self._get_submitter(as_conf)
-                submitter.load_platforms(as_conf, auth_password=auth_password, local_auth_password=local_auth_password)
-                platform = submitter.platforms[platform_name]
-                platform.test_connection()
-                success = True
-            except BaseException as e:
-                error_message = str(e)
-                sleep(5)
-                pass
-            count = count + 1
-        if not success:
-            raise AutosubmitError(
-                "Couldn't load the autosubmit platforms, seems that the local platform has some issue\n:{0}".format(
-                    error_message), 6006)
-        try:
-            if self.wrapper_type is not None and self.wrapper_type == "vertical":
-                found = False
-                retrials = 0
-                while retrials < 3 and not found:
-                    if platform.check_stat_file_by_retrials(stat_file + str(max_logs)):
-                        found = True
-                    retrials = retrials + 1
+            if self.wrapper_type and self.wrapper_type == "vertical":
+                platform.check_stat_file_by_retrials(stat_file + str(max_logs), retries=1)
                 for i in range(max_logs-1,-1,-1):
-                    if platform.check_stat_file_by_retrials(stat_file + str(i)):
+                    if platform.check_stat_file_by_retrials(stat_file + str(i), retries=1, first=False):
                         last_log = i
                     else:
                         break
-                remote_logs = (self.script_name + ".out." + str(last_log), self.script_name + ".err." + str(last_log))
-
+                remote_logs = (f"{self.script_name}.out.{last_log}", f"{self.script_name}.err.{last_log}")
             else:
-                remote_logs = (self.script_name + ".out."+str(fail_count), self.script_name + ".err." + str(fail_count))
+                remote_logs = (f"{self.script_name}.out.{self._fail_count}", f"{self.script_name}.err.{self._fail_count}")
 
         except BaseException as e:
-            Log.printlog(
-                "{0} \n Couldn't connect to the remote platform for {1} job err/out files. ".format(str(e), self.name), 6001)
-        out_exist = False
-        err_exist = False
-        retries = 3
-        i = 0
-        try:
-            while (not out_exist and not err_exist) and i < retries:
-                try:
-                    out_exist = platform.check_file_exists(
-                        remote_logs[0], False, sleeptime=0, max_retries=1)
-                except IOError as e:
-                    out_exist = False
-                try:
-                    err_exist = platform.check_file_exists(
-                        remote_logs[1], False, sleeptime=0, max_retries=1)
-                except IOError as e:
-                    err_exist = False
-                if not out_exist or not err_exist:
-                    i = i + 1
-                    sleep(5)
-                    try:
-                        platform.restore_connection()
-                    except BaseException as e:
-                        Log.printlog("{0} \n Couldn't connect to the remote platform for this {1} job err/out files. ".format(
-                            str(e), self.name), 6001)
-            if i >= retries:
-                if not out_exist or not err_exist:
-                    Log.printlog("Failed to retrieve log files {1} and {2} e=6001".format(
-                        retries, remote_logs[0], remote_logs[1]))
-                    return
-            if copy_remote_logs:
-                l_log = copy.deepcopy(local_logs)
-                # unifying names for log files
-                if remote_logs != local_logs:
-                    if self.wrapper_type == "vertical": # internal_Retrial mechanism
-                        log_start = last_log
-                        exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
-                        tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
-                        time_stamp = "1970"
-                        total_stats = ["", "","FAILED"]
-                        while log_start <= max_logs:
-                            try:
-                                if platform.get_stat_file_by_retrials(stat_file+str(max_logs)):
-                                    with open(os.path.join(tmp_path,stat_file+str(max_logs)), 'r+') as f:
-                                        total_stats = [f.readline()[:-1],f.readline()[:-1],f.readline()[:-1]]
-                                    try:
-                                        total_stats[0] = float(total_stats[0])
-                                        total_stats[1] = float(total_stats[1])
-                                    except Exception as e:
-                                        total_stats[0] = int(str(total_stats[0]).split('.')[0])
-                                        total_stats[1] = int(str(total_stats[1]).split('.')[0])
-                                    if max_logs != ( int(max_retrials) - fail_count ):
-                                        time_stamp = date2str(datetime.datetime.fromtimestamp(total_stats[0]), 'S')
-                                    else:
-                                        with open(os.path.join(self._tmp_path, self.name + '_TOTAL_STATS_TMP'), 'rb+') as f2:
-                                            for line in f2.readlines():
-                                                if len(line) > 0:
-                                                    line = line.decode(lang)
-                                                    time_stamp = line.split(" ")[0]
+            remote_logs = ""
+            Log.printlog(f"Trace {e} \n Failed to retrieve stat file for job {self.name}", 6000)
+        return remote_logs
 
-                                    self.write_total_stat_by_retries(total_stats,max_logs == ( int(max_retrials) - fail_count ))
-                                    platform.remove_stat_file_by_retrials(stat_file+str(max_logs))
-                                    l_log = (self.script_name[:-4] + "." + time_stamp + ".out",self.script_name[:-4] + "." + time_stamp + ".err")
-                                    r_log = ( remote_logs[0][:-1]+str(max_logs) , remote_logs[1][:-1]+str(max_logs) )
-                                    self.synchronize_logs(platform, r_log, l_log,last = False)
-                                    platform.get_logs_files(self.expid, l_log)
-                                    try:
-                                        for local_log in l_log:
-                                            platform.write_jobid(job_id, os.path.join(self._tmp_path, 'LOG_' + str(self.expid), local_log))
-                                    except BaseException as e:
-                                        pass
-                                    max_logs = max_logs - 1
-                                else:
-                                    max_logs = -1   # exit, no more logs
-                            except BaseException as e:
-                                max_logs = -1 # exit
-                        local_logs = copy.deepcopy(l_log)
-                        remote_logs = copy.deepcopy(local_logs)
-                    if self.wrapper_type != "vertical":
-                        self.synchronize_logs(platform, remote_logs, local_logs)
-                        remote_logs = copy.deepcopy(local_logs)
+    def check_remote_log_exists(self, platform):
+        try:
+            out_exist = platform.check_file_exists(self.remote_logs[0], False, sleeptime=0, max_retries=1)
+        except IOError:
+            out_exist = False
+        try:
+            err_exist = platform.check_file_exists(self.remote_logs[1], False, sleeptime=0, max_retries=1)
+        except IOError:
+            err_exist = False
+        if out_exist or err_exist:
+            return True
+        else:
+            return False
+    def retrieve_vertical_wrapper_logs(self, last_log, max_logs, platform, stat_file, max_retrials, fail_count):
+        """
+        Retrieves log files from remote host meant to be used inside a daemon thread.
+        :param last_log:
+        :param max_logs:
+        :param platform:
+        :param stat_file:
+        :param max_retrials:
+        :param fail_count:
+        :return:
+        """
+        lang = locale.getlocale()[1]
+        if not lang:
+            lang = locale.getdefaultlocale()[1]
+            if not lang:
+                lang = 'UTF-8'
+        log_start = last_log
+        exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, self.name[:4])
+        tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
+        time_stamp = "1970"
+        at_least_one_recovered = False
+        while log_start <= max_logs:
+            try:
+                if platform.get_stat_file_by_retrials(stat_file + str(max_logs)):
+                    with open(os.path.join(tmp_path, stat_file + str(max_logs)), 'r+') as f:
+                        total_stats = [f.readline()[:-1], f.readline()[:-1], f.readline()[:-1]]
+                    try:
+                        total_stats[0] = float(total_stats[0])
+                        total_stats[1] = float(total_stats[1])
+                    except Exception as e:
+                        total_stats[0] = int(str(total_stats[0]).split('.')[0])
+                        total_stats[1] = int(str(total_stats[1]).split('.')[0])
+                    if max_logs != (int(max_retrials) - fail_count):
+                        time_stamp = date2str(datetime.datetime.fromtimestamp(total_stats[0]), 'S')
+                    else:
+                        with open(os.path.join(self._tmp_path, self.name + '_TOTAL_STATS_TMP'), 'rb+') as f2:
+                            for line in f2.readlines():
+                                if len(line) > 0:
+                                    line = line.decode(lang)
+                                    time_stamp = line.split(" ")[0]
+
+                    self.write_total_stat_by_retries(total_stats, max_logs == (int(max_retrials) - fail_count))
+                    platform.remove_stat_file_by_retrials(stat_file + str(max_logs))
+                    l_log = (self.script_name[:-4] + "." + time_stamp + ".out",
+                             self.script_name[:-4] + "." + time_stamp + ".err")
+                    r_log = (self.remote_logs[0][:-1] + str(max_logs), self.remote_logs[1][:-1] + str(max_logs))
+                    self.synchronize_logs(platform, r_log, l_log, last=False)
+                    platform.get_logs_files(self.expid, l_log)
+                    with suppress(BaseException):
+                        for local_log in l_log:
+                            platform.write_jobid(self.id,os.path.join(self._tmp_path, 'LOG_' + str(self.expid), local_log))
+                    max_logs = max_logs - 1
+                    at_least_one_recovered = True
+                else:
+                    max_logs = -1  # exit, no more logs
+            except Exception:
+                return False
+        return at_least_one_recovered
+
+    def retrieve_logfiles(self, platform):
+        """
+        Retrieves log files from remote host meant to be used inside a process.
+        :param platform: platform that is calling the function, already connected.
+        :return:
+        """
+        log_retrieved = False
+        max_retrials = self.retrials
+        max_logs = int(max_retrials) - self._fail_count
+        last_log = int(max_retrials) - self._fail_count
+        stat_file = self.script_name[:-4] + "_STAT_"
+        self.remote_logs = self.get_new_remotelog(platform, max_logs, last_log, stat_file)
+        if not self.remote_logs:
+            self.log_retrieved = False
+        else:
+            if self.check_remote_log_exists(platform):
+                # retrieve logs and stat files
+                if self.wrapper_type is not None and self.wrapper_type == "vertical":
+                    if self.retrieve_vertical_wrapper_logs(last_log, max_logs, platform, stat_file, max_retrials, self._fail_count):
+                        log_retrieved = True
+                else:
+                    try:
+                        self.synchronize_logs(platform, self.remote_logs, self.local_logs)
+                        remote_logs = copy.deepcopy(self.local_logs)
                         platform.get_logs_files(self.expid, remote_logs)
-                        # Update the logs with Autosubmit Job ID Brand
-                        try:
-                            for local_log in local_logs:
-                                platform.write_jobid(job_id, os.path.join(
-                                    self._tmp_path, 'LOG_' + str(self.expid), local_log))
-                        except BaseException as e:
-                            Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(
-                                str(e), self.name))
-            with suppress(Exception):
-                platform.closeConnection()
-        except AutosubmitError as e:
-            Log.printlog("Trace {0} \nFailed to retrieve log file for job {1}".format(
-                e.message, self.name), 6001)
-            with suppress(Exception):
-                platform.closeConnection()
-        except AutosubmitCritical as e:  # Critical errors can't be recovered. Failed configuration or autosubmit error
-            Log.printlog("Trace {0} \nFailed to retrieve log file for job {0}".format(
-                e.message, self.name), 6001)
-            with suppress(Exception):
-                platform.closeConnection()
-        return
+                        log_retrieved = True
+                    except:
+                        log_retrieved = False
+                    # Update the logs with Autosubmit Job ID Brand
+                    try:
+                        for local_log in self.local_logs:
+                            platform.write_jobid(self.id, os.path.join(
+                                self._tmp_path, 'LOG_' + str(self.expid), local_log))
+                    except BaseException as e:
+                        Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(str(e), self.name))
+        self.log_retrieved = log_retrieved
+        if not self.log_retrieved:
+            Log.printlog("Failed to retrieve logs for job {0}".format(self.name), 6001)
 
     def parse_time(self,wallclock):
         regex = re.compile(r'(((?P<hours>\d+):)((?P<minutes>\d+)))(:(?P<seconds>\d+))?')
@@ -1229,6 +1194,7 @@ class Job(object):
         :param failed_file: boolean, if True, checks if the job failed
         :return:
         """
+        self.log_avaliable = False
         copy_remote_logs = as_conf.get_copy_remote_logs()
         previous_status = self.status
         self.prev_status = previous_status
@@ -1284,21 +1250,20 @@ class Job(object):
             self.write_submit_time()
         # Updating logs
         if self.status in [Status.COMPLETED, Status.FAILED, Status.UNKNOWN]:
-            # New thread, check if file exist
-            expid = copy.deepcopy(self.expid)
-            platform_name = copy.deepcopy(self.platform_name)
-            local_logs = copy.deepcopy(self.local_logs)
-            remote_logs = copy.deepcopy(self.remote_logs)
-            if as_conf.get_disable_recovery_threads(self.platform.name) == "true":
-                self.retrieve_logfiles_unthreaded(copy_remote_logs, local_logs)
-            else:
-                self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count),job_id=self.id,auth_password=self._platform.pw, local_auth_password=self._platform.pw)
+            import time
+            start = time.time()
+            self.platform.add_job_to_log_recover(self)
+            Log.debug(f"Time to retrieve logs for job {self.name} {time.time() - start}")
             if self.wrapper_type == "vertical":
                 max_logs = int(self.retrials)
                 for i in range(0,max_logs):
                     self.inc_fail_count()
             else:
                 self.write_end_time(self.status == Status.COMPLETED)
+
+        if self.status in [Status.COMPLETED, Status.FAILED]:
+            self.updated_log = False
+
         return self.status
 
     @staticmethod
@@ -1585,10 +1550,11 @@ class Job(object):
         # Ignore the heterogeneous parameters if the cores or nodes are no specefied as a list
         if self.het['HETSIZE'] == 1:
             self.het = dict()
-        if self.wallclock is None and job_platform.type not in ['ps', "local", "PS", "LOCAL"]:
-            self.wallclock = "01:59"
-        elif self.wallclock is None and job_platform.type in ['ps', 'local', "PS", "LOCAL"]:
-            self.wallclock = "00:00"
+        if not self.wallclock:
+            if job_platform.type.lower() not in ['ps', "local"]:
+                self.wallclock = "01:59"
+            elif job_platform.type.lower() in ['ps', 'local']:
+                self.wallclock = "00:00"
         # Increasing according to chunk
         self.wallclock = increase_wallclock_by_chunk(
             self.wallclock, self.wchunkinc, chunk)
@@ -1677,8 +1643,35 @@ class Job(object):
                 as_conf.get_extensible_wallclock(as_conf.experiment_data["WRAPPERS"].get(wrapper_section)))
         return parameters
 
-    def update_job_parameters(self,as_conf, parameters):
+    def update_dict_parameters(self,as_conf):
+        self.retrials = as_conf.jobs_data.get(self.section,{}).get("RETRIALS", as_conf.experiment_data.get("CONFIG",{}).get("RETRIALS", 0))
+        self.splits = as_conf.jobs_data.get(self.section,{}).get("SPLITS", None)
+        self.delete_when_edgeless = as_conf.jobs_data.get(self.section,{}).get("DELETE_WHEN_EDGELESS", True)
+        self.dependencies = str(as_conf.jobs_data.get(self.section,{}).get("DEPENDENCIES",""))
+        self.running = as_conf.jobs_data.get(self.section,{}).get("RUNNING", "once")
+        self.platform_name = as_conf.jobs_data.get(self.section,{}).get("PLATFORM", as_conf.experiment_data.get("DEFAULT",{}).get("HPCARCH", None))
+        self.file = as_conf.jobs_data.get(self.section,{}).get("FILE", None)
+        self.additional_files = as_conf.jobs_data.get(self.section,{}).get("ADDITIONAL_FILES", [])
 
+        type_ = str(as_conf.jobs_data.get(self.section,{}).get("TYPE", "bash")).lower()
+        if type_ == "bash":
+            self.type = Type.BASH
+        elif type_ == "python" or type_ == "python3":
+            self.type = Type.PYTHON
+        elif type_ == "r":
+            self.type = Type.R
+        elif type_ == "python2":
+            self.type = Type.PYTHON2
+        else:
+            self.type = Type.BASH
+        self.ext_header_path = as_conf.jobs_data.get(self.section,{}).get('EXTENDED_HEADER_PATH', None)
+        self.ext_tailer_path = as_conf.jobs_data.get(self.section,{}).get('EXTENDED_TAILER_PATH', None)
+        if self.platform_name:
+            self.platform_name = self.platform_name.upper()
+
+    def update_job_parameters(self,as_conf, parameters):
+        self.splits = as_conf.jobs_data[self.section].get("SPLITS", None)
+        self.delete_when_edgeless = as_conf.jobs_data[self.section].get("DELETE_WHEN_EDGELESS", True)
         if self.checkpoint: # To activate placeholder sustitution per <empty> in the template
             parameters["AS_CHECKPOINT"] = self.checkpoint
         parameters['JOBNAME'] = self.name
@@ -1692,10 +1685,8 @@ class Job(object):
         parameters['SYNCHRONIZE'] = self.synchronize
         parameters['PACKED'] = self.packed
         parameters['CHUNK'] = 1
-        if hasattr(self, 'RETRIALS'):
-            parameters['RETRIALS'] = self.retrials
-        if hasattr(self, 'delay_retrials'):
-            parameters['DELAY_RETRIALS'] = self.delay_retrials
+        parameters['RETRIALS'] = self.retrials
+        parameters['DELAY_RETRIALS'] = self.delay_retrials
         if self.date is not None and len(str(self.date)) > 0:
             if self.chunk is None and len(str(self.chunk)) > 0:
                 chunk = 1
@@ -1705,7 +1696,7 @@ class Job(object):
             parameters['CHUNK'] = chunk
             total_chunk = int(parameters.get('EXPERIMENT.NUMCHUNKS', 1))
             chunk_length = int(parameters.get('EXPERIMENT.CHUNKSIZE', 1))
-            chunk_unit = str(parameters.get('EXPERIMENT.CHUNKSIZEUNIT', "")).lower()
+            chunk_unit = str(parameters.get('EXPERIMENT.CHUNKSIZEUNIT', "day")).lower()
             cal = str(parameters.get('EXPERIMENT.CALENDAR', "")).lower()
             chunk_start = chunk_start_date(
                 self.date, chunk, chunk_length, chunk_unit, cal)
@@ -1757,8 +1748,9 @@ class Job(object):
             else:
                 parameters['CHUNK_LAST'] = 'FALSE'
         parameters['NUMMEMBERS'] = len(as_conf.get_member_list())
-        parameters['DEPENDENCIES'] = str(as_conf.jobs_data[self.section].get("DEPENDENCIES",""))
-        self.dependencies = parameters['DEPENDENCIES']
+        self.dependencies = as_conf.jobs_data[self.section].get("DEPENDENCIES", "")
+        self.dependencies  = str(self.dependencies)
+
         parameters['EXPORT'] = self.export
         parameters['PROJECT_TYPE'] = as_conf.get_project_type()
         self.wchunkinc = as_conf.get_wchunkinc(self.section)
@@ -1780,6 +1772,9 @@ class Job(object):
         :type parameters: dict
         """
         as_conf.reload()
+        self._init_runtime_parameters()
+        # Parameters that affect to all the rest of parameters
+        self.update_dict_parameters(as_conf)
         parameters = parameters.copy()
         parameters.update(as_conf.parameters)
         parameters.update(default_parameters)
@@ -1819,7 +1814,7 @@ class Job(object):
         :return: script code
         :rtype: str
         """
-        parameters = self.parameters
+        self.update_parameters(as_conf, self.parameters)
         try:
             if as_conf.get_project_type().lower() != "none" and len(as_conf.get_project_type()) > 0:
                 template_file = open(os.path.join(as_conf.get_project_dir(), self.file), 'r')
@@ -1934,20 +1929,21 @@ class Job(object):
         #enumerate and get value
         #TODO regresion test
         for additional_file, additional_template_content in zip(self.additional_files, additional_templates):
-            for key, value in parameters.items():
-                final_sub = str(value)
-                if "\\" in final_sub:
-                    final_sub = re.escape(final_sub)
-                # Check if key is in the additional template
-                if "%(?<!%%)" + key + "%(?!%%)" in additional_template_content:
-                    additional_template_content = re.sub('%(?<!%%)' + key + '%(?!%%)', final_sub, additional_template_content,flags=re.I)
-            for variable in self.undefined_variables:
-                additional_template_content = re.sub('%(?<!%%)' + variable + '%(?!%%)', '', additional_template_content,flags=re.I)
-
+            # append to a list all names don't matter the location, inside additional_template_content that  starts with % and ends with %
+            placeholders_inside_additional_template = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', additional_template_content,flags=re.IGNORECASE)
+            for placeholder in placeholders_inside_additional_template:
+                placeholder = placeholder[1:-1]
+                value = str(parameters.get(placeholder.upper(),""))
+                if not value:
+                    additional_template_content = re.sub('%(?<!%%)' + placeholder + '%(?!%%)', '',
+                                                         additional_template_content, flags=re.I)
+                else:
+                    if "\\" in value:
+                        value = re.escape(value)
+                    additional_template_content = re.sub('%(?<!%%)' + placeholder + '%(?!%%)', value, additional_template_content,flags=re.I)
             additional_template_content = additional_template_content.replace("%%", "%")
             #Write to file
             try:
-
                 filename = os.path.basename(os.path.splitext(additional_file)[0])
                 full_path = os.path.join(self._tmp_path,filename ) + "_" + self.name[5:]
                 open(full_path, 'wb').write(additional_template_content.encode(lang))
@@ -2086,6 +2082,10 @@ class Job(object):
         :return: True if successful, False otherwise
         :rtype: bool
         """
+        timestamp = date2str(datetime.datetime.now(), 'S')
+
+        self.local_logs = (f"{self.name}.{timestamp}.out", f"{self.name}.{timestamp}.err")
+
         if self.wrapper_type != "vertical" or enabled:
             if self._platform.get_stat_file(self.name, retries=5): #fastlook
                 start_time = self.check_start_time()
@@ -2384,6 +2384,7 @@ class WrapperJob(Job):
                     if job.name in completed_files:
                         completed_jobs.append(job)
                         job.new_status = Status.COMPLETED
+                        job.updated_log = False
                         job.update_status(self.as_config)
             for job in completed_jobs:
                 self.running_jobs_start.pop(job, None)

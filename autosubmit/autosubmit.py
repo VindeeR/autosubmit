@@ -501,6 +501,11 @@ class Autosubmit:
                                selected from for that member will be updated for all the members. Example: all [1], will have as a result that the \
                                    chunks 1 for all the members will be updated. Follow the format: '
                                     '"[ 19601101 [ fc0 [1 2 3 4] Any [1] ] 19651101 [ fc0 [16-30] ] ],SIM,SIM2,SIM3"')
+            group.add_argument('-ftcs', '--filter_type_chunk_split', type=str,
+                               help='Supply the list of chunks & splits to change the status. Default = "Any". When the member name "all" is set, all the chunks \
+                                           selected from for that member will be updated for all the members. Example: all [1], will have as a result that the \
+                                               chunks 1 for all the members will be updated. Follow the format: '
+                                    '"[ 19601101 [ fc0 [1 [1 2] 2 3 4] Any [1] ] 19651101 [ fc0 [16-30] ] ],SIM,SIM2,SIM3"')
 
             subparser.add_argument('--hide', action='store_true', default=False,
                                    help='hides plot window')
@@ -689,7 +694,7 @@ class Autosubmit:
         elif args.command == 'setstatus':
             return Autosubmit.set_status(args.expid, args.noplot, args.save, args.status_final, args.list,
                                          args.filter_chunks, args.filter_status, args.filter_type,
-                                         args.filter_type_chunk, args.hide,
+                                         args.filter_type_chunk, args.filter_type_chunk_split, args.hide,
                                          args.group_by, args.expand, args.expand_status, args.notransitive,
                                          args.check_wrapper, args.detail)
         elif args.command == 'testcase':
@@ -4966,7 +4971,113 @@ class Autosubmit:
             Autosubmit._validate_chunk_split(as_conf,filter_chunk_split)
 
     @staticmethod
-    def set_status(expid, noplot, save, final, filter_list, filter_chunks, filter_status, filter_section, filter_type_chunk, filter_chunk_split,
+    def _apply_ftc(job_list,filter_type_chunk_split):
+        """
+        Accepts a string with the formula: "[ 19601101 [ fc0 [1 [1] 2 [2 3] 3 4] Any [1] ] 19651101 [ fc0 [16 30] ] ],SIM [ Any ] ,SIM2 [ 1 2]"
+        Where SIM, SIM2 are section (job types) names that also accept the keyword "Any" so the changes apply to all sections.
+        Starting Date (19601101) does not accept the keyword "Any", so you must specify the starting dates to be changed.
+        You can also specify date ranges to apply the change to a range on dates.
+        Member names (fc0) accept the keyword "Any", so the chunks ([1 2 3 4]) given will be updated for all members.
+        Chunks must be in the format "[1 2 3 4]" where "1 2 3 4" represent the numbers of the chunks in the member,
+        Splits must be in the format "[ 1 2 3 4]" where "1 2 3 4" represent the numbers of the splits in the sections.
+        no range format is allowed.
+        :param filter_type_chunk_split: string with the formula
+        :return: final_list
+        """
+        # Get selected sections and formula
+        final_list = []
+        selected_sections = filter_type_chunk_split.split(",")[1:]
+        selected_formula = filter_type_chunk_split.split(",")[0]
+        # Retrieve experiment data
+        # Parse json
+        deserializedJson = json.loads(Autosubmit._create_json(selected_formula))
+        # Get current list
+        working_list = job_list.get_job_list()
+        for section in selected_sections:
+            if str(section).upper() == "ANY":
+                # Any section
+                section_selection = working_list
+                # Go through start dates
+                for starting_date in deserializedJson['sds']:
+                    date = starting_date['sd']
+                    date_selection = [j for j in section_selection if date2str(
+                        j.date) == date]
+                    # Members for given start date
+                    for member_group in starting_date['ms']:
+                        member = member_group['m']
+                        if str(member).upper() == "ANY":
+                            # Any member
+                            member_selection = date_selection
+                            chunk_group = member_group['cs']
+                            for chunk in chunk_group:
+                                filtered_job = [j for j in member_selection if j.chunk == int(chunk)]
+                                for job in filtered_job:
+                                    final_list.append(job)
+                                # From date filter and sync is not None
+                                for job in [j for j in date_selection if
+                                            j.chunk == int(chunk) and j.synchronize is not None]:
+                                    final_list.append(job)
+                        else:
+                            # Selected members
+                            member_selection = [j for j in date_selection if j.member == member]
+                            chunk_group = member_group['cs']
+                            for chunk in chunk_group:
+                                filtered_job = [j for j in member_selection if j.chunk == int(chunk)]
+                                for job in filtered_job:
+                                    final_list.append(job)
+                                # From date filter and sync is not None
+                                for job in [j for j in date_selection if
+                                            j.chunk == int(chunk) and j.synchronize is not None]:
+                                    final_list.append(job)
+            else:
+                # Only given section
+                section_splits = section.split("[")
+                section = section_splits[0].strip(" [")
+                if len(section_splits) > 1:
+                    if "," in section_splits[1]:
+                        splits = section_splits[1].strip(" ]").split(",")
+                    else:
+                        splits = section_splits[1].strip(" ]").split(" ")
+                else:
+                    splits = ["ANY"]
+
+                jobs_filtered = [j for j in working_list if j.section == section and ( j.split is None or splits[0] == "ANY" or str(j.split) in splits ) ]
+                # Go through start dates
+                for starting_date in deserializedJson['sds']:
+                    date = starting_date['sd']
+                    date_selection = [j for j in jobs_filtered if date2str(
+                        j.date) == date]
+                    # Members for given start date
+                    for member_group in starting_date['ms']:
+                        member = member_group['m']
+                        if str(member).upper() == "ANY":
+                            # Any member
+                            member_selection = date_selection
+                            chunk_group = member_group['cs']
+                            for chunk in chunk_group:
+                                filtered_job = [j for j in member_selection if
+                                                j.chunk is None or j.chunk == int(chunk)]
+                                for job in filtered_job:
+                                    final_list.append(job)
+                                # From date filter and sync is not None
+                                for job in [j for j in date_selection if
+                                            j.chunk == int(chunk) and j.synchronize is not None]:
+                                    final_list.append(job)
+                        else:
+                            # Selected members
+                            member_selection = [j for j in date_selection if j.member == member]
+                            chunk_group = member_group['cs']
+                            for chunk in chunk_group:
+                                filtered_job = [j for j in member_selection if j.chunk == int(chunk)]
+                                for job in filtered_job:
+                                    final_list.append(job)
+                                # From date filter and sync is not None
+                                for job in [j for j in date_selection if
+                                            j.chunk == int(chunk) and j.synchronize is not None]:
+                                    final_list.append(job)
+        return final_list
+    @staticmethod
+    def set_status(expid, noplot, save, final, filter_list, filter_chunks, filter_status, filter_section, filter_type_chunk, filter_type_chunk_split,
                    hide, group_by=None,
                    expand=list(), expand_status=list(), notransitive=False, check_wrapper=False, detail=False):
         """
@@ -5004,10 +5115,11 @@ class Autosubmit:
                 Log.debug('Exp ID: {0}', expid)
                 Log.debug('Save: {0}', save)
                 Log.debug('Final status: {0}', final)
-                Log.debug('List of jobs to change: {0}', lst)
+                Log.debug('List of jobs to change: {0}', filter_list)
                 Log.debug('Chunks to change: {0}', filter_chunks)
                 Log.debug('Status of jobs to change: {0}', filter_status)
                 Log.debug('Sections to change: {0}', filter_section)
+
                 wrongExpid = 0
                 as_conf = AutosubmitConfig(
                     expid, BasicConfig, YAMLParserFactory())
@@ -5047,150 +5159,46 @@ class Autosubmit:
                         pass
                 ##### End of the ""function""
                 # This will raise an autosubmit critical if any of the filters has issues in the format specified by the user
-                Autosubmit._validate_set_status_filters(as_conf,job_list,filter_list,filter_chunks,filter_status,filter_section,filter_type_chunk, filter_chunk_split)
+                Autosubmit._validate_set_status_filters(as_conf,job_list,filter_list,filter_chunks,filter_status,filter_section,filter_type_chunk, filter_type_chunk_split)
                 #### Starts the filtering process ####
+                final_list = []
                 jobs_filtered = []
+                jobs_left_to_be_filtered = True
                 final_status = Autosubmit._get_status(final)
-                if filter_section or filter_chunks:
-                    if filter_section:
-                        ft = filter_section.split()
-                    else:
-                        ft = filter_chunks.split(",")[1:]
-                    if ft == 'Any':
+                # I have the impression that whoever did this function thought about the possibility of having multiple filters at the same time
+                # But, as it was, it is not possible to have multiple filters at the same time due to the way the code is written
+                if filter_section:
+                    ft = filter_section.split()
+                    if str(ft).upper() == 'ANY':
                         for job in job_list.get_job_list():
-                            Autosubmit.change_status(final, final_status, job, save)
+                            final_list.append(job)
+                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
                         for section in ft:
                             for job in job_list.get_job_list():
                                 if job.section == section:
-                                    if filter_chunks:
-                                        jobs_filtered.append(job)
-                                    else:
-                                        Autosubmit.change_status(final, final_status, job, save)
-
-                if filter_type_chunk is not None:
-                    selected_sections = filter_type_chunk.split(",")[1:]
-                    selected_formula = filter_type_chunk.split(",")[0]
-                    # Retrieve experiment data
-                    # Parse json
-                    deserializedJson = json.loads(Autosubmit._create_json(selected_formula))
-                    record = dict()
-                    final_list = []
-                    # Get current list
-                    working_list = job_list.get_job_list()
-                    performed_changes = {}
-                    for section in selected_sections:
-                        if section == "Any":
-                            # Any section
-                            section_selection = working_list
-                            # Go through start dates
-                            for starting_date in deserializedJson['sds']:
-                                date = starting_date['sd']
-                                date_selection = [j for j in section_selection if date2str(
-                                    j.date) == date]
-                                # Members for given start date
-                                for member_group in starting_date['ms']:
-                                    member = member_group['m']
-                                    if member == "Any":
-                                        # Any member
-                                        member_selection = date_selection
-                                        chunk_group = member_group['cs']
-                                        for chunk in chunk_group:
-                                            filtered_job = [j for j in member_selection if j.chunk == int(chunk)]
-                                            for job in filtered_job:
-                                                final_list.append(job)
-                                            # From date filter and sync is not None
-                                            for job in [j for j in date_selection if
-                                                        j.chunk == int(chunk) and j.synchronize is not None]:
-                                                final_list.append(job)
-                                    else:
-                                        # Selected members
-                                        member_selection = [j for j in date_selection if j.member == member]
-                                        chunk_group = member_group['cs']
-                                        for chunk in chunk_group:
-                                            filtered_job = [j for j in member_selection if j.chunk == int(chunk)]
-                                            for job in filtered_job:
-                                                final_list.append(job)
-                                            # From date filter and sync is not None
-                                            for job in [j for j in date_selection if
-                                                        j.chunk == int(chunk) and j.synchronize is not None]:
-                                                final_list.append(job)
-                        else:
-                            # Only given section
-                            section_selection = [j for j in working_list if j.section == section]
-                            # Go through start dates
-                            for starting_date in deserializedJson['sds']:
-                                date = starting_date['sd']
-                                date_selection = [j for j in section_selection if date2str(
-                                    j.date) == date]
-                                # Members for given start date
-                                for member_group in starting_date['ms']:
-                                    member = member_group['m']
-                                    if member == "Any":
-                                        # Any member
-                                        member_selection = date_selection
-                                        chunk_group = member_group['cs']
-                                        for chunk in chunk_group:
-                                            filtered_job = [j for j in member_selection if
-                                                            j.chunk is None or j.chunk == int(chunk)]
-                                            for job in filtered_job:
-                                                final_list.append(job)
-                                            # From date filter and sync is not None
-                                            for job in [j for j in date_selection if
-                                                        j.chunk == int(chunk) and j.synchronize is not None]:
-                                                final_list.append(job)
-                                    else:
-                                        # Selected members
-                                        member_selection = [j for j in date_selection if j.member == member]
-                                        chunk_group = member_group['cs']
-                                        for chunk in chunk_group:
-                                            filtered_job = [j for j in member_selection if j.chunk == int(chunk)]
-                                            for job in filtered_job:
-                                                final_list.append(job)
-                                            # From date filter and sync is not None
-                                            for job in [j for j in date_selection if
-                                                        j.chunk == int(chunk) and j.synchronize is not None]:
-                                                final_list.append(job)
-                    status = Status()
-                    for job in final_list:
-                        if job.status in [Status.QUEUING, Status.RUNNING,
-                                          Status.SUBMITTED] and job.platform.name not in definitive_platforms:
-                            Log.printlog("JOB: [{1}] is ignored as the [{0}] platform is currently offline".format(
-                                job.platform.name, job.name), 6000)
-                            continue
-                        if job.status != final_status:
-                            # Only real changes
-                            performed_changes[job.name] = str(
-                                Status.VALUE_TO_KEY[job.status]) + " -> " + str(final)
-                            Autosubmit.change_status(
-                                final, final_status, job, save)
-                    # If changes have been performed
-                    if len(list(performed_changes.keys())) > 0:
-                        if detail is True:
-                            current_length = len(job_list.get_job_list())
-                            if current_length > 1000:
-                                Log.warning(
-                                    "-d option: Experiment has too many jobs to be printed in the terminal. Maximum job quantity is 1000, your experiment has " + str(
-                                        current_length) + " jobs.")
-                            else:
-                                Log.info(job_list.print_with_status(
-                                    statusChange=performed_changes))
-                    else:
-                        Log.warning("No changes were performed.")
-
+                                    final_list.append(job)
+                                    #Autosubmit.change_status(final, final_status, job, save)
                 if filter_chunks:
+                    ft = filter_chunks.split(",")[1:]
+                    # Any located in section part
+                    if str(ft).upper() == "ANY":
+                        for job in job_list.get_job_list():
+                            final_list.append(job)
+                            #Autosubmit.change_status(final, final_status, job, save)
+                        for job in job_list.get_job_list():
+                            if job.section == section:
+                                if filter_chunks:
+                                    jobs_filtered.append(job)
                     if len(jobs_filtered) == 0:
                         jobs_filtered = job_list.get_job_list()
-
                     fc = filter_chunks
-                    Log.debug(fc)
-
-                    if fc == 'Any':
+                    # Any located in chunks part
+                    if str(fc).upper() == "ANY":
                         for job in jobs_filtered:
-                            Autosubmit.change_status(
-                                final, final_status, job, save)
+                            final_list.append(job)
+                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
-                        # noinspection PyTypeChecker
                         data = json.loads(Autosubmit._create_json(fc))
                         for date_json in data['sds']:
                             date = date_json['sd']
@@ -5214,49 +5222,81 @@ class Autosubmit:
                                 for chunk_json in member_json['cs']:
                                     chunk = int(chunk_json)
                                     for job in [j for j in jobs_date if j.chunk == chunk and j.synchronize is not None]:
-                                        Autosubmit.change_status(
-                                            final, final_status, job, save)
-
+                                        final_list.append(job)
+                                        #Autosubmit.change_status(final, final_status, job, save)
                                     for job in [j for j in jobs_member if j.chunk == chunk]:
-                                        Autosubmit.change_status(
-                                            final, final_status, job, save)
+                                        final_list.append(job)
+
+                                        #Autosubmit.change_status(final, final_status, job, save)
 
                 if filter_status:
                     status_list = filter_status.split()
-
                     Log.debug("Filtering jobs with status {0}", filter_status)
-                    if status_list == 'Any':
+                    if str(status_list).upper() == 'ANY':
                         for job in job_list.get_job_list():
-                            Autosubmit.change_status(
-                                final, final_status, job, save)
+                            final_list.append(job)
+                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
                         for status in status_list:
                             fs = Autosubmit._get_status(status)
                             for job in [j for j in job_list.get_job_list() if j.status == fs]:
-                                Autosubmit.change_status(
-                                    final, final_status, job, save)
+                                final_list.append(job)
+                                #Autosubmit.change_status(final, final_status, job, save)
 
                 if filter_list:
                     jobs = filter_list.split()
                     expidJoblist = defaultdict(int)
                     for x in filter_list.split():
                         expidJoblist[str(x[0:4])] += 1
-
                     if str(expid) in expidJoblist:
                         wrongExpid = jobs.__len__() - expidJoblist[expid]
                     if wrongExpid > 0:
                         Log.warning(
                             "There are {0} job.name with an invalid Expid", wrongExpid)
-
-                    if jobs == 'Any':
+                    if str(jobs).upper() == 'ANY':
                         for job in job_list.get_job_list():
-                            Autosubmit.change_status(
-                                final, final_status, job, save)
+                            final_list.append(job)
+                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
                         for job in job_list.get_job_list():
                             if job.name in jobs:
-                                Autosubmit.change_status(
-                                    final, final_status, job, save)
+                                final_list.append(job)
+                                #Autosubmit.change_status(final, final_status, job, save)
+                # All filters should be in a function but no have time to do it
+                # filter_Type_chunk_split == filter_type_chunk, but with the split essencially is the same but not sure about of changing the name to the filter itself
+                if filter_type_chunk_split is not None:
+                    final_list.extend(Autosubmit._apply_ftc(job_list,filter_type_chunk_split))
+                if filter_type_chunk:
+                    final_list.extend(Autosubmit._apply_ftc(job_list,filter_type_chunk))
+                # Time to change status
+                final_list = list(set(final_list))
+                performed_changes = {}
+                for job in final_list:
+                    if job.status in [Status.QUEUING, Status.RUNNING,
+                                      Status.SUBMITTED] and job.platform.name not in definitive_platforms:
+                        Log.printlog("JOB: [{1}] is ignored as the [{0}] platform is currently offline".format(
+                            job.platform.name, job.name), 6000)
+                        continue
+                    if job.status != final_status:
+                        # Only real changes
+                        performed_changes[job.name] = str(
+                            Status.VALUE_TO_KEY[job.status]) + " -> " + str(final)
+                        Autosubmit.change_status(
+                            final, final_status, job, save)
+                # If changes have been performed
+                if len(list(performed_changes.keys())) > 0:
+                    if detail is True:
+                        current_length = len(job_list.get_job_list())
+                        if current_length > 1000:
+                            Log.warning(
+                                "-d option: Experiment has too many jobs to be printed in the terminal. Maximum job quantity is 1000, your experiment has " + str(
+                                    current_length) + " jobs.")
+                        else:
+                            Log.info(job_list.print_with_status(
+                                statusChange=performed_changes))
+                else:
+                    Log.warning("No changes were performed.")
+
 
                 job_list.update_list(as_conf, False, True)
 

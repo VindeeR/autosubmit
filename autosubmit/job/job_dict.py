@@ -42,9 +42,8 @@ class DicJobs:
     :type default_retrials: config_common
     """
 
-    def __init__(self, jobs_list, date_list, member_list, chunk_list, date_format, default_retrials,jobs_data,experiment_data):
+    def __init__(self, date_list, member_list, chunk_list, date_format, default_retrials,jobs_data,experiment_data):
         self._date_list = date_list
-        self._jobs_list = jobs_list
         self._member_list = member_list
         self._chunk_list = chunk_list
         self._jobs_data = jobs_data
@@ -108,7 +107,6 @@ class DicJobs:
                 if splits <= 0:
                     self._dic[section][date] = self.build_job(section, priority, date, None, None, default_job_type,
                                                               jobs_data)
-                    self._jobs_list.graph.add_node(self._dic[section][date].name)
                 else:
                     tmp_dic[section][date] = []
                     self._create_jobs_split(splits, section, date, None, None, priority,
@@ -141,7 +139,6 @@ class DicJobs:
                 if count % frequency == 0 or count == len(self._member_list):
                     if splits <= 0:
                         self._dic[section][date][member] = self.build_job(section, priority, date, member, None,default_job_type, jobs_data,splits)
-                        self._jobs_list.graph.add_node(self._dic[section][date][member].name)
                     else:
                         self._create_jobs_split(splits, section, date, member, None, priority,
                                                 default_job_type, jobs_data, tmp_dic[section][date][member])
@@ -161,14 +158,12 @@ class DicJobs:
         if splits <= 0:
             job = self.build_job(section, priority, None, None, None, default_job_type, jobs_data, -1)
             self._dic[section] = job
-            self._jobs_list.graph.add_node(job.name)
         else:
             self._dic[section] = []
         total_jobs = 1
         while total_jobs <= splits:
             job = self.build_job(section, priority, None, None, None, default_job_type, jobs_data, total_jobs)
             self._dic[section].append(job)
-            self._jobs_list.graph.add_node(job.name)
             total_jobs += 1
         pass
 
@@ -243,15 +238,22 @@ class DicJobs:
                             elif synchronize is None or not synchronize:
                                 self._dic[section][date][member][chunk] = self.build_job(section, priority, date, member,
                                                                                              chunk, default_job_type, jobs_data)
-                                self._jobs_list.graph.add_node(self._dic[section][date][member][chunk].name)
 
     def _create_jobs_split(self, splits, section, date, member, chunk, priority, default_job_type, jobs_data, dict_):
+        import sys
+
+        job = self.build_job(section, priority, date, member, chunk, default_job_type, jobs_data, 0)
+        splits_array = [job] * (splits)
         total_jobs = 1
         while total_jobs <= splits:
             job = self.build_job(section, priority, date, member, chunk, default_job_type, jobs_data, total_jobs)
-            dict_.append(job)
-            self._jobs_list.graph.add_node(job.name)
+            splits_array[total_jobs-1] = job
+            #self._jobs_list.graph.add_node(job.name)
+            # print progress each 10%
+            if total_jobs % (splits / 10) == 0:
+                Log.info("Creating jobs for section %s, date %s, member %s, chunk %s, progress %s%%" % (section, date, member, chunk, total_jobs * 100 / splits))
             total_jobs += 1
+        dict_.extend(splits_array)
 
     def get_jobs(self, section, date=None, member=None, chunk=None):
         """
@@ -332,7 +334,7 @@ class DicJobs:
 
     def build_job(self, section, priority, date, member, chunk, default_job_type, jobs_data=dict(), split=-1):
         parameters = self.experiment_data["JOBS"]
-        name = self._jobs_list.expid
+        name = self.experiment_data.get("DEFAULT",{}).get("EXPID","")
         if date is not None and len(str(date)) > 0:
             name += "_" + date2str(date, self._date_format)
         if member is not None and len(str(member)) > 0:
@@ -425,7 +427,7 @@ class DicJobs:
         job.running = str(parameters[section].get( 'RUNNING', 'once'))
         job.x11 = str(parameters[section].get( 'X11', False )).lower()
         job.skippable = str(parameters[section].get( "SKIPPABLE", False)).lower()
-        self._jobs_list.get_job_list().append(job)
+        #self._jobs_list.get_job_list().append(job)
 
         return job
 

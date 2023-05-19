@@ -5040,7 +5040,21 @@ class Autosubmit:
                         splits = section_splits[1].strip(" ]").split(" ")
                 else:
                     splits = ["ANY"]
-
+                final_splits = []
+                for split in splits:
+                    start = None
+                    end = None
+                    if split.find("-") != -1:
+                        start = split.split("-")[0]
+                        end = split.split("-")[1]
+                    if split.find(":") != -1:
+                        start = split.split(":")[0]
+                        end = split.split(":")[1]
+                    if start and end:
+                        final_splits += [ str(i) for i in range(int(start),int(end)+1)]
+                    else:
+                        final_splits.append(str(split))
+                splits = final_splits
                 jobs_filtered = [j for j in working_list if j.section == section and ( j.split is None or splits[0] == "ANY" or str(j.split) in splits ) ]
                 # Go through start dates
                 for starting_date in deserializedJson['sds']:

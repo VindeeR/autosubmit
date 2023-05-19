@@ -183,7 +183,7 @@ class Monitor:
             if not hide_groups:
                 for group, jobs in groups.get("jobs",{}).items():
                     group_name = 'cluster_' + group
-                    subgraph = pydotplus.graphviz.Cluster(graph_name='_' + group,)
+                    subgraph = pydotplus.graphviz.Cluster(graph_name='_' + group)
                     subgraph.obj_dict['attributes']['color'] = 'invis'
                     job_node = exp.get_node(group)
                     subgraph.add_node(job_node[0])
@@ -303,8 +303,7 @@ class Monitor:
             output_file = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "plot", expid + "_" + output_date + "." +
                                        output_format)
 
-            graph = self.create_tree_list(
-                expid, joblist, packages, groups, hide_groups)
+            graph = self.create_tree_list(expid, joblist, packages, groups, hide_groups)
 
             Log.debug("Saving workflow plot at '{0}'", output_file)
             if output_format == "png":

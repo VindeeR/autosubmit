@@ -83,8 +83,6 @@ class JobList(object):
         self._chunk_list = []
         self._dic_jobs = dict()
         self._persistence = job_list_persistence
-        self._graph = DiGraph()
-
         self.packages_dict = dict()
         self._ordered_jobs_by_date_member = dict()
 
@@ -104,23 +102,10 @@ class JobList(object):
         """
         return self._expid
 
-    @property
-    def graph(self):
-        """
-        Returns the graph
-
-        :return: graph
-        :rtype: networkx graph
-        """
-        return self._graph
 
     @property
     def jobs_data(self):
         return self.experiment_data["JOBS"]
-
-    @graph.setter
-    def graph(self, value):
-        self._graph = value
 
     @property
     def run_members(self):
@@ -206,7 +191,7 @@ class JobList(object):
         self._chunk_list = chunk_list
 
 
-        dic_jobs = DicJobs(self,date_list, member_list,chunk_list, date_format, default_retrials,jobs_data,experiment_data=self.experiment_data)
+        dic_jobs = DicJobs(date_list, member_list,chunk_list, date_format, default_retrials,jobs_data,experiment_data=self.experiment_data)
         self._dic_jobs = dic_jobs
         priority = 0
         if show_log:
@@ -230,12 +215,11 @@ class JobList(object):
         self._create_jobs(dic_jobs, priority,default_job_type, jobs_data)
         if show_log:
             Log.info("Adding dependencies...")
-        self._add_dependencies(date_list, member_list,chunk_list, dic_jobs, self.graph)
+        self._add_dependencies(date_list, member_list,chunk_list, dic_jobs)
 
         if show_log:
             Log.info("Removing redundant dependencies...")
-        self.update_genealogy(
-            new, notransitive, update_structure=update_structure)
+        self.update_genealogy(new, notransitive, update_structure=update_structure)
         for job in self._job_list:
             job.parameters = parameters
             job_data = jobs_data.get(job.name,"none")
@@ -276,26 +260,16 @@ class JobList(object):
                 raise AutosubmitCritical("Some section jobs of the wrapper:{0} are not in the current job_list defined in jobs.conf".format(wrapper_section),7014,str(e))
 
 
-    @staticmethod
-    def _add_dependencies(date_list, member_list, chunk_list, dic_jobs, graph, option="DEPENDENCIES"):
+    def _add_dependencies(self,date_list, member_list, chunk_list, dic_jobs, option="DEPENDENCIES"):
         jobs_data = dic_jobs._jobs_data.get("JOBS",{})
         for job_section in jobs_data.keys():
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
-            # If it does not have dependencies, do nothing
-            if not (job_section, option):
+            # If it does not have dependencies, just append it to job_list and continue
+            dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
+            if not dependencies_keys:
+                self._job_list.extend(dic_jobs.get_jobs(job_section))
                 continue
 
-            dependencies_keys = jobs_data[job_section].get(option,{})
-            if type(dependencies_keys) is str:
-                if "," in dependencies_keys:
-                    dependencies_list = dependencies_keys.split(",")
-                else:
-                    dependencies_list = dependencies_keys.split(" ")
-                dependencies_keys = {}
-                for dependency in dependencies_list:
-                    dependencies_keys[dependency] = {}
-            if dependencies_keys is None:
-                dependencies_keys = {}
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section)
 
             for job in dic_jobs.get_jobs(job_section):
@@ -304,9 +278,8 @@ class JobList(object):
                     num_jobs = len(job)
                 for i in range(num_jobs):
                     _job = job[i] if num_jobs > 1 else job
-                    JobList._manage_job_dependencies(dic_jobs, _job, date_list, member_list, chunk_list, dependencies_keys,
-                                                     dependencies, graph)
-        pass
+                    self._manage_job_dependencies(dic_jobs, _job, date_list, member_list, chunk_list, dependencies_keys,
+                                                     dependencies)
 
 
     @staticmethod
@@ -675,9 +648,7 @@ class JobList(object):
                     optional = True
                 return True,optional
         return False,optional
-    @staticmethod
-    def _manage_job_dependencies(dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys, dependencies,
-                                 graph):
+    def _manage_job_dependencies(self,dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys, dependencies):
         '''
         Manage the dependencies of a job
         :param dic_jobs:
@@ -736,12 +707,12 @@ class JobList(object):
                     pass
                 # If the parent is valid, add it to the graph
                 job.add_parent(parent)
-                JobList._add_edge(graph, job, parent)
                 # Could be more variables in the future
                 if optional_to or optional_from or optional_section:
                     job.add_edge_info(parent.name,special_variables={"optional":True})
             JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member,
-                                                           member_list, dependency.section, graph, other_parents)
+                                                           member_list, dependency.section, other_parents)
+            self._job_list.append(job)
 
     @staticmethod
     def _calculate_dependency_metadata(chunk, chunk_list, member, member_list, date, date_list, dependency):
@@ -795,7 +766,7 @@ class JobList(object):
 
     @staticmethod
     def handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member, member_list,
-                                               section_name, graph,visited_parents):
+                                               section_name,visited_parents):
         if job.wait and job.frequency > 1:
             if job.chunk is not None and len(str(job.chunk)) > 0:
                 max_distance = (chunk_list.index(chunk) + 1) % job.frequency
@@ -805,7 +776,6 @@ class JobList(object):
                     for parent in dic_jobs.get_jobs(section_name, date, member, chunk - distance):
                         if parent not in visited_parents:
                             job.add_parent(parent)
-                            JobList._add_edge(graph, job, parent)
             elif job.member is not None and len(str(job.member)) > 0:
                 member_index = member_list.index(job.member)
                 max_distance = (member_index + 1) % job.frequency
@@ -816,7 +786,6 @@ class JobList(object):
                                                     member_list[member_index - distance], chunk):
                         if parent not in visited_parents:
                             job.add_parent(parent)
-                            JobList._add_edge(graph, job, parent)
             elif job.date is not None and len(str(job.date)) > 0:
                 date_index = date_list.index(job.date)
                 max_distance = (date_index + 1) % job.frequency
@@ -827,17 +796,6 @@ class JobList(object):
                                                     member, chunk):
                         if parent not in visited_parents:
                             job.add_parent(parent)
-                            JobList._add_edge(graph, job, parent)
-
-    @staticmethod
-    def _add_edge(graph, job, parents):
-        num_parents = 1
-        if isinstance(parents, list):
-            num_parents = len(parents)
-        for i in range(num_parents):
-            parent = parents[i] if isinstance(parents, list) else parents
-            graph.add_edge(parent.name, job.name)
-            pass
     @staticmethod
     def _create_jobs(dic_jobs, priority, default_job_type, jobs_data=dict()):
         for section in dic_jobs._jobs_data.get("JOBS",{}).keys():
@@ -2101,77 +2059,85 @@ class JobList(object):
             if job.file is None or job.file == '':
                 self._remove_job(job)
 
+
         # Simplifying dependencies: if a parent is already an ancestor of another parent,
         # we remove parent dependency
-        if not notransitive:
-            # Transitive reduction required
-            current_structure = None
-            db_path = os.path.join(
-                self._config.STRUCTURES_DIR, "structure_" + self.expid + ".db")
-            m_time_db = None
-            jobs_conf_path = os.path.join(
-                self._config.LOCAL_ROOT_DIR, self.expid, "conf", "jobs_{0}.yml".format(self.expid))
-            m_time_job_conf = None
-            if os.path.exists(db_path):
-                try:
-                    current_structure = DbStructure.get_structure(
-                        self.expid, self._config.STRUCTURES_DIR)
-                    m_time_db = os.stat(db_path).st_mtime
-                    if os.path.exists(jobs_conf_path):
-                        m_time_job_conf = os.stat(jobs_conf_path).st_mtime
-                except Exception as exp:
-                    pass
-            structure_valid = False
-            # If there is a current structure, and the number of jobs in JobList is equal to the number of jobs in the structure
-            if (current_structure) and (len(self._job_list) == len(current_structure)) and update_structure is False:
-                structure_valid = True
-                # Further validation
-                # Structure exists and is valid, use it as a source of dependencies
-                if m_time_job_conf:
-                    if m_time_job_conf > m_time_db:
-                        Log.info(
-                            "File jobs_{0}.yml has been modified since the last time the structure persistence was saved.".format(self.expid))
-                        structure_valid = False
-                else:
-                    Log.info(
-                        "File jobs_{0}.yml was not found.".format(self.expid))
-
-                if structure_valid is True:
-                    for job in self._job_list:
-                        if current_structure.get(job.name, None) is None:
-                            structure_valid = False
-                            break
-
-                if structure_valid is True:
-                    Log.info("Using existing valid structure.")
-                    for job in self._job_list:
-                        children_to_remove = [
-                            child for child in job.children if child.name not in current_structure[job.name]]
-                        for child in children_to_remove:
-                            job.children.remove(child)
-                            child.parents.remove(job)
-            if structure_valid is False:
-                # Structure does not exist, or it is not be updated, attempt to create it.                Log.info("Updating structure persistence...")
-                edges = [(u, v, attrs) for u, v, attrs in self.graph.edges(data=True)]
-                graph = ig.Graph.TupleList(edges, directed=True)
-                graph = graph.simplify(multiple=True, loops=False, combine_edges="sum")
-                self.graph = nx.from_edgelist([(names[x[0]], names[x[1]])
-                                      for names in [graph.vs['name']]
-                                      for x in graph.get_edgelist()], DiGraph())
-                #self.graph = transitive_reduction(self.graph) # add threads for large experiments? todo
-                if self.graph:
-                    for job in self._job_list:
-                         children_to_remove = [
-                             child for child in job.children if child.name not in self.graph.neighbors(job.name)]
-                         for child in children_to_remove:
-                             job.children.remove(child)
-                             child.parents.remove(job)
-                    try:
-                        DbStructure.save_structure(
-                            self.graph, self.expid, self._config.STRUCTURES_DIR)
-                    except Exception as exp:
-                        Log.warning(str(exp))
-                        pass
+        # if not notransitive:
+        #     # Transitive reduction required
+        #     current_structure = None
+        #     db_path = os.path.join(
+        #         self._config.STRUCTURES_DIR, "structure_" + self.expid + ".db")
+        #     m_time_db = None
+        #     jobs_conf_path = os.path.join(
+        #         self._config.LOCAL_ROOT_DIR, self.expid, "conf", "jobs_{0}.yml".format(self.expid))
+        #     m_time_job_conf = None
+        #     if os.path.exists(db_path):
+        #         try:
+        #             current_structure = DbStructure.get_structure(
+        #                 self.expid, self._config.STRUCTURES_DIR)
+        #             m_time_db = os.stat(db_path).st_mtime
+        #             if os.path.exists(jobs_conf_path):
+        #                 m_time_job_conf = os.stat(jobs_conf_path).st_mtime
+        #         except Exception as exp:
+        #             pass
+        #     structure_valid = False
+        #     # If there is a current structure, and the number of jobs in JobList is equal to the number of jobs in the structure
+        #     if (current_structure) and (len(self._job_list) == len(current_structure)) and update_structure is False:
+        #         structure_valid = True
+        #         # Further validation
+        #         # Structure exists and is valid, use it as a source of dependencies
+        #         if m_time_job_conf:
+        #             if m_time_job_conf > m_time_db:
+        #                 Log.info(
+        #                     "File jobs_{0}.yml has been modified since the last time the structure persistence was saved.".format(self.expid))
+        #                 structure_valid = False
+        #         else:
+        #             Log.info(
+        #                 "File jobs_{0}.yml was not found.".format(self.expid))
+        #
+        #         if structure_valid is True:
+        #             for job in self._job_list:
+        #                 if current_structure.get(job.name, None) is None:
+        #                     structure_valid = False
+        #                     break
+        #
+        #         if structure_valid is True:
+        #             Log.info("Using existing valid structure.")
+        #             for job in self._job_list:
+        #                 children_to_remove = [
+        #                     child for child in job.children if child.name not in current_structure[job.name]]
+        #                 for child in children_to_remove:
+        #                     job.children.remove(child)
+        #                     child.parents.remove(job)
+        #     if structure_valid is False:
+        #         # Structure does not exist, or it is not be updated, attempt to create it.                Log.info("Updating structure persistence...")
+        #         # Divide Digraph into multiple subgraphs
+        #         subgraphs = [self.graph] # this should be a list of subgraphs, but not sure how to make subgraphs in a DAG
+        #         reduced_subgraphs = []
+        #         # For each subgraph, perform transitive reduction using igraph lib ( C ) and convert back to networkx ( Python )
+        #         for subgraph in subgraphs:
+        #             edges = [(u, v, attrs) for u, v, attrs in subgraph.edges(data=True)]
+        #             graph = ig.Graph.TupleList(edges, directed=True)
+        #             graph = graph.simplify(multiple=True, loops=False, combine_edges="sum")
+        #             reduced_subgraphs.append(nx.from_edgelist([(names[x[0]], names[x[1]])
+        #                                   for names in [graph.vs['name']]
+        #                                   for x in graph.get_edgelist()], DiGraph()))
+        #         # Union all subgraphs into Digraph
+        #         self.graph = nx.union_all(reduced_subgraphs)
+        #         #self.graph = transitive_reduction(self.graph) # add threads for large experiments? todo
+        #         if self.graph:
+        #             for job in self._job_list:
+        #                  children_to_remove = [
+        #                      child for child in job.children if child.name not in self.graph.neighbors(job.name)]
+        #                  for child in children_to_remove:
+        #                      job.children.remove(child)
+        #                      child.parents.remove(job)
+        #             try:
+        #                 DbStructure.save_structure(
+        #                     self.graph, self.expid, self._config.STRUCTURES_DIR)
+        #             except Exception as exp:
+        #                 Log.warning(str(exp))
+        #                 pass
 
         for job in self._job_list:
             if not job.has_parents() and new:

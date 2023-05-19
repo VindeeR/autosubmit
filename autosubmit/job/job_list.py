@@ -18,6 +18,7 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import collections
 import copy
+import igraph as ig
 import re
 import os
 import pickle
@@ -35,6 +36,7 @@ from autosubmit.job.job_common import Status, bcolors
 from bscearth.utils.date import date2str, parse_date
 import autosubmit.database.db_structure as DbStructure
 import datetime
+import networkx as nx
 from networkx import DiGraph
 from autosubmit.job.job_utils import transitive_reduction
 from log.log import AutosubmitCritical, AutosubmitError, Log
@@ -2149,16 +2151,21 @@ class JobList(object):
                             job.children.remove(child)
                             child.parents.remove(job)
             if structure_valid is False:
-                # Structure does not exist, or it is not be updated, attempt to create it.
-                Log.info("Updating structure persistence...")
-                self.graph = transitive_reduction(self.graph) # add threads for large experiments? todo
+                # Structure does not exist, or it is not be updated, attempt to create it.                Log.info("Updating structure persistence...")
+                edges = [(u, v, attrs) for u, v, attrs in self.graph.edges(data=True)]
+                graph = ig.Graph.TupleList(edges, directed=True)
+                graph = graph.simplify(multiple=True, loops=False, combine_edges="sum")
+                self.graph = nx.from_edgelist([(names[x[0]], names[x[1]])
+                                      for names in [graph.vs['name']]
+                                      for x in graph.get_edgelist()], DiGraph())
+                #self.graph = transitive_reduction(self.graph) # add threads for large experiments? todo
                 if self.graph:
                     for job in self._job_list:
-                        children_to_remove = [
-                            child for child in job.children if child.name not in self.graph.neighbors(job.name)]
-                        for child in children_to_remove:
-                            job.children.remove(child)
-                            child.parents.remove(job)
+                         children_to_remove = [
+                             child for child in job.children if child.name not in self.graph.neighbors(job.name)]
+                         for child in children_to_remove:
+                             job.children.remove(child)
+                             child.parents.remove(job)
                     try:
                         DbStructure.save_structure(
                             self.graph, self.expid, self._config.STRUCTURES_DIR)

@@ -17,11 +17,16 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-from autosubmit.job.job import Job
-from bscearth.utils.date import date2str
-from autosubmit.job.job_common import Status, Type
-from log.log import Log, AutosubmitError, AutosubmitCritical
 from collections.abc import Iterable
+import itertools
+
+from bscearth.utils.date import date2str
+
+from autosubmit.job.job import Job
+from autosubmit.job.job_common import Status, Type
+from log.log import Log, AutosubmitCritical
+from collections import namedtuple
+
 class DicJobs:
     """
     Class to create jobs from conf file and to find jobs by start date, member and chunk
@@ -42,7 +47,7 @@ class DicJobs:
     :type default_retrials: config_common
     """
 
-    def __init__(self, date_list, member_list, chunk_list, date_format, default_retrials,jobs_data,experiment_data):
+    def __init__(self, date_list, member_list, chunk_list, date_format, default_retrials, jobs_data, experiment_data):
         self._date_list = date_list
         self._member_list = member_list
         self._chunk_list = chunk_list
@@ -68,22 +73,19 @@ class DicJobs:
         parameters = self.experiment_data["JOBS"]
 
         splits = int(parameters[section].get("SPLITS", -1))
-        running = str(parameters[section].get('RUNNING',"once")).lower()
+        running = str(parameters[section].get('RUNNING', "once")).lower()
         frequency = int(parameters[section].get("FREQUENCY", 1))
         if running == 'once':
-            self._create_jobs_once(section, priority, default_job_type, jobs_data,splits)
+            self._create_jobs_once(section, priority, default_job_type, jobs_data, splits)
         elif running == 'date':
-            self._create_jobs_startdate(section, priority, frequency, default_job_type, jobs_data,splits)
+            self._create_jobs_startdate(section, priority, frequency, default_job_type, jobs_data, splits)
         elif running == 'member':
-            self._create_jobs_member(section, priority, frequency, default_job_type, jobs_data,splits)
+            self._create_jobs_member(section, priority, frequency, default_job_type, jobs_data, splits)
         elif running == 'chunk':
             synchronize = str(parameters[section].get("SYNCHRONIZE", ""))
             delay = int(parameters[section].get("DELAY", -1))
-            self._create_jobs_chunk(section, priority, frequency, default_job_type, synchronize, delay, splits, jobs_data)
-
-
-
-        pass
+            self._create_jobs_chunk(section, priority, frequency, default_job_type, synchronize, delay, splits,
+                                    jobs_data)
 
     def _create_jobs_startdate(self, section, priority, frequency, default_job_type, jobs_data=dict(), splits=-1):
         """
@@ -98,22 +100,15 @@ class DicJobs:
         :type frequency: int
         """
         self._dic[section] = dict()
-        tmp_dic = dict()
-        tmp_dic[section] = dict()
         count = 0
         for date in self._date_list:
             count += 1
             if count % frequency == 0 or count == len(self._date_list):
-                if splits <= 0:
-                    self._dic[section][date] = self.build_job(section, priority, date, None, None, default_job_type,
-                                                              jobs_data)
-                else:
-                    tmp_dic[section][date] = []
-                    self._create_jobs_split(splits, section, date, None, None, priority,
-                                            default_job_type, jobs_data, tmp_dic[section][date])
-                    self._dic[section][date] = tmp_dic[section][date]
+                self._dic[section][date] = []
+                self._create_jobs_split(splits, section, date, None, None, priority,default_job_type, jobs_data, self._dic[section][date])
 
-    def _create_jobs_member(self, section, priority, frequency, default_job_type, jobs_data=dict(),splits=-1):
+
+    def _create_jobs_member(self, section, priority, frequency, default_job_type, jobs_data=dict(), splits=-1):
         """
         Create jobs to be run once per member
 
@@ -129,22 +124,16 @@ class DicJobs:
 
         """
         self._dic[section] = dict()
-        tmp_dic = dict()
-        tmp_dic[section] = dict()
         for date in self._date_list:
             self._dic[section][date] = dict()
             count = 0
             for member in self._member_list:
                 count += 1
                 if count % frequency == 0 or count == len(self._member_list):
-                    if splits <= 0:
-                        self._dic[section][date][member] = self.build_job(section, priority, date, member, None,default_job_type, jobs_data,splits)
-                    else:
-                        self._create_jobs_split(splits, section, date, member, None, priority,
-                                                default_job_type, jobs_data, tmp_dic[section][date][member])
-                        self._dic[section][date][member] = tmp_dic[section][date][member]
+                    self._dic[section][date][member] = []
+                    self._create_jobs_split(splits, section, date, member, None, priority,default_job_type, jobs_data, self._dic[section][date][member])
 
-    def _create_jobs_once(self, section, priority, default_job_type, jobs_data=dict(),splits=0):
+    def _create_jobs_once(self, section, priority, default_job_type, jobs_data=dict(), splits=0):
         """
         Create jobs to be run once
 
@@ -153,23 +142,11 @@ class DicJobs:
         :param priority: priority for the jobs
         :type priority: int
         """
+        self._dic[section] = []
+        self._create_jobs_split(splits, section, None, None, None, priority, default_job_type, jobs_data,self._dic[section])
 
-
-        if splits <= 0:
-            job = self.build_job(section, priority, None, None, None, default_job_type, jobs_data, -1)
-            self._dic[section] = job
-        else:
-            self._dic[section] = []
-        total_jobs = 1
-        while total_jobs <= splits:
-            job = self.build_job(section, priority, None, None, None, default_job_type, jobs_data, total_jobs)
-            self._dic[section].append(job)
-            total_jobs += 1
-        pass
-
-        #self._dic[section] = self.build_job(section, priority, None, None, None, default_job_type, jobs_data)
-        #self._jobs_list.graph.add_node(self._dic[section].name)
-    def _create_jobs_chunk(self, section, priority, frequency, default_job_type, synchronize=None, delay=0, splits=0, jobs_data=dict()):
+    def _create_jobs_chunk(self, section, priority, frequency, default_job_type, synchronize=None, delay=0, splits=0,
+                           jobs_data=dict()):
         """
         Create jobs to be run once per chunk
 
@@ -184,6 +161,7 @@ class DicJobs:
         :param delay: if this parameter is set, the job is only created for the chunks greater than the delay
         :type delay: int
         """
+        self._dic[section] = dict()
         # Temporally creation for unified jobs in case of synchronize
         tmp_dic = dict()
         if synchronize is not None and len(str(synchronize)) > 0:
@@ -192,29 +170,17 @@ class DicJobs:
                 count += 1
                 if delay == -1 or delay < chunk:
                     if count % frequency == 0 or count == len(self._chunk_list):
-                        if splits > 1:
-                            if synchronize == 'date':
-                                tmp_dic[chunk] = []
-                                self._create_jobs_split(splits, section, None, None, chunk, priority,
-                                                   default_job_type, jobs_data, tmp_dic[chunk])
-                            elif synchronize == 'member':
-                                tmp_dic[chunk] = dict()
-                                for date in self._date_list:
-                                    tmp_dic[chunk][date] = []
-                                    self._create_jobs_split(splits, section, date, None, chunk, priority,
-                                                            default_job_type, jobs_data, tmp_dic[chunk][date])
-
-                        else:
-                            if synchronize == 'date':
-                                tmp_dic[chunk] = self.build_job(section, priority, None, None,
-                                                                chunk, default_job_type, jobs_data)
-                            elif synchronize == 'member':
-                                tmp_dic[chunk] = dict()
-                                for date in self._date_list:
-                                    tmp_dic[chunk][date] = self.build_job(section, priority, date, None,
-                                                                      chunk, default_job_type, jobs_data)
+                        if synchronize == 'date':
+                            tmp_dic[chunk] = []
+                            self._create_jobs_split(splits, section, None, None, chunk, priority,
+                                                    default_job_type, jobs_data, tmp_dic[chunk])
+                        elif synchronize == 'member':
+                            tmp_dic[chunk] = dict()
+                            for date in self._date_list:
+                                tmp_dic[chunk][date] = []
+                                self._create_jobs_split(splits, section, date, None, chunk, priority,
+                                                        default_job_type, jobs_data, tmp_dic[chunk][date])
         # Real dic jobs assignment/creation
-        self._dic[section] = dict()
         for date in self._date_list:
             self._dic[section][date] = dict()
             for member in self._member_list:
@@ -230,30 +196,21 @@ class DicJobs:
                             elif synchronize == 'member':
                                 if chunk in tmp_dic:
                                     self._dic[section][date][member][chunk] = tmp_dic[chunk][date]
-
-                            if splits > 1 and (synchronize is None or not synchronize):
+                            else:
                                 self._dic[section][date][member][chunk] = []
-                                self._create_jobs_split(splits, section, date, member, chunk, priority, default_job_type, jobs_data, self._dic[section][date][member][chunk])
-                                pass
-                            elif synchronize is None or not synchronize:
-                                self._dic[section][date][member][chunk] = self.build_job(section, priority, date, member,
-                                                                                             chunk, default_job_type, jobs_data)
+                                self._create_jobs_split(splits, section, date, member, chunk, priority,
+                                                        default_job_type, jobs_data,
+                                                        self._dic[section][date][member][chunk])
+    def _create_jobs_split(self, splits, section, date, member, chunk, priority, default_job_type, jobs_data, section_data):
+        gen = ( job for job in jobs_data.values() if (job[6] == member or member is None) and (job[5] == date or date is None) and (job[7] == chunk or chunk is None) and (job[4] == section or section is None) )
+        if splits <= 0:
+            self.build_job(section, priority, date, member, chunk, default_job_type, gen, section_data, -1)
+        else:
+            current_split = 1
+            while current_split <= splits:
+                self.build_job(section, priority, date, member, chunk, default_job_type, itertools.islice(gen,0,current_split), section_data,current_split)
+                current_split += 1
 
-    def _create_jobs_split(self, splits, section, date, member, chunk, priority, default_job_type, jobs_data, dict_):
-        import sys
-
-        job = self.build_job(section, priority, date, member, chunk, default_job_type, jobs_data, 0)
-        splits_array = [job] * (splits)
-        total_jobs = 1
-        while total_jobs <= splits:
-            job = self.build_job(section, priority, date, member, chunk, default_job_type, jobs_data, total_jobs)
-            splits_array[total_jobs-1] = job
-            #self._jobs_list.graph.add_node(job.name)
-            # print progress each 10%
-            if total_jobs % (splits / 10) == 0:
-                Log.info("Creating jobs for section %s, date %s, member %s, chunk %s, progress %s%%" % (section, date, member, chunk, total_jobs * 100 / splits))
-            total_jobs += 1
-        dict_.extend(splits_array)
 
     def get_jobs(self, section, date=None, member=None, chunk=None):
         """
@@ -278,7 +235,7 @@ class DicJobs:
             return jobs
 
         dic = self._dic[section]
-        #once jobs
+        # once jobs
         if type(dic) is list:
             jobs = dic
         elif type(dic) is not dict:
@@ -332,9 +289,8 @@ class DicJobs:
                     jobs.append(dic[c])
         return jobs
 
-    def build_job(self, section, priority, date, member, chunk, default_job_type, jobs_data=dict(), split=-1):
-        parameters = self.experiment_data["JOBS"]
-        name = self.experiment_data.get("DEFAULT",{}).get("EXPID","")
+    def build_job(self, section, priority, date, member, chunk, default_job_type, jobs_generator,section_data, split=-1):
+        name = self.experiment_data.get("DEFAULT", {}).get("EXPID", "")
         if date is not None and len(str(date)) > 0:
             name += "_" + date2str(date, self._date_format)
         if member is not None and len(str(member)) > 0:
@@ -344,91 +300,18 @@ class DicJobs:
         if split > -1:
             name += "_{0}".format(split)
         name += "_" + section
-        if name in jobs_data:
-            job = Job(name, jobs_data[name][1], jobs_data[name][2], priority)
-            job.local_logs = (jobs_data[name][8], jobs_data[name][9])
-            job.remote_logs = (jobs_data[name][10], jobs_data[name][11])
-
+        for job_data in jobs_generator:
+            if job_data[0] == name:
+                job = Job(job_data[0], job_data[1], job_data[2], priority)
+                job.local_logs = (job_data[8], job_data[9])
+                job.remote_logs = (job_data[10], job_data[11])
+                break
         else:
             job = Job(name, 0, Status.WAITING, priority)
-
-
+        job.default_job_type = default_job_type
         job.section = section
         job.date = date
         job.member = member
         job.chunk = chunk
-        job.splits = self.experiment_data["JOBS"].get(job.section,{}).get("SPLITS", None)
-        job.date_format = self._date_format
-        job.delete_when_edgeless = str(parameters[section].get("DELETE_WHEN_EDGELESS", "true")).lower()
-
-        if split > -1:
-            job.split = split
-
-        job.frequency = int(parameters[section].get( "FREQUENCY", 1))
-        job.delay = int(parameters[section].get( "DELAY", -1))
-        job.wait = str(parameters[section].get( "WAIT", True)).lower()
-        job.rerun_only = str(parameters[section].get( "RERUN_ONLY", False)).lower()
-        job_type = str(parameters[section].get( "TYPE", default_job_type)).lower()
-
-        job.dependencies = parameters[section].get( "DEPENDENCIES", "")
-        if job.dependencies and type(job.dependencies) is not dict:
-            job.dependencies = str(job.dependencies).split()
-        if job_type == 'bash':
-            job.type = Type.BASH
-        elif job_type == 'python' or job_type == 'python3':
-            job.type = Type.PYTHON3
-        elif job_type == 'python2':
-            job.type = Type.PYTHON2
-        elif job_type == 'r':
-            job.type = Type.R
-        hpcarch = self.experiment_data.get("DEFAULT",{})
-        hpcarch = hpcarch.get("HPCARCH","")
-        job.platform_name = str(parameters[section].get("PLATFORM", hpcarch)).upper()
-        if self.experiment_data["PLATFORMS"].get(job.platform_name, "") == "" and job.platform_name.upper() != "LOCAL":
-            raise AutosubmitCritical("Platform does not exists, check the value of %JOBS.{0}.PLATFORM% = {1} parameter".format(job.section,job.platform_name),7000,"List of platforms: {0} ".format(self.experiment_data["PLATFORMS"].keys()) )
-        job.file = str(parameters[section].get( "FILE", ""))
-        job.additional_files = parameters[section].get( "ADDITIONAL_FILES", [])
-
-        job.executable = str(parameters[section].get("EXECUTABLE", self.experiment_data["PLATFORMS"].get(job.platform_name,{}).get("EXECUTABLE","")))
-        job.queue = str(parameters[section].get( "QUEUE", ""))
-
-        job.ec_queue = str(parameters[section].get("EC_QUEUE", ""))
-        if job.ec_queue == "" and job.platform_name != "LOCAL":
-            job.ec_queue = str(self.experiment_data["PLATFORMS"][job.platform_name].get("EC_QUEUE","hpc"))
-
-        job.partition = str(parameters[section].get( "PARTITION", ""))
-        job.check = str(parameters[section].get( "CHECK", "true")).lower()
-        job.export = str(parameters[section].get( "EXPORT", ""))
-        job.processors = str(parameters[section].get( "PROCESSORS", ""))
-        job.threads = str(parameters[section].get( "THREADS", ""))
-        job.tasks = str(parameters[section].get( "TASKS", ""))
-        job.memory = str(parameters[section].get("MEMORY", ""))
-        job.memory_per_task = str(parameters[section].get("MEMORY_PER_TASK", ""))
-        remote_max_wallclock = self.experiment_data["PLATFORMS"].get(job.platform_name,{})
-        remote_max_wallclock = remote_max_wallclock.get("MAX_WALLCLOCK",None)
-        job.wallclock = parameters[section].get("WALLCLOCK", remote_max_wallclock)
-        job.retrials = int(parameters[section].get( 'RETRIALS', 0))
-        job.delay_retrials = int(parameters[section].get( 'DELAY_RETRY_TIME', "-1"))
-        if job.wallclock is None and job.platform_name.upper() != "LOCAL":
-            job.wallclock = "01:59"
-        elif job.wallclock is None and job.platform_name.upper() != "LOCAL":
-            job.wallclock = "00:00"
-        elif job.wallclock is None:
-            job.wallclock = "00:00"
-        if job.retrials == -1:
-            job.retrials = None
-        notify_on = parameters[section].get("NOTIFY_ON",None)
-        if type(notify_on) == str:
-            job.notify_on = [x.upper() for x in notify_on.split(' ')]
-        else:
-            job.notify_on = ""
-        job.synchronize = str(parameters[section].get( "SYNCHRONIZE", ""))
-        job.check_warnings = str(parameters[section].get("SHOW_CHECK_WARNINGS", False)).lower()
-        job.running = str(parameters[section].get( 'RUNNING', 'once'))
-        job.x11 = str(parameters[section].get( 'X11', False )).lower()
-        job.skippable = str(parameters[section].get( "SKIPPABLE", False)).lower()
-        #self._jobs_list.get_job_list().append(job)
-
-        return job
-
-
+        job.split = split
+        section_data.append(job)

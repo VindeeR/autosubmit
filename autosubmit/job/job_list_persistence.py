@@ -88,7 +88,7 @@ class JobListPersistencePkl(JobListPersistence):
         Log.debug("Saving JobList: " + path)
         jobs_data = [(job.name, job.id, job.status,
                       job.priority, job.section, job.date,
-                      job.member, job.chunk,
+                      job.member, job.chunk, job.split,
                       job.local_logs[0], job.local_logs[1],
                       job.remote_logs[0], job.remote_logs[1],job.wrapper_type) for job in job_list]
         pickle.dump(jobs_data, fd, protocol=2)
@@ -131,7 +131,7 @@ class JobListPersistenceDb(JobListPersistence):
         self._reset_table()
         jobs_data = [(job.name, job.id, job.status,
                       job.priority, job.section, job.date,
-                      job.member, job.chunk,
+                      job.member, job.chunk, job.split,
                       job.local_logs[0], job.local_logs[1],
                       job.remote_logs[0], job.remote_logs[1],job.wrapper_type) for job in job_list]
         self.db_manager.insertMany(self.JOB_LIST_TABLE, jobs_data)

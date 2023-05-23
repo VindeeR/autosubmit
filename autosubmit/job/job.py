@@ -84,17 +84,20 @@ class Job(object):
         return "{0} STATUS: {1}".format(self.name, self.status)
 
     def __init__(self, name, job_id, status, priority):
+        self.wait = None
         self.splits = None
+        self.rerun_only = False
         self.script_name_wrapper = None
-        self.delay_end = datetime.datetime.now()
-        self.delay_retrials = "0"
+        self.retrials = None
+        self.delay_end = None
+        self.delay_retrials = None
         self.wrapper_type = None
         self._wrapper_queue = None
         self._platform = None
         self._queue = None
         self._partition = None
 
-        self.retry_delay = "0"
+        self.retry_delay = None
         self.platform_name = None # type: str
         self.section = None # type: str
         self.wallclock = None # type: str
@@ -121,7 +124,7 @@ class Job(object):
         self.long_name = name
         self.date_format = ''
         self.type = Type.BASH
-        self.hyperthreading = "none"
+        self.hyperthreading = None
         self.scratch_free_space = None
         self.custom_directives = []
         self.undefined_variables = set()
@@ -1030,7 +1033,7 @@ class Job(object):
         self.threads = str(as_conf.jobs_data[self.section].get("THREADS",as_conf.platforms_data.get(job_platform.name,{}).get("THREADS","1")))
         self.tasks = str(as_conf.jobs_data[self.section].get("TASKS",as_conf.platforms_data.get(job_platform.name,{}).get("TASKS","1")))
         self.nodes = str(as_conf.jobs_data[self.section].get("NODES",as_conf.platforms_data.get(job_platform.name,{}).get("NODES","")))
-        self.hyperthreading = str(as_conf.jobs_data[self.section].get("HYPERTHREADING",as_conf.platforms_data.get(job_platform.name,{}).get("HYPERTHREADING","none")))
+        self.hyperthreading = str(as_conf.jobs_data[self.section].get("HYPERTHREADING",as_conf.platforms_data.get(job_platform.name,{}).get("HYPERTHREADING",None)))
         if int(self.tasks) <= 1 and int(job_platform.processors_per_node) > 1 and int(self.processors) > int(job_platform.processors_per_node):
             self.tasks = job_platform.processors_per_node
         self.memory = str(as_conf.jobs_data[self.section].get("MEMORY",as_conf.platforms_data.get(job_platform.name,{}).get("MEMORY","")))
@@ -1120,10 +1123,8 @@ class Job(object):
         parameters['SYNCHRONIZE'] = self.synchronize
         parameters['PACKED'] = self.packed
         parameters['CHUNK'] = 1
-        if hasattr(self, 'RETRIALS'):
-            parameters['RETRIALS'] = self.retrials
-        if hasattr(self, 'delay_retrials'):
-            parameters['DELAY_RETRIALS'] = self.delay_retrials
+        parameters['RETRIALS'] = self.retrials
+        parameters['DELAY_RETRIALS'] = self.delay_retrials
         if self.date is not None and len(str(self.date)) > 0:
             if self.chunk is None and len(str(self.chunk)) > 0:
                 chunk = 1

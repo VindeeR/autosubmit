@@ -18,7 +18,6 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import collections
 import copy
-import igraph as ig
 import re
 import os
 import pickle
@@ -130,10 +129,7 @@ class JobList(object):
 
     def create_dictionary(self, date_list, member_list, num_chunks, chunk_ini, date_format, default_retrials, wrapper_jobs):
         chunk_list = list(range(chunk_ini, num_chunks + 1))
-
-        jobs_parser = self._get_jobs_parser()
-        dic_jobs = DicJobs(self, date_list, member_list,
-                           chunk_list, date_format, default_retrials,jobs_data={},experiment_data=self.experiment_data)
+        dic_jobs = DicJobs(date_list, member_list, chunk_list, date_format, default_retrials,{},self.experiment_data)
         self._dic_jobs = dic_jobs
         for wrapper_section in wrapper_jobs:
             if str(wrapper_jobs[wrapper_section]).lower() != 'none':
@@ -191,7 +187,7 @@ class JobList(object):
         self._chunk_list = chunk_list
 
 
-        dic_jobs = DicJobs(date_list, member_list,chunk_list, date_format, default_retrials,jobs_data,experiment_data=self.experiment_data)
+        dic_jobs = DicJobs(date_list, member_list,chunk_list, date_format, default_retrials,jobs_data,self.experiment_data)
         self._dic_jobs = dic_jobs
         priority = 0
         if show_log:
@@ -266,6 +262,11 @@ class JobList(object):
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
             # If it does not have dependencies, just append it to job_list and continue
             dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
+            dependencies_keys_aux_view = dependencies_keys.copy()
+            for section in dependencies_keys_aux_view.keys():
+                if jobs_data.get(section, None) is None:
+                    Log.printlog("SECTION {0} is not defined in jobs.conf".format(section), Log.WARNING)
+                    del dependencies_keys[section]
             if not dependencies_keys:
                 self._job_list.extend(dic_jobs.get_jobs(job_section))
                 continue
@@ -286,6 +287,7 @@ class JobList(object):
     def _manage_dependencies(dependencies_keys, dic_jobs, job_section):
         parameters = dic_jobs._jobs_data["JOBS"]
         dependencies = dict()
+
         for key in dependencies_keys:
             distance = None
             splits = None
@@ -307,22 +309,6 @@ class JobList(object):
                     key_split = key.split(sign)
                     section = key_split[0]
                     distance = int(key_split[1])
-
-            if '[' in section:
-                #Todo check what is this because we never enter this
-                try:
-                    section_name = section[0:section.find("[")]
-                    splits_section = int(
-                        dic_jobs.experiment_data["JOBS"][section_name].get('SPLITS', -1))
-                    splits = JobList._calculate_splits_dependencies(
-                        section, splits_section)
-                    section = section_name
-                except Exception as e:
-                    pass
-            if parameters.get(section,None) is None:
-                Log.printlog("WARNING: SECTION {0} is not defined in jobs.conf".format(section))
-                continue
-                #raise AutosubmitCritical("Section:{0} doesn't exists.".format(section),7014)
             dependency_running_type = str(parameters[section].get('RUNNING', 'once')).lower()
             delay = int(parameters[section].get('DELAY', -1))
             dependency = Dependency(section, distance, dependency_running_type, sign, delay, splits,relationships=dependencies_keys[key])
@@ -2098,92 +2084,6 @@ class JobList(object):
         :param new: if it is a new job list or not
         :type new: bool
         """
-
-        # Use a copy of job_list because original is modified along iterations
-        for job in self._job_list[:]:
-            if job.file is None or job.file == '':
-                self._remove_job(job)
-
-
-        # Simplifying dependencies: if a parent is already an ancestor of another parent,
-        # we remove parent dependency
-        # if not notransitive:
-        #     # Transitive reduction required
-        #     current_structure = None
-        #     db_path = os.path.join(
-        #         self._config.STRUCTURES_DIR, "structure_" + self.expid + ".db")
-        #     m_time_db = None
-        #     jobs_conf_path = os.path.join(
-        #         self._config.LOCAL_ROOT_DIR, self.expid, "conf", "jobs_{0}.yml".format(self.expid))
-        #     m_time_job_conf = None
-        #     if os.path.exists(db_path):
-        #         try:
-        #             current_structure = DbStructure.get_structure(
-        #                 self.expid, self._config.STRUCTURES_DIR)
-        #             m_time_db = os.stat(db_path).st_mtime
-        #             if os.path.exists(jobs_conf_path):
-        #                 m_time_job_conf = os.stat(jobs_conf_path).st_mtime
-        #         except Exception as exp:
-        #             pass
-        #     structure_valid = False
-        #     # If there is a current structure, and the number of jobs in JobList is equal to the number of jobs in the structure
-        #     if (current_structure) and (len(self._job_list) == len(current_structure)) and update_structure is False:
-        #         structure_valid = True
-        #         # Further validation
-        #         # Structure exists and is valid, use it as a source of dependencies
-        #         if m_time_job_conf:
-        #             if m_time_job_conf > m_time_db:
-        #                 Log.info(
-        #                     "File jobs_{0}.yml has been modified since the last time the structure persistence was saved.".format(self.expid))
-        #                 structure_valid = False
-        #         else:
-        #             Log.info(
-        #                 "File jobs_{0}.yml was not found.".format(self.expid))
-        #
-        #         if structure_valid is True:
-        #             for job in self._job_list:
-        #                 if current_structure.get(job.name, None) is None:
-        #                     structure_valid = False
-        #                     break
-        #
-        #         if structure_valid is True:
-        #             Log.info("Using existing valid structure.")
-        #             for job in self._job_list:
-        #                 children_to_remove = [
-        #                     child for child in job.children if child.name not in current_structure[job.name]]
-        #                 for child in children_to_remove:
-        #                     job.children.remove(child)
-        #                     child.parents.remove(job)
-        #     if structure_valid is False:
-        #         # Structure does not exist, or it is not be updated, attempt to create it.                Log.info("Updating structure persistence...")
-        #         # Divide Digraph into multiple subgraphs
-        #         subgraphs = [self.graph] # this should be a list of subgraphs, but not sure how to make subgraphs in a DAG
-        #         reduced_subgraphs = []
-        #         # For each subgraph, perform transitive reduction using igraph lib ( C ) and convert back to networkx ( Python )
-        #         for subgraph in subgraphs:
-        #             edges = [(u, v, attrs) for u, v, attrs in subgraph.edges(data=True)]
-        #             graph = ig.Graph.TupleList(edges, directed=True)
-        #             graph = graph.simplify(multiple=True, loops=False, combine_edges="sum")
-        #             reduced_subgraphs.append(nx.from_edgelist([(names[x[0]], names[x[1]])
-        #                                   for names in [graph.vs['name']]
-        #                                   for x in graph.get_edgelist()], DiGraph()))
-        #         # Union all subgraphs into Digraph
-        #         self.graph = nx.union_all(reduced_subgraphs)
-        #         #self.graph = transitive_reduction(self.graph) # add threads for large experiments? todo
-        #         if self.graph:
-        #             for job in self._job_list:
-        #                  children_to_remove = [
-        #                      child for child in job.children if child.name not in self.graph.neighbors(job.name)]
-        #                  for child in children_to_remove:
-        #                      job.children.remove(child)
-        #                      child.parents.remove(job)
-        #             try:
-        #                 DbStructure.save_structure(
-        #                     self.graph, self.expid, self._config.STRUCTURES_DIR)
-        #             except Exception as exp:
-        #                 Log.warning(str(exp))
-        #                 pass
-
         for job in self._job_list:
             if not job.has_parents() and new:
                 job.status = Status.READY
@@ -2348,7 +2248,7 @@ class JobList(object):
         Removes all jobs to be run only in reruns
         """
         flag = False
-        for job in set(self._job_list):
+        for job in self._job_list[:]:
             if job.rerun_only == "true":
                 self._remove_job(job)
                 flag = True

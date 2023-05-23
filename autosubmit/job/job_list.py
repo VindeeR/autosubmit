@@ -262,17 +262,12 @@ class JobList(object):
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
             # If it does not have dependencies, just append it to job_list and continue
             dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
-            dependencies_keys_aux_view = dependencies_keys.copy()
-            for section in dependencies_keys_aux_view.keys():
-                if jobs_data.get(section, None) is None:
-                    Log.printlog("SECTION {0} is not defined in jobs.conf".format(section), Log.WARNING)
-                    del dependencies_keys[section]
-            if not dependencies_keys:
-                self._job_list.extend(dic_jobs.get_jobs(job_section))
-                continue
 
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section)
-
+            if not dependencies:
+                self._job_list.extend(dic_jobs.get_jobs(job_section))
+                Log.printlog(f"WARNING: Job Section {dependencies_keys} is not defined",Log.WARNING)
+                continue
             for job in dic_jobs.get_jobs(job_section):
                 num_jobs = 1
                 if isinstance(job, list):
@@ -292,7 +287,6 @@ class JobList(object):
             distance = None
             splits = None
             sign = None
-
             if '-' not in key and '+' not in key and '*' not in key and '?' not in key:
                 section = key
             else:
@@ -309,10 +303,11 @@ class JobList(object):
                     key_split = key.split(sign)
                     section = key_split[0]
                     distance = int(key_split[1])
-            dependency_running_type = str(parameters[section].get('RUNNING', 'once')).lower()
-            delay = int(parameters[section].get('DELAY', -1))
-            dependency = Dependency(section, distance, dependency_running_type, sign, delay, splits,relationships=dependencies_keys[key])
-            dependencies[key] = dependency
+            if parameters.get(section,None) is not None:
+                dependency_running_type = str(parameters[section].get('RUNNING', 'once')).lower()
+                delay = int(parameters[section].get('DELAY', -1))
+                dependency = Dependency(section, distance, dependency_running_type, sign, delay, splits,relationships=dependencies_keys[key])
+                dependencies[key] = dependency
         return dependencies
 
     @staticmethod

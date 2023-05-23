@@ -305,9 +305,9 @@ class DicJobs:
                 job = Job(job_data[0], job_data[1], job_data[2], priority)
                 job.local_logs = (job_data[8], job_data[9])
                 job.remote_logs = (job_data[10], job_data[11])
-                break
         else:
             job = Job(name, 0, Status.WAITING, priority)
+
         job.default_job_type = default_job_type
         job.section = section
         job.date = date

@@ -249,6 +249,10 @@ class JobList(object):
         if show_log:
             Log.info("Looking for edgeless jobs...")
         self._delete_edgeless_jobs()
+        if new:
+            for job in self._job_list:
+                if not job.has_parents():
+                    job.status = Status.READY
         for wrapper_section in wrapper_jobs:
             try:
                 if wrapper_jobs[wrapper_section] is not None and len(str(wrapper_jobs[wrapper_section])) > 0:
@@ -2084,11 +2088,6 @@ class JobList(object):
         :param new: if it is a new job list or not
         :type new: bool
         """
-        for job in self._job_list:
-            if not job.has_parents() and new:
-                job.status = Status.READY
-            # Simplifying dependencies: if a parent is already an ancestor of another parent,
-            # we remove parent dependency
         if not notransitive:
             # Transitive reduction required
             current_structure = None
@@ -2130,32 +2129,31 @@ class JobList(object):
                         if current_structure.get(job.name, None) is None:
                             structure_valid = False
                             break
-
                 if structure_valid is True:
                     Log.info("Using existing valid structure.")
                     for job in self._job_list:
-                        children_to_remove = [
-                            child for child in job.children if child.name not in current_structure[job.name]]
-                        for child in children_to_remove:
-                            job.children.remove(child)
-                            child.parents.remove(job)
+                        current_job_childs_name = current_structure.get(job.name)
+                        # get actual job
+                        job.add_child([ child for child in self._job_list if child.name in current_job_childs_name ])
             if structure_valid is False:
                 # Structure does not exist, or it is not be updated, attempt to create it.
                 Log.info("Updating structure persistence...")
-                self.graph = transitive_reduction(self.graph,self._job_list)
+                self.graph = transitive_reduction(self.graph)
                 if self.graph:
                     for job in self._job_list:
-                        children_to_remove = [
-                            child for child in job.children if child.name not in self.graph.neighbors(job.name)]
-                        for child in children_to_remove:
-                            job.children.remove(child)
-                            child.parents.remove(job)
+                        current_job_childs_name = self.graph.out_edges(job.name)
+                        current_job_childs_name = [child[1] for child in current_job_childs_name]
+                        # get actual job
+                        job.add_child( [ child for child in self._job_list if child.name in current_job_childs_name] )
                     try:
                         DbStructure.save_structure(
                             self.graph, self.expid, self._config.STRUCTURES_DIR)
                     except Exception as exp:
                         Log.warning(str(exp))
                         pass
+
+                # Simplifying dependencies: if a parent is already an ancestor of another parent,
+                # we remove parent dependency
     @threaded
     def check_scripts_threaded(self, as_conf):
         """
@@ -2368,7 +2366,7 @@ class JobList(object):
 
         return result
 
-    def __str__(self):
+    def __str__(self,nocolor = False,get_active=False):
         """
         Returns the string representation of the class.
         Usage print(class)
@@ -2376,24 +2374,34 @@ class JobList(object):
         :return: String representation.
         :rtype: String
         """
-        allJobs = self.get_all()
+        if get_active:
+            jobs = self.get_active()
+        else:
+            jobs = self.get_all()
         result = "## String representation of Job List [" + str(
-            len(allJobs)) + "] ##"
-
+            len(jobs)) + "] ##"
         # Find root
         root = None
-        for job in allJobs:
-            if job.has_parents() is False:
-                root = job
-
-        # root exists
-        if root is not None and len(str(root)) > 0:
-            result += self._recursion_print(root, 0)
+        roots = []
+        if get_active:
+            for job in jobs:
+                if len(job.parents) == 0 and job.status in (Status.READY, Status.RUNNING):
+                    roots.append(job)
         else:
-            result += "\nCannot find root."
-
+            for job in jobs:
+                if len(job.parents) == 0:
+                    roots.append(job)
+        visited = list()
+        #print(root)
+        # root exists
+        for root in roots:
+            if root is not None and len(str(root)) > 0:
+                result += self._recursion_print(root, 0, visited,nocolor=nocolor)
+            else:
+                result += "\nCannot find root."
         return result
-
+    def __repr__(self):
+        return self.__str__(True,True)
     def _recursion_print(self, job, level, visited=[], statusChange=None, nocolor=False):
         """
         Returns the list of children in a recursive way

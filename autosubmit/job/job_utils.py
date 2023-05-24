@@ -62,8 +62,7 @@ def transitive_reduction(graph):
         return TR
     except Exception as exp:
         if not is_directed_acyclic_graph(graph):
-            raise NetworkXError(
-                "Transitive reduction only uniquely defined on directed acyclic graphs.")
+            raise NetworkXError("Transitive reduction only uniquely defined on directed acyclic graphs.")
         reduced_graph = DiGraph()
         reduced_graph.add_nodes_from(graph.nodes())
         for u in graph:

@@ -18,8 +18,8 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import collections
 import copy
-import igraph as ig
 import networkx as nx
+import bisect
 import re
 import os
 import pickle
@@ -37,7 +37,6 @@ from autosubmit.job.job_common import Status, bcolors
 from bscearth.utils.date import date2str, parse_date
 import autosubmit.database.db_structure as DbStructure
 import datetime
-import networkx as nx
 from networkx import DiGraph
 from autosubmit.job.job_utils import transitive_reduction
 from log.log import AutosubmitCritical, AutosubmitError, Log
@@ -216,8 +215,7 @@ class JobList(object):
             Log.info("Adding dependencies...")
         self._add_dependencies(date_list, member_list,chunk_list, dic_jobs)
 
-        if show_log:
-            Log.info("Removing redundant dependencies...")
+
         self.update_genealogy(new, notransitive, update_structure=update_structure)
         for job in self._job_list:
             job.parameters = parameters
@@ -636,6 +634,7 @@ class JobList(object):
                     optional = True
                 return True,optional
         return False,optional
+
     def _manage_job_dependencies(self,dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys, dependencies):
         '''
         Manage the dependencies of a job
@@ -649,6 +648,8 @@ class JobList(object):
         :param graph:
         :return:
         '''
+        index = bisect.bisect_left([job.name for job in self._job_list], job.name)
+
         self._job_list.append(job)
         self.graph.add_node(job.name)
         parsed_date_list = []
@@ -2080,22 +2081,26 @@ class JobList(object):
                         if current_structure.get(job.name, None) is None:
                             structure_valid = False
                             break
-                if structure_valid is True:
-                    Log.info("Using existing valid structure.")
-                    for job in self._job_list:
-                        current_job_childs_name = current_structure.get(job.name)
+                #if structure_valid is True:
+                #    Log.info("Using existing valid structure.")
+                #    for job in self._job_list:
+                #        current_job_childs_name = current_structure.get(job.name)
                         # get actual job
-                        job.add_child([ child for child in self._job_list if child.name in current_job_childs_name ])
-            if structure_valid is False:
+                #        job.add_child([ child for child in self._job_list if child.name in current_job_childs_name ])
+            if structure_valid is True or structure_valid is False:
                 # Structure does not exist, or it is not be updated, attempt to create it.
-                Log.info("Updating structure persistence...")
+                Log.info("Transitive reduction with metajobs...")
                 self.graph = transitive_reduction(self.graph)
+                Log.info("Adding edges to the real jobs...")
                 if self.graph:
-                    for job in self._job_list:
-                        current_job_childs_name = self.graph.out_edges(job.name)
-                        current_job_childs_name = [child[1] for child in current_job_childs_name]
+                    job_generator = (job for job in self._job_list)
+                    for job in job_generator:
+                        # get only PARENT -> child edges ( as dag is directed )
+                        current_job_adj = self.graph.out_edges(job.name)
+                        current_job_childs_name = [child[1] for child in current_job_adj]
                         # get actual job
-                        job.add_child( [ child for child in self._job_list if child.name in current_job_childs_name] )
+                        # add_child also adds the parent to the child
+                        job.add_child([ child for child in self._job_list if child.name in current_job_childs_name ])
                     try:
                         DbStructure.save_structure(
                             self.graph, self.expid, self._config.STRUCTURES_DIR)

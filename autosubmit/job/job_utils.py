@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-import networkx
+import networkx as nx
 import os
 
 from networkx.algorithms.dag import is_directed_acyclic_graph
@@ -29,9 +29,39 @@ from autosubmitconfigparser.config.basicconfig import BasicConfig
 from typing import Dict
 
 
-def transitive_reduction(graph):
+def transitive_reduction(graph,job_list):
+    """
+
+    Returns transitive reduction of a directed graph
+
+    The transitive reduction of G = (V,E) is a graph G- = (V,E-) such that
+    for all v,w in V there is an edge (v,w) in E- if and only if (v,w) is
+    in E and there is no path from v to w in G with length greater than 1.
+
+    :param graph: A directed acyclic graph (DAG)
+    :type graph: NetworkX DiGraph
+    :param job_list: list of nodes that are in the graph
+    :type job_list: list of nodes
+    :return: The transitive reduction of G
+    """
     try:
-        return networkx.algorithms.dag.transitive_reduction(graph)
+        TR = nx.DiGraph()
+        TR.add_nodes_from(graph.nodes())
+        descendants = {}
+        # count before removing set stored in descendants
+        check_count = dict(graph.in_degree)
+        for u in graph:
+            u_nbrs = set(graph[u])
+            for v in graph[u]:
+                if v in u_nbrs:
+                    if v not in descendants:
+                        descendants[v] = {y for x, y in nx.dfs_edges(graph, v)}
+                    u_nbrs -= descendants[v]
+                check_count[v] -= 1
+                if check_count[v] == 0:
+                    del descendants[v]
+            TR.add_edges_from((u, v) for v in u_nbrs)
+        return TR
     except Exception as exp:
         if not is_directed_acyclic_graph(graph):
             raise NetworkXError(

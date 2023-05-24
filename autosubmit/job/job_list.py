@@ -18,6 +18,8 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import collections
 import copy
+import igraph as ig
+import networkx as nx
 import re
 import os
 import pickle
@@ -91,6 +93,7 @@ class JobList(object):
         self._run_members = None
         self.jobs_to_run_first = list()
         self.rerun_job_list = list()
+        self.graph = DiGraph()
     @property
     def expid(self):
         """
@@ -262,7 +265,6 @@ class JobList(object):
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
             # If it does not have dependencies, just append it to job_list and continue
             dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
-
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section)
             if not dependencies:
                 self._job_list.extend(dic_jobs.get_jobs(job_section))
@@ -698,6 +700,8 @@ class JobList(object):
         :param graph:
         :return:
         '''
+        self._job_list.append(job)
+        self.graph.add_node(job)
         parsed_date_list = []
         for dat in date_list:
             parsed_date_list.append(date2str(dat))
@@ -2082,7 +2086,81 @@ class JobList(object):
         for job in self._job_list:
             if not job.has_parents() and new:
                 job.status = Status.READY
+            # Simplifying dependencies: if a parent is already an ancestor of another parent,
+            # we remove parent dependency
+        if not notransitive:
+            # Transitive reduction required
+            current_structure = None
+            db_path = os.path.join(
+                self._config.STRUCTURES_DIR, "structure_" + self.expid + ".db")
+            m_time_db = None
+            jobs_conf_path = os.path.join(
+                self._config.LOCAL_ROOT_DIR, self.expid, "conf", "jobs_{0}.yml".format(self.expid))
+            m_time_job_conf = None
+            if os.path.exists(db_path):
+                try:
+                    current_structure = DbStructure.get_structure(
+                        self.expid, self._config.STRUCTURES_DIR)
+                    m_time_db = os.stat(db_path).st_mtime
+                    if os.path.exists(jobs_conf_path):
+                        m_time_job_conf = os.stat(jobs_conf_path).st_mtime
+                except Exception as exp:
+                    pass
+            structure_valid = False
+            # If there is a current structure, and the number of jobs in JobList is equal to the number of jobs in the structure
+            if (current_structure) and (
+                    len(self._job_list) == len(current_structure)) and update_structure is False:
+                structure_valid = True
+                # Further validation
+                # Structure exists and is valid, use it as a source of dependencies
+                # Not valid isnce job_conf doesn't exists anymore
+                #if m_time_job_conf:
+                ##    if m_time_job_conf > m_time_db:
+                #        Log.info(
+                #            "File jobs_{0}.yml has been modified since the last time the structure persistence was saved.".format(
+                #                self.expid))
+                #        structure_valid = False
+                #else:
+                #    Log.info(
+                #        "File jobs_{0}.yml was not found.".format(self.expid))
 
+                if structure_valid is True:
+                    for job in self._job_list:
+                        if current_structure.get(job.name, None) is None:
+                            structure_valid = False
+                            break
+
+                if structure_valid is True:
+                    Log.info("Using existing valid structure.")
+                    for job in self._job_list:
+                        children_to_remove = [
+                            child for child in job.children if child.name not in current_structure[job.name]]
+                        for child in children_to_remove:
+                            job.children.remove(child)
+                            child.parents.remove(job)
+            if structure_valid is False:
+                # Structure does not exist, or it is not be updated, attempt to create it.
+                Log.info("Updating structure persistence...")
+                edges = [(u, v, attrs) for u, v, attrs in self.graph.edges(data=True)]
+                graph = ig.Graph.TupleList(edges, directed=True)
+                graph = graph.simplify(multiple=True, loops=False, combine_edges="sum")
+                self.graph = nx.from_edgelist([(names[x[0]], names[x[1]])
+                                               for names in [graph.vs['name']]
+                                               for x in graph.get_edgelist()], DiGraph())
+                # self.graph = transitive_reduction(self.graph) # add threads for large experiments? todo
+                if self.graph:
+                    for job in self._job_list:
+                        children_to_remove = [
+                            child for child in job.children if child.name not in self.graph.neighbors(job.name)]
+                        for child in children_to_remove:
+                            job.children.remove(child)
+                            child.parents.remove(job)
+                    try:
+                        DbStructure.save_structure(
+                            self.graph, self.expid, self._config.STRUCTURES_DIR)
+                    except Exception as exp:
+                        Log.warning(str(exp))
+                        pass
     @threaded
     def check_scripts_threaded(self, as_conf):
         """

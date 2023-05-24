@@ -19,7 +19,7 @@
 
 from collections.abc import Iterable
 import itertools
-
+from contextlib import suppress
 from bscearth.utils.date import date2str
 
 from autosubmit.job.job import Job
@@ -210,7 +210,8 @@ class DicJobs:
             while current_split <= splits:
                 self.build_job(section, priority, date, member, chunk, default_job_type, itertools.islice(gen,0,current_split), section_data,current_split)
                 current_split += 1
-
+        # clean remaining gen elements if any ( avoids GeneratorExit exception )
+        for _ in gen: pass
 
     def get_jobs(self, section, date=None, member=None, chunk=None):
         """

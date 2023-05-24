@@ -213,6 +213,11 @@ class Job(object):
         """
         return Status.VALUE_TO_KEY.get(self.status, "UNKNOWN")
 
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
     @property
     def children_names_str(self):
         """
@@ -408,7 +413,16 @@ class Job(object):
                 new_parent = parent[i] if isinstance(parent, list) else parent
                 self._parents.add(new_parent)
                 new_parent.__add_child(self)
+    def add_child(self, children):
+        """
+        Add children for the job. It also adds current job as a parent for all the new children
 
+        :param children: job's children to add
+        :type children: Job
+        """
+        for child in children:
+            self.__add_child(child)
+            child._parents.add(self)
     def __add_child(self, new_child):
         """
         Adds a new child to the job

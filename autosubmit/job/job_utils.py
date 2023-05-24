@@ -19,7 +19,7 @@
 
 import networkx as nx
 import os
-
+from contextlib import suppress
 from networkx.algorithms.dag import is_directed_acyclic_graph
 from networkx import DiGraph
 from networkx import dfs_edges
@@ -29,7 +29,7 @@ from autosubmitconfigparser.config.basicconfig import BasicConfig
 from typing import Dict
 
 
-def transitive_reduction(graph,job_list):
+def transitive_reduction(graph):
     """
 
     Returns transitive reduction of a directed graph
@@ -40,8 +40,6 @@ def transitive_reduction(graph,job_list):
 
     :param graph: A directed acyclic graph (DAG)
     :type graph: NetworkX DiGraph
-    :param job_list: list of nodes that are in the graph
-    :type job_list: list of nodes
     :return: The transitive reduction of G
     """
     try:
@@ -50,7 +48,7 @@ def transitive_reduction(graph,job_list):
         descendants = {}
         # count before removing set stored in descendants
         check_count = dict(graph.in_degree)
-        for u in graph:
+        for i,u in enumerate(graph):
             u_nbrs = set(graph[u])
             for v in graph[u]:
                 if v in u_nbrs:

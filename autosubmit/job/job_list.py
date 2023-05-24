@@ -268,7 +268,8 @@ class JobList(object):
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section)
             if not dependencies:
                 self._job_list.extend(dic_jobs.get_jobs(job_section))
-                Log.printlog(f"WARNING: Job Section {dependencies_keys} is not defined",Log.WARNING)
+                if dependencies_keys:
+                    Log.printlog(f"WARNING: Job Section {dependencies_keys} is not defined",Log.WARNING)
                 continue
             for job in dic_jobs.get_jobs(job_section):
                 num_jobs = 1
@@ -645,7 +646,7 @@ class JobList(object):
         :return:
         '''
         self._job_list.append(job)
-        self.graph.add_node(job)
+        self.graph.add_node(job.name)
         parsed_date_list = []
         for dat in date_list:
             parsed_date_list.append(date2str(dat))
@@ -686,8 +687,6 @@ class JobList(object):
                 valid,optional_to = JobList._valid_parent(parent, member_list, parsed_date_list, chunk_list, natural_relationship,filters_to_apply)
                 if not valid:
                     continue
-                else:
-                    pass
                 # If the parent is valid, add it to the graph
                 job.add_parent(parent)
                 self.graph.add_edge(parent.name, job.name)
@@ -2094,13 +2093,7 @@ class JobList(object):
             if structure_valid is False:
                 # Structure does not exist, or it is not be updated, attempt to create it.
                 Log.info("Updating structure persistence...")
-                edges = [(u, v, attrs) for u, v, attrs in self.graph.edges(data=True)]
-                graph = ig.Graph.TupleList(edges, directed=True)
-                graph = graph.simplify(multiple=True, loops=False, combine_edges="sum")
-                self.graph = nx.from_edgelist([(names[x[0]], names[x[1]])
-                                               for names in [graph.vs['name']]
-                                               for x in graph.get_edgelist()], DiGraph())
-                # self.graph = transitive_reduction(self.graph) # add threads for large experiments? todo
+                self.graph = transitive_reduction(self.graph,self._job_list)
                 if self.graph:
                     for job in self._job_list:
                         children_to_remove = [

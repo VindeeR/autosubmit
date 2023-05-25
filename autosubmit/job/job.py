@@ -413,6 +413,7 @@ class Job(object):
                 new_parent = parent[i] if isinstance(parent, list) else parent
                 self._parents.add(new_parent)
                 new_parent.__add_child(self)
+
     def add_child(self, children):
         """
         Add children for the job. It also adds current job as a parent for all the new children

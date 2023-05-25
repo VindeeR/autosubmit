@@ -19,7 +19,6 @@
 import collections
 import copy
 import networkx as nx
-import bisect
 import re
 import os
 import pickle
@@ -64,7 +63,7 @@ class JobList(object):
 
     """
 
-    def __init__(self, expid, config, parser_factory, job_list_persistence,as_conf):
+    def __init__(self, expid, config, parser_factory, job_list_persistence, as_conf):
         self._persistence_path = os.path.join(
             config.LOCAL_ROOT_DIR, expid, "pkl")
         self._update_file = "updated_list_" + expid + ".txt"
@@ -187,21 +186,23 @@ class JobList(object):
         self._member_list = member_list
         chunk_list = list(range(chunk_ini, num_chunks + 1))
         self._chunk_list = chunk_list
-
-
         dic_jobs = DicJobs(date_list, member_list,chunk_list, date_format, default_retrials,jobs_data,self.experiment_data)
         self._dic_jobs = dic_jobs
-        priority = 0
         if show_log:
             Log.info("Creating jobs...")
         # jobs_data includes the name of the .our and .err files of the job in LOG_expid
         jobs_data = dict()
+        recreate = True
         if not new:
             try:
-                jobs_data = {row[0]: row for row in self.load()}
+                self._job_list = self.load()
+                recreate = False
+                Log.info("Load finished")
             except Exception as e:
                 try:
-                    jobs_data = {row[0]: row for row in self.backup_load()}
+                    self._job_list = self.backup_load()
+                    recreate = False
+                    Log.info("Load finished")
                 except Exception as e:
                     pass
                     Log.info("Deleting previous pkl due being incompatible with current AS version")
@@ -210,23 +211,14 @@ class JobList(object):
                     if os.path.exists(os.path.join(self._persistence_path, self._persistence_file+"_backup.pkl")):
                         os.remove(os.path.join(self._persistence_path, self._persistence_file+"_backup.pkl"))
 
-        self._create_jobs(dic_jobs, priority,default_job_type, jobs_data)
-        if show_log:
-            Log.info("Adding dependencies...")
-        self._add_dependencies(date_list, member_list,chunk_list, dic_jobs)
-
-
-        self.update_genealogy(new, notransitive, update_structure=update_structure)
-        for job in self._job_list:
-            job.parameters = parameters
-            job_data = jobs_data.get(job.name,"none")
-            try:
-                if job_data != "none":
-                    job.wrapper_type = job_data[12]
-                else:
-                    job.wrapper_type = "none"
-            except BaseException as e:
-                job.wrapper_type = "none"
+        if recreate:
+            self._create_jobs(dic_jobs, 0, default_job_type)
+            if show_log:
+                Log.info("Adding dependencies to the graph..")
+            self._add_dependencies(date_list, member_list,chunk_list, dic_jobs)
+            if show_log:
+                Log.info("Adding dependencies to the job..")
+        self.update_genealogy(new, update_structure=update_structure, recreate = recreate)
 
         # Checking for member constraints
         if len(run_only_members) > 0:
@@ -235,9 +227,9 @@ class JobList(object):
                 Log.info("Considering only members {0}".format(
                     str(run_only_members)))
             old_job_list = [job for job in self._job_list]
-            self._job_list = [
-                job for job in old_job_list if job.member is None or job.member in run_only_members or job.status not in [Status.WAITING, Status.READY]]
-            for job in self._job_list:
+            self._job_list = [job for job in old_job_list if job.member is None or job.member in run_only_members or job.status not in [Status.WAITING, Status.READY]]
+            gen_joblist = [job for job in self._job_list]
+            for job in gen_joblist:
                 for jobp in job.parents:
                     if jobp in self._job_list:
                         job.parents.add(jobp)
@@ -268,12 +260,13 @@ class JobList(object):
             # If it does not have dependencies, just append it to job_list and continue
             dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section)
-            if not dependencies:
-                self._job_list.extend(dic_jobs.get_jobs(job_section))
-                if dependencies_keys:
-                    Log.printlog(f"WARNING: Job Section {dependencies_keys} is not defined",Log.WARNING)
-                continue
+            if not dependencies_keys:
+                Log.printlog(f"WARNING: Job Section {dependencies_keys} is not defined", Log.WARNING)
             for job in dic_jobs.get_jobs(job_section):
+                self.graph.add_node(job.name)
+                self.graph.nodes.get(job.name)['job'] = job
+                if not dependencies:
+                    continue
                 num_jobs = 1
                 if isinstance(job, list):
                     num_jobs = len(job)
@@ -281,6 +274,7 @@ class JobList(object):
                     _job = job[i] if num_jobs > 1 else job
                     self._manage_job_dependencies(dic_jobs, _job, date_list, member_list, chunk_list, dependencies_keys,
                                                      dependencies)
+        pass
 
 
     @staticmethod
@@ -648,10 +642,8 @@ class JobList(object):
         :param graph:
         :return:
         '''
-        index = bisect.bisect_left([job.name for job in self._job_list], job.name)
 
-        self._job_list.append(job)
-        self.graph.add_node(job.name)
+
         parsed_date_list = []
         for dat in date_list:
             parsed_date_list.append(date2str(dat))
@@ -2031,85 +2023,48 @@ class JobList(object):
         Log.debug('Update finished')
         return save
 
-    def update_genealogy(self, new=True, notransitive=False, update_structure=False):
+    def update_genealogy(self, new=True, update_structure=False, recreate = False):
         """
         When we have created the job list, every type of job is created.
         Update genealogy remove jobs that have no templates
         :param update_structure:
-        :param notransitive:
         :param new: if it is a new job list or not
         :type new: bool
         """
-        if not notransitive:
-            # Transitive reduction required
-            current_structure = None
-            db_path = os.path.join(
-                self._config.STRUCTURES_DIR, "structure_" + self.expid + ".db")
-            m_time_db = None
-            jobs_conf_path = os.path.join(
-                self._config.LOCAL_ROOT_DIR, self.expid, "conf", "jobs_{0}.yml".format(self.expid))
-            m_time_job_conf = None
+        current_structure = None
+        structure_valid = False
+
+        if not new:
+            db_path = os.path.join(self._config.STRUCTURES_DIR, "structure_" + self.expid + ".db")
             if os.path.exists(db_path):
                 try:
                     current_structure = DbStructure.get_structure(
                         self.expid, self._config.STRUCTURES_DIR)
-                    m_time_db = os.stat(db_path).st_mtime
-                    if os.path.exists(jobs_conf_path):
-                        m_time_job_conf = os.stat(jobs_conf_path).st_mtime
                 except Exception as exp:
                     pass
-            structure_valid = False
             # If there is a current structure, and the number of jobs in JobList is equal to the number of jobs in the structure
-            if (current_structure) and (
-                    len(self._job_list) == len(current_structure)) and update_structure is False:
+            if (current_structure) and (len(self._job_list) == len(current_structure)) and update_structure is False:
                 structure_valid = True
-                # Further validation
-                # Structure exists and is valid, use it as a source of dependencies
-                # Not valid isnce job_conf doesn't exists anymore
-                #if m_time_job_conf:
-                ##    if m_time_job_conf > m_time_db:
-                #        Log.info(
-                #            "File jobs_{0}.yml has been modified since the last time the structure persistence was saved.".format(
-                #                self.expid))
-                #        structure_valid = False
-                #else:
-                #    Log.info(
-                #        "File jobs_{0}.yml was not found.".format(self.expid))
-
-                if structure_valid is True:
-                    for job in self._job_list:
-                        if current_structure.get(job.name, None) is None:
-                            structure_valid = False
-                            break
-                #if structure_valid is True:
-                #    Log.info("Using existing valid structure.")
-                #    for job in self._job_list:
-                #        current_job_childs_name = current_structure.get(job.name)
-                        # get actual job
-                #        job.add_child([ child for child in self._job_list if child.name in current_job_childs_name ])
-            if structure_valid is True or structure_valid is False:
-                # Structure does not exist, or it is not be updated, attempt to create it.
-                Log.info("Transitive reduction with metajobs...")
-                self.graph = transitive_reduction(self.graph)
-                Log.info("Adding edges to the real jobs...")
-                if self.graph:
-                    job_generator = (job for job in self._job_list)
-                    for job in job_generator:
-                        # get only PARENT -> child edges ( as dag is directed )
-                        current_job_adj = self.graph.out_edges(job.name)
-                        current_job_childs_name = [child[1] for child in current_job_adj]
-                        # get actual job
-                        # add_child also adds the parent to the child
-                        job.add_child([ child for child in self._job_list if child.name in current_job_childs_name ])
-                    try:
-                        DbStructure.save_structure(
-                            self.graph, self.expid, self._config.STRUCTURES_DIR)
-                    except Exception as exp:
-                        Log.warning(str(exp))
-                        pass
-
-                # Simplifying dependencies: if a parent is already an ancestor of another parent,
-                # we remove parent dependency
+                # check loaded job_list
+                joblist_gen = ( job for job in self._job_list )
+                for job in joblist_gen:
+                    if current_structure.get(job.name, None) is None:
+                        structure_valid = False
+                        break
+        if not structure_valid:
+            Log.info("Transitive reduction...")
+            self.graph = transitive_reduction(self.graph,recreate)
+            if recreate:
+                # update job list view as transitive_Reduction also fills job._parents and job._children if recreate is set
+                self._job_list = [ job["job"] for job in self.graph.nodes().values() ]
+                gen_job_list = ( job for job in self._job_list if not job.has_parents())
+                for job in gen_job_list:
+                    job.status = Status.READY
+                self.save()
+            try:
+                DbStructure.save_structure(self.graph, self.expid, self._config.STRUCTURES_DIR)
+            except Exception as exp:
+                Log.warning(str(exp))
     @threaded
     def check_scripts_threaded(self, as_conf):
         """
@@ -2276,7 +2231,7 @@ class JobList(object):
                 flag = True
 
         if flag:
-            self.update_genealogy(notransitive=notransitive)
+            self.update_genealogy()
         del self._dic_jobs
 
     def print_with_status(self, statusChange=None, nocolor=False, existingList=None):

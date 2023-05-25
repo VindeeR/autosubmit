@@ -4456,8 +4456,7 @@ class Autosubmit:
                     rerun = as_conf.get_rerun()
 
                     Log.info("\nCreating the jobs list...")
-                    job_list = JobList(expid, BasicConfig, YAMLParserFactory(),
-                                       Autosubmit._get_job_list_persistence(expid, as_conf), as_conf)
+                    job_list = JobList(expid, BasicConfig, YAMLParserFactory(),Autosubmit._get_job_list_persistence(expid, as_conf), as_conf)
                     prev_job_list = Autosubmit.load_job_list(
                         expid, as_conf, notransitive=notransitive)
 

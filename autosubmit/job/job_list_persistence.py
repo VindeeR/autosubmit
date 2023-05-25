@@ -91,7 +91,7 @@ class JobListPersistencePkl(JobListPersistence):
                       job.member, job.chunk, job.split,
                       job.local_logs[0], job.local_logs[1],
                       job.remote_logs[0], job.remote_logs[1],job.wrapper_type) for job in job_list]
-        pickle.dump(jobs_data, fd, protocol=2)
+        pickle.dump(job_list, fd, protocol=2)
         Log.debug('Job list saved')
 
 

@@ -278,7 +278,7 @@ class JobList(object):
                 for i in range(num_jobs):
                     _job = job[i] if num_jobs > 1 else job
                     self._manage_job_dependencies(dic_jobs, _job, date_list, member_list, chunk_list, dependencies_keys,
-                                                     dependencies)
+                                                     dependencies, self.graph)
         pass
 
 
@@ -689,7 +689,7 @@ class JobList(object):
         return False,False
     @staticmethod
     def _manage_job_dependencies(dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys, dependencies,
-                                 ):
+                                 graph):
         '''
         Manage the dependencies of a job
         :param dic_jobs:
@@ -739,7 +739,7 @@ class JobList(object):
                 # If the parent is valid, add it to the graph
                 if valid:
                     #job.add_parent(parent)
-                    self.graph.add_edge(parent.name, job.name)
+                    graph.add_edge(parent.name, job.name)
                     # Could be more variables in the future
                     if optional:
                         job.add_edge_info(parent.name,special_variables={"optional":True})

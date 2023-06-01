@@ -196,8 +196,13 @@ class JobList(object):
         if not new:
             try:
                 self._job_list = self.load()
-                recreate = False
-                Log.info("Load finished")
+                # if it is not a Job_list object, we need to recreate it
+                if len(self._job_list) == 0 or self._job_list[0].__class__.__name__ != "Job":
+                    recreate = True
+                    update_structure = True
+                else:
+                    recreate = False
+                    Log.info("Load finished")
             except Exception as e:
                 try:
                     self._job_list = self.backup_load()
@@ -684,7 +689,7 @@ class JobList(object):
         return False,False
     @staticmethod
     def _manage_job_dependencies(dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys, dependencies,
-                                 graph):
+                                 ):
         '''
         Manage the dependencies of a job
         :param dic_jobs:

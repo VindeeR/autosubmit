@@ -739,7 +739,7 @@ class JobList(object):
                 # If the parent is valid, add it to the graph
                 if valid:
                     #job.add_parent(parent)
-                    JobList._add_edge(graph, job, parent)
+                    self.graph.add_edge(parent.name, job.name)
                     # Could be more variables in the future
                     if optional:
                         job.add_edge_info(parent.name,special_variables={"optional":True})

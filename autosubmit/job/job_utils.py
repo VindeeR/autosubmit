@@ -63,7 +63,6 @@ def transitive_reduction(graph,recreate):
             # and add it to current node as job_children
             if recreate:
                 TR.nodes[u]["job"].add_child([TR.nodes[v]["job"] for v in u_nbrs])
-
         return TR
     except Exception as exp:
         if not is_directed_acyclic_graph(graph):

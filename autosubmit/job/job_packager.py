@@ -288,14 +288,6 @@ class JobPackager(object):
                                     wrapper_limits["max_by_section"][sectionN] = wrapper_limits["max"]
                                 wrapper_limits["min"] = min(self._as_config.jobs_data[sectionN].get("MIN_WRAPPED",min_value),min_value)
                         hard_limit_wrapper =  wrapper_limits["max"]
-                        #if self.wrapper_type[self.current_wrapper_section].lower() == "vertical":
-                        #    for k in dependencies_keys:
-                        #        if "-" in k:
-                        #            k_divided = k.split("-")
-                        #            if k_divided[0] not in self.jobs_in_wrapper[self.current_wrapper_section]:
-                        #                number = int(k_divided[1].strip(" "))
-                        #                if number < wrapper_limits["max"]:
-                        #                    hard_limit_wrapper = number
                         wrapper_limits["min"] = min(wrapper_limits["min"], hard_limit_wrapper)
                         wrapper_limits["min_v"] = self._as_config.get_min_wrapped_jobs_vertical(self._as_config.experiment_data["WRAPPERS"][self.current_wrapper_section])
                         wrapper_limits["min_h"] = self._as_config.get_min_wrapped_jobs_horizontal(self._as_config.experiment_data["WRAPPERS"][self.current_wrapper_section])

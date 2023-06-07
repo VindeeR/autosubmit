@@ -47,16 +47,38 @@ class DicJobs:
     :type default_retrials: config_common
     """
 
-    def __init__(self, date_list, member_list, chunk_list, date_format, default_retrials, jobs_data, experiment_data):
+    def __init__(self, date_list, member_list, chunk_list, date_format, default_retrials,as_conf):
         self._date_list = date_list
         self._member_list = member_list
         self._chunk_list = chunk_list
-        self._jobs_data = jobs_data
         self._date_format = date_format
         self.default_retrials = default_retrials
         self._dic = dict()
-        self.experiment_data = experiment_data
+        self.as_conf = as_conf
+        self.experiment_data = as_conf.experiment_data
+        self.recreate_jobs = False
+        self.changes = {}
+    def compare_section(self,as_conf,current_section):
+        """
+        Compare the current section metadata with the last run one to see if it has changed
 
+        :param current_section: current section
+        :type current_section: str
+        :param prev_dic: previous dictionary
+        :type prev_dic: dict
+        :return: dict with the changes
+        :rtype: bool
+        """
+        self.changes[current_section] = self.as_conf.detailed_deep_diff(as_conf.experiment_data["JOBS"][current_section],as_conf.last_experiment_data["JOBS"][current_section])
+
+    def compare_experiment_section(self,as_conf):
+        """
+        Compare the experiment structure metadata with the last run one to see if it has changed
+        :param as_conf:
+        :return:
+        """
+
+        self.changes = self.as_conf.detailed_deep_diff(as_conf.experiment_data["EXPERIMENT"],as_conf.last_experiment_data["EXPERIMENT"])
     def read_section(self, section, priority, default_job_type, jobs_data=dict()):
         """
         Read a section from jobs conf and creates all jobs for it
@@ -70,8 +92,8 @@ class DicJobs:
         :param priority: priority for the jobs
         :type priority: int
         """
+        self.compare_section(self.as_conf,section)
         parameters = self.experiment_data["JOBS"]
-
         splits = int(parameters[section].get("SPLITS", -1))
         running = str(parameters[section].get('RUNNING', "once")).lower()
         frequency = int(parameters[section].get("FREQUENCY", 1))
@@ -202,17 +224,14 @@ class DicJobs:
                                                         default_job_type, jobs_data,
                                                         self._dic[section][date][member][chunk])
     def _create_jobs_split(self, splits, section, date, member, chunk, priority, default_job_type, jobs_data, section_data):
-        gen = ( job for job in jobs_data.values() if (job[6] == member or member is None) and (job[5] == date or date is None) and (job[7] == chunk or chunk is None) and (job[4] == section or section is None) )
+        names = { job.name: job.name[job] for job in jobs_data if not date or job.date == date and not member or job.member == member and not chunk or job.chunk == chunk and job.section == section }
         if splits <= 0:
-            self.build_job(section, priority, date, member, chunk, default_job_type, gen, section_data, -1)
+            self.build_job(section, priority, date, member, chunk, default_job_type, names, section_data, -1)
         else:
             current_split = 1
             while current_split <= splits:
-                self.build_job(section, priority, date, member, chunk, default_job_type, itertools.islice(gen,0,current_split), section_data,current_split)
+                self.build_job(section, priority, date, member, chunk, default_job_type, names, section_data,current_split)
                 current_split += 1
-        # clean remaining gen elements if any ( avoids GeneratorExit exception )
-        for _ in gen: pass
-
     def get_jobs(self, section, date=None, member=None, chunk=None):
         """
         Return all the jobs matching section, date, member and chunk provided. If any parameter is none, returns all
@@ -301,18 +320,15 @@ class DicJobs:
         if split > -1:
             name += "_{0}".format(split)
         name += "_" + section
-        for job_data in jobs_generator:
-            if job_data[0] == name:
-                job = Job(job_data[0], job_data[1], job_data[2], priority)
-                job.local_logs = (job_data[8], job_data[9])
-                job.remote_logs = (job_data[10], job_data[11])
-        else:
+        if name not in jobs_generator.keys():
             job = Job(name, 0, Status.WAITING, priority)
-
-        job.default_job_type = default_job_type
-        job.section = section
-        job.date = date
-        job.member = member
-        job.chunk = chunk
-        job.split = split
-        section_data.append(job)
+            job.default_job_type = default_job_type
+            job.section = section
+            job.date = date
+            job.member = member
+            job.chunk = chunk
+            job.split = split
+            section_data.append(job)
+        else:
+            jobs_generator[name].status = Status.WAITING if jobs_generator[name].status == Status.READY else jobs_generator[name].status
+            section_data.append(jobs_generator[name])

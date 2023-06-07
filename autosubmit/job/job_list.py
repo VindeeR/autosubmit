@@ -148,8 +148,10 @@ class JobList(object):
         # delete jobs by indices
         for i in jobs_to_delete:
             self._job_list.remove(i)
+
+
     def generate(self, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
-                 default_job_type, wrapper_type=None, wrapper_jobs=dict(), new=True, notransitive=False, update_structure=False, run_only_members=[],show_log=True,jobs_data={},as_conf=""):
+                 default_job_type, wrapper_type=None, wrapper_jobs=dict(), new=True, notransitive=False, update_structure=False, run_only_members=[],show_log=True,as_conf=""):
         """
         Creates all jobs needed for the current workflow
 
@@ -181,49 +183,47 @@ class JobList(object):
         :param wrapper_jobs: Job types defined in ``autosubmit_.yml`` [wrapper sections] to be wrapped. \n
         :type wrapper_jobs: String \n
         """
+
         self._parameters = parameters
         self._date_list = date_list
         self._member_list = member_list
         chunk_list = list(range(chunk_ini, num_chunks + 1))
         self._chunk_list = chunk_list
-        dic_jobs = DicJobs(date_list, member_list,chunk_list, date_format, default_retrials,jobs_data,self.experiment_data)
-        self._dic_jobs = dic_jobs
+        self._dic_jobs = DicJobs(date_list, member_list,chunk_list, date_format, default_retrials,as_conf)
         if show_log:
             Log.info("Creating jobs...")
-        # jobs_data includes the name of the .our and .err files of the job in LOG_expid
-        jobs_data = dict()
         recreate = True
         if not new:
             try:
                 self._job_list = self.load()
-                # if it is not a Job_list object, we need to recreate it
-                if len(self._job_list) == 0 or self._job_list[0].__class__.__name__ != "Job":
-                    recreate = True
+            except:
+                self._job_list = []
+            if len(self._job_list) > 0 and self._job_list[0].__class__.__name__ == "Job":
+                Log.info("Load finished")
+                if as_conf.data_changed:
+                    self._dic_jobs.recreate_jobs = True
                     update_structure = True
+                    self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
                 else:
-                    recreate = False
-                    Log.info("Load finished")
-            except Exception as e:
-                try:
-                    self._job_list = self.backup_load()
-                    recreate = False
-                    Log.info("Load finished")
-                except Exception as e:
-                    pass
-                    Log.info("Deleting previous pkl due being incompatible with current AS version")
-                    if os.path.exists(os.path.join(self._persistence_path, self._persistence_file+".pkl")):
-                        os.remove(os.path.join(self._persistence_path, self._persistence_file+".pkl"))
-                    if os.path.exists(os.path.join(self._persistence_path, self._persistence_file+"_backup.pkl")):
-                        os.remove(os.path.join(self._persistence_path, self._persistence_file+"_backup.pkl"))
-
-        if recreate:
-            self._create_jobs(dic_jobs, 0, default_job_type)
-            if show_log:
-                Log.info("Adding dependencies to the graph..")
-            self._add_dependencies(date_list, member_list,chunk_list, dic_jobs)
-            if show_log:
-                Log.info("Adding dependencies to the job..")
-        self.update_genealogy(new, update_structure=update_structure, recreate = recreate)
+                    update_structure = False
+                    self._dic_jobs.recreate_jobs = False
+                    self._dic_jobs.last_experiment_data = {}
+            else:
+                self._dic_jobs.recreate_jobs = True
+                update_structure = True
+                if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + ".pkl")):
+                    os.remove(os.path.join(self._persistence_path, self._persistence_file + ".pkl"))
+                if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl")):
+                    os.remove(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl"))
+        self._dic_jobs.jobs
+        # Find if dic_jobs has modified from previous iteration in order to expand the workflow
+        self._create_jobs(self._dic_jobs, 0, default_job_type)
+        if show_log:
+            Log.info("Adding dependencies to the graph..")
+        self._add_dependencies(date_list, member_list,chunk_list, self._dic_jobs)
+        if show_log:
+            Log.info("Adding dependencies to the job..")
+        self.update_genealogy(new, update_structure=update_structure, recreate = self._dic_jobs.recreate_jobs)
 
         # Checking for member constraints
         if len(run_only_members) > 0:
@@ -259,7 +259,7 @@ class JobList(object):
 
 
     def _add_dependencies(self,date_list, member_list, chunk_list, dic_jobs, option="DEPENDENCIES"):
-        jobs_data = dic_jobs._jobs_data.get("JOBS",{})
+        jobs_data = dic_jobs.experiment_data.get("JOBS",{})
         for job_section in jobs_data.keys():
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
             # If it does not have dependencies, just append it to job_list and continue
@@ -284,7 +284,7 @@ class JobList(object):
 
     @staticmethod
     def _manage_dependencies(dependencies_keys, dic_jobs, job_section):
-        parameters = dic_jobs._jobs_data["JOBS"]
+        parameters = dic_jobs.experiment_data["JOBS"]
         dependencies = dict()
 
         for key in dependencies_keys:
@@ -829,10 +829,10 @@ class JobList(object):
                         if parent not in visited_parents:
                             job.add_parent(parent)
     @staticmethod
-    def _create_jobs(dic_jobs, priority, default_job_type, jobs_data=dict()):
-        for section in dic_jobs._jobs_data.get("JOBS",{}).keys():
+    def _create_jobs(dic_jobs, priority, default_job_type):
+        for section in dic_jobs.experiment_data.get("JOBS",{}).keys():
             Log.debug("Creating {0} jobs".format(section))
-            dic_jobs.read_section(section, priority, default_job_type, jobs_data)
+            dic_jobs.read_section(section, priority, default_job_type)
             priority += 1
 
     def _create_sorted_dict_jobs(self, wrapper_jobs):
@@ -1706,8 +1706,12 @@ class JobList(object):
         :rtype: JobList
         """
         Log.info("Loading JobList")
-        return self._persistence.load(self._persistence_path, self._persistence_file)
-
+        try:
+            return self._persistence.load(self._persistence_path, self._persistence_file)
+        except:
+            Log.printlog(
+                "Autosubmit will use a backup for recover the job_list", 6010)
+            return self.backup_load()
     def backup_load(self):
         """
         Recreates a stored job list from the persistence

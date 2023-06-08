@@ -4457,8 +4457,7 @@ class Autosubmit:
 
                     Log.info("\nCreating the jobs list...")
                     job_list = JobList(expid, BasicConfig, YAMLParserFactory(),Autosubmit._get_job_list_persistence(expid, as_conf), as_conf)
-                    prev_job_list = Autosubmit.load_job_list(
-                        expid, as_conf, notransitive=notransitive)
+                    prev_job_list = Autosubmit.load_job_list(expid, as_conf, previous_run=True)
 
                     date_format = ''
                     if as_conf.get_chunk_size_unit() == 'hour':
@@ -4476,12 +4475,10 @@ class Autosubmit:
                             continue
                         wrapper_jobs[wrapper_name] = as_conf.get_wrapper_jobs(wrapper_parameters)
 
-                    job_list.generate(date_list, member_list, num_chunks, chunk_ini, parameters, date_format,
+                    job_list.generate(as_conf,date_list, member_list, num_chunks, chunk_ini, parameters, date_format,
                                       as_conf.get_retrials(),
                                       as_conf.get_default_job_type(),
-                                      as_conf.get_wrapper_type(), wrapper_jobs, notransitive=notransitive,
-                                      update_structure=True, run_only_members=run_only_members,
-                                      jobs_data=as_conf.experiment_data, as_conf=as_conf)
+                                      wrapper_jobs, run_only_members=run_only_members)
 
                     if str(rerun).lower() == "true":
                         job_list.rerun(as_conf.get_rerun_jobs(),as_conf)
@@ -5709,7 +5706,7 @@ class Autosubmit:
         open(as_conf.experiment_file, 'wb').write(content)
 
     @staticmethod
-    def load_job_list(expid, as_conf, notransitive=False, monitor=False):
+    def load_job_list(expid, as_conf, notransitive=False, monitor=False,previous_run = False):
         rerun = as_conf.get_rerun()
 
         job_list = JobList(expid, BasicConfig, YAMLParserFactory(),
@@ -5729,10 +5726,11 @@ class Autosubmit:
             if isinstance(wrapper_data, collections.abc.Mapping):
                 wrapper_jobs[wrapper_section] = wrapper_data.get("JOBS_IN_WRAPPER", "")
 
-        job_list.generate(date_list, as_conf.get_member_list(), as_conf.get_num_chunks(), as_conf.get_chunk_ini(),
+        job_list.generate(as_conf, date_list, as_conf.get_member_list(), as_conf.get_num_chunks(), as_conf.get_chunk_ini(),
                           as_conf.experiment_data, date_format, as_conf.get_retrials(),
-                          as_conf.get_default_job_type(), as_conf.get_wrapper_type(), wrapper_jobs,
-                          new=False, notransitive=notransitive, run_only_members=run_only_members, as_conf=as_conf)
+                          as_conf.get_default_job_type(), wrapper_jobs,
+                          new=False, run_only_members=run_only_members, previous_run=previous_run)
+
         if str(rerun).lower() == "true":
             rerun_jobs = as_conf.get_rerun_jobs()
             job_list.rerun(rerun_jobs,as_conf, monitor=monitor)

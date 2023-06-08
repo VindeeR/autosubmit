@@ -29,7 +29,7 @@ from autosubmitconfigparser.config.basicconfig import BasicConfig
 from typing import Dict
 
 
-def transitive_reduction(graph,recreate):
+def transitive_reduction(graph):
     """
 
     Returns transitive reduction of a directed graph
@@ -61,8 +61,9 @@ def transitive_reduction(graph,recreate):
             TR.add_edges_from((u, v) for v in u_nbrs)
             # Get JOB node atributte of all neighbors of current node
             # and add it to current node as job_children
-            if recreate:
-                TR.nodes[u]["job"].add_child([TR.nodes[v]["job"] for v in u_nbrs])
+            TR.nodes[u]["job"].parents = set()
+            TR.nodes[u]["job"].children = set()
+            TR.nodes[u]["job"].add_child([TR.nodes[v]["job"] for v in u_nbrs])
         return TR
     except Exception as exp:
         if not is_directed_acyclic_graph(graph):

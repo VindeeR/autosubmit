@@ -230,10 +230,13 @@ class TestJobList(TestCase):
         parameters = {'fake-key': 'fake-value',
                       'fake-key2': 'fake-value2'}
         graph_mock = Mock()
+        as_conf = Mock()
         job_list.graph = graph_mock
         # act
-        job_list.generate(date_list, member_list, num_chunks,
+        job_list.generate(as_conf,date_list, member_list, num_chunks,
                           1, parameters, 'H', 9999, Type.BASH, 'None', update_structure=True)
+
+
 
         # assert
         self.assertEqual(job_list.parameters, parameters)

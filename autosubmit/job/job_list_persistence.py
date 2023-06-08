@@ -74,7 +74,7 @@ class JobListPersistencePkl(JobListPersistence):
             Log.printlog('File {0} does not exist'.format(path),Log.WARNING)
             return list()
 
-    def save(self, persistence_path, persistence_file, job_list):
+    def save(self, persistence_path, persistence_file, job_list,graph):
         """
         Persists a job list in a pkl file
         :param job_list: JobList
@@ -86,12 +86,12 @@ class JobListPersistencePkl(JobListPersistence):
         fd = open(path, 'wb')
         setrecursionlimit(50000)
         Log.debug("Saving JobList: " + path)
-        jobs_data = [(job.name, job.id, job.status,
-                      job.priority, job.section, job.date,
-                      job.member, job.chunk, job.split,
-                      job.local_logs[0], job.local_logs[1],
-                      job.remote_logs[0], job.remote_logs[1],job.wrapper_type) for job in job_list]
-        pickle.dump(job_list, fd, protocol=2)
+        #jobs_data = [(job.name, job.id, job.status,
+        #              job.priority, job.section, job.date,
+        #              job.member, job.chunk, job.split,
+        #              job.local_logs[0], job.local_logs[1],
+        #              job.remote_logs[0], job.remote_logs[1],job.wrapper_type) for job in job_list]
+        pickle.dump((graph,job_list), fd, protocol=2)
         Log.debug('Job list saved')
 
 

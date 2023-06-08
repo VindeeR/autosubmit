@@ -150,8 +150,8 @@ class JobList(object):
             self._job_list.remove(i)
 
 
-    def generate(self, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
-                 default_job_type, wrapper_type=None, wrapper_jobs=dict(), new=True, notransitive=False, update_structure=False, run_only_members=[],show_log=True,as_conf=""):
+    def generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
+                 default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[],show_log=True,previous_run = False):
         """
         Creates all jobs needed for the current workflow
 
@@ -190,40 +190,44 @@ class JobList(object):
         chunk_list = list(range(chunk_ini, num_chunks + 1))
         self._chunk_list = chunk_list
         self._dic_jobs = DicJobs(date_list, member_list,chunk_list, date_format, default_retrials,as_conf)
+        if previous_run:
+            try:
+                (self.graph,self._dic_jobs.job_list) = self.load()
+            except:
+                self.graph = nx.DiGraph()
+                self._dic_jobs.job_list = {}
+            return
         if show_log:
             Log.info("Creating jobs...")
-        recreate = True
         if not new:
             try:
-                self._job_list = self.load()
+                (self.graph,self._dic_jobs.job_list) = self.load()
             except:
-                self._job_list = []
-            if len(self._job_list) > 0 and self._job_list[0].__class__.__name__ == "Job":
+                self.graph = nx.DiGraph()
+                self._dic_jobs.job_list = {}
+            if len(self._dic_jobs.job_list) > 0:
                 Log.info("Load finished")
                 if as_conf.data_changed:
                     self._dic_jobs.recreate_jobs = True
-                    update_structure = True
                     self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
                 else:
-                    update_structure = False
                     self._dic_jobs.recreate_jobs = False
                     self._dic_jobs.last_experiment_data = {}
             else:
                 self._dic_jobs.recreate_jobs = True
-                update_structure = True
                 if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + ".pkl")):
                     os.remove(os.path.join(self._persistence_path, self._persistence_file + ".pkl"))
                 if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl")):
                     os.remove(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl"))
-        self._dic_jobs.jobs
         # Find if dic_jobs has modified from previous iteration in order to expand the workflow
         self._create_jobs(self._dic_jobs, 0, default_job_type)
+
         if show_log:
             Log.info("Adding dependencies to the graph..")
         self._add_dependencies(date_list, member_list,chunk_list, self._dic_jobs)
         if show_log:
             Log.info("Adding dependencies to the job..")
-        self.update_genealogy(new, update_structure=update_structure, recreate = self._dic_jobs.recreate_jobs)
+        self.update_genealogy(new)
 
         # Checking for member constraints
         if len(run_only_members) > 0:
@@ -260,15 +264,19 @@ class JobList(object):
 
     def _add_dependencies(self,date_list, member_list, chunk_list, dic_jobs, option="DEPENDENCIES"):
         jobs_data = dic_jobs.experiment_data.get("JOBS",{})
-        for job_section in jobs_data.keys():
+        sections_gen = (section for section in jobs_data.keys())
+        for job_section in sections_gen:
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
             # If it does not have dependencies, just append it to job_list and continue
             dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section)
             if not dependencies_keys:
                 Log.printlog(f"WARNING: Job Section {dependencies_keys} is not defined", Log.WARNING)
-            for job in dic_jobs.get_jobs(job_section):
-                self.graph.add_node(job.name)
+            jobs_gen = (job for job in dic_jobs.get_jobs(job_section))
+            for job in jobs_gen:
+                if job.name not in self.graph.nodes:
+                    self.graph.add_node(job.name)
+                # restore status from disk
                 self.graph.nodes.get(job.name)['job'] = job
                 if not dependencies:
                     continue
@@ -279,7 +287,6 @@ class JobList(object):
                     _job = job[i] if num_jobs > 1 else job
                     self._manage_job_dependencies(dic_jobs, _job, date_list, member_list, chunk_list, dependencies_keys,
                                                      dependencies, self.graph)
-        pass
 
 
     @staticmethod
@@ -726,6 +733,9 @@ class JobList(object):
             # Get dates_to, members_to, chunks_to of the deepest level of the relationship.
             filters_to_apply = JobList._filter_current_job(job,copy.deepcopy(dependency.relationships))
             for parent in all_parents:
+                # If there were already a graph and no changes where made, skip adding the edge ( reduce the transitive complexity )
+                if "DEPENDENCIES" not in [dic_jobs[job.section],dic_jobs[parent.section]] and [job.name, parent.name] not in dic_jobs.job_list :
+                    continue
                 # If splits is not None, the job is a list of jobs
                 if parent.name == job.name:
                     continue
@@ -738,7 +748,6 @@ class JobList(object):
                 valid,optional = JobList._valid_parent(parent, member_list, parsed_date_list, chunk_list, natural_relationship,filters_to_apply)
                 # If the parent is valid, add it to the graph
                 if valid:
-                    #job.add_parent(parent)
                     graph.add_edge(parent.name, job.name)
                     # Could be more variables in the future
                     if optional:
@@ -1739,7 +1748,7 @@ class JobList(object):
 
             try:
                 self._persistence.save(self._persistence_path,
-                                       self._persistence_file, self._job_list if self.run_members is None or job_list is None else job_list)
+                                       self._persistence_file, self._job_list if self.run_members is None or job_list is None else job_list,self.graph)
                 pass
             except BaseException as e:
                 raise AutosubmitError(str(e),6040,"Failure while saving the job_list")
@@ -2080,7 +2089,7 @@ class JobList(object):
         Log.debug('Update finished')
         return save
 
-    def update_genealogy(self, new=True, update_structure=False, recreate = False):
+    def update_genealogy(self, new=True):
         """
         When we have created the job list, every type of job is created.
         Update genealogy remove jobs that have no templates
@@ -2099,25 +2108,19 @@ class JobList(object):
                         self.expid, self._config.STRUCTURES_DIR)
                 except Exception as exp:
                     pass
-            # If there is a current structure, and the number of jobs in JobList is equal to the number of jobs in the structure
-            if (current_structure) and (len(self._job_list) == len(current_structure)) and update_structure is False:
-                structure_valid = True
-                # check loaded job_list
-                joblist_gen = ( job for job in self._job_list )
-                for job in joblist_gen:
-                    if current_structure.get(job.name, None) is None:
-                        structure_valid = False
-                        break
-        if not structure_valid:
+            # if there is a saved structure, graph created and stored match and there are no relevant changes in the config file
+        if not new and len(self._dic_jobs.changes) > 0 and (current_structure) and len(self.graph) == len(current_structure):
+            Log.info("Transitive reduction is not neccesary")
+        else:
             Log.info("Transitive reduction...")
-            self.graph = transitive_reduction(self.graph,recreate)
-            if recreate:
-                # update job list view as transitive_Reduction also fills job._parents and job._children if recreate is set
-                self._job_list = [ job["job"] for job in self.graph.nodes().values() ]
-                gen_job_list = ( job for job in self._job_list if not job.has_parents())
-                for job in gen_job_list:
-                    job.status = Status.READY
-                self.save()
+            # This also adds the jobs edges to the job itself (job._parents and job._children)
+            self.graph = transitive_reduction(self.graph)
+            # update job list view as transitive_Reduction also fills job._parents and job._children if recreate is set
+            self._job_list = [ job["job"] for job in self.graph.nodes().values() ]
+            gen_job_list = ( job for job in self._job_list if not job.has_parents())
+            for job in gen_job_list:
+                job.status = Status.READY
+            self.save()
             try:
                 DbStructure.save_structure(self.graph, self.expid, self._config.STRUCTURES_DIR)
             except Exception as exp:

@@ -18,6 +18,7 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import collections
 import copy
+import numpy as np
 import networkx as nx
 import re
 import os
@@ -201,6 +202,7 @@ class JobList(object):
             Log.info("Creating jobs...")
         if not new:
             try:
+                # WE only need graph, TODO
                 (self.graph,self._dic_jobs.job_list) = self.load()
             except:
                 self.graph = nx.DiGraph()
@@ -208,22 +210,23 @@ class JobList(object):
             if len(self._dic_jobs.job_list) > 0:
                 Log.info("Load finished")
                 if as_conf.data_changed:
-                    self._dic_jobs.recreate_jobs = True
+                    self.compare_experiment_section()
                     self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
                 else:
-                    self._dic_jobs.recreate_jobs = False
                     self._dic_jobs.last_experiment_data = {}
             else:
-                self._dic_jobs.recreate_jobs = True
                 if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + ".pkl")):
                     os.remove(os.path.join(self._persistence_path, self._persistence_file + ".pkl"))
                 if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl")):
                     os.remove(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl"))
         # Find if dic_jobs has modified from previous iteration in order to expand the workflow
         self._create_jobs(self._dic_jobs, 0, default_job_type)
-
         if show_log:
             Log.info("Adding dependencies to the graph..")
+        # del all nodes that are only in the current graph
+        gen = ( name for name in np.setxor1d(self.graph.nodes, self._dic_jobs.workflow_jobs,True).tolist() )
+        for name in gen:
+            self.graph.remove_node(name)
         self._add_dependencies(date_list, member_list,chunk_list, self._dic_jobs)
         if show_log:
             Log.info("Adding dependencies to the job..")
@@ -270,8 +273,8 @@ class JobList(object):
             # If it does not have dependencies, just append it to job_list and continue
             dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section)
-            if not dependencies_keys:
-                Log.printlog(f"WARNING: Job Section {dependencies_keys} is not defined", Log.WARNING)
+            #if not dependencies_keys:
+            #    Log.printlog(f"WARNING: Job Section {dependencies_keys} is not defined", Log.WARNING)
             jobs_gen = (job for job in dic_jobs.get_jobs(job_section))
             for job in jobs_gen:
                 if job.name not in self.graph.nodes:
@@ -2111,6 +2114,7 @@ class JobList(object):
             # if there is a saved structure, graph created and stored match and there are no relevant changes in the config file
         if not new and len(self._dic_jobs.changes) > 0 and (current_structure) and len(self.graph) == len(current_structure):
             Log.info("Transitive reduction is not neccesary")
+            self._job_list = [ job["job"] for job in self.graph.nodes().values() ]
         else:
             Log.info("Transitive reduction...")
             # This also adds the jobs edges to the job itself (job._parents and job._children)

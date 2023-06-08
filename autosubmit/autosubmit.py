@@ -2733,7 +2733,6 @@ class Autosubmit:
                     job.platform_name = hpcarch
                 # noinspection PyTypeChecker
                 job.platform = platforms[job.platform_name]
-
                 if job.platform.get_completed_files(job.name, 0, recovery=True):
                     job.status = Status.COMPLETED
                     Log.info(

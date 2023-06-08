@@ -59,14 +59,13 @@ class DicJobs:
         self.recreate_jobs = False
         self.changes = {}
         self._job_list = {}
-        self.compare_experiment_section()
         self.workflow_jobs = []
     @property
     def job_list(self):
         return self._job_list
     @job_list.setter
     def job_list(self, job_list):
-        self._job_list = { job.name: job.name[job] for job in job_list }
+        self._job_list = { job.name: job for job in job_list }
 
     def compare_section(self,current_section):
         """
@@ -118,8 +117,7 @@ class DicJobs:
         elif running == 'chunk':
             synchronize = str(parameters[section].get("SYNCHRONIZE", ""))
             delay = int(parameters[section].get("DELAY", -1))
-            self._create_jobs_chunk(section, priority, frequency, default_job_type, synchronize, delay, splits,
-                                    )
+            self._create_jobs_chunk(section, priority, frequency, default_job_type, synchronize, delay, splits)
 
     def _create_jobs_startdate(self, section, priority, frequency, default_job_type, splits=-1):
         """
@@ -339,9 +337,7 @@ class DicJobs:
             job.chunk = chunk
             job.split = split
             section_data.append(job)
-            self.workflow_jobs.append(job.name)
-
         else:
             self._job_list[name].status = Status.WAITING if self._job_list[name].status in [Status.DELAYED,Status.PREPARED,Status.READY] else self._job_list[name].status
             section_data.append(self._job_list[name])
-            self.workflow_jobs.append(self._job_list[name])
+        self.workflow_jobs.append(name)

@@ -32,7 +32,7 @@ class WrapperFactory(object):
         self.exception = "This type of wrapper is not supported for this platform"
 
     def get_wrapper(self, wrapper_builder, **kwargs):
-        wrapper_data = self.as_conf.experiment_data["CURRENT_WRAPPER"]
+        wrapper_data = kwargs['wrapper_data']
         kwargs['allocated_nodes'] = self.allocated_nodes()
         kwargs['dependency'] = self.dependency(kwargs['dependency'])
         kwargs['queue'] = self.queue(kwargs['queue'])
@@ -40,6 +40,13 @@ class WrapperFactory(object):
         kwargs["exclusive"] = self.exclusive(wrapper_data['EXCLUSIVE'])
         kwargs["custom_directives"] = self.custom_directives(wrapper_data["CUSTOM_DIRECTIVES"])
         kwargs["executable"] = wrapper_data["EXECUTABLE"]
+        kwargs['nodes'] = self.nodes(wrapper_data['NODES'])
+        kwargs['tasks'] = self.tasks(wrapper_data['TASKS'])
+        kwargs['threads'] = self.threads(kwargs['threads'])
+        if str(wrapper_data['NODES']).isdigit() and int(wrapper_data['NODES']) > 1 and kwargs['num_processors'] == '1':
+            kwargs['num_processors'] = "#"
+        else:
+            kwargs['num_processors'] = self.processors(kwargs['num_processors'])
         kwargs['header_directive'] = self.header_directives(**kwargs)
         builder = wrapper_builder(**kwargs)
         return self.wrapper_director.construct(builder)
@@ -66,8 +73,16 @@ class WrapperFactory(object):
         return '#' if dependency is None else self.dependency_directive(dependency)
     def queue(self, queue):
         return '#' if not queue else self.queue_directive(queue)
+    def processors(self, processors):
+        return '#' if not processors or processors == "0" else self.processors_directive(processors)
+    def nodes(self, nodes):
+        return '#' if not nodes else self.nodes_directive(nodes)
+    def tasks(self, tasks):
+        return '#' if not tasks else self.tasks_directive(tasks)
     def partition(self, partition):
         return '#' if not partition else self.partition_directive(partition)
+    def threads(self, threads):
+        return '#' if not threads or threads in ["0","1"] else self.threads_directive(threads)
     def exclusive(self, exclusive):
         return '#' if not exclusive or str(exclusive).lower() == "false" else self.exclusive_directive(exclusive)
     def custom_directives(self, custom_directives):
@@ -84,16 +99,21 @@ class WrapperFactory(object):
         return ""
 
     def dependency_directive(self, dependency):
-        pass
+        raise NotImplemented(self.exception)
     def queue_directive(self, queue):
-        pass
+        raise NotImplemented(self.exception)
+    def processors_directive(self, processors):
+        raise NotImplemented(self.exception)
+    def nodes_directive(self, nodes):
+        raise NotImplemented(self.exception)
+    def tasks_directive(self, tasks):
+        raise NotImplemented(self.exception)
     def partition_directive(self, partition):
-        pass
+        raise NotImplemented(self.exception)
     def exclusive_directive(self, exclusive):
-        pass
-
-
-
+        raise NotImplemented(self.exception)
+    def threads_directive(self, threads):
+        raise NotImplemented(self.exception)
 
 class SlurmWrapperFactory(WrapperFactory):
 
@@ -127,11 +147,19 @@ class SlurmWrapperFactory(WrapperFactory):
 
     def queue_directive(self, queue):
         return '#SBATCH --qos={0}'.format(queue)
-
     def partition_directive(self, partition):
         return '#SBATCH --partition={0}'.format(partition)
     def exclusive_directive(self, exclusive):
         return '#SBATCH --exclusive'
+    def tasks_directive(self, tasks):
+        return '#SBATCH --ntasks-per-node={0}'.format(tasks)
+    def nodes_directive(self, nodes):
+        return '#SBATCH -N {0}'.format(nodes)
+    def processors_directive(self, processors):
+        return '#SBATCH -n {0}'.format(processors)
+    def threads_directive(self, threads):
+        return '#SBATCH --cpus-per-task={0}'.format(threads)
+
 
 
 class LSFWrapperFactory(WrapperFactory):

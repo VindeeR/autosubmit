@@ -58,6 +58,26 @@ class TestJobList(unittest.TestCase):
                     }
                 }
             }
+        self.relationships_chunks2 = {
+                "OPTIONAL": False,
+                "CHUNKS_FROM": {
+                    "1": {
+                        "DATES_TO": "20020201",
+                        "MEMBERS_TO": "fc2",
+                        "CHUNKS_TO": "ALL",
+                        "SPLITS_TO": "1"
+                    },
+                    "2": {
+                        "SPLITS_FROM": {
+                            "5": {
+                                "SPLITS_TO": "2"
+                            }
+                        }
+                    }
+                }
+            }
+
+
         self.relationships_splits = {
                 "OPTIONAL": False,
                 "SPLITS_FROM": {
@@ -70,6 +90,12 @@ class TestJobList(unittest.TestCase):
                 }
             }
 
+        self.relationships_general = {
+                "DATES_TO": "20020201",
+                "MEMBERS_TO": "fc2",
+                "CHUNKS_TO": "ALL",
+                "SPLITS_TO": "1"
+            }
         # Create a mock Job object
         self.mock_job = mock.MagicMock(spec=Job)
 
@@ -157,7 +183,6 @@ class TestJobList(unittest.TestCase):
         # Call the function to get the result
 
         self.mock_job.chunk = 1
-
         result = JobList._check_chunks(self.relationships_chunks, self.mock_job)
         expected_output = {
                 "DATES_TO": "20020201",
@@ -169,5 +194,65 @@ class TestJobList(unittest.TestCase):
         self.mock_job.chunk = 2
         result = JobList._check_chunks(self.relationships_chunks, self.mock_job)
         self.assertEqual(result, {})
+        # test splits_from
+        self.mock_job.split = 5
+        result = JobList._check_chunks(self.relationships_chunks2, self.mock_job)
+        expected_output2 = {
+                "SPLITS_TO": "2"
+            }
+        self.assertEqual(result, expected_output2)
+        self.mock_job.split = 1
+        result = JobList._check_chunks(self.relationships_chunks2, self.mock_job)
+        self.assertEqual(result, {})
+
+    def test_check_general(self):
+        # Call the function to get the result
+
+        self.mock_job.date = datetime.strptime("20020201", "%Y%m%d")
+        self.mock_job.member = "fc2"
+        self.mock_job.chunk = 1
+        self.mock_job.split = 1
+        result = JobList._filter_current_job(self.mock_job,self.relationships_general)
+        expected_output = {
+                "DATES_TO": "20020201",
+                "MEMBERS_TO": "fc2",
+                "CHUNKS_TO": "ALL",
+                "SPLITS_TO": "1"
+            }
+        self.assertEqual(result, expected_output)
+
+
+    def test_valid_parent(self):
+        # Call the function to get the result
+
+        date_list = ["20020201"]
+        member_list = ["fc1", "fc2", "fc3"]
+        chunk_list = [1, 2, 3]
+        is_a_natural_relation = False
+        # Filter_to values
+        filter_ = {
+                "DATES_TO": "20020201",
+                "MEMBERS_TO": "fc2",
+                "CHUNKS_TO": "ALL",
+                "SPLITS_TO": "1"
+            }
+        # PArent job values
+        self.mock_job.date = datetime.strptime("20020201", "%Y%m%d")
+        self.mock_job.member = "fc2"
+        self.mock_job.chunk = 1
+        self.mock_job.split = 1
+        result = JobList._valid_parent(self.mock_job, date_list, member_list, chunk_list, is_a_natural_relation, filter_)
+        # it returns a tuple, the first element is the result, the second is the optional flag
+        self.assertEqual(result, (True,False))
+        filter_ = {
+                "DATES_TO": "20020201",
+                "MEMBERS_TO": "fc2",
+                "CHUNKS_TO": "ALL",
+                "SPLITS_TO": "1?"
+            }
+        result = JobList._valid_parent(self.mock_job, date_list, member_list, chunk_list, is_a_natural_relation, filter_)
+        self.assertEqual(result, (True,True))
+
+
 if __name__ == '__main__':
     unittest.main()

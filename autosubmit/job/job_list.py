@@ -637,6 +637,7 @@ class JobList(object):
             elif "SPLITS_FROM" in relationships:
                 filters_to_apply = JobList._check_splits(relationships, current_job)
             else:
+                relationships.pop("OPTIONAL", None)
                 relationships.pop("CHUNKS_FROM", None)
                 relationships.pop("MEMBERS_FROM", None)
                 relationships.pop("DATES_FROM", None)
@@ -663,6 +664,7 @@ class JobList(object):
         associative_list["dates"] = date_list
         associative_list["members"] = member_list
         associative_list["chunks"] = chunk_list
+
         if parent.splits is not None:
             associative_list["splits"] = [ str(split) for split in range(1,int(parent.splits)+1) ]
         else:
@@ -695,7 +697,10 @@ class JobList(object):
         valid_chunks  = JobList._apply_filter(parent.chunk, chunks_to, associative_list["chunks"], "chunks")
         valid_splits  = JobList._apply_filter(parent.split, splits_to, associative_list["splits"], "splits")
         if valid_dates and valid_members and valid_chunks and valid_splits:
-            return True,( "?" in [dates_to,members_to,chunks_to,splits_to] )
+            for value in [dates_to, members_to, chunks_to, splits_to]:
+                if "?" in value:
+                    return True, True
+            return True, False
         return False,False
     @staticmethod
     def _manage_job_dependencies(dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys, dependencies,

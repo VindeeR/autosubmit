@@ -29,11 +29,12 @@ from .notifications.mail_notifier import MailNotifier
 from bscearth.utils.date import date2str
 from pathlib import Path
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
+from ruamel.yaml import YAML
 from configparser import ConfigParser
 
 from .monitor.monitor import Monitor
 from .database.db_common import get_autosubmit_version, check_experiment_exists
-from .database.db_common import delete_experiment, update_experiment_descrip_version, get_experiment_descrip
+from .database.db_common import delete_experiment, get_experiment_descrip
 from .database.db_structure import get_structure
 from .experiment.experiment_common import copy_experiment
 from .experiment.experiment_common import new_experiment
@@ -42,10 +43,9 @@ from .job.job_grouping import JobGrouping
 from .job.job_list_persistence import JobListPersistencePkl
 from .job.job_list_persistence import JobListPersistenceDb
 from .job.job_package_persistence import JobPackagePersistence
-from .job.job_packages import JobPackageThread, JobPackageBase
 from .job.job_list import JobList
 from .job.job_utils import SubJob, SubJobManager
-from .job.job import Job
+from autosubmit.helpers.parameters import PARAMETERS
 from .git.autosubmit_git import AutosubmitGit
 from .job.job_common import Status
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
@@ -53,14 +53,8 @@ from autosubmitconfigparser.config.basicconfig import BasicConfig
 import locale
 from distutils.util import strtobool
 from log.log import Log, AutosubmitError, AutosubmitCritical
-from typing import Set, Union
+from typing import Dict, Set, Tuple, Union
 from autosubmit.database.db_common import update_experiment_descrip_version
-
-import sqlite3
-
-# try:
-#    import pythondialog as dialog
-# except Exception:
 dialog = None
 from time import sleep
 import argparse
@@ -70,7 +64,6 @@ import tarfile
 import time
 import copy
 import os
-import glob
 import pwd
 import sys
 import shutil
@@ -811,6 +804,7 @@ class Autosubmit:
                 os.mkdir(aslogs_path)
             if owner:
                 os.chmod(tmp_path, 0o775)
+
                 Log.set_file(os.path.join(aslogs_path, args.command + '.log'), "out", log_level)
                 Log.set_file(os.path.join(aslogs_path, args.command + '_err.log'), "err")
                 if args.command in ["run"]:
@@ -1043,25 +1037,103 @@ class Autosubmit:
                                                  os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id,"conf",conf_file.replace(copy_id,exp_id)))
                 except Exception as e:
                     Log.warning("Error converting {0} to yml: {1}".format(conf_file.replace(copy_id,exp_id),str(e)))
+
     @staticmethod
-    def generate_as_config(exp_id,dummy=False,minimal_configuration=False,local=False):
-        # obtain from autosubmitconfigparser package
-        # get all as_conf_files from autosubmitconfigparser package
-        files = resource_listdir('autosubmitconfigparser.config', 'files')
-        for as_conf_file in files:
+    def generate_as_config(
+            exp_id: str,
+            dummy: bool=False,
+            minimal_configuration: bool=False,
+            local: bool=False,
+            parameters: Dict[str, Union[Dict, List, str]] = None
+    ) -> None:
+        """Retrieve the configuration from autosubmitconfigparser package.
+
+        :param exp_id: Experiment ID
+        :param dummy: Whether the experiment is a dummy one or not.
+        :param minimal_configuration: Whether the experiment is configured with minimal configuration or not.
+        :param local: Whether the experiment project type is local or not.
+        :param parameters: Optional list of parameters to be used when processing the configuration files.
+        :return: None
+        """
+
+        def add_comments_to_yaml(yaml_data, parameters, keys=None):
+            """A recursive generator that visits every leaf node and yields the flatten parameter."""
+            if keys is None:
+                keys = []
+            if isinstance(yaml_data, dict):
+                for key, value in yaml_data.items():
+                    if isinstance(value, dict):
+                        add_comments_to_yaml(value, parameters, [*keys, key])
+                    else:
+                        parameter_key = '.'.join([*keys, key]).upper()
+                        if parameter_key in parameters:
+                            comment = parameters[parameter_key]
+                            yaml_data.yaml_set_comment_before_after_key(key, before=comment, indent=yaml_data.lc.col)
+
+        def recurse_into_parameters(parameters: Dict[str, Union[Dict, List, str]], keys=None) -> Tuple[str, str]:
+            """Recurse into the ``PARAMETERS`` dictionary, and emits a dictionary.
+
+            The key in the dictionary is the flattened parameter key/ID, and the value
+            is the parameter documentation.
+
+            :param parameters: Global parameters dictionary.
+            :param keys: For recursion, the accumulated keys.
+            :return: A dictionary with the
+            """
+            if keys is None:
+                keys = []
+            if isinstance(parameters, dict):
+                for key, value in parameters.items():
+                    if isinstance(value, dict):
+                        yield from recurse_into_parameters(value, [*keys, key])
+                    else:
+                        key = key.upper()
+                        # Here's the reason why ``recurse_into_yaml`` and ``recurse_into_parameters``
+                        # are not one single ``recurse_into_dict`` function. The parameters have some
+                        # keys that contain ``${PARENT}.key`` as that is how they are displayed in
+                        # the Sphinx docs. So we need to detect it and handle it. p.s. We also know
+                        # the max-length of the parameters dict is 2! See the ``autosubmit.helpers.parameters``
+                        # module for more.
+                        if not key.startswith(f'{keys[0]}.'):
+                            yield '.'.join([*keys, key]).upper(), value
+                        else:
+                            yield key, value
+
+        template_files = resource_listdir('autosubmitconfigparser.config', 'files')
+        if parameters is None:
+            parameters = PARAMETERS
+        parameter_comments = dict(recurse_into_parameters(parameters))
+
+        for as_conf_file in template_files:
+            origin = resource_filename('autosubmitconfigparser.config', str(Path('files', as_conf_file)))
+            target = None
+
             if dummy:
-                if as_conf_file.endswith("dummy.yml"):
-                    shutil.copy(resource_filename('autosubmitconfigparser.config', 'files/'+as_conf_file), os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id, "conf",as_conf_file.split("-")[0]+"_"+exp_id+".yml"))
+                if as_conf_file.endswith('dummy.yml'):
+                    file_name = f'{as_conf_file.split("-")[0]}_{exp_id}.yml'
+                    target = Path(BasicConfig.LOCAL_ROOT_DIR, exp_id, 'conf', file_name)
             elif minimal_configuration:
-                if not local:
-                    if as_conf_file.endswith("git-minimal.yml"):
-                        shutil.copy(resource_filename('autosubmitconfigparser.config', 'files/'+as_conf_file), os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id, "conf","minimal.yml"))
-                else:
-                    if as_conf_file.endswith("local-minimal.yml"):
-                        shutil.copy(resource_filename('autosubmitconfigparser.config', 'files/' + as_conf_file),os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id, "conf", "minimal.yml"))
+                if (not local and as_conf_file.endswith('git-minimal.yml')) or as_conf_file.endswith("local-minimal.yml"):
+                    target = Path(BasicConfig.LOCAL_ROOT_DIR, exp_id, 'conf/minimal.yml')
             else:
-                if not as_conf_file.endswith("dummy.yml") and not as_conf_file.endswith("minimal.yml"):
-                    shutil.copy(resource_filename('autosubmitconfigparser.config', 'files/'+as_conf_file), os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id, "conf",as_conf_file[:-4]+"_"+exp_id+".yml"))
+                if not as_conf_file.endswith('dummy.yml') and not as_conf_file.endswith('minimal.yml'):
+                    file_name = f'{Path(as_conf_file).stem}_{exp_id}.yml'
+                    target = Path(BasicConfig.LOCAL_ROOT_DIR, exp_id, 'conf', file_name)
+
+            # Here we annotate the copied configuration with comments from the Python source code.
+            # This means the YAML configuration files contain the exact same comments from our
+            # Python code, which is also displayed in our Sphinx documentation (be careful with what
+            # you write!)
+            #
+            # The previous code was simply doing a shutil(origin, target). This does not modify
+            # much that logic, except we add comments before writing the copy...
+            if origin and target:
+                with open(origin, 'r') as input, open(target, 'w+') as output:
+                    yaml = YAML(typ='rt')
+                    yaml_data = yaml.load(input)
+                    add_comments_to_yaml(yaml_data, parameter_comments)
+                    yaml.dump(yaml_data, output)
+
     @staticmethod
     def as_conf_default_values(exp_id,hpc="local",minimal_configuration=False,git_repo="",git_branch="main",git_as_conf=""):
         """
@@ -3855,8 +3927,8 @@ class Autosubmit:
         try:
             Autosubmit._check_ownership(expid, raise_error=True)
             as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
-            # as_conf.reload(force_load=True)
-            as_conf.check_conf_files(False)
+            as_conf.reload(force_load=True)
+            #as_conf.check_conf_files(False)
         except (AutosubmitError, AutosubmitCritical):
             raise
         except BaseException as e:
@@ -4408,7 +4480,7 @@ class Autosubmit:
 
                     as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
                     # Get original configuration
-                    as_conf.reload(only_experiment_data=True)
+                    as_conf.reload(force_load=True,only_experiment_data=True)
                     # Getting output type provided by the user in config, 'pdf' as default
                     try:
                         if not Autosubmit._copy_code(as_conf, expid, as_conf.experiment_data.get("PROJECT",{}).get("PROJECT_TYPE","none"), False):
@@ -4550,6 +4622,9 @@ class Autosubmit:
                             packages = packages_persistence.load(True)
                         else:
                             packages = None
+                        Log.info("\nSaving unified data..")
+                        as_conf.save()
+                        Log.info("")
 
                         Log.info("\nPlotting the jobs list...")
                         monitor_exp = Monitor()

@@ -17,15 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-from collections.abc import Iterable
-import itertools
-from contextlib import suppress
+
 from bscearth.utils.date import date2str
 
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status, Type
-from log.log import Log, AutosubmitCritical
-from collections import namedtuple
+import datetime
+
 
 class DicJobs:
     """
@@ -78,7 +76,7 @@ class DicJobs:
         :return: dict with the changes
         :rtype: bool
         """
-        self.changes[current_section] = self.as_conf.detailed_deep_diff(self.as_conf.experiment_data["JOBS"][current_section],self.as_conf.last_experiment_data["JOBS"][current_section])
+        self.changes[current_section] = self.as_conf.detailed_deep_diff(self.as_conf.experiment_data["JOBS"].get(current_section,{}),self.as_conf.last_experiment_data["JOBS"].get(current_section,{}))
         # Only dependencies is relevant at this step, the rest is lookup by job name and if it inside the stored list
         if "DEPENDENCIES" not in self.changes[current_section]:
             del self.changes[current_section]
@@ -240,6 +238,70 @@ class DicJobs:
             while current_split <= splits:
                 self.build_job(section, priority, date, member, chunk, default_job_type, section_data,current_split)
                 current_split += 1
+    def get_jobs_filtered(self,section ,job, filters_to, parsed_data_list):
+        #  datetime.strptime("20020201", "%Y%m%d")
+        final_jobs_list = []
+        jobs = self._dic.get(section, None)
+        final_jobs_list += [ f_job for f_job in jobs if isinstance(f_job, Job) or isinstance(f_job, list)]
+        jobs_aux = {}
+        if len(jobs) > 0:
+            if filters_to.get('DATES_TO', None):
+                for date in filters_to['DATES_TO'].split(','):
+                    if not jobs_aux.get(datetime.strptime(date, "%Y%m%d"), None):
+                        jobs_aux[datetime.strptime(date, "%Y%m%d")] = jobs[date]
+                if len(jobs_aux) == 0:
+                    jobs = []
+                else:
+                    jobs = jobs_aux
+            else:
+                if jobs.get(job.date, None):
+                    jobs = jobs[job.date]
+                else:
+                    jobs = []
+        if len(jobs) > 0:
+            for j_members in jobs:
+                final_jobs_list += [jobs[j_members].pop() for f_job in jobs[j_members] if isinstance(f_job, Job) or isinstance(f_job, list)]
+            jobs_aux = {}
+            if filters_to.get('MEMBERS_TO', None):
+                for i,j_members in enumerate(jobs):
+                    for member in filters_to['MEMBERS_TO'].split(','):
+                        if not jobs_aux.get(member, None):
+                            jobs_aux[str(i)+member] = jobs[j_members][member]
+                jobs = jobs_aux
+            elif jobs.get(job.member, None):
+                jobs = jobs[job.member]
+            else:
+                jobs = []
+        if len(jobs) > 0:
+            #for j_chunks in jobs:
+            #    final_jobs_list += [jobs[j_chunks].pop() for f_job in jobs[j_chunks] if isinstance(f_job, Job) or isinstance(f_job, list)]
+            jobs_aux = {}
+            if filters_to.get('CHUNKS_TO', None):
+                for i,j_chunks in enumerate(jobs):
+                    for chunk in filters_to['CHUNKS_TO'].split(','):
+                        if not jobs_aux.get(chunk, None):
+                            jobs_aux[str(i)+chunk] = jobs[j_chunks][chunk]
+                jobs = jobs_aux
+            elif jobs.get(job.chunk, None):
+                jobs = jobs[job.chunk]
+            else:
+                jobs = []
+            final_jobs_list += jobs
+
+
+        if len(final_jobs_list) > 0 and isinstance(final_jobs_list[0], list):
+            try:
+                jobs_flattened = [job for jobs_to_flatten in final_jobs_list for job in jobs_to_flatten]
+                final_jobs_list = jobs_flattened
+            except TypeError as e:
+                pass
+        return final_jobs_list
+
+
+
+
+
+
     def get_jobs(self, section, date=None, member=None, chunk=None):
         """
         Return all the jobs matching section, date, member and chunk provided. If any parameter is none, returns all
@@ -336,6 +398,7 @@ class DicJobs:
             job.member = member
             job.chunk = chunk
             job.split = split
+
             section_data.append(job)
         else:
             self._job_list[name].status = Status.WAITING if self._job_list[name].status in [Status.DELAYED,Status.PREPARED,Status.READY] else self._job_list[name].status

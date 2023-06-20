@@ -42,6 +42,13 @@ def transitive_reduction(graph):
     :type graph: NetworkX DiGraph
     :return: The transitive reduction of G
     """
+
+    for i, u in enumerate(graph):
+        graph.nodes[u]["job"].parents = set()
+        graph.nodes[u]["job"].children = set()
+        graph.nodes[u]["job"].add_child([graph.nodes[v]["job"] for v in graph[u]])
+    return graph
+
     try:
         TR = nx.DiGraph()
         TR.add_nodes_from(graph.nodes(data=True))

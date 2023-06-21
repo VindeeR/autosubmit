@@ -17,6 +17,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import pickle
+import klepto
+from klepto.archives import *
+
 from sys import setrecursionlimit
 
 import os
@@ -68,8 +71,10 @@ class JobListPersistencePkl(JobListPersistence):
         """
         path = os.path.join(persistence_path, persistence_file + '.pkl')
         if os.path.exists(path):
-            fd = open(path, 'rb')
-            return pickle.load(fd)
+          # load using klepto
+            with open(path, 'wb') as fd:
+                graph=pickle.load(fd, pickle.HIGHEST_PROTOCOL)
+            return graph
         else:
             Log.printlog('File {0} does not exist'.format(path),Log.WARNING)
             return list()
@@ -83,15 +88,16 @@ class JobListPersistencePkl(JobListPersistence):
 
         """
         path = os.path.join(persistence_path, persistence_file + '.pkl')
-        fd = open(path, 'wb')
-        setrecursionlimit(50000)
+        setrecursionlimit(500000000)
         Log.debug("Saving JobList: " + path)
         #jobs_data = [(job.name, job.id, job.status,
         #              job.priority, job.section, job.date,
         #              job.member, job.chunk, job.split,
         #              job.local_logs[0], job.local_logs[1],
         #              job.remote_logs[0], job.remote_logs[1],job.wrapper_type) for job in job_list]
-        pickle.dump((graph,job_list), fd, protocol=2)
+
+        with open(path, 'wb') as fd:
+            pickle.dump(graph, fd, pickle.HIGHEST_PROTOCOL)
         Log.debug('Job list saved')
 
 

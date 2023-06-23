@@ -87,14 +87,14 @@ class JobPackager(object):
 
         self.wrapper_type["wrapper"] = self._as_config.get_wrapper_type()
         self.wrapper_policy["wrapper"] = self._as_config.get_wrapper_policy()
-        self.wrapper_method["wrapper"] = self._as_config.get_wrapper_method().lower()
+        self.wrapper_method["wrapper"] = str(self._as_config.get_wrapper_method()).lower()
         self.jobs_in_wrapper["wrapper"] = self._as_config.get_wrapper_jobs()
         self.extensible_wallclock["wrapper"] = self._as_config.get_extensible_wallclock()
         if self._as_config.get_wrapper_type() == "multi":
             for wrapper_section in self._as_config.get_wrapper_multi():
                 self.wrapper_type[wrapper_section] = self._as_config.get_wrapper_type(wrapper_section)
                 self.wrapper_policy[wrapper_section] = self._as_config.get_wrapper_policy(wrapper_section)
-                self.wrapper_method[wrapper_section] = self._as_config.get_wrapper_method(wrapper_section).lower()
+                self.wrapper_method[wrapper_section] = str(self._as_config.get_wrapper_method(wrapper_section)).lower()
                 self.jobs_in_wrapper[wrapper_section] = self._as_config.get_wrapper_jobs(wrapper_section)
                 self.extensible_wallclock[wrapper_section] = int(self._as_config.get_extensible_wallclock(wrapper_section))
         self.wrapper_info = [self.wrapper_type,self.wrapper_policy,self.wrapper_method,self.jobs_in_wrapper,self.extensible_wallclock] # to pass to job_packages
@@ -159,7 +159,7 @@ class JobPackager(object):
         jobs_ready = list()
         if len(self._jobs_list.jobs_to_run_first) > 0:
             jobs_ready = [job for job in self._jobs_list.jobs_to_run_first if
-                     ( self._platform is None or job.platform.name.lower() == self._platform.name.lower() ) and
+                     ( self._platform is None or str(job.platform.name).lower() == str(self._platform.name).lower() ) and
                      job.status == Status.READY]
         if len(jobs_ready) == 0:
             if self.hold:

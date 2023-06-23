@@ -98,13 +98,13 @@ class JobPackageBase(object):
     @threaded
     def check_scripts(self,jobs,configuration, parameters,only_generate,hold):
         for job in jobs:
-            if job.check.lower() == Job.CHECK_ON_SUBMISSION.lower():
+            if str(job.check).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
                 if only_generate:
                     exit = True
                     break
                 if not os.path.exists(os.path.join(configuration.get_project_dir(), job.file)):
                     lock.acquire()
-                    if configuration.get_project_type().lower() != "none":
+                    if str(configuration.get_project_type()).lower() != "none":
                         raise AutosubmitCritical(
                             "Template [ {0} ] using CHECK=On_submission has some empty variable {0}".format(
                                 job.name), 7014)
@@ -150,7 +150,7 @@ class JobPackageBase(object):
         try:
             if len(self.jobs) < thread_number:
                 for job in self.jobs:
-                    if job.check.lower() == Job.CHECK_ON_SUBMISSION.lower():
+                    if str(job.check).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
                         if only_generate:
                             exit=True
                             break
@@ -638,7 +638,7 @@ class JobPackageVertical(JobPackageThread):
                                                  num_processors=self._num_processors, jobs_scripts=self._jobs_scripts,
                                                  dependency=self._job_dependency, jobs_resources=self._jobs_resources,
                                                  expid=self._expid, rootdir=self.platform.root_dir,
-                                                 directives=self._custom_directives,threads=self._threads,method=self.method.lower(),retrials=self.inner_retrials, wallclock_by_level=wallclock_by_level)
+                                                 directives=self._custom_directives,threads=self._threads,method=str(self.method).lower(),retrials=self.inner_retrials, wallclock_by_level=wallclock_by_level)
 
 
 class JobPackageHorizontal(JobPackageThread):
@@ -671,7 +671,7 @@ class JobPackageHorizontal(JobPackageThread):
                                                  num_processors=self._num_processors, jobs_scripts=self._jobs_scripts,
                                                  dependency=self._job_dependency, jobs_resources=self._jobs_resources,
                                                  expid=self._expid, rootdir=self.platform.root_dir,
-                                                 directives=self._custom_directives,threads=self._threads,method=self.method.lower(),fail_count=fail_count)
+                                                 directives=self._custom_directives,threads=self._threads,method=str(self.method).lower(),fail_count=fail_count)
 
 class JobPackageHybrid(JobPackageThread):
     """
@@ -719,7 +719,7 @@ class JobPackageVerticalHorizontal(JobPackageHybrid):
                                                  wallclock=self._wallclock, num_processors=self._num_processors,
                                                  jobs_scripts=self._jobs_scripts, dependency=self._job_dependency,
                                                  jobs_resources=self._jobs_resources, expid=self._expid,
-                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower(),fail_count=fail_count)
+                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=str(self.method).lower(),fail_count=fail_count)
 
 
 class JobPackageHorizontalVertical(JobPackageHybrid):
@@ -733,5 +733,5 @@ class JobPackageHorizontalVertical(JobPackageHybrid):
                                                  wallclock=self._wallclock, num_processors=self._num_processors,
                                                  jobs_scripts=self._jobs_scripts, dependency=self._job_dependency,
                                                  jobs_resources=self._jobs_resources, expid=self._expid,
-                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower(),fail_count=fail_count)
+                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=str(self.method).lower(),fail_count=fail_count)
 

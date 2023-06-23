@@ -2155,7 +2155,7 @@ class Autosubmit:
                             package.submit(as_conf, job_list.parameters, inspect, hold=hold)
                             save=True
                             if not inspect:
-                                if platform.type.lower() != "slurm":
+                                if str(platform.type).lower() != "slurm":
                                     job_list.update_list(as_conf)
                                     job_list.save()
                             valid_packages_to_submit.append(package)
@@ -2167,7 +2167,7 @@ class Autosubmit:
                             if package.jobs[0].id != 0:
                                 failed_packages.append(package.jobs[0].id)
                             platform.connected = False
-                            if e.trace.lower().find("bad parameters") != -1 or e.message.lower().find("scheduler is not installed") != -1:
+                            if str(e.trace).lower().find("bad parameters") != -1 or str(e.message).lower().find("scheduler is not installed") != -1:
                                 error_msg = ""
                                 for package_tmp in valid_packages_to_submit:
                                     for job_tmp in package_tmp.jobs:
@@ -2176,7 +2176,7 @@ class Autosubmit:
                                 for job_tmp in package.jobs:
                                     if job_tmp.section not in error_msg:
                                         error_msg += job_tmp.section + "&"
-                                if e.trace.lower().find("bad parameters") != -1:
+                                if str(e.trace).lower().find("bad parameters") != -1:
                                     error_message+="\ncheck job and queue specified in jobs.conf. Sections that could be affected: {0}".format(
                                             error_msg[:-1])
                                 else:
@@ -2200,7 +2200,7 @@ class Autosubmit:
                     raise
                 except Exception as e:
                     raise
-            if platform.type.lower() in ["slurm", "pjm"] and not inspect and not only_wrappers:
+            if str(platform.type).lower() in ["slurm", "pjm"] and not inspect and not only_wrappers:
                 try:
                     valid_packages_to_submit = [ package for package in valid_packages_to_submit if package.x11 != True]
                     if len(valid_packages_to_submit) > 0:
@@ -2208,6 +2208,8 @@ class Autosubmit:
                         try:
                             jobs_id = platform.submit_Script(hold=hold)
                         except AutosubmitError as e:
+                            if not e.message:
+                                e.message = ""
                             try:
                                 for package in valid_packages_to_submit:
                                     try:
@@ -2238,6 +2240,7 @@ class Autosubmit:
                             if e.trace is not None:
                                 has_trace_bad_parameters = str(e.trace).lower().find("bad parameters") != -1
                             else:
+                                e.trace = ""
                                 has_trace_bad_parameters = False
                             if has_trace_bad_parameters or e.message.lower().find("invalid partition") != -1 or e.message.lower().find("invalid qos") != -1 or e.message.lower().find("scheduler is not installed") != -1 or e.message.lower().find("failed") != -1 or e.message.lower().find("not available") != -1:
                                 error_msg = ""

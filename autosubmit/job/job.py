@@ -625,7 +625,7 @@ class Job(object):
                 as_conf.reload()
                 submitter = self._get_submitter(as_conf)
                 submitter.load_platforms(as_conf)
-                platform = submitter.platforms[platform_name.lower()]
+                platform = submitter.platforms[str(platform_name).lower()]
                 success = True
             except BaseException as e:
                 error_message = str(e)
@@ -890,7 +890,7 @@ class Job(object):
         if self.status in [Status.COMPLETED, Status.FAILED, Status.UNKNOWN]:
             # New thread, check if file exist
             expid = copy.deepcopy(self.expid)
-            platform_name = copy.deepcopy(self.platform_name.lower())
+            platform_name = copy.deepcopy(str(self.platform_name).lower())
             local_logs = copy.deepcopy(self.local_logs)
             remote_logs = copy.deepcopy(self.remote_logs)
             as_conf = AutosubmitConfig(
@@ -1050,9 +1050,9 @@ class Job(object):
         self.tasks = as_conf.get_tasks(self.section)
         self.nodes = as_conf.get_nodes(self.section)
         self.ec_queue = as_conf.get_ec_queue(self)
-        self.hyperthreading = as_conf.get_hyperthreading(self.section).lower()
+        self.hyperthreading = str(as_conf.get_hyperthreading(self.section)).lower()
         if self.hyperthreading is 'none':
-            self.hyperthreading = job_platform.hyperthreading.lower()
+            self.hyperthreading = str(job_platform.hyperthreading).lower()
 
         if self.tasks == '0' and job_platform.processors_per_node:
             self.tasks = job_platform.processors_per_node
@@ -1189,7 +1189,7 @@ class Job(object):
         """
         parameters = self.parameters
         try:  # issue in tests with project_type variable while using threads
-            if as_conf.get_project_type().lower() != "none":
+            if str(as_conf.get_project_type()).lower() != "none":
                 template_file = open(os.path.join(
                     as_conf.get_project_dir(), self.file), 'r')
                 template = ''

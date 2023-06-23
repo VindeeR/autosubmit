@@ -149,6 +149,8 @@ class EcPlatform(ParamikoPlatform):
         :rtype: bool
         """
         output = subprocess.check_output(self._checkvalidcert_cmd, shell=True).decode(locale.getlocale()[1])
+        if not output:
+            output = ""
         try:
             if output.lower().find("yes") != -1:
                 self.connected = True
@@ -164,6 +166,8 @@ class EcPlatform(ParamikoPlatform):
         :rtype: bool
         """
         output = subprocess.check_output(self._checkvalidcert_cmd, shell=True).decode(locale.getlocale()[1])
+        if not output:
+            output = ""
         try:
             if output.lower().find("yes") != -1:
                 self.connected = True
@@ -179,6 +183,8 @@ class EcPlatform(ParamikoPlatform):
         :rtype: bool
         """
         output = subprocess.check_output(self._checkvalidcert_cmd, shell=True).decode(locale.getlocale()[1])
+        if not output:
+            output = ""
         try:
             if output.lower().find("yes") != -1:
                 self.connected = True

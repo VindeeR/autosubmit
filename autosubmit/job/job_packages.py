@@ -352,7 +352,21 @@ class JobPackageThread(JobPackageBase):
 
     def __init__(self, jobs, dependency=None, jobs_resources=dict(),method='ASThread',configuration=None,wrapper_section="WRAPPERS", wrapper_info= {}):
         super(JobPackageThread, self).__init__(jobs)
-        # to be pass as "configuration"
+        """
+        :param dependency: Dependency
+        :type dependency: String
+        :param jobs_resources: Resources to be used by the jobs, if any
+        :type jobs_resources: Dictionary
+        :param method: Method to be used to submit the jobs, ASThread by default
+        :type method: String
+        :param configuration: Autosubmit configuration
+        :type configuration: Autosubmitconfigparser instance
+            
+        """
+        # This function is called from the JobPackageThread constructor
+        # and from the JobPackageThread.create_scripts function
+        # It is in charge of merging ( switch ) the wrapper info by checking if the value is defined by the user in the wrapper section, current wrapper section, job or platform in that order.
+        # Some variables are calculated in futher functions, like num_processors and wallclock.
         if len(wrapper_info) > 0 :
             self.wrapper_type = wrapper_info[0]
             self.wrapper_policy = wrapper_info[1]
@@ -370,18 +384,21 @@ class JobPackageThread(JobPackageBase):
         self._job_dependency = dependency
         self._common_script = None
         self._wallclock = '00:00'
-        self._num_processors = '0'
+        # depends on the type of wrapper
+        if not hasattr(self,"_num_processors"):
+            self._num_processors = '0'
         self._jobs_resources = jobs_resources
         self._wrapper_factory = self.platform.wrapper
         self.current_wrapper_section = wrapper_section
         self.inner_retrials = 0
         if configuration is not None:
-            self.inner_retrials = configuration.get_retrials()
+            self.inner_retrials = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,{}).get("INNER_RETRIALS",configuration.get_retrials())
+
             self.export = configuration.get_wrapper_export(configuration.experiment_data["WRAPPERS"][self.current_wrapper_section])
             if self.export.lower() != "none" and len(self.export) > 0:
                 for job in self.jobs:
                     if job.export.lower() != "none" and len(job.export) > 0:
-                        self.export == job.export
+                        self.export = job.export
                         break
             wr_queue = configuration.get_wrapper_queue(configuration.experiment_data["WRAPPERS"][self.current_wrapper_section])
             if wr_queue is not None and len(str(wr_queue)) > 0:
@@ -389,12 +406,12 @@ class JobPackageThread(JobPackageBase):
             else:
                 self.queue = jobs[0].queue
             wr_partition = configuration.get_wrapper_partition(configuration.experiment_data["WRAPPERS"][self.current_wrapper_section])
-            if wr_partition is not None and len(str(wr_partition)) > 0:
+            if wr_partition and len(str(wr_partition)) > 0:
                 self.partition = wr_partition
             else:
                 self.partition = jobs[0].partition
-            wr_exclusive = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,{}).get("EXCLUSIVE",False)
-            if  wr_exclusive:
+            wr_exclusive = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,{}).get("EXCLUSIVE",None)
+            if wr_exclusive is not None:
                 self.exclusive = wr_exclusive
             else:
                 self.exclusive = jobs[0].exclusive
@@ -404,36 +421,48 @@ class JobPackageThread(JobPackageBase):
             else:
                 self.custom_directives = jobs[0].custom_directives
             wr_executable = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,{}).get("EXECUTABLE",None)
-            if wr_executable is None:
+            if wr_executable:
                 self.executable = wr_executable
             else:
                 self.executable = jobs[0].executable
+            wr_tasks = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,{}).get("TASKS",None)
+            if wr_tasks:
+                self.tasks = wr_tasks
+            else:
+                self.tasks = jobs[0].tasks
+            wr_nodes = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,{}).get("NODES",None)
+            if wr_nodes:
+                self.nodes = wr_nodes
+            else:
+                self.nodes = jobs[0].nodes
+            wr_threads = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,{}).get("THREADS",None)
+            if wr_threads:
+                self.threads = wr_threads
+            else:
+                self.threads = jobs[0].threads
         else:
             self.queue = jobs[0].queue
             self.partition = jobs[0].partition
+            self.nodes = jobs[0].nodes
+            self.tasks = jobs[0].tasks
+            self.threads = jobs[0].threads
         self.method = method
-        self._wrapper_factory.as_conf = configuration
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"] = configuration.experiment_data["WRAPPERS"][self.current_wrapper_section]
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["TYPE"] = self.wrapper_type
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["WRAPPER_POLICY"] = self.wrapper_policy
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["INNER_RETRIALS"] = self.inner_retrials
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["EXTEND_WALLCLOCK"] = self.extensible_wallclock
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["METHOD"] = self.wrapper_method
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["EXPORT"] = self.export
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["QUEUE"] = self.queue
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["PARTITION"] = self.partition
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["EXCLUSIVE"] = self.exclusive
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["EXECUTABLE"] = self.executable
-        self._wrapper_factory.as_conf.experiment_data["CURRENT_WRAPPER"]["CUSTOM_DIRECTIVES"] = self.custom_directives
-
-        pass
-
-
-
-
-
-
-#pipeline
+        self._wrapper_data = configuration.experiment_data["WRAPPERS"][self.current_wrapper_section]
+        self._wrapper_data["TYPE"] = self.wrapper_type
+        self._wrapper_data["WRAPPER_POLICY"] = self.wrapper_policy
+        self._wrapper_data["INNER_RETRIALS"] = self.inner_retrials
+        self._wrapper_data["EXTEND_WALLCLOCK"] = self.extensible_wallclock
+        self._wrapper_data["METHOD"] = self.wrapper_method
+        self._wrapper_data["EXPORT"] = self.export
+        self._wrapper_data["QUEUE"] = self.queue
+        self._wrapper_data["NODES"] = self.nodes
+        self._wrapper_data["TASKS"] = self.tasks
+        self._wrapper_data["THREADS"] = self.threads
+        self._wrapper_data["PROCESSORS"] = self._num_processors
+        self._wrapper_data["PARTITION"] = self.partition
+        self._wrapper_data["EXCLUSIVE"] = self.exclusive
+        self._wrapper_data["EXECUTABLE"] = self.executable
+        self._wrapper_data["CUSTOM_DIRECTIVES"] = self.custom_directives
     @property
     def name(self):
         return self._name
@@ -618,12 +647,13 @@ class JobPackageVertical(JobPackageThread):
     :param: dependency:
     """
     def __init__(self, jobs, dependency=None,configuration=None,wrapper_section="WRAPPERS", wrapper_info = {}):
-        super(JobPackageVertical, self).__init__(jobs, dependency,configuration=configuration,wrapper_section=wrapper_section, wrapper_info = wrapper_info)
+        self._num_processors = 0
         for job in jobs:
             if int(job.processors) >= int(self._num_processors):
                 self._num_processors = job.processors
-            self._threads = job.threads
-
+                self._threads = job.threads
+        super(JobPackageVertical, self).__init__(jobs, dependency,configuration=configuration,wrapper_section=wrapper_section, wrapper_info = wrapper_info)
+        for job in jobs:
             self._wallclock = sum_str_hours(self._wallclock, job.wallclock)
         self._name = self._expid + '_' + self.FILE_PREFIX + "_{0}_{1}_{2}".format(str(int(time.time())) +
                                                                                   str(random.randint(1, 10000)),
@@ -695,7 +725,7 @@ class JobPackageVertical(JobPackageThread):
                                                  num_processors=self._num_processors, jobs_scripts=self._jobs_scripts,
                                                  dependency=self._job_dependency, jobs_resources=self._jobs_resources,
                                                  expid=self._expid, rootdir=self.platform.root_dir,
-                                                 directives=self._custom_directives,threads=self._threads,method=self.method.lower(),retrials=self.inner_retrials, wallclock_by_level=wallclock_by_level,partition=self.partition)
+                                                 directives=self._custom_directives,threads=self._threads,method=self.method.lower(),retrials=self.inner_retrials, wallclock_by_level=wallclock_by_level,partition=self.partition,wrapper_data=self._wrapper_data)
 
 
 class JobPackageHorizontal(JobPackageThread):
@@ -725,7 +755,7 @@ class JobPackageHorizontal(JobPackageThread):
                                                  num_processors=self._num_processors, jobs_scripts=self._jobs_scripts,
                                                  dependency=self._job_dependency, jobs_resources=self._jobs_resources,
                                                  expid=self._expid, rootdir=self.platform.root_dir,
-                                                 directives=self._custom_directives,threads=self._threads,method=self.method.lower(),partition=self.partition)
+                                                 directives=self._custom_directives,threads=self._threads,method=self.method.lower(),partition=self.partition,wrapper_data=self._wrapper_data)
 
 class JobPackageHybrid(JobPackageThread):
     """
@@ -770,7 +800,7 @@ class JobPackageVerticalHorizontal(JobPackageHybrid):
                                                  wallclock=self._wallclock, num_processors=self._num_processors,
                                                  jobs_scripts=self._jobs_scripts, dependency=self._job_dependency,
                                                  jobs_resources=self._jobs_resources, expid=self._expid,
-                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower(),partition=self.partition)
+                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower(),partition=self.partition,wrapper_data=self._wrapper_data)
 
 
 class JobPackageHorizontalVertical(JobPackageHybrid):
@@ -781,5 +811,5 @@ class JobPackageHorizontalVertical(JobPackageHybrid):
                                                  wallclock=self._wallclock, num_processors=self._num_processors,
                                                  jobs_scripts=self._jobs_scripts, dependency=self._job_dependency,
                                                  jobs_resources=self._jobs_resources, expid=self._expid,
-                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower(),partition=self.partition)
+                                                 rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower(),partition=self.partition,wrapper_data=self._wrapper_data)
 

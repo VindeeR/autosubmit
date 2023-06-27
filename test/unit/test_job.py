@@ -7,6 +7,7 @@ from autosubmit.job.job import Job
 from autosubmit.platforms.platform import Platform
 from mock import Mock, MagicMock
 from mock import patch
+import datetime
 
 # compatibility with both versions (2 & 3)
 from sys import version_info
@@ -258,6 +259,33 @@ class TestJob(TestCase):
         exists_mock.assert_called_once_with(os.path.join(self.job._tmp_path, self.job.name + '_COMPLETED'))
         self.assertEqual(Status.FAILED, self.job.status)
 
+    def test_total_processors(self):
+        for test in [
+            {
+                'processors': '',
+                'nodes': 0,
+                'expected': 1
+            },
+            {
+                'processors': '',
+                'nodes': 10,
+                'expected': ''
+            },
+            {
+                'processors': '42',
+                'nodes': 2,
+                'expected': 42
+            },
+            {
+                'processors': '1:9',
+                'nodes': 0,
+                'expected': 10
+            }
+        ]:
+            self.job.processors = test['processors']
+            self.job.nodes = test['nodes']
+            self.assertEqual(self.job.total_processors, test['expected'])
+
     def test_job_script_checking_contains_the_right_default_variables(self):
         # This test (and feature) was implemented in order to avoid
         # false positives on the checking process with auto-ecearth3
@@ -288,21 +316,30 @@ class TestJob(TestCase):
         dummy_serial_platform.name = 'serial'
         dummy_platform = MagicMock()
         dummy_platform.serial_platform = dummy_serial_platform
+        dummy_platform.name = 'dummy_platform'
+
         self.as_conf.substitute_dynamic_variables = MagicMock()
         default = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
                                               'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
         self.as_conf.substitute_dynamic_variables.return_value = default
         dummy_platform.custom_directives = '["whatever"]'
-        self.as_conf.dynamic_variables = MagicMock()
+        self.as_conf.dynamic_variables = {}
         self.as_conf.parameters = MagicMock()
         self.as_conf.return_value = {}
         self.as_conf.normalize_parameters_keys = MagicMock()
         self.as_conf.normalize_parameters_keys.return_value = default
         self.job._platform = dummy_platform
+        self.as_conf.platforms_data = { "dummy_platform":{ "whatever":"dummy_value", "whatever2":"dummy_value2"} }
+
         parameters = {}
         # Act
         parameters = self.job.update_parameters(self.as_conf, parameters)
         # Assert
+        self.assertTrue('CURRENT_WHATEVER' in parameters)
+        self.assertTrue('CURRENT_WHATEVER2' in parameters)
+
+        self.assertEqual('dummy_value', parameters['CURRENT_WHATEVER'])
+        self.assertEqual('dummy_value2', parameters['CURRENT_WHATEVER2'])
         self.assertTrue('d' in parameters)
         self.assertTrue('d_' in parameters)
         self.assertTrue('Y' in parameters)
@@ -311,6 +348,19 @@ class TestJob(TestCase):
         self.assertEqual('%d_%', parameters['d_'])
         self.assertEqual('%Y%', parameters['Y'])
         self.assertEqual('%Y_%', parameters['Y_'])
+
+    def test_sdate(self):
+        """Test that the property getter for ``sdate`` works as expected."""
+        for test in [
+            [None, None, ''],
+            [datetime.datetime(1975, 5, 25, 22, 0, 0, 0, datetime.timezone.utc), 'H', '1975052522'],
+            [datetime.datetime(1975, 5, 25, 22, 30, 0, 0, datetime.timezone.utc), 'M', '197505252230'],
+            [datetime.datetime(1975, 5, 25, 22, 30, 0, 0, datetime.timezone.utc), 'S', '19750525223000'],
+            [datetime.datetime(1975, 5, 25, 22, 30, 0, 0, datetime.timezone.utc), None, '19750525']
+        ]:
+            self.job.date = test[0]
+            self.job.date_format = test[1]
+            self.assertEquals(test[2], self.job.sdate)
 
 import inspect
 class FakeBasicConfig:

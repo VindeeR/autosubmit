@@ -60,6 +60,29 @@ def threaded(fn):
     return wrapper
 
 
+def read_header_tailer_script(script_path):
+    """
+    Opens and reads a BASH script.
+
+    Will ignore lines starting with #
+
+    :param script_path: absolute path to the script
+    :type script_path: string
+    """
+    script = ''
+    if script_path == '':
+        return script
+    try:
+        for line in open(script_path, 'r'):
+            if line[0] != "#":
+                script += line
+    except Exception as e:  # add the file not found exception
+        Log.debug(
+            "PARAMETER update: Extended script: {0} doesn't exist".format(e.message))
+        raise AutosubmitError("Couldn't fetch extended script")
+    return script
+
+
 class Job(object):
     """
     Class to handle all the tasks with Jobs at HPC.
@@ -1102,35 +1125,8 @@ class Job(object):
         parameters['HYPERTHREADING'] = self.hyperthreading
         # we open the files and offload the whole script as a string
         # memory issues if the script is too long? Add a check to avoid problems...
-        if self.ext_header_path != '':
-            try:
-                header_script = open(self.ext_tailer_path, 'r').read()
-            except Exception as e:  # add the file not found exception
-                AutosubmitError("Couldn't fetch extended header script")
-                # log it!
-                Log.debug(
-                    "PARAMETER update: Extended Header: {0} doesn't exist".format(e.message))
-                # ignore it!
-                header_script = ''
-            parameters['EXTENDED_HEADER'] = header_script
-        else:
-            # we have no script to include
-            parameters['EXTENDED_HEADER'] = ''
-
-        if self.ext_tailer_path != '':
-            try:
-                tailer_script = open(self.ext_tailer_path, 'r').read()
-            except Exception as e:  # add the file not found exception
-                AutosubmitError("Couldn't fetch extended tailer script")
-                # log it!
-                Log.debug(
-                    "PARAMETER update: Extended Tailer: {0} doesn't exist".format(e.message))
-                # ignore it!
-                tailer_script = ''
-            parameters['EXTENDED_TAILER'] = tailer_script
-        else:
-            # we have no script to include
-            parameters['EXTENDED_TAILER'] = ''
+        parameters['EXTENDED_HEADER'] = read_header_tailer_script(self.ext_header_path)
+        parameters['EXTENDED_TAILER'] = read_header_tailer_script(self.ext_tailer_path)
 
         parameters['CURRENT_ARCH'] = job_platform.name
         parameters['CURRENT_HOST'] = job_platform.host

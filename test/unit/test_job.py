@@ -179,6 +179,36 @@ class TestJob(TestCase):
         write_mock.write.assert_called_with('some-content: 999, 777, 666 % %')
         chmod_mock.assert_called_with(os.path.join(self.job._tmp_path, self.job.name + '.cmd'), 0o755)
 
+    def test_create_header_tailer_script(self):
+        tailer_script = '#!/usr/bin/bash\necho "Header test"\n'
+        header_script = '#!/usr/bin/bash\necho "Tailer test"\n'
+        # arrange
+        self.job.parameters = dict()
+        self.job.type = 0  # Type.BASH
+        self.job.parameters["EXTENDED_HEADER"] = header_script
+        self.job.parameters["EXTENDED_TAILER"] = tailer_script
+
+        self.job._tmp_path = '/tmp/'
+
+        update_content_mock = Mock(return_value='%EXTENDED_HEADER%\nsome-content\n%EXTENDED_TAILER%')
+        self.job.update_content = update_content_mock
+
+        # fill the rest of the values on the job with something
+        update_parameters_mock = Mock(return_value=self.job.parameters)
+        self.job.update_parameters = update_parameters_mock
+
+        # create an autosubmit config
+        config = Mock(spec=AutosubmitConfig)
+
+        # will create a file on /tmp
+        self.job.create_script(config)
+
+        with open(os.path.join(self.job._tmp_path, self.job.name + '.cmd')) as script_file:
+            full_script = script_file.read()
+            assert header_script in full_script
+            assert tailer_script in full_script
+
+
     def test_that_check_script_returns_false_when_there_is_an_unbound_template_variable(self):
         # arrange
         update_content_mock = Mock(return_value='some-content: %UNBOUND%')

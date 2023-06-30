@@ -79,7 +79,7 @@ def read_header_tailer_script(script_path):
     except Exception as e:  # add the file not found exception
         Log.debug(
             "PARAMETER update: Extended script: {0} doesn't exist".format(e.message))
-        raise AutosubmitError("Couldn't fetch extended script")
+        raise AutosubmitError("Couldn't fetch extended script", 6004)
     return script
 
 

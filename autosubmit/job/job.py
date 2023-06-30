@@ -60,7 +60,7 @@ def threaded(fn):
     return wrapper
 
 
-def read_header_tailer_script(script_path):
+def read_header_tailer_script(script_path, as_conf):
     """
     Opens and reads a BASH script.
 
@@ -68,12 +68,14 @@ def read_header_tailer_script(script_path):
 
     :param script_path: absolute path to the script
     :type script_path: string
+    :param as_conf: Autosubmit configuration file
+    :type as_conf: config
     """
     script = ''
     if script_path == '':
         return script
     try:
-        for line in open(script_path, 'r'):
+        for line in open(os.path.join(as_conf.get_project_dir(), script_path), 'r'):
             if line[0] != "#":
                 script += line
     except Exception as e:  # add the file not found exception
@@ -1125,8 +1127,8 @@ class Job(object):
         parameters['HYPERTHREADING'] = self.hyperthreading
         # we open the files and offload the whole script as a string
         # memory issues if the script is too long? Add a check to avoid problems...
-        parameters['EXTENDED_HEADER'] = read_header_tailer_script(self.ext_header_path)
-        parameters['EXTENDED_TAILER'] = read_header_tailer_script(self.ext_tailer_path)
+        parameters['EXTENDED_HEADER'] = read_header_tailer_script(self.ext_header_path, as_conf)
+        parameters['EXTENDED_TAILER'] = read_header_tailer_script(self.ext_tailer_path, as_conf)
 
         parameters['CURRENT_ARCH'] = job_platform.name
         parameters['CURRENT_HOST'] = job_platform.host

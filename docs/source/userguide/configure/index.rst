@@ -176,6 +176,10 @@ There are also other, less used features that you can use:
 
 * QUEUE: queue to add the job to. If not specified, uses PLATFORM default.
 
+* EXTENDED_HEADER_PATH: path to a script to be appended at the begging of the .cmd script that Autosubmit generates. Only supports job type BASH.
+
+* EXTENDED_TAILER_PATH: path to a script to be appended at the end of the .cmd script that Autosubmit generates. Only supports job type BASH.
+
 How to configure email notifications
 ------------------------------------
 

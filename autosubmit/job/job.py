@@ -60,31 +60,6 @@ def threaded(fn):
     return wrapper
 
 
-def read_header_tailer_script(script_path, as_conf):
-    """
-    Opens and reads a BASH script.
-
-    Will ignore lines starting with #
-
-    :param script_path: absolute path to the script
-    :type script_path: string
-    :param as_conf: Autosubmit configuration file
-    :type as_conf: config
-    """
-    script = ''
-    if script_path == '':
-        return script
-    try:
-        for line in open(os.path.join(as_conf.get_project_dir(), script_path), 'r'):
-            if line[0] != "#":
-                script += line
-    except Exception as e:  # add the file not found exception
-        Log.debug(
-            "PARAMETER update: Extended script: {0} doesn't exist".format(e.message))
-        raise AutosubmitError("Couldn't fetch extended script", 6004)
-    return script
-
-
 class Job(object):
     """
     Class to handle all the tasks with Jobs at HPC.
@@ -637,6 +612,49 @@ class Job(object):
                 str(e), self.name), 6001)
         return
 
+    def read_header_tailer_script(self, script_path, as_conf):
+        """
+        Opens and reads a BASH script.
+
+        Will strip away the line with the hash bang (#!)
+
+        :param script_path: relative to the experiment directory path to the script
+        :type script_path: string
+        :param as_conf: Autosubmit configuration file
+        :type as_conf: config
+        """
+        script = ''
+        if script_path == '':
+            return script
+        try:
+            for line in open(os.path.join(as_conf.get_project_dir(), script_path), 'r'):
+                if "!#" not in line:
+                    script += line
+                else:
+                    # check if the type of the script matches the one in the extended
+                    if "bash" in line:
+                        if self.type != Type.BASH:
+                            Log.error("PARAMETER update: Extended script: script seems BASH but job isn't")
+                            # We stop Autosubmit if we don't find the script
+                            raise AutosubmitCritical("Extended script: script seems BASH but job isn't\n", 7011)
+                    elif "Rscript" in line:
+                        if self.type != Type.R:
+                            Log.error("PARAMETER update: Extended script: script seems Rscript but job isn't")
+                            # We stop Autosubmit if we don't find the script
+                            raise AutosubmitCritical("Extended script: script seems Rscript but job isn't\n", 7011)
+                    elif "python" in line:
+                        if self.type not in (Type.PYTHON, Type.PYTHON2, Type.PYTHON3):
+                            Log.error(
+                                "PARAMETER update: Extended script: script seems Python but job isn't")
+                            # We stop Autosubmit if we don't find the script
+                            raise AutosubmitCritical("Extended script: script seems Python but job isn't\n", 7011)
+        except Exception as e:  # log
+            Log.error(
+                "PARAMETER update: Extended script: {0} doesn't exist".format(e.message))
+            # We stop Autosubmit if we don't find the script
+            raise AutosubmitCritical("Extended script: failed to fetch {0} \n".format(str(e)), 7014)
+        return script
+
     @threaded
     def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0,job_id=""):
         max_logs = 0
@@ -1127,8 +1145,8 @@ class Job(object):
         parameters['HYPERTHREADING'] = self.hyperthreading
         # we open the files and offload the whole script as a string
         # memory issues if the script is too long? Add a check to avoid problems...
-        parameters['EXTENDED_HEADER'] = read_header_tailer_script(self.ext_header_path, as_conf)
-        parameters['EXTENDED_TAILER'] = read_header_tailer_script(self.ext_tailer_path, as_conf)
+        parameters['EXTENDED_HEADER'] = self.read_header_tailer_script(self.ext_header_path, as_conf)
+        parameters['EXTENDED_TAILER'] = self.read_header_tailer_script(self.ext_tailer_path, as_conf)
 
         parameters['CURRENT_ARCH'] = job_platform.name
         parameters['CURRENT_HOST'] = job_platform.host

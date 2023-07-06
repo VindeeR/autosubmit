@@ -614,7 +614,7 @@ class Job(object):
 
     def read_header_tailer_script(self, script_path, as_conf):
         """
-        Opens and reads a BASH script.
+        Opens and reads a script. If it is not a BASH script it will fail :(
 
         Will strip away the line with the hash bang (#!)
 
@@ -623,36 +623,32 @@ class Job(object):
         :param as_conf: Autosubmit configuration file
         :type as_conf: config
         """
+        script_name = script_path.rsplit("/")[-1]  # pick the name of the script for a more verbose error
         script = ''
         if script_path == '':
             return script
+
         try:
-            for line in open(os.path.join(as_conf.get_project_dir(), script_path), 'r'):
-                if "!#" not in line:
-                    script += line
-                else:
-                    # check if the type of the script matches the one in the extended
-                    if "bash" in line:
-                        if self.type != Type.BASH:
-                            Log.error("PARAMETER update: Extended script: script seems BASH but job isn't")
-                            # We stop Autosubmit if we don't find the script
-                            raise AutosubmitCritical("Extended script: script seems BASH but job isn't\n", 7011)
-                    elif "Rscript" in line:
-                        if self.type != Type.R:
-                            Log.error("PARAMETER update: Extended script: script seems Rscript but job isn't")
-                            # We stop Autosubmit if we don't find the script
-                            raise AutosubmitCritical("Extended script: script seems Rscript but job isn't\n", 7011)
-                    elif "python" in line:
-                        if self.type not in (Type.PYTHON, Type.PYTHON2, Type.PYTHON3):
-                            Log.error(
-                                "PARAMETER update: Extended script: script seems Python but job isn't")
-                            # We stop Autosubmit if we don't find the script
-                            raise AutosubmitCritical("Extended script: script seems Python but job isn't\n", 7011)
+            script_file = open(os.path.join(as_conf.get_project_dir(), script_path), 'r')
         except Exception as e:  # log
-            Log.error(
-                "PARAMETER update: Extended script: {0} doesn't exist".format(e.message))
             # We stop Autosubmit if we don't find the script
             raise AutosubmitCritical("Extended script: failed to fetch {0} \n".format(str(e)), 7014)
+
+        for line in script_file:
+            if "#!" not in line:
+                script += line
+            else:
+                # check if the type of the script matches the one in the extended
+                if "bash" in line:
+                    if self.type != Type.BASH:
+                        raise AutosubmitCritical("Extended script: script {0} seems BASH but job {1} isn't\n".format(script_name, self.script_name), 7011)
+                elif "Rscript" in line:
+                    if self.type != Type.R:
+                        raise AutosubmitCritical("Extended script: script {0} seems Rscript but job {1} isn't\n".format(script_name, self.script_name), 7011)
+                elif "python" in line:
+                    if self.type not in (Type.PYTHON, Type.PYTHON2, Type.PYTHON3):
+                        raise AutosubmitCritical("Extended script: script {0} seems Python but job {1} isn't\n".format(script_name, self.script_name), 7011)
+
         return script
 
     @threaded

@@ -149,6 +149,8 @@ class Job(object):
         self.export = "none"
         self.dependencies = []
         self.start_time = None
+        self.ext_header_path = ''
+        self.ext_tailer_path = ''
 
     def __getstate__(self):
         odict = self.__dict__
@@ -609,6 +611,45 @@ class Job(object):
             Log.printlog("Trace {0} \nFailed to retrieve log file for job {0}".format(
                 str(e), self.name), 6001)
         return
+
+    def read_header_tailer_script(self, script_path, as_conf):
+        """
+        Opens and reads a script. If it is not a BASH script it will fail :(
+
+        Will strip away the line with the hash bang (#!)
+
+        :param script_path: relative to the experiment directory path to the script
+        :type script_path: string
+        :param as_conf: Autosubmit configuration file
+        :type as_conf: config
+        """
+        script_name = script_path.rsplit("/")[-1]  # pick the name of the script for a more verbose error
+        script = ''
+        if script_path == '':
+            return script
+
+        try:
+            script_file = open(os.path.join(as_conf.get_project_dir(), script_path), 'r')
+        except Exception as e:  # log
+            # We stop Autosubmit if we don't find the script
+            raise AutosubmitCritical("Extended script: failed to fetch {0} \n".format(str(e)), 7014)
+
+        for line in script_file:
+            if "#!" not in line:
+                script += line
+            else:
+                # check if the type of the script matches the one in the extended
+                if "bash" in line:
+                    if self.type != Type.BASH:
+                        raise AutosubmitCritical("Extended script: script {0} seems BASH but job {1} isn't\n".format(script_name, self.script_name), 7011)
+                elif "Rscript" in line:
+                    if self.type != Type.R:
+                        raise AutosubmitCritical("Extended script: script {0} seems Rscript but job {1} isn't\n".format(script_name, self.script_name), 7011)
+                elif "python" in line:
+                    if self.type not in (Type.PYTHON, Type.PYTHON2, Type.PYTHON3):
+                        raise AutosubmitCritical("Extended script: script {0} seems Python but job {1} isn't\n".format(script_name, self.script_name), 7011)
+
+        return script
 
     @threaded
     def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0,job_id=""):
@@ -1098,7 +1139,10 @@ class Job(object):
         parameters['SCRATCH_FREE_SPACE'] = self.scratch_free_space
         parameters['CUSTOM_DIRECTIVES'] = self.custom_directives
         parameters['HYPERTHREADING'] = self.hyperthreading
-
+        # we open the files and offload the whole script as a string
+        # memory issues if the script is too long? Add a check to avoid problems...
+        parameters['EXTENDED_HEADER'] = self.read_header_tailer_script(self.ext_header_path, as_conf)
+        parameters['EXTENDED_TAILER'] = self.read_header_tailer_script(self.ext_tailer_path, as_conf)
 
         parameters['CURRENT_ARCH'] = job_platform.name
         parameters['CURRENT_HOST'] = job_platform.host

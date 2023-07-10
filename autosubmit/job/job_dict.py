@@ -519,6 +519,9 @@ class DicJobs:
         job.running = self.get_option(section, 'RUNNING', 'once').lower()
         job.x11 = bool(self.get_option(section, 'X11', False ))
 
+        job.ext_tailer_path = self.get_option(section, 'EXTENDED_TAILER_PATH', '')
+        job.ext_header_path = self.get_option(section, 'EXTENDED_HEADER_PATH', '')
+
         if self.get_option(section, "SKIPPABLE", "False").lower() == "true":
             job.skippable = True
         else:

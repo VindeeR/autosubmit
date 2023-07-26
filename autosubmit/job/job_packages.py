@@ -159,7 +159,7 @@ class JobPackageBase(object):
                 for section in sections:
                     if str(configuration._jobs_parser.get_option(section, "CHECK", 'True')).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
                         exit = True
-            if exit:
+            if not exit:
                 if len(self.jobs) < thread_number:
                     for job in self.jobs:
                         if not os.path.exists(os.path.join(configuration.get_project_dir(), job.file)):
@@ -170,7 +170,8 @@ class JobPackageBase(object):
                             Log.warning("On submission script has some empty variables")
                         else:
                             Log.result("Script {0} OK",job.name)
-                        job.update_parameters(configuration, parameters)
+                        # called inside check_script
+                        #job.update_parameters(configuration, parameters)
                         # looking for directives on jobs
                         self._custom_directives = self._custom_directives | set(job.custom_directives)
                 else:
@@ -179,9 +180,13 @@ class JobPackageBase(object):
                         Lhandle.append(self.check_scripts(self.jobs[i:i + chunksize], configuration, parameters, only_generate, hold))
                     for dataThread in Lhandle:
                         dataThread.join()
-        except BaseException as e: #should be IOERROR
-            raise AutosubmitCritical(
-                "Error on {1}, template [{0}] still does not exists in running time(check=on_submission actived) ".format(job.file,job.name), 7014)
+        except BaseException as e:
+            original = e
+            if not exit:
+                raise AutosubmitCritical(
+                    "Error on {1}, template [{0}] still does not exists in running time(check=on_submission actived)\n{2} ".format(self.jobs[0].file,self.jobs[0].name,e), 7014)
+            else:
+                raise AutosubmitCritical(original,7014)
         Log.debug("Creating Scripts")
         if not exit:
             if len(self.jobs) < thread_number:

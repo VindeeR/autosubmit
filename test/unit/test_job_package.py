@@ -1,12 +1,10 @@
 from unittest import TestCase
 
-import os
-from mock import Mock
-from mock import patch
+from mock import Mock, patch, MagicMock
 
-from autosubmit.job.job_packages import JobPackageSimple
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
+from autosubmit.job.job_packages import JobPackageSimple
 
 
 class TestJobPackage(TestCase):
@@ -43,24 +41,34 @@ class TestJobPackage(TestCase):
     def test_job_package_platform_getter(self):
         self.assertEquals(self.platform, self.job_package.platform)
 
-    def test_job_package_submission(self):
+    @patch('os.path.exists')
+    def test_job_package_submission(self, os_mock):
         # arrange
         write_mock = Mock().write = Mock()
-
-        for job in self.jobs:
+        os_mock.return_value = True
+        for job in self.job_package.jobs:
             job._tmp_path = Mock()
+            job.name = "fake-name"
             job._get_paramiko_template = Mock("false","empty")
+            job.file = "fake-file"
+            job.update_parameters = MagicMock(return_value="fake-params")
+            job.parameters = "fake-params"
+
+
 
         self.job_package._create_scripts = Mock()
         self.job_package._send_files = Mock()
         self.job_package._do_submission = Mock()
-        for job in self.jobs:
-            job.update_parameters = Mock()
+        configuration = Mock()
+        configuration.get_project_type = Mock(return_value='fake-type')
+        configuration.get_project_dir = Mock(return_value='fake-dir')
+        configuration.get_project_name = Mock(return_value='fake-name')
+
         # act
-        self.job_package.submit('fake-config', 'fake-params')
+        self.job_package.submit(configuration, 'fake-params')
         # assert
         for job in self.jobs:
-            job.update_parameters.assert_called_once_with('fake-config', 'fake-params')
+            job.update_parameters.assert_called_once_with(configuration, 'fake-params')
         self.job_package._create_scripts.is_called_once_with()
         self.job_package._send_files.is_called_once_with()
         self.job_package._do_submission.is_called_once_with()

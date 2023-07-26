@@ -25,16 +25,16 @@ except ImportError:
     from ConfigParser import SafeConfigParser
 
 import os
+import random
+import time
 from datetime import timedelta
 
-import time
-import random
 from autosubmit.job.job_common import Status
-from log.log import Log,AutosubmitCritical,AutosubmitError
+from log.log import Log, AutosubmitCritical
+
 Log.get_logger("Autosubmit")
-from autosubmit.job.job_exceptions import WrongTemplateException
 from autosubmit.job.job import Job
-from bscearth.utils.date import sum_str_hours,date2str
+from bscearth.utils.date import sum_str_hours
 from threading import Thread, Lock
 from typing import List
 import multiprocessing
@@ -100,7 +100,6 @@ class JobPackageBase(object):
         for job in jobs:
             if str(job.check).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
                 if only_generate:
-                    exit = True
                     break
                 if not os.path.exists(os.path.join(configuration.get_project_dir(), job.file)):
                     lock.acquire()
@@ -148,12 +147,21 @@ class JobPackageBase(object):
             thread_number = thread_number * 5
         chunksize = int((len(self.jobs) + thread_number - 1) / thread_number)
         try:
-            if len(self.jobs) < thread_number:
-                for job in self.jobs:
-                    if str(job.check).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
-                        if only_generate:
-                            exit=True
-                            break
+            # get one job of each section jobs by section
+            if only_generate:
+                sections = configuration.get_wrapper_jobs(self.current_wrapper_section)
+                if "&" in sections:
+                    sections.split("&")
+                elif " " in sections:
+                    sections.split(" ")
+                else:
+                    sections = [sections]
+                for section in sections:
+                    if str(configuration._jobs_parser.get_option(section, "CHECK", 'True')).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
+                        exit = True
+            if exit:
+                if len(self.jobs) < thread_number:
+                    for job in self.jobs:
                         if not os.path.exists(os.path.join(configuration.get_project_dir(), job.file)):
                             if str(configuration.get_project_type()).lower() != "none":
                                 raise AutosubmitCritical("Template [ {0} ] using CHECK=On_submission has some empty variable {0}".format(job.name),7014)
@@ -162,15 +170,15 @@ class JobPackageBase(object):
                             Log.warning("On submission script has some empty variables")
                         else:
                             Log.result("Script {0} OK",job.name)
-                    job.update_parameters(configuration, parameters)
-                    # looking for directives on jobs
-                    self._custom_directives = self._custom_directives | set(job.custom_directives)
-            else:
-                Lhandle = list()
-                for i in xrange(0, len(self.jobs), chunksize):
-                    Lhandle.append(self.check_scripts(self.jobs[i:i + chunksize], configuration, parameters, only_generate, hold))
-                for dataThread in Lhandle:
-                    dataThread.join()
+                        job.update_parameters(configuration, parameters)
+                        # looking for directives on jobs
+                        self._custom_directives = self._custom_directives | set(job.custom_directives)
+                else:
+                    Lhandle = list()
+                    for i in xrange(0, len(self.jobs), chunksize):
+                        Lhandle.append(self.check_scripts(self.jobs[i:i + chunksize], configuration, parameters, only_generate, hold))
+                    for dataThread in Lhandle:
+                        dataThread.join()
         except BaseException as e: #should be IOERROR
             raise AutosubmitCritical(
                 "Error on {1}, template [{0}] still does not exists in running time(check=on_submission actived) ".format(job.file,job.name), 7014)

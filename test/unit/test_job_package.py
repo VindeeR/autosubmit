@@ -47,7 +47,7 @@ class TestJobPackage(TestCase):
         write_mock = Mock().write = Mock()
         os_mock.return_value = True
         for job in self.job_package.jobs:
-            job._tmp_path = Mock()
+            job._tmp_path = "fake-path"
             job.name = "fake-name"
             job._get_paramiko_template = Mock("false", "empty")
             job.file = "fake-file"

@@ -186,8 +186,12 @@ class JobPackageBase(object):
         except BaseException as e:
             original = e
             if not exit:
-                raise AutosubmitCritical(
-                    "Error on {1}, template [{0}] still does not exists in running time(check=on_submission actived)\n{2} ".format(self.jobs[0].file,self.jobs[0].name,e), 7014)
+                if not os.path.exists(os.path.join(configuration.get_project_dir(), self.jobs[0].file)) and str(configuration.get_project_type()).lower() != "none":
+                    raise AutosubmitCritical(
+                        "Error on {1}, template [{0}] still does not exists in running time(check=on_submission actived)\n{2} ".format(self.jobs[0].file,self.jobs[0].name,e), 7014)
+                else:
+                    raise AutosubmitCritical("Error in Custom_directives of {0} \n{1}, Check if it format is correct and there are no extra commas".format(self.jobs[0].section,e),7014)
+
             else:
                 raise AutosubmitCritical(original,7014)
         Log.debug("Creating Scripts")

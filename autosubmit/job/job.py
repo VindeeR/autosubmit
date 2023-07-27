@@ -1141,8 +1141,10 @@ class Job(object):
         parameters['HYPERTHREADING'] = self.hyperthreading
         # we open the files and offload the whole script as a string
         # memory issues if the script is too long? Add a check to avoid problems...
-        parameters['EXTENDED_HEADER'] = self.read_header_tailer_script(self.ext_header_path, as_conf)
-        parameters['EXTENDED_TAILER'] = self.read_header_tailer_script(self.ext_tailer_path, as_conf)
+        if as_conf.get_project_type() != "none":
+            # add Dani's check to make his debug easier
+            parameters['EXTENDED_HEADER'] = self.read_header_tailer_script(self.ext_header_path, as_conf)
+            parameters['EXTENDED_TAILER'] = self.read_header_tailer_script(self.ext_tailer_path, as_conf)
 
         parameters['CURRENT_ARCH'] = job_platform.name
         parameters['CURRENT_HOST'] = job_platform.host

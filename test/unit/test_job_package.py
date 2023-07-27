@@ -49,12 +49,10 @@ class TestJobPackage(TestCase):
         for job in self.job_package.jobs:
             job._tmp_path = Mock()
             job.name = "fake-name"
-            job._get_paramiko_template = Mock("false","empty")
+            job._get_paramiko_template = Mock("false", "empty")
             job.file = "fake-file"
             job.update_parameters = MagicMock(return_value="fake-params")
             job.parameters = "fake-params"
-
-
 
         self.job_package._create_scripts = Mock()
         self.job_package._send_files = Mock()
@@ -63,7 +61,6 @@ class TestJobPackage(TestCase):
         configuration.get_project_type = Mock(return_value='fake-type')
         configuration.get_project_dir = Mock(return_value='fake-dir')
         configuration.get_project_name = Mock(return_value='fake-name')
-
         # act
         self.job_package.submit(configuration, 'fake-params')
         # assert

@@ -24,6 +24,7 @@ except ImportError:
     # noinspection PyCompatibility
     from ConfigParser import SafeConfigParser
 
+import multiprocessing
 import os
 import random
 import time

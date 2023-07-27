@@ -52,7 +52,7 @@ class TestJobPackage(TestCase):
             job._get_paramiko_template = Mock("false", "empty")
             job.file = "fake-file"
             job.update_parameters = MagicMock(return_value="fake-params")
-            job.parameters = ["fake-params"]
+            job.parameters = {"fake-params":"fake-value"}
 
         self.job_package._create_scripts = Mock()
         self.job_package._send_files = Mock()

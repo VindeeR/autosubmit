@@ -64,7 +64,7 @@ class TestJobPackage(TestCase):
         # act
         self.job_package.submit(configuration, 'fake-params')
         # assert
-        for job in self.jobs:
+        for job in self.job_package.jobs:
             job.update_parameters.assert_called_once_with(configuration, 'fake-params')
         self.job_package._create_scripts.is_called_once_with()
         self.job_package._send_files.is_called_once_with()

@@ -42,8 +42,10 @@ class TestJobPackage(TestCase):
         self.assertEquals(self.platform, self.job_package.platform)
 
     @patch('os.path.exists')
-    def test_job_package_submission(self, os_mock):
+    @patch('__builtin__.open')
+    def test_job_package_submission(self, os_mock, builtins_mock):
         # arrange
+        builtins_mock.return_value = "fake-content"
         write_mock = Mock().write = Mock()
         os_mock.return_value = True
         for job in self.job_package.jobs:
@@ -52,7 +54,7 @@ class TestJobPackage(TestCase):
             job._get_paramiko_template = Mock("false", "empty")
             job.file = "fake-file"
             job.update_parameters = MagicMock(return_value="fake-params")
-            job.parameters = {"fake-params":"fake-value"}
+            job.parameters = {"fake-params": "fake-value"}
 
         self.job_package._create_scripts = Mock()
         self.job_package._send_files = Mock()

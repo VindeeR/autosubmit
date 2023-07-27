@@ -37,7 +37,6 @@ from autosubmit.job.job import Job
 from bscearth.utils.date import sum_str_hours
 from threading import Thread, Lock
 from typing import List
-import multiprocessing
 import tarfile
 import datetime
 import re
@@ -101,18 +100,18 @@ class JobPackageBase(object):
             if str(job.check).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
                 if only_generate:
                     break
-                if not os.path.exists(os.path.join(configuration.get_project_dir(), job.file)):
-                    lock.acquire()
-                    if str(configuration.get_project_type()).lower() != "none":
-                        raise AutosubmitCritical(
-                            "Template [ {0} ] using CHECK=On_submission has some empty variable {0}".format(
-                                job.name), 7014)
-                    lock.release()
-                if not job.check_script(configuration, parameters, show_logs=job.check_warnings):
-                    Log.warning("Script {0} check failed", job.name)
-                    Log.warning("On submission script has  some empty variables")
-                else:
-                    Log.result("Script {0} OK", job.name)
+            if not os.path.exists(os.path.join(configuration.get_project_dir(), job.file)):
+                lock.acquire()
+                if str(configuration.get_project_type()).lower() != "none":
+                    raise AutosubmitCritical(
+                        "Template [ {0} ] using CHECK=On_submission has some empty variable {0}".format(
+                            job.name), 7014)
+                lock.release()
+            if not job.check_script(configuration, parameters, show_logs=job.check_warnings):
+                Log.warning("Script {0} check failed", job.name)
+                Log.warning("On submission script has  some empty variables")
+            else:
+                Log.result("Script {0} OK", job.name)
             # lock.acquire()
             # job.update_parameters(configuration, parameters)
             # lock.release()
@@ -137,6 +136,7 @@ class JobPackageBase(object):
         """
         exit=False
         thread_number = multiprocessing.cpu_count()
+        #thread_number = 1
         if len(self.jobs) > 2500:
             thread_number = thread_number * 2
         elif len(self.jobs) > 5000:

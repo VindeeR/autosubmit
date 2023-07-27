@@ -43,10 +43,9 @@ class TestJobPackage(TestCase):
 
     @patch('os.path.exists')
     @patch('__builtin__.open')
-    def test_job_package_submission(self, os_mock, builtins_mock):
+    def test_job_package_submission(self, os_mock, open_mock):
         # arrange
-        builtins_mock.return_value = "fake-content"
-        write_mock = Mock().write = Mock()
+        open_mock.return_value = MagicMock()
         os_mock.return_value = True
         for job in self.job_package.jobs:
             job._tmp_path = "fake-path"

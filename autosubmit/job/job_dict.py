@@ -425,6 +425,9 @@ class DicJobs:
         job.running = str(parameters[section].get( 'RUNNING', 'once'))
         job.x11 = str(parameters[section].get( 'X11', False )).lower()
         job.skippable = str(parameters[section].get( "SKIPPABLE", False)).lower()
+        # we make the empty string as default value, case is not present in the config
+        job.ext_header_path = str(parameters[section].get("EXTENDED_HEADER_PATH", ""))
+        job.ext_tailer_path = str(parameters[section].get("EXTENDED_TAILER_PATH", ""))        
         self._jobs_list.get_job_list().append(job)
 
         return job

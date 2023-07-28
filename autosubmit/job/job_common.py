@@ -127,6 +127,11 @@ class StatisticsSnippetBash:
             set -xuve
             job_name_ptrn='%CURRENT_LOGDIR%/%JOBNAME%'
             echo $(date +%s) > ${job_name_ptrn}_STAT
+            
+            ################## 
+            # Extended header
+            ################## 
+            %EXTENDED_HEADER%
 
             ###################
             # Autosubmit job
@@ -137,6 +142,11 @@ class StatisticsSnippetBash:
     @staticmethod
     def as_tailer():
         return textwrap.dedent("""\
+
+                ###################
+                # Extended tailer
+                ###################
+                %EXTENDED_TAILER%                
 
                 ###################
                 # Autosubmit tailer

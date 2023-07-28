@@ -211,6 +211,8 @@ class Job(object):
         self._export = "none"
         self._dependencies = []
         self.running = "once"
+        self.ext_header_path = ""
+        self.ext_tailer_path = ""
         self.start_time = None
         self.edge_info = dict()
         self.total_jobs = None
@@ -837,6 +839,43 @@ class Job(object):
                 retrials_list.insert(0, retrial_dates)
         return retrials_list
 
+    def read_header_tailer_script(self, script_path: str, as_conf: AutosubmitConfig):
+        """
+        Opens and reads a script. If it is not a BASH script it will fail :(
+    
+        Will strip away the line with the hash bang (#!)
+    
+        :param script_path: relative to the experiment directory path to the script
+        :param as_conf: Autosubmit configuration file
+        """
+        script_name = script_path.rsplit("/")[-1]  # pick the name of the script for a more verbose error
+        script = ''
+        if script_path == '':
+            return script
+
+        try:
+            script_file = open(os.path.join(as_conf.get_project_dir(), script_path), 'r')
+        except Exception as e:  # log
+            # We stop Autosubmit if we don't find the script
+            raise AutosubmitCritical("Extended script: failed to fetch {0} \n".format(str(e)), 7014)
+    
+        for line in script_file:
+            if "#!" not in line:
+                script += line
+            else:
+                # check if the type of the script matches the one in the extended
+                if "bash" in line:
+                    if self.type != Type.BASH:
+                        raise AutosubmitCritical("Extended script: script {0} seems BASH but job {1} isn't\n".format(script_name, self.script_name), 7011)
+                elif "Rscript" in line:
+                    if self.type != Type.R:
+                        raise AutosubmitCritical("Extended script: script {0} seems Rscript but job {1} isn't\n".format(script_name, self.script_name), 7011)
+                elif "python" in line:
+                    if self.type not in (Type.PYTHON, Type.PYTHON2, Type.PYTHON3):
+                        raise AutosubmitCritical("Extended script: script {0} seems Python but job {1} isn't\n".format(script_name, self.script_name), 7011)
+    
+        return script
+
     def retrieve_logfiles_unthreaded(self, copy_remote_logs, local_logs):
         remote_logs = (self.script_name + ".out."+str(self.fail_count), self.script_name + ".err."+str(self.fail_count))
         out_exist = False
@@ -1251,7 +1290,7 @@ class Job(object):
         parameters['CURRENT_LOGDIR'] = job_platform.get_files_path()
         return parameters
 
-    def update_platform_associated_parameters(self,as_conf, parameters, job_platform, chunk):
+    def update_platform_associated_parameters(self, as_conf, parameters, job_platform, chunk):
         self.executable = str(as_conf.jobs_data[self.section].get("EXECUTABLE", as_conf.platforms_data.get(job_platform.name,{}).get("EXECUTABLE","")))
         self.total_jobs = int(as_conf.jobs_data[self.section].get("TOTALJOBS", job_platform.total_jobs))
         self.max_waiting_jobs = int(as_conf.jobs_data[self.section].get("MAXWAITINGJOBS", job_platform.max_waiting_jobs))
@@ -1313,6 +1352,10 @@ class Job(object):
         parameters['SCRATCH_FREE_SPACE'] = self.scratch_free_space
         parameters['CUSTOM_DIRECTIVES'] = self.custom_directives
         parameters['HYPERTHREADING'] = self.hyperthreading
+        # memory issues? We are storing the whole extended script as a string
+        if as_conf.get_project_type() != "none":
+            parameters['EXTENDED_HEADER'] = self.read_header_tailer_script(self.ext_header_path, as_conf)
+            parameters['EXTENDED_TAILER'] = self.read_header_tailer_script(self.ext_tailer_path, as_conf)
         parameters['CURRENT_QUEUE'] = self.queue
         return parameters
 

@@ -14,18 +14,14 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
+import os
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import pickle
-import klepto
-from klepto.archives import *
-
 from sys import setrecursionlimit
 
-import os
-
-from log.log import Log
 from autosubmit.database.db_manager import DbManager
+from log.log import Log
 
 
 class JobListPersistence(object):
@@ -71,9 +67,17 @@ class JobListPersistencePkl(JobListPersistence):
         """
         path = os.path.join(persistence_path, persistence_file + '.pkl')
         if os.path.exists(path):
-          # load using klepto
-            with open(path, 'wb') as fd:
-                graph=pickle.load(fd, pickle.HIGHEST_PROTOCOL)
+            with open(path, 'rb') as fd:
+                graph = pickle.load(fd)
+            # add again the children as it is deleted when saving the graph ( otherwise it raises a segvfault during pickle)
+            for i, u in enumerate(graph):
+                u_nbrs = set(graph[u])
+                # Get JOB node atributte of all neighbors of current node
+                # and add it to current node as job_children
+                #debug
+                test = graph.nodes[u]["job"]
+                graph.nodes[u]["job"].children = set()
+                graph.nodes[u]["job"].add_child([graph.nodes[v]["job"] for v in u_nbrs])
             return graph
         else:
             Log.printlog('File {0} does not exist'.format(path),Log.WARNING)

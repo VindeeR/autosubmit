@@ -280,14 +280,15 @@ class JobList(object):
             total_amount = len(dic_jobs.get_jobs(job_section))
             jobs_gen = (job for job in dic_jobs.get_jobs(job_section))
             import time
-            start = time.time()
+            start = None
             for i,job in enumerate(jobs_gen):
                 # time this function
                 # print % of completion in steps of 10%
                 if i % (total_amount // 10) == 0:
                     Log.info(f"{job_section} jobs: {str(i * 100 // total_amount)}% total:{str(total_amount)} of tasks")
                     end = time.time()
-                    Log.debug(f"Time to add dependencies for job {job.name}: {end - start}")
+                    if start:
+                        Log.debug(f"Time to add dependencies for job {job.name}: {end - start}")
                     start = time.time()
                 if job.name not in self.graph.nodes:
                     self.graph.add_node(job.name)
@@ -688,6 +689,8 @@ class JobList(object):
             return True, False
         return False,False
 
+
+
     @staticmethod
     def _manage_job_dependencies(dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys, dependencies,
                                  graph):
@@ -704,18 +707,20 @@ class JobList(object):
         :return:
         '''
 
+        #todo check if it has issues with the new changes
         parsed_date_list = []
         for dat in date_list:
             parsed_date_list.append(date2str(dat))
         dependencies_to_del = set()
-
-        dependencies_keys_aux = copy.deepcopy(dependencies_keys)
         # IT is faster to check the conf instead of  calculate 90000000 tasks
         # Prune number of dependencies to check, to reduce the transitive reduction complexity
-        if (job.section+"-" or job.section+"+" in dependencies_keys) and job.chunk and int(job.chunk) > 1:
-            # Get only the dependency key that has the job_section and "+" or "-" in the key as a dictionary key
-            #dependencies_keys_aux = [key for key in dependencies_keys if dependencies[key].running == "chunk" or job.section+"-" in key or job.section+"+" in key]
-            dependencies_keys_aux = [key for key in dependencies_keys if dependencies[key].running == "chunk" or dependencies_keys[key] is not None]
+        # if (job.section+"-" in dependencies_keys.keys() or job.section+"+" in dependencies_keys.keys()) and job.chunk and int(job.chunk) > 1:
+        #     # Get only the dependency key that has the job_section and "+" or "-" in the key as a dictionary key
+        #     #dependencies_keys_aux = [key for key in dependencies_keys if dependencies[key].running == "chunk" or job.section+"-" in key or job.section+"+" in key]
+        #     dependencies_keys_aux = [key for key in dependencies_keys if dependencies[key].running == "chunk" or dependencies_keys[key] is not None and key in dependencies]
+        # else:
+        dependencies_keys_aux = [key for key in dependencies_keys if key in dependencies]
+
         # If parent already has defined that dependency, skip it to reduce the transitive reduction complexity
         for dependency_key in dependencies_keys_aux:
             # or dependencies_keys[dependency_key] means that it has an special relationship so it must be calculated separately
@@ -728,10 +733,7 @@ class JobList(object):
         dependencies_keys_aux = [key for key in dependencies_keys_aux if key not in dependencies_to_del]
 
         for key in dependencies_keys_aux:
-            dependency = dependencies.get(key,None)
-            if dependency is None:
-                Log.printlog("WARNING: SECTION {0} is not defined in jobs.conf. Dependency skipped".format(key),Log.WARNING)
-                continue
+            dependency = dependencies[key]
             skip, (chunk, member, date) = JobList._calculate_dependency_metadata(job.chunk, chunk_list,
                                                                                  job.member, member_list,
                                                                                  job.date, date_list,
@@ -775,18 +777,21 @@ class JobList(object):
         skip = False
         if dependency.sign == '-':
             if chunk is not None and len(str(chunk)) > 0 and dependency.running == 'chunk':
-                chunk_index = chunk_list.index(chunk)
+                chunk_index = chunk-1
+                #chunk_list.index(chunk)
                 if chunk_index >= dependency.distance:
                     chunk = chunk_list[chunk_index - dependency.distance]
                 else:
                     skip = True
             elif member is not None and len(str(member)) > 0 and dependency.running in ['chunk', 'member']:
+                #improve this
                 member_index = member_list.index(member)
                 if member_index >= dependency.distance:
                     member = member_list[member_index - dependency.distance]
                 else:
                     skip = True
             elif date is not None and len(str(date)) > 0 and dependency.running in ['chunk', 'member', 'startdate']:
+                #improve this
                 date_index = date_list.index(date)
                 if date_index >= dependency.distance:
                     date = date_list[date_index - dependency.distance]

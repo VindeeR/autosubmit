@@ -21,33 +21,34 @@
 Main module for Autosubmit. Only contains an interface class to all functionality implemented on Autosubmit
 """
 
+from collections import OrderedDict
+
+import copy
+import datetime
+import funcy
+import json
+import locale
 import os
 import re
-import time
-import json
-import datetime
 import textwrap
-from collections import OrderedDict
-import copy
+import time
+from bscearth.utils.date import date2str, parse_date, previous_day, chunk_end_date, chunk_start_date, Log, subs_dates
+from functools import reduce
+from threading import Thread
+from time import sleep
+from typing import List, Union
 
-import locale
-
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-from autosubmit.job.job_common import Status, Type, increase_wallclock_by_chunk
+from autosubmit.helpers.parameters import autosubmit_parameter, autosubmit_parameters
+from autosubmit.history.experiment_history import ExperimentHistory
 from autosubmit.job.job_common import StatisticsSnippetBash, StatisticsSnippetPython
 from autosubmit.job.job_common import StatisticsSnippetR, StatisticsSnippetEmpty
+from autosubmit.job.job_common import Status, Type, increase_wallclock_by_chunk
 from autosubmit.job.job_utils import get_job_package_code
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from autosubmit.history.experiment_history import ExperimentHistory
-from bscearth.utils.date import date2str, parse_date, previous_day, chunk_end_date, chunk_start_date, Log, subs_dates
-from time import sleep
-from threading import Thread
 from autosubmit.platforms.paramiko_submitter import ParamikoSubmitter
-from log.log import Log, AutosubmitCritical, AutosubmitError
-from typing import List, Union
-from functools import reduce
+from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
-from autosubmit.helpers.parameters import autosubmit_parameter, autosubmit_parameters
+from log.log import Log, AutosubmitCritical, AutosubmitError
 
 Log.get_logger("Autosubmit")
 
@@ -133,6 +134,9 @@ class Job(object):
     CHECK_ON_SUBMISSION = 'on_submission'
 
     def __str__(self):
+        return "{0} STATUS: {1}".format(self.name, self.status)
+
+    def __repr__(self):
         return "{0} STATUS: {1}".format(self.name, self.status)
 
     def __init__(self, name, job_id, status, priority):
@@ -460,11 +464,8 @@ class Job(object):
         self._splits = value
 
     def __getstate__(self):
-        odict = self.__dict__
-        if '_platform' in odict:
-            odict = odict.copy()  # copy the dict since we change it
-            del odict['_platform']  # remove filehandle entry
-        return odict
+        return funcy.omit(self.__dict__, ["_platform","_children"])
+
 
     @property
     def parents(self):
@@ -490,11 +491,6 @@ class Job(object):
         """
         return Status.VALUE_TO_KEY.get(self.status, "UNKNOWN")
 
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return self.name
     @property
     def children_names_str(self):
         """

@@ -18,22 +18,23 @@
 # along with Autosubmit.  If not, see <http: www.gnu.org / licenses / >.
 
 
-import os
 from collections import defaultdict
 
-from log.log import Log,AutosubmitCritical,AutosubmitError
+import os
+
+from autosubmit.platforms.ecplatform import EcPlatform
+from autosubmit.platforms.locplatform import LocalPlatform
+from autosubmit.platforms.lsfplatform import LsfPlatform
+from autosubmit.platforms.paramiko_platform import ParamikoPlatformException
+from autosubmit.platforms.pbsplatform import PBSPlatform
+from autosubmit.platforms.pjmplatform import PJMPlatform
+from autosubmit.platforms.psplatform import PsPlatform
+from autosubmit.platforms.sgeplatform import SgePlatform
+from autosubmit.platforms.slurmplatform import SlurmPlatform
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
+from log.log import Log, AutosubmitError
 from .submitter import Submitter
-from autosubmit.platforms.psplatform import PsPlatform
-from autosubmit.platforms.lsfplatform import LsfPlatform
-from autosubmit.platforms.pbsplatform import PBSPlatform
-from autosubmit.platforms.sgeplatform import SgePlatform
-from autosubmit.platforms.ecplatform import EcPlatform
-from autosubmit.platforms.slurmplatform import SlurmPlatform
-from autosubmit.platforms.pjmplatform import PJMPlatform
-from autosubmit.platforms.locplatform import LocalPlatform
-from autosubmit.platforms.paramiko_platform import ParamikoPlatformException
 
 
 class ParamikoSubmitter(Submitter):

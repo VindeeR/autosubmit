@@ -16,17 +16,19 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import traceback
+from time import time, sleep
+
 import autosubmit.history.database_managers.database_models as Models
 import autosubmit.history.utils as HUtils
-from time import time, sleep
-from .database_managers.experiment_history_db_manager import ExperimentHistoryDbManager
-from .database_managers.database_manager import DEFAULT_JOBDATA_DIR, DEFAULT_HISTORICAL_LOGS_DIR
-from .strategies import PlatformInformationHandler, SingleAssociationStrategy, StraightWrapperAssociationStrategy, TwoDimWrapperDistributionStrategy, GeneralizedWrapperDistributionStrategy
-from .data_classes.job_data import JobData
-from .data_classes.experiment_run import ExperimentRun
-from .platform_monitor.slurm_monitor import SlurmMonitor
-from .internal_logging import Logging
 from autosubmitconfigparser.config.basicconfig import BasicConfig
+from .data_classes.experiment_run import ExperimentRun
+from .data_classes.job_data import JobData
+from .database_managers.database_manager import DEFAULT_JOBDATA_DIR, DEFAULT_HISTORICAL_LOGS_DIR
+from .database_managers.experiment_history_db_manager import ExperimentHistoryDbManager
+from .internal_logging import Logging
+from .platform_monitor.slurm_monitor import SlurmMonitor
+from .strategies import PlatformInformationHandler, SingleAssociationStrategy, StraightWrapperAssociationStrategy, \
+    TwoDimWrapperDistributionStrategy, GeneralizedWrapperDistributionStrategy
 
 SECONDS_WAIT_PLATFORM = 60
 

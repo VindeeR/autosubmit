@@ -49,6 +49,7 @@ class SlurmPlatform(ParamikoPlatform):
         self._submit_hold_cmd = None
         self._submit_command_name = None
         self._submit_cmd = None
+        self.x11_options = None
         self._checkhost_cmd = None
         self.cancel_cmd = None
         self._header = SlurmHeader()
@@ -280,6 +281,7 @@ class SlurmPlatform(ParamikoPlatform):
         self._checkhost_cmd = "echo 1"
         self._submit_cmd = 'sbatch -D {1} {1}/'.format(
             self.host, self.remote_log_dir)
+        self._submit_cmd_x11 = f'salloc -D {self.remote_log_dir} {self.remote_log_dir}'
         self._submit_command_name = "sbatch"
         self._submit_hold_cmd = 'sbatch -H -D {1} {1}/'.format(
             self.host, self.remote_log_dir)
@@ -524,7 +526,7 @@ class SlurmPlatform(ParamikoPlatform):
 
         if x11 == "true":
             if not hold:
-                return export + self._submit_cmd + job_script
+                return f'{export.strip("")} {self._submit_cmd_x11} {job_script.strip("")} {job.x11_options.strip("")}'
             else:
                 return export + self._submit_hold_cmd + job_script
         else:

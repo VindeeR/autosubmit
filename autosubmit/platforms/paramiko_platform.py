@@ -1,25 +1,23 @@
+import Xlib.support.connect as xlib_connect
+import datetime
 import locale
-from binascii import hexlify
-from contextlib import suppress
-from time import sleep
-import sys
-import socket
 import os
 import paramiko
-import datetime
-import time
-import select
-import re
-from datetime import timedelta
 import random
+import re
+import select
+import socket
+import sys
+from bscearth.utils.date import date2str
+from datetime import timedelta
+from paramiko.ssh_exception import (SSHException)
+from threading import Thread
+from time import sleep
+
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_common import Type
 from autosubmit.platforms.platform import Platform
-from bscearth.utils.date import date2str
 from log.log import AutosubmitError, AutosubmitCritical, Log
-from paramiko.ssh_exception import (SSHException)
-import Xlib.support.connect as xlib_connect
-from threading import Thread
 
 
 def threaded(fn):
@@ -898,7 +896,7 @@ class ParamikoPlatform(Platform):
                     chan.settimeout(timeout)
                 if x11 == "true":
                     command = command + " ; sleep infinity"
-                    chan.exec_command(command)
+                    chan.exec_command(command,x11)
                     chan_fileno = chan.fileno()
                     self.poller.register(chan_fileno, select.POLLIN)
                     self.x11_status_checker(chan, chan_fileno)

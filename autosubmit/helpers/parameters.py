@@ -1,6 +1,7 @@
+from collections import defaultdict
+
 import functools
 import inspect
-from collections import defaultdict
 from typing import Dict
 
 PARAMETERS = defaultdict(defaultdict)

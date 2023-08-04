@@ -16,11 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-from abc import ABCMeta, abstractmethod
-import autosubmit.history.database_managers.database_models as Models
 import traceback
+from abc import ABCMeta, abstractmethod
+
+import autosubmit.history.database_managers.database_models as Models
+from .database_managers.database_manager import DEFAULT_HISTORICAL_LOGS_DIR
 from .internal_logging import Logging
-from .database_managers.database_manager import DEFAULT_LOCAL_ROOT_DIR, DEFAULT_HISTORICAL_LOGS_DIR
+
 
 class PlatformInformationHandler:
   def __init__(self, strategy):

@@ -150,7 +150,8 @@ class Job(object):
         self._platform = None
         self._queue = None
         self._partition = None
-
+        self.x11 = None
+        self.x11_options = None
         self.retry_delay = "0"
         self.platform_name = None # type: str
         #: (str): Type of the job, as given on job configuration file. (job: TASKTYPE)
@@ -188,7 +189,6 @@ class Job(object):
         self.file = None
         self.additional_files = []
         self.executable = None
-        self.x11 = False
         self._local_logs = ('', '')
         self._remote_logs = ('', '')
         self.script_name = self.name + ".cmd"
@@ -685,6 +685,23 @@ class Job(object):
         """
         self.fail_count += 1
 
+    @property
+    @autosubmit_parameter(name='x11')
+    def x11(self):
+        """Whether to use X11 forwarding"""
+        return self._x11
+    @x11.setter
+    def x11(self, value):
+        self._x11 = value
+
+    @property
+    @autosubmit_parameter(name='x11_options')
+    def x11_options(self):
+        """Allows to set salloc parameters for x11"""
+        return self._x11_options
+    @x11_options.setter
+    def x11_options(self, value):
+        self._x11_options = value
     # Maybe should be renamed to the plural?
     def add_parent(self, *parents):
         """
@@ -1278,6 +1295,7 @@ class Job(object):
         return parameters
 
     def update_platform_associated_parameters(self,as_conf, parameters, job_platform, chunk):
+        self.x11_options = str(as_conf.jobs_data[self.section].get("X11_OPTIONS", as_conf.platforms_data.get(job_platform.name,{}).get("X11_OPTIONS","")))
         self.executable = str(as_conf.jobs_data[self.section].get("EXECUTABLE", as_conf.platforms_data.get(job_platform.name,{}).get("EXECUTABLE","")))
         self.total_jobs = int(as_conf.jobs_data[self.section].get("TOTALJOBS", job_platform.total_jobs))
         self.max_waiting_jobs = int(as_conf.jobs_data[self.section].get("MAXWAITINGJOBS", job_platform.max_waiting_jobs))

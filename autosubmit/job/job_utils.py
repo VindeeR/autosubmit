@@ -19,14 +19,14 @@
 
 import networkx
 import os
-
-from networkx.algorithms.dag import is_directed_acyclic_graph
 from networkx import DiGraph
-from networkx import dfs_edges
 from networkx import NetworkXError
+from networkx import dfs_edges
+from networkx.algorithms.dag import is_directed_acyclic_graph
+from typing import Dict
+
 from autosubmit.job.job_package_persistence import JobPackagePersistence
 from autosubmitconfigparser.config.basicconfig import BasicConfig
-from typing import Dict
 
 
 def transitive_reduction(graph):

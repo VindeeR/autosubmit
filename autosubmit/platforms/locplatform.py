@@ -18,16 +18,15 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import locale
 import os
-from xml.dom.minidom import parseString
 import subprocess
-
-
-from autosubmit.platforms.paramiko_platform import ParamikoPlatform
-from autosubmit.platforms.headers.local_header import LocalHeader
-
-from autosubmitconfigparser.config.basicconfig import BasicConfig
 from time import sleep
-from log.log import Log, AutosubmitError, AutosubmitCritical
+from xml.dom.minidom import parseString
+
+from autosubmit.platforms.headers.local_header import LocalHeader
+from autosubmit.platforms.paramiko_platform import ParamikoPlatform
+from autosubmitconfigparser.config.basicconfig import BasicConfig
+from log.log import Log, AutosubmitError
+
 
 class LocalPlatform(ParamikoPlatform):
     """

@@ -20,10 +20,11 @@
 import os
 import textwrap
 import time
-from .database_manager import DatabaseManager, DEFAULT_LOCAL_ROOT_DIR
-from autosubmitconfigparser.config.basicconfig import BasicConfig
+
 import autosubmit.history.utils as HUtils
+from autosubmitconfigparser.config.basicconfig import BasicConfig
 from . import database_models as Models
+from .database_manager import DatabaseManager, DEFAULT_LOCAL_ROOT_DIR
 
 BasicConfig.read()
 

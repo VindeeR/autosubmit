@@ -13,6 +13,7 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
+
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import copy
@@ -896,7 +897,7 @@ class JobList(object):
         members_to = str(filter_.get("MEMBERS_TO", "natural")).lower()
         chunks_to = str(filter_.get("CHUNKS_TO", "natural")).lower()
         splits_to = str(filter_.get("SPLITS_TO", "natural")).lower()
-        
+
         if not is_a_natural_relation:
             if dates_to == "natural":
                 dates_to = "none"

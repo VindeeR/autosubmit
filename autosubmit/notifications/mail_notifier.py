@@ -17,10 +17,12 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-import smtplib
 import email.utils
+import smtplib
 from email.mime.text import MIMEText
+
 from log.log import Log
+
 
 class MailNotifier:
     def __init__(self, basic_config):

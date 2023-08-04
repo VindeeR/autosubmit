@@ -19,8 +19,8 @@
 
 import os
 
-from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.headers.lsf_header import LsfHeader
+from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.wrappers.wrapper_factory import LSFWrapperFactory
 
 

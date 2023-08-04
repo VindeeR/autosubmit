@@ -14,34 +14,31 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
+from os import chdir
+from os import listdir
+from os import path
+from os import remove
+
+import copy
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import datetime
 import os
-import time
-import sys
-from os import path
-from os import chdir
-from os import listdir
-from os import remove
-
 import py3dotplus as pydotplus
-import copy
-
 import subprocess
-import autosubmit.history.utils as HUtils
-import autosubmit.helpers.utils as HelperUtils
+import sys
+import time
+from typing import Dict, List
 
-from autosubmit.job.job_common import Status
+import autosubmit.helpers.utils as HelperUtils
+import autosubmit.history.utils as HUtils
 from autosubmit.job.job import Job
+from autosubmit.job.job_common import Status
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-
-from log.log import Log, AutosubmitCritical
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
-
+from log.log import Log, AutosubmitCritical
 from .diagram import create_bar_diagram
-from typing import Dict, List
 
 GENERAL_STATS_OPTION_MAX_LENGTH = 1000
 

@@ -18,9 +18,10 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
+
 from autosubmit.job.job import Job
 from autosubmit.monitor.utils import FixedSizeList
-from log.log import Log, AutosubmitError, AutosubmitCritical
+from log.log import Log
 
 
 def timedelta2hours(deltatime):

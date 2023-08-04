@@ -62,6 +62,7 @@ class Platform(object):
         self._submit_hold_cmd = None
         self._submit_command_name = None
         self._submit_cmd = None
+        self._submit_cmd_x11 = None
         self._checkhost_cmd = None
         self.cancel_cmd = None
 

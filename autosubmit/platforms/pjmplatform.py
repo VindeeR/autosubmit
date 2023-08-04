@@ -23,10 +23,11 @@ from time import sleep
 from typing import List, Union
 
 from autosubmit.job.job_common import Status
-from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.headers.pjm_header import PJMHeader
+from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.wrappers.wrapper_factory import PJMWrapperFactory
 from log.log import AutosubmitCritical, AutosubmitError, Log
+
 
 class PJMPlatform(ParamikoPlatform):
     """

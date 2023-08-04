@@ -17,15 +17,17 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-from log.log import AutosubmitCritical, Log
-from time import sleep
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-from autosubmit.history.experiment_history import ExperimentHistory
-from autosubmit.database.db_common import check_experiment_exists
 import datetime
 import sys
+from time import sleep
 from typing import List
+
+from autosubmit.database.db_common import check_experiment_exists
+from autosubmit.history.experiment_history import ExperimentHistory
+from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmitconfigparser.config.configcommon import AutosubmitConfig
+from log.log import AutosubmitCritical, Log
+
 
 def handle_start_time(start_time):
   # type: (str) -> None

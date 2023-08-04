@@ -17,11 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-from autosubmit.job.job import Job
 from bscearth.utils.date import date2str
+
+from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status, Type
-from log.log import Log, AutosubmitError, AutosubmitCritical
-from collections.abc import Iterable
+from log.log import AutosubmitCritical
+
+
 class DicJobs:
     """
     Class to create jobs from conf file and to find jobs by start date, member and chunk

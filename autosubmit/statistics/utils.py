@@ -1,11 +1,12 @@
 #!/bin/env/python
 import math
-from autosubmit.job.job import Job
 from datetime import datetime, timedelta
-from autosubmit.job.job_common import Status
 from typing import List, Tuple
 
+from autosubmit.job.job import Job
+from autosubmit.job.job_common import Status
 from log.log import AutosubmitCritical
+
 
 def filter_by_section(jobs, section):
   # type: (List[Job], str) -> List[Job]

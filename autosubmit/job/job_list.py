@@ -14,36 +14,36 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
-# You should have received a copy of the GNU General Public License
-# along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
-import collections
 import copy
-import re
+import datetime
+import math
 import os
 import pickle
+# You should have received a copy of the GNU General Public License
+# along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
+import re
 import traceback
-import math
-import copy
-from time import localtime, strftime, mktime
+from bscearth.utils.date import date2str, parse_date
+from networkx import DiGraph
 from shutil import move
+from threading import Thread
+from time import localtime, strftime, mktime
+from typing import List, Dict
+
+import autosubmit.database.db_structure as DbStructure
+from autosubmit.helpers.data_transfer import JobRow
 from autosubmit.job.job import Job
-from autosubmit.job.job_package_persistence import JobPackagePersistence
+from autosubmit.job.job_common import Status, bcolors
 from autosubmit.job.job_dict import DicJobs
+from autosubmit.job.job_package_persistence import JobPackagePersistence
 from autosubmit.job.job_packages import JobPackageThread
 from autosubmit.job.job_utils import Dependency
-from autosubmit.job.job_common import Status, bcolors
-from bscearth.utils.date import date2str, parse_date
-import autosubmit.database.db_structure as DbStructure
-import datetime
-from networkx import DiGraph
 from autosubmit.job.job_utils import transitive_reduction
-from log.log import AutosubmitCritical, AutosubmitError, Log
-from threading import Thread
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-from autosubmit.helpers.data_transfer import JobRow
-from typing import List, Dict
-import log.fd_show
+from log.log import AutosubmitCritical, AutosubmitError, Log
+
+
 # Log.get_logger("Log.Autosubmit")
 
 

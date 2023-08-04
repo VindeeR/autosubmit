@@ -16,11 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-import sqlite3
 import os
-import autosubmit.history.utils as HUtils
-import autosubmit.history.database_managers.database_models as Models
+import sqlite3
 from abc import ABCMeta
+
+import autosubmit.history.database_managers.database_models as Models
+import autosubmit.history.utils as HUtils
 
 DEFAULT_JOBDATA_DIR = os.path.join('/esarchive', 'autosubmit', 'as_metadata', 'data')
 DEFAULT_HISTORICAL_LOGS_DIR = os.path.join('/esarchive', 'autosubmit', 'as_metadata', 'logs')

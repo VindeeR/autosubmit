@@ -17,10 +17,11 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import textwrap
+
 import autosubmit.history.utils as HUtils
-from . import database_models as Models
-from autosubmit.history.data_classes.job_data import JobData
 from autosubmit.history.data_classes.experiment_run import ExperimentRun
+from autosubmit.history.data_classes.job_data import JobData
+from . import database_models as Models
 from .database_manager import DatabaseManager, DEFAULT_JOBDATA_DIR
 
 CURRENT_DB_VERSION = 18

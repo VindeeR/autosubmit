@@ -14,18 +14,21 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
+from os import path
+
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import locale
-from os import path
 import os
-from shutil import rmtree
-import subprocess
 import shutil
+import subprocess
+from shutil import rmtree
+from time import time
+
 # from autosubmit import Autosubmit
 from autosubmitconfigparser.config.basicconfig import BasicConfig
-from time import time
-from log.log import Log, AutosubmitCritical, AutosubmitError
+from log.log import Log, AutosubmitCritical
+
 Log.get_logger("Autosubmit")
 
 

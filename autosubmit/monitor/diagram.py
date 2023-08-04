@@ -17,9 +17,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-import traceback
-import numpy as np
 import matplotlib as mtp
+import numpy as np
+import traceback
 
 mtp.use('Agg')
 import matplotlib.pyplot as plt

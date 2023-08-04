@@ -18,13 +18,14 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-
+import sqlite3
 import textwrap
 import traceback
-import sqlite3
-
 from typing import Dict, List
+
 from log.log import Log
+
+
 # from networkx import DiGraph
 
 # DB_FILE_AS_TIMES = "/esarchive/autosubmit/as_times.db"

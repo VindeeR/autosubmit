@@ -14,19 +14,21 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
+import locale
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
-import locale
 import os
 import subprocess
-from autosubmit.platforms.paramiko_platform import ParamikoPlatform, ParamikoPlatformException
-from log.log import Log,AutosubmitError
-from autosubmit.platforms.headers.ec_header import EcHeader
-from autosubmit.platforms.headers.ec_cca_header import EcCcaHeader
-from autosubmit.platforms.headers.slurm_header import SlurmHeader
-from autosubmit.platforms.wrappers.wrapper_factory import EcWrapperFactory
 from time import sleep
-import locale
+
+from autosubmit.platforms.headers.ec_cca_header import EcCcaHeader
+from autosubmit.platforms.headers.ec_header import EcHeader
+from autosubmit.platforms.headers.slurm_header import SlurmHeader
+from autosubmit.platforms.paramiko_platform import ParamikoPlatform, ParamikoPlatformException
+from autosubmit.platforms.wrappers.wrapper_factory import EcWrapperFactory
+from log.log import Log, AutosubmitError
+
+
 class EcPlatform(ParamikoPlatform):
     """
     Class to manage queues with ecaccess

@@ -17,17 +17,17 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import collections
-from log.log import Log, AutosubmitCritical, AutosubmitError
-from autosubmit.job.job_common import Status, Type
+import copy
+import operator
 from bscearth.utils.date import sum_str_hours
+from math import ceil
+from operator import attrgetter
+from typing import List
+
+from autosubmit.job.job_common import Status, Type
 from autosubmit.job.job_packages import JobPackageSimple, JobPackageVertical, JobPackageHorizontal, \
     JobPackageSimpleWrapped, JobPackageHorizontalVertical, JobPackageVerticalHorizontal, JobPackageBase
-from operator import attrgetter
-from math import ceil
-import operator
-from typing import List
-import copy
-
+from log.log import Log, AutosubmitCritical
 
 
 class JobPackager(object):

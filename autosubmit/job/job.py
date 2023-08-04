@@ -21,33 +21,33 @@
 Main module for Autosubmit. Only contains an interface class to all functionality implemented on Autosubmit
 """
 
+from collections import OrderedDict
+
+import copy
+import datetime
+import json
+import locale
 import os
 import re
-import time
-import json
-import datetime
 import textwrap
-from collections import OrderedDict
-import copy
+import time
+from bscearth.utils.date import date2str, parse_date, previous_day, chunk_end_date, chunk_start_date, Log, subs_dates
+from functools import reduce
+from threading import Thread
+from time import sleep
+from typing import List, Union
 
-import locale
-
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-from autosubmit.job.job_common import Status, Type, increase_wallclock_by_chunk
+from autosubmit.helpers.parameters import autosubmit_parameter, autosubmit_parameters
+from autosubmit.history.experiment_history import ExperimentHistory
 from autosubmit.job.job_common import StatisticsSnippetBash, StatisticsSnippetPython
 from autosubmit.job.job_common import StatisticsSnippetR, StatisticsSnippetEmpty
+from autosubmit.job.job_common import Status, Type, increase_wallclock_by_chunk
 from autosubmit.job.job_utils import get_job_package_code
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from autosubmit.history.experiment_history import ExperimentHistory
-from bscearth.utils.date import date2str, parse_date, previous_day, chunk_end_date, chunk_start_date, Log, subs_dates
-from time import sleep
-from threading import Thread
 from autosubmit.platforms.paramiko_submitter import ParamikoSubmitter
-from log.log import Log, AutosubmitCritical, AutosubmitError
-from typing import List, Union
-from functools import reduce
+from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
-from autosubmit.helpers.parameters import autosubmit_parameter, autosubmit_parameters
+from log.log import Log, AutosubmitCritical, AutosubmitError
 
 Log.get_logger("Autosubmit")
 
@@ -150,7 +150,8 @@ class Job(object):
         self._platform = None
         self._queue = None
         self._partition = None
-
+        self.x11 = None
+        self.x11_options = None
         self.retry_delay = "0"
         self.platform_name = None # type: str
         #: (str): Type of the job, as given on job configuration file. (job: TASKTYPE)
@@ -188,7 +189,6 @@ class Job(object):
         self.file = None
         self.additional_files = []
         self.executable = None
-        self.x11 = False
         self._local_logs = ('', '')
         self._remote_logs = ('', '')
         self.script_name = self.name + ".cmd"
@@ -664,6 +664,23 @@ class Job(object):
         """
         self.fail_count += 1
 
+    @property
+    @autosubmit_parameter(name='x11')
+    def x11(self):
+        """Whether to use X11 forwarding"""
+        return self._x11
+    @x11.setter
+    def x11(self, value):
+        self._x11 = value
+
+    @property
+    @autosubmit_parameter(name='x11_options')
+    def x11_options(self):
+        """Allows to set salloc parameters for x11"""
+        return self._x11_options
+    @x11_options.setter
+    def x11_options(self, value):
+        self._x11_options = value
     # Maybe should be renamed to the plural?
     def add_parent(self, *parents):
         """
@@ -1257,6 +1274,7 @@ class Job(object):
         return parameters
 
     def update_platform_associated_parameters(self,as_conf, parameters, job_platform, chunk):
+        self.x11_options = str(as_conf.jobs_data[self.section].get("X11_OPTIONS", as_conf.platforms_data.get(job_platform.name,{}).get("X11_OPTIONS","")))
         self.executable = str(as_conf.jobs_data[self.section].get("EXECUTABLE", as_conf.platforms_data.get(job_platform.name,{}).get("EXECUTABLE","")))
         self.total_jobs = int(as_conf.jobs_data[self.section].get("TOTALJOBS", job_platform.total_jobs))
         self.max_waiting_jobs = int(as_conf.jobs_data[self.section].get("MAXWAITINGJOBS", job_platform.max_waiting_jobs))

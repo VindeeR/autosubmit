@@ -17,9 +17,11 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-from autosubmit.job.job_common import Status
-from bscearth.utils.date import date2str
 import copy
+from bscearth.utils.date import date2str
+
+from autosubmit.job.job_common import Status
+
 
 class JobGrouping(object):
 

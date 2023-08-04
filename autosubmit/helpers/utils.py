@@ -1,9 +1,8 @@
 import os
 import pwd
 
-from log.log import Log, AutosubmitCritical
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from typing import Tuple
+from log.log import AutosubmitCritical
+
 
 def check_experiment_ownership(expid, basic_config, raise_error=False, logger=None):
   # [A-Za-z09]+ variable is not needed, LOG is global thus it will be read if available

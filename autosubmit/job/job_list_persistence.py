@@ -14,15 +14,14 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
+import os
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import pickle
 from sys import setrecursionlimit
 
-import os
-
-from log.log import Log
 from autosubmit.database.db_manager import DbManager
+from log.log import Log
 
 
 class JobListPersistence(object):

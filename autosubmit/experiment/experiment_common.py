@@ -21,8 +21,10 @@
 Module containing functions to manage autosubmit's experiments.
 """
 import string
+
 import autosubmit.database.db_common as db_common
-from log.log import Log,AutosubmitCritical
+from log.log import Log, AutosubmitCritical
+
 Log.get_logger("Autosubmit")
 
 def new_experiment(description, version, test=False, operational=False):

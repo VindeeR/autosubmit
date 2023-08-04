@@ -19,11 +19,10 @@
 
 import os
 import subprocess
-
 from xml.dom.minidom import parseString
 
-from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.headers.sge_header import SgeHeader
+from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 
 
 class SgePlatform(ParamikoPlatform):

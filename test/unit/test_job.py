@@ -192,6 +192,12 @@ class TestJob(TestCase):
         chmod_mock.assert_called_with(os.path.join(self.job._tmp_path, self.job.name + '.cmd'), 0o755)
 
     def test_create_header_tailer_script(self):
+        """
+        Here we are testing if the parameters from the dictionary are properly read and then regex acts correctly.
+
+        The internal logic to avoid header/tailer of a different type on a R or Python script is not tested. We skip
+        all of that when we do the content_update mock.
+        """
         # arrange
         header_script = '#!/usr/bin/bash\necho "Header test"\n'
         tailer_script = '#!/usr/bin/bash\necho "Tailer test"\n'
@@ -200,16 +206,17 @@ class TestJob(TestCase):
         self.job.parameters = dict()
         self.job.parameters['EXTENDED_HEADER'] = header_script
         self.job.parameters['EXTENDED_TAILER'] = tailer_script
-        self.job.type = 0  # Type.BASH
-        self.job.update_content = Mock(return_value=('%EXTENDED_HEADER%\nsome-content\n%EXTENDED_TAILER%', ['%EXTENDED_HEADER%\nsome-content\n%EXTENDED_TAILER%']))
+        # We mock the function that returns the template script it is tuple because that is what the
+        # function outputs. We don't care about additional templates, hence the empty list :D
+        self.job.update_content = Mock(return_value=('%EXTENDED_HEADER%\nsome-content\n%EXTENDED_TAILER%', []))
         # self.job.update_parameters = Mock(return_value=self.job.parameters)
         # create an autosubmit config
         config = Mock(spec=AutosubmitConfig)
 
         # mock parts to write the file
-        sys.modules['os'].chmod = Mock()
+        sys.modules['os'].chmod = Mock()  # needed cuz AS changes the permission on file
         write_mock = Mock().write = Mock()
-        open_mock = Mock(return_value=write_mock)
+        open_mock = Mock(return_value=write_mock)  # so that we don't try to open a file that does not exist
         # here we replace (patch) the "open" function with our mocked one >:)
         with patch.object(builtins, "open", open_mock):
             # act

@@ -885,18 +885,19 @@ class ParamikoPlatform(Platform):
         """
         while retries > 0:
             try:
-                chan = self.transport.open_session()
+                chan = self.transport.open_session(timeout=10)
                 if x11 == "true":
                     display = os.getenv('DISPLAY')
                     if display is None or not display:
                         display = "localhost:0"
                     self.local_x11_display = xlib_connect.get_display(display)
-                    chan.request_x11(handler=self.x11_handler)
+                    chan.request_x11(screen_number=self.local_x11_display[:4],single_connection=False,handler=self.x11_handler)
                 else:
                     chan.settimeout(timeout)
                 if x11 == "true":
                     command = command + " ; sleep infinity"
-                    chan.exec_command(command,x11)
+                    #command = command
+                    chan.exec_command(command)
                     chan_fileno = chan.fileno()
                     self.poller.register(chan_fileno, select.POLLIN)
                     self.x11_status_checker(chan, chan_fileno)

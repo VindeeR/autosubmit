@@ -191,6 +191,33 @@ class TestJob(TestCase):
         write_mock.write.assert_called_with(b'some-content: 999, 777, 666 % %')
         chmod_mock.assert_called_with(os.path.join(self.job._tmp_path, self.job.name + '.cmd'), 0o755)
 
+    def test_create_header_tailer_script(self):
+        # arrange
+        header_script = '#!/usr/bin/bash\necho "Header test"\n'
+        tailer_script = '#!/usr/bin/bash\necho "Tailer test"\n'
+        # the full script in its binary form
+        expected_script = b'#!/usr/bin/bash\necho "Header test"\n\nsome-content\n#!/usr/bin/bash\necho "Tailer test"\n'
+        self.job.parameters = dict()
+        self.job.parameters['EXTENDED_HEADER'] = header_script
+        self.job.parameters['EXTENDED_TAILER'] = tailer_script
+        self.job.type = 0  # Type.BASH
+        self.job.update_content = Mock(return_value=('%EXTENDED_HEADER%\nsome-content\n%EXTENDED_TAILER%', ['%EXTENDED_HEADER%\nsome-content\n%EXTENDED_TAILER%']))
+        # self.job.update_parameters = Mock(return_value=self.job.parameters)
+        # create an autosubmit config
+        config = Mock(spec=AutosubmitConfig)
+
+        # mock parts to write the file
+        sys.modules['os'].chmod = Mock()
+        write_mock = Mock().write = Mock()
+        open_mock = Mock(return_value=write_mock)
+        # here we replace (patch) the "open" function with our mocked one >:)
+        with patch.object(builtins, "open", open_mock):
+            # act
+            self.job.create_script(config)
+
+        # assert
+        write_mock.write.assert_called_with(expected_script)
+
     def test_that_check_script_returns_false_when_there_is_an_unbound_template_variable(self):
         # arrange
         update_content_mock = Mock(return_value=('some-content: %UNBOUND%','some-content: %UNBOUND%'))

@@ -281,7 +281,7 @@ class SlurmPlatform(ParamikoPlatform):
         self._checkhost_cmd = "echo 1"
         self._submit_cmd = 'sbatch -D {1} {1}/'.format(
             self.host, self.remote_log_dir)
-        self._submit_cmd_x11 = f'salloc -D {self.remote_log_dir} {self.remote_log_dir}'
+        self._submit_cmd_x11 = f'-D {self.remote_log_dir} {self.remote_log_dir}'
         self._submit_command_name = "sbatch"
         self._submit_hold_cmd = 'sbatch -H -D {1} {1}/'.format(
             self.host, self.remote_log_dir)
@@ -289,6 +289,12 @@ class SlurmPlatform(ParamikoPlatform):
         self.put_cmd = "scp"
         self.get_cmd = "scp"
         self.mkdir_cmd = "mkdir -p " + self.remote_log_dir
+
+    def get_submit_cmd_x11(self, args, script_name):
+        """
+        Returns the submit command for the platform
+        """
+        return f'salloc {args} {self._submit_cmd_x11}/{script_name}'
 
     def hold_job(self, job):
         try:
@@ -526,7 +532,7 @@ class SlurmPlatform(ParamikoPlatform):
 
         if x11 == "true":
             if not hold:
-                return f'{export.strip("")} {self._submit_cmd_x11} {job_script.strip("")} {job.x11_options.strip("")}'
+                return self.get_submit_cmd_x11(job.x11_options.strip(""), job_script.strip(""))
             else:
                 return export + self._submit_hold_cmd + job_script
         else:

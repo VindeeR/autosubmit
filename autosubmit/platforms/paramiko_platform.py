@@ -18,7 +18,7 @@ from autosubmit.job.job_common import Status
 from autosubmit.job.job_common import Type
 from autosubmit.platforms.platform import Platform
 from log.log import AutosubmitError, AutosubmitCritical, Log
-
+import re
 
 def threaded(fn):
     def wrapper(*args, **kwargs):
@@ -832,6 +832,8 @@ class ParamikoPlatform(Platform):
     @threaded
     def x11_status_checker(self, session, session_fileno):
         self.transport.accept()
+        Log.warning(f'x11_status_checker() {session_fileno} {session}')
+
         while not session.exit_status_ready():
             try:
                 if sys.platform != "linux":
@@ -852,6 +854,7 @@ class ParamikoPlatform(Platform):
                         try:
                             # forward data between local/remote x11 socket.
                             data = channel.recv(4096)
+                            Log.warning(data)
                             counterpart.sendall(data)
                         except socket.error:
                             channel.close()
@@ -859,7 +862,6 @@ class ParamikoPlatform(Platform):
                             del self.channels[fd]
             except Exception as e:
                 pass
-
 
     def exec_command(self, command, bufsize=-1, timeout=None, get_pty=False,retries=3, x11=False):
         """
@@ -885,19 +887,24 @@ class ParamikoPlatform(Platform):
         """
         while retries > 0:
             try:
-                chan = self.transport.open_session(timeout=10)
                 if x11 == "true":
                     display = os.getenv('DISPLAY')
                     if display is None or not display:
                         display = "localhost:0"
                     self.local_x11_display = xlib_connect.get_display(display)
-                    chan.request_x11(screen_number=self.local_x11_display[:4],single_connection=False,handler=self.x11_handler)
+                    chan = self.transport.open_session()
+                    chan.request_x11(screen_number=self.local_x11_display[3],single_connection=False,handler=self.x11_handler)
                 else:
+                    chan = self.transport.open_session()
                     chan.settimeout(timeout)
                 if x11 == "true":
-                    command = command + " ; sleep infinity"
-                    #command = command
-                    chan.exec_command(command)
+                    #command = command + " ; sleep infinity 2>/dev/null"
+                    command = command
+                    Log.info(command)
+                    try:
+                        chan.exec_command(command)
+                    except BaseException as e:
+                        raise AutosubmitCritical("Failed to execute command: %s" % e)
                     chan_fileno = chan.fileno()
                     self.poller.register(chan_fileno, select.POLLIN)
                     self.x11_status_checker(chan, chan_fileno)
@@ -915,14 +922,7 @@ class ParamikoPlatform(Platform):
                 retries = retries - 1
         if retries <= 0:
             return False , False, False
-    def exec_command_x11(self, command, bufsize=-1, timeout=None, get_pty=False,retries=3, x11=False):
-        session = self.transport.open_session()
-        session.request_x11(handler=self.x11_handler)
-        session.exec_command(command + " ; sleep infinity")
-        session_fileno = session.fileno()
-        self.poller.register(session_fileno, select.POLLIN)
-        self.x11_status_checker(session, session_fileno)
-        pass
+
     def send_command(self, command, ignore_log=False, x11 = False):
         """
         Sends given command to HPC
@@ -955,7 +955,7 @@ class ParamikoPlatform(Platform):
                 channel.settimeout(timeout)
                 stdin.close()
                 channel.shutdown_write()
-            stdout_chunks.append(stdout.channel.recv(len(stdout.channel.in_buffer)))
+                stdout_chunks.append(stdout.channel.recv(len(stdout.channel.in_buffer)))
             while not channel.closed or channel.recv_ready() or channel.recv_stderr_ready():
                 # stop if channel was closed prematurely, and there is no data in the buffers.
                 got_chunk = False
@@ -972,9 +972,17 @@ class ParamikoPlatform(Platform):
                             stderr.channel.recv_stderr(len(c.in_stderr_buffer)))
                         #stdout_chunks.append(" ")
                         got_chunk = True
-                if x11 == "true":
-                    got_chunk = True
-                    break
+                    if x11 == "true":
+                        if len(stderr_readlines) > 0:
+                            job_id = re.findall(r'\d+', str(stderr_readlines[0]))[0]
+                            stdout_chunks.append(job_id)
+                            print(job_id)
+                            stderr_readlines = []
+                            break
+                    Log.info(f'stdout_chunks: {stdout_chunks} stderr_readlines: {stderr_readlines}')
+                # if x11 == "true":
+                #     got_chunk = True
+                #     break
                 if not got_chunk and stdout.channel.exit_status_ready() and not stderr.channel.recv_stderr_ready() and not stdout.channel.recv_ready():
                     # indicate that we're not going to read from this channel anymore
                     stdout.channel.shutdown_read()
@@ -1014,6 +1022,7 @@ class ParamikoPlatform(Platform):
                 else:
                     pass
                     #Log.debug('Command {0} in {1} successful with out message: {2}', command, self.host, self._ssh_output)
+            Log.info("reached send_command")
             return True
         except AttributeError as e:
             raise AutosubmitError(

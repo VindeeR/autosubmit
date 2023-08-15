@@ -17,12 +17,11 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
-from autosubmit.history.platform_monitor import platform_utils as utils
 from autosubmit.history.platform_monitor.slurm_monitor import SlurmMonitor
 
 class TestSlurmMonitor(unittest.TestCase):
   def test_reader_on_simple_wrapper_example_1(self):
-    ssh_output = utils.read_example("wrapper1.txt")
+    ssh_output = read_example("wrapper1.txt")
     slurm_monitor = SlurmMonitor(ssh_output)      
     # Header
     self.assertTrue(slurm_monitor.input_items[0].is_batch is False)
@@ -55,7 +54,7 @@ class TestSlurmMonitor(unittest.TestCase):
 
   
   def test_reader_on_simple_wrapper_example_2(self):  
-    ssh_output = utils.read_example("wrapper2.txt") # not real
+    ssh_output = read_example("wrapper2.txt") # not real
     slurm_monitor = SlurmMonitor(ssh_output)         
     # Header
     self.assertTrue(slurm_monitor.input_items[0].is_batch is False)
@@ -78,7 +77,7 @@ class TestSlurmMonitor(unittest.TestCase):
     self.assertTrue(slurm_monitor.input_items[2].step_number >= 0)
   
   def test_reader_on_big_wrapper(self):
-    ssh_output = utils.read_example("wrapper_big.txt")
+    ssh_output = read_example("wrapper_big.txt")
     slurm_monitor = SlurmMonitor(ssh_output)
     self.assertTrue(slurm_monitor.step_count == 30)
     header = slurm_monitor.header
@@ -88,7 +87,13 @@ class TestSlurmMonitor(unittest.TestCase):
     self.assertIsNotNone(batch)
     self.assertIsNotNone(extern)    
     self.assertTrue(slurm_monitor.steps_plus_extern_approximate_header_energy())
-    
+
+
+def read_example(example_name):
+  from importlib.resources import read_text
+  from autosubmit.history.platform_monitor import output_examples
+  return read_text(output_examples, example_name)
+
 
 if __name__ == '__main__':
   unittest.main()

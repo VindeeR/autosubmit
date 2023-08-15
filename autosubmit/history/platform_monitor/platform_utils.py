@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
 from time import mktime
 from datetime import datetime
 
@@ -61,8 +60,3 @@ def try_parse_time_to_timestamp(input_):
     return int(mktime(datetime.strptime(input_, SLURM_DATETIME_FORMAT).timetuple()))
   except Exception as e:
     return 0
-
-def read_example(example_name):
-  import importlib.resources as pkg_resources
-  from autosubmit.history.platform_monitor import output_examples
-  return pkg_resources.read_text(output_examples, example_name)

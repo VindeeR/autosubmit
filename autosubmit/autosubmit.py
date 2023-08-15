@@ -75,7 +75,8 @@ import signal
 import datetime
 
 import portalocker
-from pkg_resources import require, resource_listdir, resource_string, resource_filename
+from importlib.metadata import version
+from importlib.resources import files
 from collections import defaultdict
 from pyparsing import nestedExpr
 from .history.experiment_status import ExperimentStatus
@@ -153,7 +154,7 @@ class Autosubmit:
         with open(version_path) as f:
             autosubmit_version = f.read().strip()
     else:
-        autosubmit_version = require("autosubmit")[0].version
+        autosubmit_version = version("autosubmit")
 
     exit = False
 
@@ -1105,19 +1106,19 @@ class Autosubmit:
                         else:
                             yield key, value
 
-        template_files = resource_listdir('autosubmitconfigparser.config', 'files')
+        template_files = files('autosubmitconfigparser.config.files')
         if parameters is None:
             parameters = PARAMETERS
         parameter_comments = dict(_recurse_into_parameters(parameters))
 
-        for as_conf_file in template_files:
-            origin = resource_filename('autosubmitconfigparser.config', str(Path('files', as_conf_file)))
+        config_files: Path = files('autosubmitconfigparser.config.files')
+        for as_conf_file in template_files.iterdir():
             target = None
 
             if dummy:
                 # Create a ``dummy.yml`` file.
                 if as_conf_file.endswith('dummy.yml'):
-                    file_name = f'{as_conf_file.split("-")[0]}_{exp_id}.yml'
+                    file_name = f'{as_conf_file.name.split("-")[0]}_{exp_id}.yml'
                     target = Path(BasicConfig.LOCAL_ROOT_DIR, exp_id, 'conf', file_name)
             elif minimal_configuration:
                 # Create a ``minimal.yml`` file.
@@ -1129,7 +1130,7 @@ class Autosubmit:
                     target = Path(BasicConfig.LOCAL_ROOT_DIR, exp_id, 'conf/minimal.yml')
             elif not as_conf_file.endswith('dummy.yml') and not as_conf_file.endswith('minimal.yml'):
                 # Create any other file that is not ``dummy.yml`` nor ``minimal.yml``.
-                file_name = f'{Path(as_conf_file).stem}_{exp_id}.yml'
+                file_name = f'{as_conf_file.stem}_{exp_id}.yml'
                 target = Path(BasicConfig.LOCAL_ROOT_DIR, exp_id, 'conf', file_name)
 
             # Here we annotate the copied configuration with comments from the Python source code.
@@ -1139,7 +1140,7 @@ class Autosubmit:
             #
             # The previous code was simply doing a shutil(origin, target). This does not modify
             # much that logic, except we add comments before writing the copy...
-            if origin and target:
+            if as_conf_file and target:
                 with open(origin, 'r') as input, open(target, 'w+') as output:
                     yaml = YAML(typ='rt')
                     yaml_data = yaml.load(input)
@@ -3927,7 +3928,7 @@ class Autosubmit:
         """
         if not os.path.exists(BasicConfig.DB_PATH):
             Log.info("Creating autosubmit database...")
-            qry = resource_string('autosubmit.database', 'data/autosubmit.sql').decode(locale.getlocale()[1])
+            qry = Path(files('autosubmit.database.data'), 'autosubmit.sql').read_text(encoding=locale.getlocale()[1])
             if not create_db(qry):
                 raise AutosubmitCritical("Can not write database file", 7004)
             Log.result("Autosubmit database created successfully")

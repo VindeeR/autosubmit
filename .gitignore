@@ -23,3 +23,7 @@ test/coverage.xml
 dockerfiles/id_rsa*
 dockerfiles/authorized_keys
 
+
+# Jupyter
+.ipynb_checkpoints/
+test/performance/profiler-tests/scenario*

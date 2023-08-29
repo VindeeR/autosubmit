@@ -111,7 +111,6 @@ To do this use:
 
 * NODES:  nodes number to be submitted to the HPC. If not specified, the directive is not added.
 
-
 * HYPERTHREADING: Enables Hyper-threading, this will double the max amount of threads. defaults to false. ( Not available on slurm platforms )
 * QUEUE: queue to add the job to. If not specified, uses PLATFORM default.
 
@@ -146,6 +145,10 @@ There are also other, less used features that you can use:
 * EXECUTABLE: Allows to wrap a job for be launched with a set of env variables.
 
 * QUEUE: queue to add the job to. If not specified, uses PLATFORM default.
+
+* X11: Allows to run a job with X11 forwarding using salloc.
+
+* X11_OPTIONS: Allows to set salloc ( X11 ) options. EX: "-n 4 --qos=debug --partition=debug --x11=all --time=00:30:00"
 
 How to configure email notifications
 ------------------------------------

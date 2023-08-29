@@ -825,27 +825,30 @@ class ParamikoPlatform(Platform):
         self.transport._queue_incoming_channel(channel)
 
     def flush_out(self,session):
+        #flush_out is not working fine
+
         while session.recv_ready():
-            sys.stdout.write(session.recv(4096))
+            sys.stdout.write(session.recv(4096).decode(locale.getlocale()[1]))
         while session.recv_stderr_ready():
-            sys.stderr.write(session.recv_stderr(4096))
+            sys.stderr.write(session.recv_stderr(4096).decode(locale.getlocale()[1]))
+
     @threaded
     def x11_status_checker(self, session, session_fileno):
+        poller = None
         self.transport.accept()
-        Log.warning(f'x11_status_checker() {session_fileno} {session}')
-
         while not session.exit_status_ready():
             try:
-                if sys.platform != "linux":
-                    self.poller = self.poller.kqueue()
-                else:
-                    self.poller = self.poller.poll()
+                if type(self.poller) is not list:
+                    if sys.platform != "linux":
+                        poller = self.poller.kqueue()
+                    else:
+                        poller = self.poller.poll()
                 # accept subsequent x11 connections if any
                 if len(self.transport.server_accepts) > 0:
                     self.transport.accept()
-                if not self.poller:  # this should not happen, as we don't have a timeout.
+                if not poller:  # this should not happen, as we don't have a timeout.
                     break
-                for fd, event in self.poller:
+                for fd, event in poller:
                     if fd == session_fileno:
                         self.flush_out(session)
                     # data either on local/remote x11 socket
@@ -854,7 +857,6 @@ class ParamikoPlatform(Platform):
                         try:
                             # forward data between local/remote x11 socket.
                             data = channel.recv(4096)
-                            Log.warning(data)
                             counterpart.sendall(data)
                         except socket.error:
                             channel.close()
@@ -893,13 +895,13 @@ class ParamikoPlatform(Platform):
                         display = "localhost:0"
                     self.local_x11_display = xlib_connect.get_display(display)
                     chan = self.transport.open_session()
-                    chan.request_x11(screen_number=self.local_x11_display[3],single_connection=False,handler=self.x11_handler)
+                    chan.request_x11(single_connection=False,handler=self.x11_handler)
                 else:
                     chan = self.transport.open_session()
                     chan.settimeout(timeout)
                 if x11 == "true":
-                    #command = command + " ; sleep infinity 2>/dev/null"
-                    command = command
+                    command = f'{command} ; sleep infinity 2>/dev/null'
+                    #command = f'export display {command}'
                     Log.info(command)
                     try:
                         chan.exec_command(command)
@@ -956,8 +958,12 @@ class ParamikoPlatform(Platform):
                 stdin.close()
                 channel.shutdown_write()
                 stdout_chunks.append(stdout.channel.recv(len(stdout.channel.in_buffer)))
-            while not channel.closed or channel.recv_ready() or channel.recv_stderr_ready():
+            i = 0
+            x11_exit = False
+            while (not channel.closed or channel.recv_ready() or channel.recv_stderr_ready() ) and not x11_exit:
                 # stop if channel was closed prematurely, and there is no data in the buffers.
+                i = i+1
+                print(i)
                 got_chunk = False
                 readq, _, _ = select.select([stdout.channel], [], [], 2)
                 for c in readq:
@@ -975,16 +981,13 @@ class ParamikoPlatform(Platform):
                     if x11 == "true":
                         if len(stderr_readlines) > 0:
                             job_id = re.findall(r'\d+', str(stderr_readlines[0]))[0]
-                            stdout_chunks.append(job_id)
+                            stdout_chunks.append(job_id.encode(lang))
                             print(job_id)
                             stderr_readlines = []
+                            x11_exit = True
                             break
-                    Log.info(f'stdout_chunks: {stdout_chunks} stderr_readlines: {stderr_readlines}')
-                # if x11 == "true":
-                #     got_chunk = True
-                #     break
                 if not got_chunk and stdout.channel.exit_status_ready() and not stderr.channel.recv_stderr_ready() and not stdout.channel.recv_ready():
-                    # indicate that we're not going to read from this channel anymore
+                    # indicate that we're not going to read from this channel any more
                     stdout.channel.shutdown_read()
                     # close the channel
                     stdout.channel.close()
@@ -993,8 +996,6 @@ class ParamikoPlatform(Platform):
             if not x11:
                 stdout.close()
                 stderr.close()
-
-
             self._ssh_output = ""
             self._ssh_output_err = ""
             for s in stdout_chunks:
@@ -1002,7 +1003,6 @@ class ParamikoPlatform(Platform):
                     self._ssh_output += s.decode(lang)
             for errorLineCase in stderr_readlines:
                 self._ssh_output_err += errorLineCase.decode(lang)
-
                 errorLine = errorLineCase.lower().decode(lang)
                 if "not active" in errorLine:
                     raise AutosubmitError(

@@ -265,7 +265,8 @@ class Platform(object):
                         save = True
                         if not inspect:
                             job_list.save()
-                        valid_packages_to_submit.append(package)
+                        if package.x11 != "true":
+                            valid_packages_to_submit.append(package)
                         # Log.debug("FD end-submit: {0}".format(log.fd_show.fd_table_status_str(open()))
                     except (IOError, OSError):
                         if package.jobs[0].id != 0:

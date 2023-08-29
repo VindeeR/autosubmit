@@ -504,12 +504,12 @@ class SlurmPlatform(ParamikoPlatform):
             if outputlines.find("failed") != -1:
                 raise AutosubmitCritical(
                     "Submission failed. Command Failed", 7014)
-            jobs_id = []
-            for output in outputlines.splitlines():
-                jobs_id.append(int(output.split(' ')[3]))
             if x11 == "true":
-                return jobs_id[0]
+                return int(outputlines.splitlines()[0])
             else:
+                jobs_id = []
+                for output in outputlines.splitlines():
+                    jobs_id.append(int(output.split(' ')[3]))
                 return jobs_id
         except IndexError:
             raise AutosubmitCritical(

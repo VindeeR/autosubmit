@@ -1,29 +1,21 @@
 from unittest import TestCase
 
 import os
+from pathlib import Path
 import inspect
-from copy import deepcopy
-from mock import Mock,MagicMock, mock_open , call
+import tempfile
+from mock import MagicMock
 from mock import patch
 
-from autosubmit.job.job_packages import JobPackageSimple, JobPackageVertical
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
-
-import shutil
-import tempfile
-
-from unittest import TestCase
-from mock import MagicMock
-from autosubmit.job.job_packager import JobPackager
 from autosubmit.job.job_list import JobList
-from autosubmit.job.job_dict import DicJobs
-from autosubmit.job.job_utils import Dependency
-from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 from autosubmit.job.job_list_persistence import JobListPersistenceDb
-from random import randrange
-from collections import OrderedDict
+from autosubmit.job.job_packages import JobPackageSimple, JobPackageVertical
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
+from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
+
+
 class FakeBasicConfig:
     def __init__(self):
         pass
@@ -56,8 +48,9 @@ class TestJobPackage(TestCase):
         self.config.read = MagicMock()
 
 
-
-        self.as_conf = AutosubmitConfig(self.experiment_id, self.config, YAMLParserFactory())
+        with patch.object(Path, 'exists') as mock_exists:
+            mock_exists.return_value = True
+            self.as_conf = AutosubmitConfig(self.experiment_id, self.config, YAMLParserFactory())
         self.as_conf.experiment_data = dict()
         self.as_conf.experiment_data["JOBS"] = dict()
         self.as_conf.experiment_data["PLATFORMS"] = dict()
@@ -80,6 +73,7 @@ class TestJobPackage(TestCase):
         self.jobs[0].custom_directives = "dummy_directives"
         self.jobs[0].processors = "9"
         self.jobs[0]._processors = "9"
+        self.jobs[0]._platform = self.platform
         self.jobs[0].retrials = 0
         self.jobs[1].wallclock = "00:00"
         self.jobs[1].threads = ""
@@ -90,6 +84,7 @@ class TestJobPackage(TestCase):
         self.jobs[1].custom_directives = "dummy_directives2"
         self.jobs[1].processors = "9"
         self.jobs[1]._processors = "9"
+        self.jobs[1]._platform = self.platform
 
 
         self.wrapper_type = options.get('TYPE', 'vertical')
@@ -153,7 +148,7 @@ class TestJobPackage(TestCase):
         self.assertEqual(self.job_package_wrapper._wrapper_data["PARTITION"], "bsc32")
         self.assertEqual(self.job_package_wrapper._wrapper_data["THREADS"], "30")
         self.assertEqual(self.job_package_wrapper._wrapper_data["TASKS"], "40")
-        self.assertEqual(self.job_package_wrapper._wrapper_data["CUSTOM_DIRECTIVES"], "['#SBATCH --mem=1000']")
+        self.assertEqual(self.job_package_wrapper._wrapper_data["CUSTOM_DIRECTIVES"], ['#SBATCH --mem=1000'])
 
 
 

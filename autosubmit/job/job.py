@@ -221,6 +221,10 @@ class Job(object):
         self.total_jobs = None
         self.max_waiting_jobs = None
         self.exclusive = ""
+        # internal
+        self.current_checkpoint_step = 0
+        self.max_checkpoint_step = 0
+        self.reservation= ""
 
     @property
     @autosubmit_parameter(name='tasktype')
@@ -251,6 +255,23 @@ class Job(object):
     @fail_count.setter
     def fail_count(self, value):
         self._fail_count = value
+
+    @property
+    @autosubmit_parameter(name='checkpoint')
+    def checkpoint(self):
+        '''Generates a checkpoint step for this job based on job.type.'''
+        if self.type == Type.PYTHON:
+            return "checkpoint()"
+        elif self.type == Type.R:
+            return "checkpoint()"
+        else:  # bash
+            return "as_checkpoint"
+
+    def get_checkpoint_files(self):
+        """
+        Check if there is a file on the remote host that contains the checkpoint
+        """
+        return self.platform.get_checkpoint_files(self)
 
     @property
     @autosubmit_parameter(name='sdate')
@@ -570,6 +591,7 @@ class Job(object):
         :type value: HPCPlatform
         """
         self._partition = value
+
     @property
     def children(self):
         """
@@ -707,20 +729,20 @@ class Job(object):
         """
         self.children.add(new_child)
 
-    def add_edge_info(self,parent_name, special_variables):
+    def add_edge_info(self, parent, special_variables):
         """
         Adds edge information to the job
 
-        :param parent_name: parent name
-        :type parent_name: str
+        :param parent: parent job
+        :type parent: Job
         :param special_variables: special variables
         :type special_variables: dict
         """
-        if parent_name not in self.edge_info:
-            self.edge_info[parent_name] = special_variables
-        else:
-            self.edge_info[parent_name].update(special_variables)
-        pass
+        if special_variables["STATUS"] not in self.edge_info:
+            self.edge_info[special_variables["STATUS"]] = {}
+
+        self.edge_info[special_variables["STATUS"]][parent.name] = (parent,special_variables.get("FROM_STEP", 0))
+
     def delete_parent(self, parent):
         """
         Remove a parent from the job
@@ -1283,6 +1305,7 @@ class Job(object):
         self.exclusive = str(as_conf.jobs_data[self.section].get("EXCLUSIVE",as_conf.platforms_data.get(job_platform.name,{}).get("EXCLUSIVE",False)))
         self.threads = str(as_conf.jobs_data[self.section].get("THREADS",as_conf.platforms_data.get(job_platform.name,{}).get("THREADS","1")))
         self.tasks = str(as_conf.jobs_data[self.section].get("TASKS",as_conf.platforms_data.get(job_platform.name,{}).get("TASKS","1")))
+        self.reservation = str(as_conf.jobs_data[self.section].get("RESERVATION",as_conf.platforms_data.get(job_platform.name, {}).get("RESERVATION", "")))
         self.hyperthreading = str(as_conf.jobs_data[self.section].get("HYPERTHREADING",as_conf.platforms_data.get(job_platform.name,{}).get("HYPERTHREADING","none")))
         if int(self.tasks) <= 1 and int(job_platform.processors_per_node) > 1 and int(self.processors) > int(job_platform.processors_per_node):
             self.tasks = job_platform.processors_per_node
@@ -1337,6 +1360,7 @@ class Job(object):
         parameters['CUSTOM_DIRECTIVES'] = self.custom_directives
         parameters['HYPERTHREADING'] = self.hyperthreading
         parameters['CURRENT_QUEUE'] = self.queue
+        parameters['RESERVATION'] = self.reservation
         return parameters
 
     def update_wrapper_parameters(self,as_conf, parameters):
@@ -1364,6 +1388,8 @@ class Job(object):
         return parameters
 
     def update_job_parameters(self,as_conf, parameters):
+        if self.checkpoint: # To activate placeholder sustitution per <empty> in the template
+            parameters["AS_CHECKPOINT"] = self.checkpoint
         parameters['JOBNAME'] = self.name
         parameters['FAIL_COUNT'] = str(self.fail_count)
         parameters['SDATE'] = self.sdate
@@ -1445,6 +1471,8 @@ class Job(object):
         parameters['EXPORT'] = self.export
         parameters['PROJECT_TYPE'] = as_conf.get_project_type()
         self.wchunkinc = as_conf.get_wchunkinc(self.section)
+        for key,value in as_conf.jobs_data[self.section].items():
+            parameters["CURRENT_"+key.upper()] = value
         return parameters
 
     def update_parameters(self, as_conf, parameters,
@@ -1631,8 +1659,14 @@ class Job(object):
             except:
                 pass
         for key, value in parameters.items():
+            # parameters[key] can have '\\' characters that are interpreted as escape characters
+            # by re.sub. To avoid this, we use re.escape
+            if "*\\" in str(parameters[key]):
+                final_sub = re.escape(str(parameters[key]))
+            else:
+                final_sub = str(parameters[key])
             template_content = re.sub(
-                '%(?<!%%)' + key + '%(?!%%)', str(parameters[key]), template_content,flags=re.I)
+                '%(?<!%%)' + key + '%(?!%%)', final_sub, template_content,flags=re.I)
         for variable in self.undefined_variables:
             template_content = re.sub(
                 '%(?<!%%)' + variable + '%(?!%%)', '', template_content,flags=re.I)

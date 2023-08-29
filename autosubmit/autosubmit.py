@@ -50,6 +50,7 @@ from .job.job_list_persistence import JobListPersistencePkl
 from .job.job_package_persistence import JobPackagePersistence
 from .job.job_packager import JobPackager
 from .job.job_utils import SubJob, SubJobManager
+from .profiler.profiler import Profiler
 from .monitor.monitor import Monitor
 from .notifications.mail_notifier import MailNotifier
 from .notifications.notifier import Notifier
@@ -190,6 +191,8 @@ class Autosubmit:
                                    help='Sets a experiment expid which completion will trigger the start of this experiment.')
             subparser.add_argument('-rom', '--run_only_members', required=False,
                                    help='Sets members allowed on this run.')
+            subparser.add_argument('-p', '--profile', action='store_true', default=False, required=False,
+                                   help='Prints performance parameters of the execution of this command.')
 
 
             # Expid
@@ -276,6 +279,9 @@ class Autosubmit:
             #                        default=False, help='Shows Job List view in terminal')
             subparser.add_argument('-v', '--update_version', action='store_true',
                                    default=False, help='Update experiment version')
+            subparser.add_argument('-p', '--profile', action='store_true', default=False, required=False,
+                                   help='Prints performance parameters of the execution of this command.')
+            
             # Stats
             subparser = subparsers.add_parser(
                 'stats', description="plots statistics for specified experiment")
@@ -434,6 +440,8 @@ class Autosubmit:
                                    default=False, help='Generate possible wrapper in the current workflow')
             subparser.add_argument('-v', '--update_version', action='store_true',
                                    default=False, help='Update experiment version')
+            subparser.add_argument('-p', '--profile', action='store_true', default=False, required=False,
+                                   help='Prints performance parameters of the execution of this command.')
             # Configure
             subparser = subparsers.add_parser('configure', description="configure database and path for autosubmit. It "
                                                                        "can be done at machine, user or local level."
@@ -647,7 +655,7 @@ class Autosubmit:
             Autosubmit._init_logs(args, args.logconsole, args.logfile, expid)
 
         if args.command == 'run':
-            return Autosubmit.run_experiment(args.expid, args.notransitive,args.start_time,args.start_after, args.run_only_members)
+            return Autosubmit.run_experiment(args.expid, args.notransitive,args.start_time,args.start_after, args.run_only_members, args.profile)
         elif args.command == 'expid':
             return Autosubmit.expid(args.description,args.HPC,args.copy, args.dummy,args.minimal_configuration,args.git_repo,args.git_branch,args.git_as_conf,args.operational,args.testcase,args.use_local_minimal) != ''
         elif args.command == 'delete':
@@ -656,7 +664,7 @@ class Autosubmit:
             return Autosubmit.monitor(args.expid, args.output, args.list, args.filter_chunks, args.filter_status,
                                       args.filter_type, args.hide, args.text, args.group_by, args.expand,
                                       args.expand_status, args.hide_groups, args.notransitive, args.check_wrapper,
-                                      args.txt_logfiles, detail=False)
+                                      args.txt_logfiles, args.profile, detail=False)
         elif args.command == 'stats':
             return Autosubmit.statistics(args.expid, args.filter_type, args.filter_period, args.output, args.hide,
                                          args.notransitive)
@@ -680,7 +688,7 @@ class Autosubmit:
             return Autosubmit.migrate(args.expid, args.offer, args.pickup, args.onlyremote)
         elif args.command == 'create':
             return Autosubmit.create(args.expid, args.noplot, args.hide, args.output, args.group_by, args.expand,
-                                     args.expand_status, args.notransitive, args.check_wrapper, args.detail)
+                                     args.expand_status, args.notransitive, args.check_wrapper, args.detail, args.profile)
         elif args.command == 'configure':
             if not args.advanced or (args.advanced and dialog is None):
                 return Autosubmit.configure(args.advanced, args.databasepath, args.databasefilename,
@@ -1999,8 +2007,9 @@ class Autosubmit:
         Log.debug("Sleep: {0}", safetysleeptime)
         Log.debug("Number of retrials: {0}", default_retrials)
         return total_jobs, safetysleeptime, default_retrials, check_wrapper_jobs_sleeptime
+    
     @staticmethod
-    def run_experiment(expid, notransitive=False, start_time=None, start_after=None,run_only_members=None):
+    def run_experiment(expid, notransitive=False, start_time=None, start_after=None, run_only_members=None, profile=False):
         """
         Runs and experiment (submitting all the jobs properly and repeating its execution in case of failure).
         :param expid: the experiment id
@@ -2008,9 +2017,15 @@ class Autosubmit:
         :param start_time: the time at which the experiment should start
         :param start_after: the expid after which the experiment should start
         :param run_only_members: the members to run
+        :param profile: if True, the function will be profiled
         :return: None
 
         """
+        # Start profiling if the flag has been used
+        if profile:
+            profiler = Profiler(expid)
+            profiler.start()
+
         # Initialize common folders
         try:
             exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
@@ -2250,6 +2265,9 @@ class Autosubmit:
             raise
         except BaseException as e:
             raise AutosubmitCritical("This seems like a bug in the code, please contact AS developers", 7070, str(e))
+        finally:
+            if profile:
+                profiler.stop()
 
     @staticmethod
     def restore_platforms(platform_to_test, mail_notify=False, as_conf=None, expid=None):
@@ -2380,7 +2398,7 @@ class Autosubmit:
     @staticmethod
     def monitor(expid, file_format, lst, filter_chunks, filter_status, filter_section, hide, txt_only=False,
                 group_by=None, expand="", expand_status=list(), hide_groups=False, notransitive=False,
-                check_wrapper=False, txt_logfiles=False, detail=False):
+                check_wrapper=False, txt_logfiles=False, profile=False, detail=False):
         """
         Plots workflow graph for a given experiment with status of each job coded by node color.
         Plot is created in experiment's plot folder with name <expid>_<date>_<time>.<file_format>
@@ -2419,9 +2437,12 @@ class Autosubmit:
         :param detail: better text format representation but more expensive
         :type detail: bool
 
-
-
         """
+        # Start profiling if the flag has been used
+        if profile:
+            profiler = Profiler(expid)
+            profiler.start()
+
         try:
             exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
             Log.info("Getting job list...")
@@ -2440,6 +2461,10 @@ class Autosubmit:
         except BaseException as e:
             raise AutosubmitCritical("Error while checking the configuration files or loading the job_list", 7040,
                                      str(e))
+        finally:
+            if profile:
+                profiler.stop()
+
         try:
             jobs = []
             if not isinstance(job_list, type([])):
@@ -2498,6 +2523,9 @@ class Autosubmit:
                     jobs = job_list.get_job_list()
         except BaseException as e:
             raise AutosubmitCritical("Issues during the job_list generation. Maybe due I/O error", 7040, str(e))
+        finally:
+            if profile:
+                profiler.stop()
 
         referenced_jobs_to_remove = set()
         for job in jobs:
@@ -2549,6 +2577,10 @@ class Autosubmit:
                                                  "job_packages_" + expid).load()
         except BaseException as e:
             raise AutosubmitCritical("Issues during the wrapper loading, may be related to IO issues", 7040, str(e))
+        finally:
+            if profile:
+                profiler.stop()
+
         groups_dict = dict()
         try:
             if group_by:
@@ -2564,6 +2596,9 @@ class Autosubmit:
             raise AutosubmitCritical(
                 "Jobs can't be grouped, perhaps you're using an invalid format. Take a look into readthedocs", 7011,
                 str(e))
+        finally:
+            if profile:
+                profiler.stop()
 
         monitor_exp = Monitor()
         try:
@@ -2595,6 +2630,9 @@ class Autosubmit:
             raise AutosubmitCritical(
                 "An error has occurred while printing the workflow status. Check if you have X11 redirection and an img viewer correctly set",
                 7014, str(e))
+        finally:
+            if profile:
+                profiler.stop()
 
         return True
 
@@ -4452,7 +4490,7 @@ class Autosubmit:
 
     @staticmethod
     def create(expid, noplot, hide, output='pdf', group_by=None, expand=list(), expand_status=list(),
-               notransitive=False, check_wrappers=False, detail=False):
+               notransitive=False, check_wrappers=False, detail=False, profile=False):
         """
         Creates job list for given experiment. Configuration files must be valid before executing this process.
 
@@ -4475,7 +4513,12 @@ class Autosubmit:
         :type hide: bool
         :param output: plot's file format. It can be pdf, png, ps or svg
         :type output: str
+
         """
+        # Start profiling if the flag has been used
+        if profile:
+            profiler = Profiler(expid)
+            profiler.start()
 
         # checking if there is a lock file to avoid multiple running on the same expid
         try:
@@ -4692,6 +4735,9 @@ class Autosubmit:
             raise AutosubmitCritical(e.message, e.code, e.trace)
         except BaseException as e:
             raise AutosubmitCritical(str(e), 7070)
+        finally:
+            if profile:
+                profiler.stop()
 
     @staticmethod
     def _copy_code(as_conf, expid, project_type, force):

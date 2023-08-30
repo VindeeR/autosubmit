@@ -901,7 +901,7 @@ class ParamikoPlatform(Platform):
                     chan.settimeout(timeout)
                 if x11 == "true":
                     if "timeout" in command:
-                        timeout_command = command.split(" ")[1]
+                        timeout_command = command.split("timeout ")[1].split(" ")[0]
                         if timeout_command == 0:
                             timeout_command = "infinity"
                         command = f'{command} ; sleep {timeout_command} 2>/dev/null'

@@ -900,7 +900,7 @@ class ParamikoPlatform(Platform):
                     chan = self.transport.open_session()
                     chan.settimeout(timeout)
                 if x11 == "true":
-                    if not "salloc" in command:
+                    if "timeout" in command:
                         timeout_command = command.split(" ")[1]
                         if timeout_command == 0:
                             timeout_command = "infinity"

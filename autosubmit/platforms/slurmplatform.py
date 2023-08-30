@@ -531,10 +531,7 @@ class SlurmPlatform(ParamikoPlatform):
             x11 = job.x11
 
         if x11 == "true":
-            if not hold:
-                return self.get_submit_cmd_x11(job.x11_options.strip(""), job_script.strip(""))
-            else:
-                return export + self._submit_hold_cmd + job_script
+            return export + self.get_submit_cmd_x11(job.x11_options.strip(""), job_script.strip(""))
         else:
             try:
                 lang = locale.getlocale()[1]

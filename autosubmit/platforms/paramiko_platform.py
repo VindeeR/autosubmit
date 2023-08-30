@@ -362,7 +362,7 @@ class ParamikoPlatform(Platform):
         except Exception as e:
             try:
                 os.remove(file_path)
-            except Exception as e:
+            except Exception as ep:
                 pass
             if str(e) in "Garbage":
                 if not ignore_log:
@@ -900,8 +900,11 @@ class ParamikoPlatform(Platform):
                     chan = self.transport.open_session()
                     chan.settimeout(timeout)
                 if x11 == "true":
-
-                    command = f'{command} ; sleep {command.split(" ")[1]} 2>/dev/null'
+                    if not "salloc" in command:
+                        timeout_command = command.split(" ")[1]
+                        if timeout_command == 0:
+                            timeout_command = "infinity"
+                        command = f'{command} ; sleep {timeout_command} 2>/dev/null'
                     #command = f'export display {command}'
                     Log.info(command)
                     try:

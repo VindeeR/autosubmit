@@ -900,7 +900,8 @@ class ParamikoPlatform(Platform):
                     chan = self.transport.open_session()
                     chan.settimeout(timeout)
                 if x11 == "true":
-                    command = f'{command} ; sleep infinity 2>/dev/null'
+
+                    command = f'{command} ; sleep {command.split(" ")[1]} 2>/dev/null'
                     #command = f'export display {command}'
                     Log.info(command)
                     try:
@@ -962,21 +963,17 @@ class ParamikoPlatform(Platform):
             x11_exit = False
             while (not channel.closed or channel.recv_ready() or channel.recv_stderr_ready() ) and not x11_exit:
                 # stop if channel was closed prematurely, and there is no data in the buffers.
-                i = i+1
-                print(i)
                 got_chunk = False
                 readq, _, _ = select.select([stdout.channel], [], [], 2)
                 for c in readq:
                     if c.recv_ready():
                         stdout_chunks.append(
                             stdout.channel.recv(len(c.in_buffer)))
-                        #stdout_chunks.append(" ")
                         got_chunk = True
                     if c.recv_stderr_ready():
                         # make sure to read stderr to prevent stall
                         stderr_readlines.append(
                             stderr.channel.recv_stderr(len(c.in_stderr_buffer)))
-                        #stdout_chunks.append(" ")
                         got_chunk = True
                     if x11 == "true":
                         if len(stderr_readlines) > 0:
@@ -1022,7 +1019,6 @@ class ParamikoPlatform(Platform):
                 else:
                     pass
                     #Log.debug('Command {0} in {1} successful with out message: {2}', command, self.host, self._ssh_output)
-            Log.info("reached send_command")
             return True
         except AttributeError as e:
             raise AutosubmitError(

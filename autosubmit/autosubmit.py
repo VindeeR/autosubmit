@@ -2126,6 +2126,7 @@ class Autosubmit:
             else:
                 Log.debug("\nJobs prepared for {1}: {0}", len(
                     job_list.get_prepared(platform)), platform.name)
+            job_list.update_list(as_conf, False)
             packages_to_submit = JobPackager(
                 as_conf, platform, job_list, hold=hold).build_packages()
             if not inspect:
@@ -2133,6 +2134,7 @@ class Autosubmit:
             valid_packages_to_submit = [] # type: List[JobPackageBase]
             for package in packages_to_submit:
                 try:
+
                     # If called from inspect command or -cw
                     if only_wrappers or inspect:
                         if hasattr(package, "name"):
@@ -2520,9 +2522,12 @@ class Autosubmit:
                     job.children = job.children - referenced_jobs_to_remove
                     job.parents = job.parents - referenced_jobs_to_remove
 
-
-                Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list_wrappers, jobs_wr,
-                                                           packages_persistence, True)
+                try:
+                    Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list_wrappers, jobs_wr,
+                                                               packages_persistence, True)
+                except AutosubmitCritical as e:
+                    Log.printlog("Incomplete preview of wrappers",5000)
+                    Log.printlog(e.message,7000)
 
                 packages = packages_persistence.load(True)
                 packages += JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),

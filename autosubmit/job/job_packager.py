@@ -449,7 +449,7 @@ class JobPackager(object):
                                                 message += "\nCheck your configuration: Only jobs_in_wrappers are active, check their dependencies."
                                             if not balanced:
                                                 message += "\nPackages are not well balanced: Check your dependencies(This is not the main cause of the Critical error)"
-                                            if len(self._jobs_list.get_in_queue()) == 0:
+                                            if len(self._jobs_list.check_possible_ready_jobs(p.jobs)) == 0:
                                                 raise AutosubmitCritical(message, 7014)
                                 elif self.wrapper_policy[self.current_wrapper_section] == "mixed":
                                     error = True
@@ -497,7 +497,8 @@ class JobPackager(object):
                                                 message += "\nCheck your configuration: Only jobs_in_wrappers are active, check your jobs_in_wrapper dependencies."
                                             if not balanced:
                                                 message += "\nPackages are not well balanced! (This is not the main cause of the Critical error)"
-                                            if len(self._jobs_list.get_in_queue()) == 0: # When there are not more posible jobs, autosubmit will stop the execution
+                                            if len(self._jobs_list.check_possible_ready_jobs(p.jobs)) == 0: # When there are not more posible jobs, autosubmit will stop the execution
+
                                                 raise AutosubmitCritical(message, 7014)
                                 else:
                                     for job in p.jobs:

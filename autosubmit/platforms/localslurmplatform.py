@@ -655,39 +655,24 @@ class LocalSlurmPlatform(ParamikoPlatform):
             if lang is None:
                 lang = 'UTF-8'
         try:
-            output = subprocess.check_output(command.encode(lang), shell=True)
-        except subprocess.CalledProcessError as e:
+            sp = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
+            output, err = sp.communicate()
+            self._ssh_output = output.decode(lang)
+            self._ssh_output_err = err.decode(lang)
+            Log.debug("Command '{0}': {1}", command, self._ssh_output)
+            if "not active" in err:
+                raise AutosubmitError(
+                    'SSH Session not active, will restart the platforms', 6005)
+            if err.find("command not found") != -1:
+                raise AutosubmitCritical("scheduler is not installed.",7052,self._ssh_output_err)
+            elif err.find("syntax error") != -1:
+                raise AutosubmitCritical("Syntax error",7052,self._ssh_output_err)
+            elif err.find("refused") != -1 or err.find("slurm_persist_conn_open_without_init") != -1 or err.find("slurmdbd") != -1 or err.find("submission failed") != -1 or err.find("git clone") != -1 or err.find("sbatch: error: ") != -1 or err.find("not submitted") != -1 or err.find("invalid") != -1:
+                if (self._submit_command_name == "sbatch" and (err.find("policy") != -1 or err.find("invalid") != -1) ) or (self._submit_command_name == "sbatch" and err.find("argument") != -1) or (self._submit_command_name == "bsub" and err.find("job not submitted") != -1) or self._submit_command_name == "ecaccess-job-submit" or self._submit_command_name == "qsub ":
+                    raise AutosubmitError(err, 7014, "Bad Parameters.")
+                raise AutosubmitError('Command {0} in {1} warning: {2}'.format(command, self.host,self._ssh_output_err, 6005))
             if not ignore_log:
-                Log.error('Could not execute command {0} on {1}'.format(e.cmd, self.host))
-            return False
-        self._ssh_output = output.decode(lang)
-        Log.debug("Command '{0}': {1}", command, self._ssh_output)
-
-        return True
-    """
-                self._ssh_output = ""
-            self._ssh_output_err = ""
-            for s in stdout_chunks:
-                if s.decode(lang) != '':
-                    self._ssh_output += s.decode(lang)
-            for errorLineCase in stderr_readlines:
-                self._ssh_output_err += errorLineCase.decode(lang)
-
-                errorLine = errorLineCase.lower().decode(lang)
-                if "not active" in errorLine:
-                    raise AutosubmitError(
-                        'SSH Session not active, will restart the platforms', 6005)
-                if errorLine.find("command not found") != -1:
-                    raise AutosubmitCritical("scheduler is not installed.",7052,self._ssh_output_err)
-                elif errorLine.find("syntax error") != -1:
-                    raise AutosubmitCritical("Syntax error",7052,self._ssh_output_err)
-                elif errorLine.find("refused") != -1 or errorLine.find("slurm_persist_conn_open_without_init") != -1 or errorLine.find("slurmdbd") != -1 or errorLine.find("submission failed") != -1 or errorLine.find("git clone") != -1 or errorLine.find("sbatch: error: ") != -1 or errorLine.find("not submitted") != -1 or errorLine.find("invalid") != -1:
-                    if (self._submit_command_name == "sbatch" and (errorLine.find("policy") != -1 or errorLine.find("invalid") != -1) ) or (self._submit_command_name == "sbatch" and errorLine.find("argument") != -1) or (self._submit_command_name == "bsub" and errorLine.find("job not submitted") != -1) or self._submit_command_name == "ecaccess-job-submit" or self._submit_command_name == "qsub ":
-                        raise AutosubmitError(errorLine, 7014, "Bad Parameters.")
-                    raise AutosubmitError('Command {0} in {1} warning: {2}'.format(command, self.host,self._ssh_output_err, 6005))
-
-            if not ignore_log:
-                if len(stderr_readlines) > 0:
+                if len(err) > 0:
                     Log.printlog('Command {0} in {1} warning: {2}'.format(command, self.host,self._ssh_output_err, 6006))
                 else:
                     pass
@@ -704,8 +689,11 @@ class LocalSlurmPlatform(ParamikoPlatform):
             raise AutosubmitError(str(e),6016)
         except BaseException as e:
             raise AutosubmitError('Command {0} in {1} warning: {2}'.format(
-                command, self.host, '\n'.join(stderr_readlines)), 6005, str(e))
-    """
+                command, self.host, '\n'.join(e.message)), 6005, str(e))
+        except subprocess.CalledProcessError as e:
+            if not ignore_log:
+                Log.error('Could not execute command {0} on {1}'.format(e.cmd, self.host))
+            return False
 
     def send_file(self, filename, check=True):
         self.check_remote_log_dir()
@@ -737,6 +725,7 @@ class LocalSlurmPlatform(ParamikoPlatform):
                 raise Exception('File {0} does not exists'.format(filename))
             return False
         return True
+
     def delete_file(self, filename,del_cmd  = False):
         if del_cmd:
             command = '{0} {1}'.format(self.del_cmd, os.path.join(self.tmp_path,"LOG_"+self.expid, filename))

@@ -1503,6 +1503,15 @@ class JobList(object):
     def parameters(self, value):
         self._parameters = value
 
+    def check_possible_ready_jobs(self,job_list):
+        jobs = [ job for job in self.get_active() if job not in job_list ]
+        jobs += [ job for job in self.get_ready() if job not in job_list ]
+        for job in self.get_waiting():
+            tmp = [parent for parent in job.parents if parent.status == Status.COMPLETED]
+            if len(tmp) == len(job.parents):
+                Log.debug("Job {0} is ready to run".format(job.name))
+                jobs.append(job)
+        return list(set(jobs))
     def update_list(self, as_conf, store_change=True, fromSetStatus=False, submitter=None, first_time=False):
         # type: (AutosubmitConfig, bool, bool, object, bool) -> bool
         """

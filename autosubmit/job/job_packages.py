@@ -149,16 +149,18 @@ class JobPackageBase(object):
         try:
             # get one job of each section jobs by section
             if only_generate:
-                sections = configuration.get_wrapper_jobs(self.current_wrapper_section)
-                if "&" in sections:
-                    sections.split("&")
-                elif " " in sections:
-                    sections.split(" ")
-                else:
-                    sections = [sections]
-                for section in sections:
-                    if str(configuration._jobs_parser.get_option(section, "CHECK", 'True')).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
-                        exit = True
+                # has self.current_wrapper_section attr
+                if hasattr(self, 'current_wrapper_section'):
+                    sections = configuration.get_wrapper_jobs(self.current_wrapper_section)
+                    if "&" in sections:
+                        sections.split("&")
+                    elif " " in sections:
+                        sections.split(" ")
+                    else:
+                        sections = [sections]
+                    for section in sections:
+                        if str(configuration._jobs_parser.get_option(section, "CHECK", 'True')).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
+                            exit = True
             if not exit:
                 if len(self.jobs) < thread_number:
                     for job in self.jobs:

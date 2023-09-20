@@ -1385,7 +1385,7 @@ class Autosubmit:
 
         job_list.check_scripts(as_conf)
 
-        job_list.update_list(as_conf, True)
+        job_list.update_list(as_conf, False)
         # Loading parameters again
         Autosubmit._load_parameters(as_conf, job_list, submitter.platforms)
         # Related to TWO_STEP_START new variable defined in expdef

@@ -1210,7 +1210,6 @@ class JobList(object):
         :return: jobs in platforms
         :rtype: list
         """
-
         in_queue = self.get_submitted(platform) + self.get_running(platform) + self.get_queuing(
             platform) + self.get_unknown(platform) + self.get_held_jobs(platform)
         if wrapper:

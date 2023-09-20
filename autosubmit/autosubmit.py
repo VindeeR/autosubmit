@@ -1385,7 +1385,7 @@ class Autosubmit:
 
         job_list.check_scripts(as_conf)
 
-        job_list.update_list(as_conf, False)
+        job_list.update_list(as_conf, True)
         # Loading parameters again
         Autosubmit._load_parameters(as_conf, job_list, submitter.platforms)
         # Related to TWO_STEP_START new variable defined in expdef
@@ -2126,6 +2126,7 @@ class Autosubmit:
             else:
                 Log.debug("\nJobs prepared for {1}: {0}", len(
                     job_list.get_prepared(platform)), platform.name)
+            job_list.update_list(as_conf, False)
             packages_to_submit = JobPackager(
                 as_conf, platform, job_list, hold=hold).build_packages()
             if not inspect:
@@ -2133,6 +2134,7 @@ class Autosubmit:
             valid_packages_to_submit = [] # type: List[JobPackageBase]
             for package in packages_to_submit:
                 try:
+
                     # If called from inspect command or -cw
                     if only_wrappers or inspect:
                         if hasattr(package, "name"):

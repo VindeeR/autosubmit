@@ -687,6 +687,9 @@ class Platform(object):
         if self.type == "local":
             path = os.path.join(
                 self.root_dir, self.config.get("LOCAL_TMP_DIR"), 'LOG_{0}'.format(self.expid))
+        elif self.type == "slurmlocal":
+            path = os.path.join(
+                self.root_dir, self.config.get("LOCAL_TMP_DIR"), 'LOG_{0}'.format(self.expid))
         else:
             path = os.path.join(self.root_dir, 'LOG_{0}'.format(self.expid))
         return path

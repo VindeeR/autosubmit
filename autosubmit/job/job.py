@@ -87,6 +87,11 @@ def threaded(fn):
             'chunk_end_month': 'Chunk end month.',
             'chunk_end_day': 'Chunk end day.',
             'chunk_end_hour': 'Chunk end hour.',
+            'chunk_second_to_last_date': 'Chunk second to last date.',
+            'chunk_second_to_last_year': 'Chunk second to last year.',
+            'chunk_second_to_last_month': 'Chunk second to last month.',
+            'chunk_second_to_last_day': 'Chunk second to last day.',
+            'chunk_second_to_last_hour': 'Chunk second to last hour.',
             'prev': 'Days since start date at the chunk\'s start.',
             'chunk_first': 'True if the current chunk is the first, false otherwise.',
             'chunk_last': 'True if the current chunk is the last, false otherwise.',
@@ -228,6 +233,16 @@ class Job(object):
         self.total_jobs = None
         self.max_waiting_jobs = None
         self.exclusive = ""
+        self._retrials = 0
+
+        # internal
+        self.current_checkpoint_step = 0
+        self.max_checkpoint_step = 0
+        self.reservation= ""
+        # hetjobs
+        self.het = dict()
+        self.het['HETSIZE'] = 0
+
 
     @property
     @autosubmit_parameter(name='tasktype')
@@ -258,6 +273,33 @@ class Job(object):
     @fail_count.setter
     def fail_count(self, value):
         self._fail_count = value
+
+    @property
+    @autosubmit_parameter(name='retrials')
+    def retrials(self):
+        """Max amount of retrials to run this job."""
+        return self._retrials
+
+    @retrials.setter
+    def retrials(self, value):
+        self._retrials = int(value)
+
+    @property
+    @autosubmit_parameter(name='checkpoint')
+    def checkpoint(self):
+        '''Generates a checkpoint step for this job based on job.type.'''
+        if self.type == Type.PYTHON:
+            return "checkpoint()"
+        elif self.type == Type.R:
+            return "checkpoint()"
+        else:  # bash
+            return "as_checkpoint"
+
+    def get_checkpoint_files(self):
+        """
+        Check if there is a file on the remote host that contains the checkpoint
+        """
+        return self.platform.get_checkpoint_files(self)
 
     @property
     @autosubmit_parameter(name='sdate')
@@ -574,6 +616,7 @@ class Job(object):
         :type value: HPCPlatform
         """
         self._partition = value
+
     @property
     def children(self):
         """
@@ -704,20 +747,20 @@ class Job(object):
         """
         self.children.add(new_child)
 
-    def add_edge_info(self,parent_name, special_variables):
+    def add_edge_info(self, parent, special_variables):
         """
         Adds edge information to the job
 
-        :param parent_name: parent name
-        :type parent_name: str
+        :param parent: parent job
+        :type parent: Job
         :param special_variables: special variables
         :type special_variables: dict
         """
-        if parent_name not in self.edge_info:
-            self.edge_info[parent_name] = special_variables
-        else:
-            self.edge_info[parent_name].update(special_variables)
-        pass
+        if special_variables["STATUS"] not in self.edge_info:
+            self.edge_info[special_variables["STATUS"]] = {}
+
+        self.edge_info[special_variables["STATUS"]][parent.name] = (parent,special_variables.get("FROM_STEP", 0))
+
     def delete_parent(self, parent):
         """
         Remove a parent from the job
@@ -910,6 +953,9 @@ class Job(object):
 
     @threaded
     def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0,job_id=""):
+        as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
+        as_conf.reload(force_load=True)
+        max_retrials = self.retrials
         max_logs = 0
         last_log = 0
         sleep(5)
@@ -924,14 +970,13 @@ class Job(object):
         success = False
         error_message = ""
         platform = None
-        max_retrials = 0
         while (count < retries) or not success:
             try:
                 as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
                 as_conf.reload(force_load=True)
-                max_retrials = as_conf.get_retrials()
-                max_logs = int(as_conf.get_retrials()) - fail_count
-                last_log = int(as_conf.get_retrials()) - fail_count
+                max_retrials = self.retrials
+                max_logs = int(max_retrials) - fail_count
+                last_log = int(max_retrials) - fail_count
                 submitter = self._get_submitter(as_conf)
                 submitter.load_platforms(as_conf)
                 platform = submitter.platforms[platform_name]
@@ -946,34 +991,32 @@ class Job(object):
             raise AutosubmitError(
                 "Couldn't load the autosubmit platforms, seems that the local platform has some issue\n:{0}".format(
                     error_message), 6006)
-        else:
-            try:
-                if self.wrapper_type is not None and self.wrapper_type == "vertical":
-                    found = False
-                    retrials = 0
-                    while retrials < 3 and not found:
-                        if platform.check_stat_file_by_retrials(stat_file + str(max_logs)):
-                            found = True
-                        retrials = retrials + 1
-                    for i in range(max_logs-1,-1,-1):
-                        if platform.check_stat_file_by_retrials(stat_file + str(i)):
-                            last_log = i
-                        else:
-                            break
-                    remote_logs = (self.script_name + ".out." + str(last_log), self.script_name + ".err." + str(last_log))
+        try:
+            if self.wrapper_type is not None and self.wrapper_type == "vertical":
+                found = False
+                retrials = 0
+                while retrials < 3 and not found:
+                    if platform.check_stat_file_by_retrials(stat_file + str(max_logs)):
+                        found = True
+                    retrials = retrials + 1
+                for i in range(max_logs-1,-1,-1):
+                    if platform.check_stat_file_by_retrials(stat_file + str(i)):
+                        last_log = i
+                    else:
+                        break
+                remote_logs = (self.script_name + ".out." + str(last_log), self.script_name + ".err." + str(last_log))
 
-                else:
-                    remote_logs = (self.script_name + ".out."+str(fail_count), self.script_name + ".err." + str(fail_count))
+            else:
+                remote_logs = (self.script_name + ".out."+str(fail_count), self.script_name + ".err." + str(fail_count))
 
-            except BaseException as e:
-                Log.printlog(
-                    "{0} \n Couldn't connect to the remote platform for {1} job err/out files. ".format(str(e), self.name), 6001)
+        except BaseException as e:
+            Log.printlog(
+                "{0} \n Couldn't connect to the remote platform for {1} job err/out files. ".format(str(e), self.name), 6001)
         out_exist = False
         err_exist = False
         retries = 3
         sleeptime = 0
         i = 0
-        no_continue = False
         try:
             while (not out_exist and not err_exist) and i < retries:
                 try:
@@ -985,7 +1028,7 @@ class Job(object):
                     err_exist = platform.check_file_exists(
                         remote_logs[1], False)
                 except IOError as e:
-                    err_exists = False
+                    err_exist = False
                 if not out_exist or not err_exist:
                     sleeptime = sleeptime + 5
                     i = i + 1
@@ -1002,7 +1045,6 @@ class Job(object):
                     return
             if copy_remote_logs:
                 l_log = copy.deepcopy(local_logs)
-                r_log = copy.deepcopy(remote_logs)
                 # unifying names for log files
                 if remote_logs != local_logs:
                     if self.wrapper_type == "vertical": # internal_Retrial mechanism
@@ -1201,7 +1243,7 @@ class Job(object):
             else:
                 self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count),job_id=self.id)
             if self.wrapper_type == "vertical":
-                max_logs = int(as_conf.get_retrials())
+                max_logs = int(self.retrials)
                 for i in range(0,max_logs):
                     self.inc_fail_count()
             else:
@@ -1253,6 +1295,8 @@ class Job(object):
             else:
                 return default_status
     def update_platform_parameters(self,as_conf,parameters,job_platform):
+        for key,value in as_conf.platforms_data.get(job_platform.name,{}).items():
+            parameters["CURRENT_"+key.upper()] = value
         parameters['CURRENT_ARCH'] = job_platform.name
         parameters['CURRENT_HOST'] = job_platform.host
         parameters['CURRENT_USER'] = job_platform.user
@@ -1266,58 +1310,271 @@ class Job(object):
         parameters['CURRENT_PROJ_DIR'] = job_platform.project_dir
         parameters['CURRENT_ROOTDIR'] = job_platform.root_dir
         parameters['CURRENT_LOGDIR'] = job_platform.get_files_path()
-        for key,value in as_conf.platforms_data.get(job_platform.name,{}).items():
-            parameters["CURRENT_"+key.upper()] = value
-
         return parameters
 
-    def update_platform_associated_parameters(self,as_conf, parameters, job_platform, chunk):
-        self.executable = str(as_conf.jobs_data[self.section].get("EXECUTABLE", as_conf.platforms_data.get(job_platform.name,{}).get("EXECUTABLE","")))
-        self.total_jobs = int(as_conf.jobs_data[self.section].get("TOTALJOBS", job_platform.total_jobs))
-        self.max_waiting_jobs = int(as_conf.jobs_data[self.section].get("MAXWAITINGJOBS", job_platform.max_waiting_jobs))
-        self.processors = str(as_conf.jobs_data[self.section].get("PROCESSORS",as_conf.platforms_data.get(job_platform.name,{}).get("PROCESSORS","1")))
-        self.nodes = str(as_conf.jobs_data[self.section].get("NODES",as_conf.platforms_data.get(job_platform.name,{}).get("NODES","")))
-        self.exclusive = str(as_conf.jobs_data[self.section].get("EXCLUSIVE",as_conf.platforms_data.get(job_platform.name,{}).get("EXCLUSIVE",False)))
-        self.threads = str(as_conf.jobs_data[self.section].get("THREADS",as_conf.platforms_data.get(job_platform.name,{}).get("THREADS","1")))
-        self.tasks = str(as_conf.jobs_data[self.section].get("TASKS",as_conf.platforms_data.get(job_platform.name,{}).get("TASKS","1")))
-        self.nodes = str(as_conf.jobs_data[self.section].get("NODES",as_conf.platforms_data.get(job_platform.name,{}).get("NODES","")))
-        self.hyperthreading = str(as_conf.jobs_data[self.section].get("HYPERTHREADING",as_conf.platforms_data.get(job_platform.name,{}).get("HYPERTHREADING",None)))
-        if int(self.tasks) <= 1 and int(job_platform.processors_per_node) > 1 and int(self.processors) > int(job_platform.processors_per_node):
-            self.tasks = job_platform.processors_per_node
-        self.memory = str(as_conf.jobs_data[self.section].get("MEMORY",as_conf.platforms_data.get(job_platform.name,{}).get("MEMORY","")))
-        self.memory_per_task = str(as_conf.jobs_data[self.section].get("MEMORY_PER_TASK",as_conf.platforms_data.get(job_platform.name,{}).get("MEMORY_PER_TASK","")))
-        # These are to activate serial platform if neccesary
-        self.queue = self.queue
-        self.partition = self.partition
-        self.wallclock = as_conf.jobs_data[self.section].get("WALLCLOCK",as_conf.platforms_data.get(self.platform_name,{}).get("MAX_WALLCLOCK",None))
-        if self.wallclock is None and job_platform.type not in ['ps',"local","PS","LOCAL"]:
+    def process_scheduler_parameters(self,as_conf,parameters,job_platform,chunk):
+        """
+        Parsers yaml data stored in the dictionary
+        and calculates the components of the heterogeneous job if any
+        :return:
+        """
+        hetsize = 0
+        if type(self.processors) is list:
+            hetsize = (len(self.processors))
+        else:
+            hetsize = 1
+        if type(self.nodes) is list:
+            hetsize = max(hetsize,len(self.nodes))
+        self.het['HETSIZE'] = hetsize
+        self.het['PROCESSORS'] = list()
+        self.het['NODES'] = list()
+        self.het['NUMTHREADS'] = self.het['THREADS'] = list()
+        self.het['TASKS'] = list()
+        self.het['MEMORY'] = list()
+        self.het['MEMORY_PER_TASK'] = list()
+        self.het['RESERVATION'] = list()
+        self.het['EXCLUSIVE'] = list()
+        self.het['HYPERTHREADING'] = list()
+        self.het['EXECUTABLE'] = list()
+        self.het['CURRENT_QUEUE'] = list()
+        self.het['PARTITION'] = list()
+        self.het['CURRENT_PROJ'] = list()
+        self.het['CUSTOM_DIRECTIVES'] = list()
+        if type(self.processors) is list:
+            self.het['PROCESSORS'] = list()
+            for x in self.processors:
+                self.het['PROCESSORS'].append(str(x))
+            # Sum processors, each element can be a str or int
+            self.processors = str(sum([int(x) for x in self.processors]))
+        else:
+            self.processors = str(self.processors)
+        if type(self.nodes) is list:
+            # add it to heap dict as it were originally
+            self.het['NODES'] = list()
+            for x in self.nodes:
+                self.het['NODES'].append(str(x))
+            # Sum nodes, each element can be a str or int
+            self.nodes = str(sum([int(x) for x in self.nodes]))
+        else:
+            self.nodes = str(self.nodes)
+        if type(self.threads) is list:
+            # Get the max threads, each element can be a str or int
+            self.het['NUMTHREADS'] = list()
+            if len(self.threads) == 1:
+                for x in range(self.het['HETSIZE']):
+                    self.het['NUMTHREADS'].append(self.threads)
+            else:
+                for x in self.threads:
+                    self.het['NUMTHREADS'].append(str(x))
+
+            self.threads = str(max([int(x) for x in self.threads]))
+
+        else:
+            self.threads = str(self.threads)
+        if type(self.tasks) is list:
+            # Get the max tasks, each element can be a str or int
+            self.het['TASKS'] = list()
+            if len(self.tasks) == 1:
+                if int(self.tasks) <= 1 and int(job_platform.processors_per_node) > 1 and int(
+                        self.processors) > int(job_platform.processors_per_node):
+                    self.tasks = job_platform.processors_per_node
+                for task in range(self.het['HETSIZE']):
+                    if int(self.tasks) <= 1 < int(job_platform.processors_per_node) and int(
+                            self.processors) > int(job_platform.processors_per_node):
+                        self.het['TASKS'].append(str(job_platform.processors_per_node))
+                    else:
+                        self.het['TASKS'].append(str(self.tasks))
+                self.tasks = str(max([int(x) for x in self.tasks]))
+            else:
+                for task in self.tasks:
+                    if int(task) <= 1 < int(job_platform.processors_per_node) and int(
+                            self.processors) > int(job_platform.processors_per_node):
+                        task = job_platform.processors_per_node
+                    self.het['TASKS'].append(str(task))
+        else:
+            if int(self.tasks) <= 1 < int(job_platform.processors_per_node) and int(
+                    self.processors) > int(job_platform.processors_per_node):
+                self.tasks = job_platform.processors_per_node
+            self.tasks = str(self.tasks)
+
+        if type(self.memory) is list:
+            # Get the max memory, each element can be a str or int
+            self.het['MEMORY'] = list()
+            if len(self.memory) == 1:
+                for x in range(self.het['HETSIZE']):
+                    self.het['MEMORY'].append(self.memory)
+            else:
+                for x in self.memory:
+                    self.het['MEMORY'].append(str(x))
+            self.memory = str(max([int(x) for x in self.memory]))
+        else:
+            self.memory = str(self.memory)
+        if type(self.memory_per_task) is list:
+            # Get the max memory per task, each element can be a str or int
+            self.het['MEMORY_PER_TASK'] = list()
+            if len(self.memory_per_task) == 1:
+                for x in range(self.het['HETSIZE']):
+                    self.het['MEMORY_PER_TASK'].append(self.memory_per_task)
+
+            else:
+                for x in self.memory_per_task:
+                    self.het['MEMORY_PER_TASK'].append(str(x))
+            self.memory_per_task = str(max([int(x) for x in self.memory_per_task]))
+
+        else:
+            self.memory_per_task = str(self.memory_per_task)
+        if type(self.reservation) is list:
+            # Get the reservation name, each element can be a str
+            self.het['RESERVATION'] = list()
+            if len(self.reservation) == 1:
+                for x in range(self.het['HETSIZE']):
+                    self.het['RESERVATION'].append(self.reservation)
+            else:
+                for x in self.reservation:
+                    self.het['RESERVATION'].append(str(x))
+            self.reservation = str(self.het['RESERVATION'][0])
+        else:
+            self.reservation = str(self.reservation)
+        if type(self.exclusive) is list:
+            # Get the exclusive, each element can be only be bool
+            self.het['EXCLUSIVE'] = list()
+            if len(self.exclusive) == 1:
+                for x in range(self.het['HETSIZE']):
+                    self.het['EXCLUSIVE'].append(self.exclusive)
+            else:
+                for x in self.exclusive:
+                    self.het['EXCLUSIVE'].append(x)
+            self.exclusive = self.het['EXCLUSIVE'][0]
+        else:
+            self.exclusive = self.exclusive
+        if type(self.hyperthreading) is list:
+            # Get the hyperthreading, each element can be only be bool
+            self.het['HYPERTHREADING'] = list()
+            if len(self.hyperthreading) == 1:
+                for x in range(self.het['HETSIZE']):
+                    self.het['HYPERTHREADING'].append(self.hyperthreading)
+            else:
+                for x in self.hyperthreading:
+                    self.het['HYPERTHREADING'].append(x)
+            self.exclusive = self.het['HYPERTHREADING'][0]
+        else:
+            self.hyperthreading = self.hyperthreading
+        if type(self.executable) is list:
+            # Get the executable, each element can be only be bool
+            self.het['EXECUTABLE'] = list()
+            if len(self.executable) == 1:
+                for x in range(self.het['HETSIZE']):
+                    self.het['EXECUTABLE'].append(self.executable)
+            else:
+                for x in self.executable:
+                    self.het['EXECUTABLE'].append(x)
+            self.executable = str(self.het['EXECUTABLE'][0])
+        else:
+            self.executable = self.executable
+        if type(self.queue) is list:
+            # Get the queue, each element can be only be bool
+            self.het['CURRENT_QUEUE'] = list()
+            if len(self.queue) == 1:
+                for x in range(self.het['HETSIZE']):
+                    self.het['CURRENT_QUEUE'].append(self.queue)
+            else:
+                for x in self.queue:
+                    self.het['CURRENT_QUEUE'].append(x)
+            self.queue = self.het['CURRENT_QUEUE'][0]
+        else:
+            self.queue = self.queue
+        if type(self.partition) is list:
+            # Get the partition, each element can be only be bool
+            self.het['PARTITION'] = list()
+            if len(self.partition) == 1:
+                for x in range(self.het['HETSIZE']):
+                    self.het['PARTITION'].append(self.partition)
+            else:
+                for x in self.partition:
+                    self.het['PARTITION'].append(x)
+            self.partition = self.het['PARTITION'][0]
+        else:
+            self.partition = self.partition
+
+        self.het['CUSTOM_DIRECTIVES'] = list()
+        if type(self.custom_directives) is list:
+            self.custom_directives = json.dumps(self.custom_directives)
+        self.custom_directives = self.custom_directives.replace("\'", "\"").strip("[]").strip(", ")
+        if self.custom_directives == '':
+            if job_platform.custom_directives is None:
+                job_platform.custom_directives = ''
+            if type(job_platform.custom_directives) is list:
+                self.custom_directives = json.dumps(job_platform.custom_directives)
+                self.custom_directives = self.custom_directives.replace("\'", "\"").strip("[]").strip(", ")
+            else:
+                self.custom_directives = job_platform.custom_directives.replace("\'", "\"").strip("[]").strip(", ")
+        if self.custom_directives != '':
+            if self.custom_directives[0] != "\"":
+                self.custom_directives = "\"" + self.custom_directives
+            if self.custom_directives[-1] != "\"":
+                self.custom_directives = self.custom_directives + "\""
+            self.custom_directives = "[" + self.custom_directives + "]"
+            custom_directives = self.custom_directives.split("],")
+            if len(custom_directives) > 1:
+                for custom_directive in custom_directives:
+                    if custom_directive[-1] != "]":
+                        custom_directive = custom_directive + "]"
+                    self.het['CUSTOM_DIRECTIVES'].append(json.loads(custom_directive))
+                self.custom_directives = self.het['CUSTOM_DIRECTIVES'][0]
+            else:
+                self.custom_directives = json.loads(self.custom_directives)
+            if len(self.het['CUSTOM_DIRECTIVES']) < self.het['HETSIZE']:
+                for x in range(self.het['HETSIZE'] - len(self.het['CUSTOM_DIRECTIVES'])):
+                    self.het['CUSTOM_DIRECTIVES'].append(self.custom_directives )
+        else:
+            self.custom_directives = []
+
+            for x in range(self.het['HETSIZE']):
+                self.het['CUSTOM_DIRECTIVES'].append(self.custom_directives)
+        # Ignore the heterogeneous parameters if the cores or nodes are no specefied as a list
+        if self.het['HETSIZE'] == 1:
+            self.het = dict()
+        if self.wallclock is None and job_platform.type not in ['ps', "local", "PS", "LOCAL"]:
             self.wallclock = "01:59"
-        elif self.wallclock is None and job_platform.type in ['ps','local',"PS","LOCAL"]:
+        elif self.wallclock is None and job_platform.type in ['ps', 'local', "PS", "LOCAL"]:
             self.wallclock = "00:00"
         # Increasing according to chunk
         self.wallclock = increase_wallclock_by_chunk(
             self.wallclock, self.wchunkinc, chunk)
+
+    def update_platform_associated_parameters(self,as_conf, parameters, job_platform, chunk):
+        self.ec_queue = str(as_conf.jobs_data[self.section].get("EC_QUEUE", as_conf.platforms_data.get(job_platform.name,{}).get("EC_QUEUE","")))
+
+        self.executable = as_conf.jobs_data[self.section].get("EXECUTABLE", as_conf.platforms_data.get(job_platform.name,{}).get("EXECUTABLE",""))
+        self.total_jobs = as_conf.jobs_data[self.section].get("TOTALJOBS", job_platform.total_jobs)
+        self.max_waiting_jobs = as_conf.jobs_data[self.section].get("MAXWAITINGJOBS", job_platform.max_waiting_jobs)
+        self.processors = as_conf.jobs_data[self.section].get("PROCESSORS",as_conf.platforms_data.get(job_platform.name,{}).get("PROCESSORS","1"))
+        self.nodes = as_conf.jobs_data[self.section].get("NODES",as_conf.platforms_data.get(job_platform.name,{}).get("NODES",""))
+        self.exclusive = as_conf.jobs_data[self.section].get("EXCLUSIVE",as_conf.platforms_data.get(job_platform.name,{}).get("EXCLUSIVE",False))
+        self.threads = as_conf.jobs_data[self.section].get("THREADS",as_conf.platforms_data.get(job_platform.name,{}).get("THREADS","1"))
+        self.tasks = as_conf.jobs_data[self.section].get("TASKS",as_conf.platforms_data.get(job_platform.name,{}).get("TASKS","1"))
+        self.reservation = as_conf.jobs_data[self.section].get("RESERVATION",as_conf.platforms_data.get(job_platform.name, {}).get("RESERVATION", ""))
+        self.hyperthreading = as_conf.jobs_data[self.section].get("HYPERTHREADING",as_conf.platforms_data.get(job_platform.name,{}).get("HYPERTHREADING","none"))
+        self.queue = self.queue
+        self.partition = self.partition
         self.scratch_free_space = int(as_conf.jobs_data[self.section].get("SCRATCH_FREE_SPACE",as_conf.platforms_data.get(job_platform.name,{}).get("SCRATCH_FREE_SPACE",0)))
-        try:
-            self.custom_directives = as_conf.jobs_data[self.section].get("CUSTOM_DIRECTIVES","")
-            if type(self.custom_directives) is list:
-                self.custom_directives = json.dumps(self.custom_directives)
-            self.custom_directives = self.custom_directives.replace("\'", "\"").strip("[]").strip(", ")
-            if self.custom_directives == '':
-                if job_platform.custom_directives is None:
-                    job_platform.custom_directives = ''
-                self.custom_directives = job_platform.custom_directives.replace("\'", "\"").strip("[]").strip(", ")
-            if self.custom_directives != '':
-                if self.custom_directives[0] != "\"":
-                    self.custom_directives = "\""+self.custom_directives
-                if self.custom_directives[-1] != "\"":
-                    self.custom_directives = self.custom_directives+"\""
-                self.custom_directives = "[" + self.custom_directives + "]"
-                self.custom_directives = json.loads(self.custom_directives)
-            else:
-                self.custom_directives = []
-        except BaseException as e:
-            raise AutosubmitCritical(f"Error in CUSTOM_DIRECTIVES({self.custom_directives}) for job {self.section}",7014,str(e))
+
+        self.memory = as_conf.jobs_data[self.section].get("MEMORY",as_conf.platforms_data.get(job_platform.name,{}).get("MEMORY",""))
+        self.memory_per_task = as_conf.jobs_data[self.section].get("MEMORY_PER_TASK",as_conf.platforms_data.get(job_platform.name,{}).get("MEMORY_PER_TASK",""))
+        self.wallclock = as_conf.jobs_data[self.section].get("WALLCLOCK",
+                                                             as_conf.platforms_data.get(self.platform_name, {}).get(
+                                                                 "MAX_WALLCLOCK", None))
+        self.custom_directives = as_conf.jobs_data[self.section].get("CUSTOM_DIRECTIVES", "")
+
+        self.process_scheduler_parameters(as_conf,parameters,job_platform,chunk)
+        if self.het.get('HETSIZE',1) > 1:
+            for name, components_value in self.het.items():
+                if name != "HETSIZE":
+                    for indx,component in enumerate(components_value):
+                        if indx == 0:
+                            parameters[name.upper()] = component
+                        parameters[f'{name.upper()}_{indx}'] = component
+
         parameters['NUMPROC'] = self.processors
         parameters['PROCESSORS'] = self.processors
         parameters['MEMORY'] = self.memory
@@ -1335,6 +1592,9 @@ class Job(object):
         parameters['CUSTOM_DIRECTIVES'] = self.custom_directives
         parameters['HYPERTHREADING'] = self.hyperthreading
         parameters['CURRENT_QUEUE'] = self.queue
+        parameters['RESERVATION'] = self.reservation
+        parameters['CURRENT_EC_QUEUE'] = self.ec_queue
+
         return parameters
 
     def update_wrapper_parameters(self,as_conf, parameters):
@@ -1362,6 +1622,9 @@ class Job(object):
         return parameters
 
     def update_job_parameters(self,as_conf, parameters):
+
+        if self.checkpoint: # To activate placeholder sustitution per <empty> in the template
+            parameters["AS_CHECKPOINT"] = self.checkpoint
         parameters['JOBNAME'] = self.name
         parameters['FAIL_COUNT'] = str(self.fail_count)
         parameters['SDATE'] = self.sdate
@@ -1441,6 +1704,8 @@ class Job(object):
         parameters['EXPORT'] = self.export
         parameters['PROJECT_TYPE'] = as_conf.get_project_type()
         self.wchunkinc = as_conf.get_wchunkinc(self.section)
+        for key,value in as_conf.jobs_data[self.section].items():
+            parameters["CURRENT_"+key.upper()] = value
         return parameters
 
     def update_parameters(self, as_conf, parameters,
@@ -1468,7 +1733,9 @@ class Job(object):
         parameters = self.update_platform_parameters(as_conf, parameters, self._platform)
         parameters = self.update_platform_associated_parameters(as_conf, parameters, self._platform, parameters['CHUNK'])
         parameters = self.update_wrapper_parameters(as_conf, parameters)
-        parameters = as_conf.substitute_dynamic_variables(parameters,25)
+        parameters = as_conf.normalize_parameters_keys(parameters,default_parameters)
+
+        parameters = as_conf.substitute_dynamic_variables(parameters,80)
         parameters = as_conf.normalize_parameters_keys(parameters,default_parameters)
         # For some reason, there is return but the assignee is also necessary
         self.parameters = parameters
@@ -1608,7 +1875,6 @@ class Job(object):
         template_content,additional_templates = self.update_content(as_conf)
         #enumerate and get value
 
-        #todo revise pipeline that check this, additional templates value is not Mocked well
         for additional_file, additional_template_content in zip(self.additional_files, additional_templates):
             for key, value in parameters.items():
                 additional_template_content = re.sub('%(?<!%%)' + key + '%(?!%%)', str(parameters[key]), additional_template_content,flags=re.I)
@@ -1625,8 +1891,14 @@ class Job(object):
             except:
                 pass
         for key, value in parameters.items():
+            # parameters[key] can have '\\' characters that are interpreted as escape characters
+            # by re.sub. To avoid this, we use re.escape
+            if "*\\" in str(parameters[key]):
+                final_sub = re.escape(str(parameters[key]))
+            else:
+                final_sub = str(parameters[key])
             template_content = re.sub(
-                '%(?<!%%)' + key + '%(?!%%)', str(parameters[key]), template_content,flags=re.I)
+                '%(?<!%%)' + key + '%(?!%%)', final_sub, template_content,flags=re.I)
         for variable in self.undefined_variables:
             template_content = re.sub(
                 '%(?<!%%)' + variable + '%(?!%%)', '', template_content,flags=re.I)
@@ -1683,7 +1955,6 @@ class Job(object):
                 variables_tmp = [variable for variable in variables_tmp if variable not in self.default_parameters]
                 variables.extend(variables_tmp)
             out = set(parameters).issuperset(set(variables))
-
             # Check if the variables in the templates are defined in the configurations
             if not out:
                 self.undefined_variables = set(variables) - set(parameters)

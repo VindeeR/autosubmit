@@ -224,6 +224,48 @@ class Monitor:
         Log.debug('Graph definition finalized')
         return graph
 
+    def _check_final_status(self, job, child):
+        # order of self._table
+        # the dictionary is composed by:
+        label = None
+        if len(child.edge_info) > 0:
+            if job.name in child.edge_info.get("FAILED",{}):
+                color = self._table.get(Status.FAILED,None)
+                label = child.edge_info["FAILED"].get(job.name,0)[1]
+            elif job.name in child.edge_info.get("RUNNING",{}):
+                color =  self._table.get(Status.RUNNING,None)
+                label = child.edge_info["RUNNING"].get(job.name,0)[1]
+            elif job.name in child.edge_info.get("QUEUING",{}):
+                color =  self._table.get(Status.QUEUING,None)
+            elif job.name in child.edge_info.get("HELD",{}):
+                color =  self._table.get(Status.HELD,None)
+            elif job.name in child.edge_info.get("DELAYED",{}):
+                color =  self._table.get(Status.DELAYED,None)
+            elif job.name in child.edge_info.get("UNKNOWN",{}):
+                color =  self._table.get(Status.UNKNOWN,None)
+            elif job.name in child.edge_info.get("SUSPENDED",{}):
+                color =  self._table.get(Status.SUSPENDED,None)
+            elif job.name in child.edge_info.get("SKIPPED",{}):
+                color =  self._table.get(Status.SKIPPED,None)
+            elif job.name in child.edge_info.get("WAITING",{}):
+                color =  self._table.get(Status.WAITING,None)
+            elif job.name in child.edge_info.get("READY",{}):
+                color =  self._table.get(Status.READY,None)
+            elif job.name in child.edge_info.get("SUBMITTED",{}):
+                color =  self._table.get(Status.SUBMITTED,None)
+            else:
+                return None, None
+            if label and label == 0:
+                label = None
+            return color,label
+        else:
+            return None, None
+
+
+
+
+
+
     def _add_children(self, job, exp, node_job, groups, hide_groups):
         if job in self.nodes_plotted:
             return
@@ -232,20 +274,29 @@ class Monitor:
             for child in sorted(job.children, key=lambda k: k.name):
                 node_child, skip = self._check_node_exists(
                     exp, child, groups, hide_groups)
+                color, label = self._check_final_status(job, child)
                 if len(node_child) == 0 and not skip:
                     node_child = self._create_node(child, groups, hide_groups)
                     if node_child:
                         exp.add_node(node_child)
-                        if job.name in child.edge_info and child.edge_info[job.name].get('optional', False):
-                            exp.add_edge(pydotplus.Edge(node_job, node_child,style="dashed"))
+                        if color:
+                            # label = None doesn't disable label, instead it sets it to nothing and complain about invalid syntax
+                            if label:
+                                exp.add_edge(pydotplus.Edge(node_job, node_child,style="dashed",color=color,label=label))
+                            else:
+                                exp.add_edge(pydotplus.Edge(node_job, node_child,style="dashed",color=color))
                         else:
                             exp.add_edge(pydotplus.Edge(node_job, node_child))
                     else:
                         skip = True
                 elif not skip:
                     node_child = node_child[0]
-                    if job.name in child.edge_info and child.edge_info[job.name].get('optional', False):
-                        exp.add_edge(pydotplus.Edge(node_job, node_child,style="dashed"))
+                    if color:
+                        # label = None doesn't disable label, instead it sets it to nothing and complain about invalid syntax
+                        if label:
+                            exp.add_edge(pydotplus.Edge(node_job, node_child, style="dashed", color=color, label=label))
+                        else:
+                            exp.add_edge(pydotplus.Edge(node_job, node_child, style="dashed", color=color))
                     else:
                         exp.add_edge(pydotplus.Edge(node_job, node_child))
                     skip = True
@@ -467,7 +518,7 @@ class Monitor:
             Log.info("You don't have enough permissions to the experiment's ({}) folder. The output file will be created in the default location: {}".format(expid, BasicConfig.DEFAULT_OUTPUT_DIR))
             HUtils.create_path_if_not_exists_group_permission(BasicConfig.DEFAULT_OUTPUT_DIR)                
 
-        create_bar_diagram(expid, joblist, self.get_general_stats(expid), output_complete_path, period_ini, period_fi, queue_time_fixes)
+        show = create_bar_diagram(expid, joblist, self.get_general_stats(expid), output_complete_path, period_ini, period_fi, queue_time_fixes)
         Log.result('Stats created at {0}', output_complete_path)
         if show:
             try:

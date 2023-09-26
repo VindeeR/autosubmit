@@ -187,6 +187,20 @@ This functionality can be used together with other options supplied by the `run`
 
 The `-sa` command has a long version `--start_after`.
 
+.. _run_profiling:
+
+How to profile Autosubmit while running an experiment
+-----------------------------------------------------
+
+Autosubmit offers the possibility to profile an experiment execution. To enable the profiler, just 
+add the ``--profile`` (or ``-p``) flag to your ``autosubmit run`` command, as in the following example:
+
+.. code-block:: bash
+
+    autosubmit run --profile EXPID
+
+.. include:: ../../_include/profiler_common.rst
+
 .. _run_modes:
 
 How to prepare an experiment to run in two independent job_list. (Priority jobs, Two-step-run) (OLD METHOD)

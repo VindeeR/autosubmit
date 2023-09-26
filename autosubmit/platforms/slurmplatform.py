@@ -18,21 +18,18 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import locale
 import os
-from contextlib import suppress
-from time import sleep
-from time import mktime
-from time import time
 from datetime import datetime
+from time import mktime
+from time import sleep
+from time import time
 from typing import List, Union
-
 from xml.dom.minidom import parseString
 
 from autosubmit.job.job_common import Status, parse_output_number
-from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.headers.slurm_header import SlurmHeader
+from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.wrappers.wrapper_factory import SlurmWrapperFactory
 from log.log import AutosubmitCritical, AutosubmitError, Log
-
 
 class SlurmPlatform(ParamikoPlatform):
     """
@@ -88,8 +85,8 @@ class SlurmPlatform(ParamikoPlatform):
                 try:
                     jobs_id = self.submit_Script(hold=hold)
                 except AutosubmitError as e:
-                    Log.error(f'TRACE:{e.trace}\n{e.message}')
                     jobnames = [job.name for job in valid_packages_to_submit[0].jobs]
+                    Log.error(f'TRACE:{e.trace}\n{e.message} JOBS:{jobnames}')
                     for jobname in jobnames:
                         jobid = self.get_jobid_by_jobname(jobname)
                         #cancel bad submitted job if jobid is encountered
@@ -486,7 +483,7 @@ class SlurmPlatform(ParamikoPlatform):
         status = ""
         try:
             status = [x.split()[1] for x in output.splitlines()
-                      if x.split()[0] == str(job_id)]
+                      if x.split()[0][:len(job_id)] == str(job_id)]
         except BaseException as e:
             pass
         if len(status) == 0:
@@ -547,7 +544,7 @@ class SlurmPlatform(ParamikoPlatform):
         return 'sacct -n -X --jobs {1} -o "State"'.format(self.host, job_id)
 
     def get_checkAlljobs_cmd(self, jobs_id):
-        return "sacct -n -X --jobs  {1} -o jobid,State".format(self.host, jobs_id)
+        return "sacct -n -X --jobs {1} -o jobid,State".format(self.host, jobs_id)
     def get_estimated_queue_time_cmd(self, job_id):
         return f"scontrol -o show JobId {job_id} | grep -Po '(?<=EligibleTime=)[0-9-:T]*'"
 
@@ -601,40 +598,9 @@ class SlurmPlatform(ParamikoPlatform):
                     job.new_status = Status.QUEUING  # If it was HELD and was released, it should be QUEUING next.
                 else:
                     job.new_status = Status.HELD
-    def wrapper_header(self,**kwargs):
-        wr_header = f"""
-###############################################################################
-#              {kwargs["name"].split("_")[0]+"_Wrapper"}
-###############################################################################
-#
-#SBATCH -J {kwargs["name"]}
-{kwargs["queue"]}
-{kwargs["partition"]}
-{kwargs["dependency"]}
-#SBATCH -A {kwargs["project"]}
-#SBATCH --output={kwargs["name"]}.out
-#SBATCH --error={kwargs["name"]}.err
-#SBATCH -t {kwargs["wallclock"]}:00
-{kwargs["threads"]}
-{kwargs["nodes"]}
-{kwargs["num_processors"]}
-{kwargs["tasks"]}
-{kwargs["exclusive"]}
-{kwargs["custom_directives"]}
 
-#
-###############################################################################
-"""
-        if kwargs["method"] == 'srun':
-            language = kwargs["executable"]
-            if language is None or len(language) == 0:
-                language = "#!/bin/bash"
-            return language + wr_header
-        else:
-            language = kwargs["executable"]
-            if language is None or len(language) == 0 or "bash" in language:
-                language = "#!/usr/bin/env python3"
-            return language + wr_header
+    def wrapper_header(self,**kwargs):
+        return self._header.wrapper_header(**kwargs)
 
     @staticmethod
     def allocated_nodes():

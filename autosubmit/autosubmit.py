@@ -14,47 +14,49 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
+import collections
+import locale
+import platform
+import requests
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import threading
 import traceback
-import requests
-import collections
-import platform
-from .job.job_packager import JobPackager
-from .platforms.paramiko_submitter import ParamikoSubmitter
-from .platforms.platform import Platform
-from .notifications.notifier import Notifier
-from .notifications.mail_notifier import MailNotifier
 from bscearth.utils.date import date2str
-from pathlib import Path
-from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
-from ruamel.yaml import YAML
 from configparser import ConfigParser
+from distutils.util import strtobool
+from pathlib import Path
+from ruamel.yaml import YAML
+from typing import Dict, Set, Tuple, Union
 
-from .monitor.monitor import Monitor
-from .database.db_common import get_autosubmit_version, check_experiment_exists
+from autosubmit.database.db_common import update_experiment_descrip_version
+from autosubmit.helpers.parameters import PARAMETERS
+from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmitconfigparser.config.configcommon import AutosubmitConfig
+from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
+from log.log import Log, AutosubmitError, AutosubmitCritical
+from .database.db_common import create_db
 from .database.db_common import delete_experiment, get_experiment_descrip
+from .database.db_common import get_autosubmit_version, check_experiment_exists
 from .database.db_structure import get_structure
 from .experiment.experiment_common import copy_experiment
 from .experiment.experiment_common import new_experiment
-from .database.db_common import create_db
-from .job.job_grouping import JobGrouping
-from .job.job_list_persistence import JobListPersistencePkl
-from .job.job_list_persistence import JobListPersistenceDb
-from .job.job_package_persistence import JobPackagePersistence
-from .job.job_list import JobList
-from .job.job_utils import SubJob, SubJobManager
-from autosubmit.helpers.parameters import PARAMETERS
 from .git.autosubmit_git import AutosubmitGit
 from .job.job_common import Status
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-import locale
-from distutils.util import strtobool
-from log.log import Log, AutosubmitError, AutosubmitCritical
-from typing import Dict, Set, Tuple, Union
-from autosubmit.database.db_common import update_experiment_descrip_version
+from .job.job_grouping import JobGrouping
+from .job.job_list import JobList
+from .job.job_list_persistence import JobListPersistenceDb
+from .job.job_list_persistence import JobListPersistencePkl
+from .job.job_package_persistence import JobPackagePersistence
+from .job.job_packager import JobPackager
+from .job.job_utils import SubJob, SubJobManager
+from .profiler.profiler import Profiler
+from .monitor.monitor import Monitor
+from .notifications.mail_notifier import MailNotifier
+from .notifications.notifier import Notifier
+from .platforms.paramiko_submitter import ParamikoSubmitter
+from .platforms.platform import Platform
+
 dialog = None
 from time import sleep
 import argparse
@@ -73,7 +75,7 @@ import signal
 import datetime
 
 import portalocker
-from pkg_resources import require, resource_listdir, resource_exists, resource_string, resource_filename
+from pkg_resources import require, resource_listdir, resource_string, resource_filename
 from collections import defaultdict
 from pyparsing import nestedExpr
 from .history.experiment_status import ExperimentStatus
@@ -189,6 +191,8 @@ class Autosubmit:
                                    help='Sets a experiment expid which completion will trigger the start of this experiment.')
             subparser.add_argument('-rom', '--run_only_members', required=False,
                                    help='Sets members allowed on this run.')
+            subparser.add_argument('-p', '--profile', action='store_true', default=False, required=False,
+                                   help='Prints performance parameters of the execution of this command.')
 
 
             # Expid
@@ -214,6 +218,8 @@ class Autosubmit:
                                    help='specifies the HPC to use for the experiment')
             subparser.add_argument('-d', '--description', type=str, required=True,
                                    help='sets a description for the experiment to store in the database.')
+            group.add_argument('-t', '--testcase', action='store_true',
+                               help='creates a new experiment with testcase experiment id')
 
             # Delete
             subparser = subparsers.add_parser(
@@ -273,6 +279,9 @@ class Autosubmit:
             #                        default=False, help='Shows Job List view in terminal')
             subparser.add_argument('-v', '--update_version', action='store_true',
                                    default=False, help='Update experiment version')
+            subparser.add_argument('-p', '--profile', action='store_true', default=False, required=False,
+                                   help='Prints performance parameters of the execution of this command.')
+            
             # Stats
             subparser = subparsers.add_parser(
                 'stats', description="plots statistics for specified experiment")
@@ -431,6 +440,8 @@ class Autosubmit:
                                    default=False, help='Generate possible wrapper in the current workflow')
             subparser.add_argument('-v', '--update_version', action='store_true',
                                    default=False, help='Update experiment version')
+            subparser.add_argument('-p', '--profile', action='store_true', default=False, required=False,
+                                   help='Prints performance parameters of the execution of this command.')
             # Configure
             subparser = subparsers.add_parser('configure', description="configure database and path for autosubmit. It "
                                                                        "can be done at machine, user or local level."
@@ -519,8 +530,11 @@ class Autosubmit:
             # Test Case
             subparser = subparsers.add_parser(
                 'testcase', description='create test case experiment')
-            subparser.add_argument(
+            group = subparser.add_mutually_exclusive_group()
+            group.add_argument(
                 '-y', '--copy', help='makes a copy of the specified experiment')
+            group.add_argument('-min', '--minimal_configuration', action='store_true',
+                               help='creates a new experiment with minimal configuration, usually combined with -repo')
             subparser.add_argument(
                 '-d', '--description', required=True, help='description of the test case')
             subparser.add_argument('-c', '--chunks', help='chunks to run')
@@ -528,8 +542,13 @@ class Autosubmit:
             subparser.add_argument('-s', '--stardate', help='stardate to run')
             subparser.add_argument(
                 '-H', '--HPC', required=True, help='HPC to run experiment on it')
-            subparser.add_argument(
-                '-b', '--branch', help='branch of git to run (or revision from subversion)')
+
+            subparser.add_argument('-repo', '--git_repo', type=str, default="", required=False,
+                                   help='sets a git repository for the experiment')
+            subparser.add_argument('-b', '--git_branch', type=str, default="", required=False,
+                                   help='sets a git branch for the experiment')
+            subparser.add_argument('-conf', '--git_as_conf', type=str, default="", required=False,help='sets the git path to as_conf')
+            subparser.add_argument('-local', '--use_local_minimal', required=False, action="store_true", help='uses local minimal file instead of git')
 
             # Database Fix
             subparser = subparsers.add_parser(
@@ -641,16 +660,16 @@ class Autosubmit:
             Autosubmit._init_logs(args, args.logconsole, args.logfile, expid)
 
         if args.command == 'run':
-            return Autosubmit.run_experiment(args.expid, args.notransitive,args.start_time,args.start_after, args.run_only_members)
+            return Autosubmit.run_experiment(args.expid, args.notransitive,args.start_time,args.start_after, args.run_only_members, args.profile)
         elif args.command == 'expid':
-            return Autosubmit.expid(args.description,args.HPC,args.copy, args.dummy,args.minimal_configuration,args.git_repo,args.git_branch,args.git_as_conf,args.operational,args.use_local_minimal) != ''
+            return Autosubmit.expid(args.description,args.HPC,args.copy, args.dummy,args.minimal_configuration,args.git_repo,args.git_branch,args.git_as_conf,args.operational,args.testcase,args.use_local_minimal) != ''
         elif args.command == 'delete':
             return Autosubmit.delete(args.expid, args.force)
         elif args.command == 'monitor':
             return Autosubmit.monitor(args.expid, args.output, args.list, args.filter_chunks, args.filter_status,
                                       args.filter_type, args.hide, args.text, args.group_by, args.expand,
                                       args.expand_status, args.hide_groups, args.notransitive, args.check_wrapper,
-                                      args.txt_logfiles, detail=False)
+                                      args.txt_logfiles, args.profile, detail=False)
         elif args.command == 'stats':
             return Autosubmit.statistics(args.expid, args.filter_type, args.filter_period, args.output, args.hide,
                                          args.notransitive)
@@ -674,7 +693,7 @@ class Autosubmit:
             return Autosubmit.migrate(args.expid, args.offer, args.pickup, args.onlyremote)
         elif args.command == 'create':
             return Autosubmit.create(args.expid, args.noplot, args.hide, args.output, args.group_by, args.expand,
-                                     args.expand_status, args.notransitive, args.check_wrapper, args.detail)
+                                     args.expand_status, args.notransitive, args.check_wrapper, args.detail, args.profile)
         elif args.command == 'configure':
             if not args.advanced or (args.advanced and dialog is None):
                 return Autosubmit.configure(args.advanced, args.databasepath, args.databasefilename,
@@ -691,8 +710,7 @@ class Autosubmit:
                                          args.group_by, args.expand, args.expand_status, args.notransitive,
                                          args.check_wrapper, args.detail)
         elif args.command == 'testcase':
-            return Autosubmit.testcase(args.copy, args.description, args.chunks, args.member, args.stardate,
-                                       args.HPC, args.branch)
+            return Autosubmit.testcase(args.description, args.chunks, args.member, args.stardate, args.HPC, args.copy,args.minimal_configuration,args.git_repo,args.git_branch,args.git_as_conf,args.use_local_minimal)
         elif args.command == 'test':
             return Autosubmit.test(args.expid, args.chunks, args.member, args.stardate, args.HPC, args.branch)
         elif args.command == 'refresh':
@@ -1056,21 +1074,21 @@ class Autosubmit:
         :return: None
         """
 
-        def add_comments_to_yaml(yaml_data, parameters, keys=None):
+        def _add_comments_to_yaml(yaml_data, parameters, keys=None):
             """A recursive generator that visits every leaf node and yields the flatten parameter."""
             if keys is None:
                 keys = []
             if isinstance(yaml_data, dict):
                 for key, value in yaml_data.items():
                     if isinstance(value, dict):
-                        add_comments_to_yaml(value, parameters, [*keys, key])
+                        _add_comments_to_yaml(value, parameters, [*keys, key])
                     else:
                         parameter_key = '.'.join([*keys, key]).upper()
                         if parameter_key in parameters:
                             comment = parameters[parameter_key]
                             yaml_data.yaml_set_comment_before_after_key(key, before=comment, indent=yaml_data.lc.col)
 
-        def recurse_into_parameters(parameters: Dict[str, Union[Dict, List, str]], keys=None) -> Tuple[str, str]:
+        def _recurse_into_parameters(parameters: Dict[str, Union[Dict, List, str]], keys=None) -> Tuple[str, str]:
             """Recurse into the ``PARAMETERS`` dictionary, and emits a dictionary.
 
             The key in the dictionary is the flattened parameter key/ID, and the value
@@ -1085,15 +1103,13 @@ class Autosubmit:
             if isinstance(parameters, dict):
                 for key, value in parameters.items():
                     if isinstance(value, dict):
-                        yield from recurse_into_parameters(value, [*keys, key])
+                        yield from _recurse_into_parameters(value, [*keys, key])
                     else:
                         key = key.upper()
-                        # Here's the reason why ``recurse_into_yaml`` and ``recurse_into_parameters``
-                        # are not one single ``recurse_into_dict`` function. The parameters have some
-                        # keys that contain ``${PARENT}.key`` as that is how they are displayed in
-                        # the Sphinx docs. So we need to detect it and handle it. p.s. We also know
-                        # the max-length of the parameters dict is 2! See the ``autosubmit.helpers.parameters``
-                        # module for more.
+                        # The parameters have some keys that contain ``${PARENT}.key`` as that is
+                        # how they are displayed in the Sphinx docs. So we need to detect it and
+                        # handle it. p.s. We also know the max-length of the parameters dict is 2!
+                        # See the ``autosubmit.helpers.parameters`` module for more.
                         if not key.startswith(f'{keys[0]}.'):
                             yield '.'.join([*keys, key]).upper(), value
                         else:
@@ -1102,23 +1118,29 @@ class Autosubmit:
         template_files = resource_listdir('autosubmitconfigparser.config', 'files')
         if parameters is None:
             parameters = PARAMETERS
-        parameter_comments = dict(recurse_into_parameters(parameters))
+        parameter_comments = dict(_recurse_into_parameters(parameters))
 
         for as_conf_file in template_files:
             origin = resource_filename('autosubmitconfigparser.config', str(Path('files', as_conf_file)))
             target = None
 
             if dummy:
+                # Create a ``dummy.yml`` file.
                 if as_conf_file.endswith('dummy.yml'):
                     file_name = f'{as_conf_file.split("-")[0]}_{exp_id}.yml'
                     target = Path(BasicConfig.LOCAL_ROOT_DIR, exp_id, 'conf', file_name)
             elif minimal_configuration:
-                if (not local and as_conf_file.endswith('git-minimal.yml')) or as_conf_file.endswith("local-minimal.yml"):
+                # Create a ``minimal.yml`` file.
+                #
+                # Here we have two minimal configuration files that we can copy, the local or the git files.
+                # The function knows whether it is a local through the ``local`` argument, and that defines
+                # which files we will copy (``local-minimal.yml`` if ``local``, ``git-minimal.yml`` otherwise.)
+                if (local and as_conf_file.endswith("local-minimal.yml")) or (not local and as_conf_file.endswith('git-minimal.yml')):
                     target = Path(BasicConfig.LOCAL_ROOT_DIR, exp_id, 'conf/minimal.yml')
-            else:
-                if not as_conf_file.endswith('dummy.yml') and not as_conf_file.endswith('minimal.yml'):
-                    file_name = f'{Path(as_conf_file).stem}_{exp_id}.yml'
-                    target = Path(BasicConfig.LOCAL_ROOT_DIR, exp_id, 'conf', file_name)
+            elif not as_conf_file.endswith('dummy.yml') and not as_conf_file.endswith('minimal.yml'):
+                # Create any other file that is not ``dummy.yml`` nor ``minimal.yml``.
+                file_name = f'{Path(as_conf_file).stem}_{exp_id}.yml'
+                target = Path(BasicConfig.LOCAL_ROOT_DIR, exp_id, 'conf', file_name)
 
             # Here we annotate the copied configuration with comments from the Python source code.
             # This means the YAML configuration files contain the exact same comments from our
@@ -1131,7 +1153,7 @@ class Autosubmit:
                 with open(origin, 'r') as input, open(target, 'w+') as output:
                     yaml = YAML(typ='rt')
                     yaml_data = yaml.load(input)
-                    add_comments_to_yaml(yaml_data, parameter_comments)
+                    _add_comments_to_yaml(yaml_data, parameter_comments)
                     yaml.dump(yaml_data, output)
 
     @staticmethod
@@ -1187,7 +1209,7 @@ class Autosubmit:
                     f.write(content)
 
     @staticmethod
-    def expid(description,hpc="", copy_id='', dummy=False,minimal_configuration=False, git_repo="",git_branch="",git_as_conf="",operational=False, use_local_minimal=False):
+    def expid(description, hpc="", copy_id='', dummy=False, minimal_configuration=False, git_repo="", git_branch="", git_as_conf="", operational=False,  testcase = False,use_local_minimal=False):
         """
         Creates a new experiment for given HPC
         description: description of the experiment
@@ -1222,10 +1244,10 @@ class Autosubmit:
                 if not os.path.exists(copy_id_folder):
                     raise AutosubmitCritical(
                         "Experiment {0} doesn't exists".format(copy_id), 7011)
-                exp_id = copy_experiment(copy_id, description, Autosubmit.autosubmit_version, False, operational)
+                exp_id = copy_experiment(copy_id, description, Autosubmit.autosubmit_version, testcase, operational)
             else:
                 # Create a new experiment from scratch
-                exp_id = new_experiment(description, Autosubmit.autosubmit_version, False, operational)
+                exp_id = new_experiment(description, Autosubmit.autosubmit_version, testcase, operational)
 
             if exp_id == '':
                 raise AutosubmitCritical("No expid", 7011)
@@ -1990,8 +2012,9 @@ class Autosubmit:
         Log.debug("Sleep: {0}", safetysleeptime)
         Log.debug("Number of retrials: {0}", default_retrials)
         return total_jobs, safetysleeptime, default_retrials, check_wrapper_jobs_sleeptime
+    
     @staticmethod
-    def run_experiment(expid, notransitive=False, start_time=None, start_after=None,run_only_members=None):
+    def run_experiment(expid, notransitive=False, start_time=None, start_after=None, run_only_members=None, profile=False):
         """
         Runs and experiment (submitting all the jobs properly and repeating its execution in case of failure).
         :param expid: the experiment id
@@ -1999,9 +2022,15 @@ class Autosubmit:
         :param start_time: the time at which the experiment should start
         :param start_after: the expid after which the experiment should start
         :param run_only_members: the members to run
+        :param profile: if True, the function will be profiled
         :return: None
 
         """
+        # Start profiling if the flag has been used
+        if profile:
+            profiler = Profiler(expid)
+            profiler.start()
+
         # Initialize common folders
         try:
             exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
@@ -2241,6 +2270,9 @@ class Autosubmit:
             raise
         except BaseException as e:
             raise AutosubmitCritical("This seems like a bug in the code, please contact AS developers", 7070, str(e))
+        finally:
+            if profile:
+                profiler.stop()
 
     @staticmethod
     def restore_platforms(platform_to_test, mail_notify=False, as_conf=None, expid=None):
@@ -2371,7 +2403,7 @@ class Autosubmit:
     @staticmethod
     def monitor(expid, file_format, lst, filter_chunks, filter_status, filter_section, hide, txt_only=False,
                 group_by=None, expand="", expand_status=list(), hide_groups=False, notransitive=False,
-                check_wrapper=False, txt_logfiles=False, detail=False):
+                check_wrapper=False, txt_logfiles=False, profile=False, detail=False):
         """
         Plots workflow graph for a given experiment with status of each job coded by node color.
         Plot is created in experiment's plot folder with name <expid>_<date>_<time>.<file_format>
@@ -2410,9 +2442,12 @@ class Autosubmit:
         :param detail: better text format representation but more expensive
         :type detail: bool
 
-
-
         """
+        # Start profiling if the flag has been used
+        if profile:
+            profiler = Profiler(expid)
+            profiler.start()
+
         try:
             exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
             Log.info("Getting job list...")
@@ -2431,6 +2466,10 @@ class Autosubmit:
         except BaseException as e:
             raise AutosubmitCritical("Error while checking the configuration files or loading the job_list", 7040,
                                      str(e))
+        finally:
+            if profile:
+                profiler.stop()
+
         try:
             jobs = []
             if not isinstance(job_list, type([])):
@@ -2489,6 +2528,9 @@ class Autosubmit:
                     jobs = job_list.get_job_list()
         except BaseException as e:
             raise AutosubmitCritical("Issues during the job_list generation. Maybe due I/O error", 7040, str(e))
+        finally:
+            if profile:
+                profiler.stop()
 
         referenced_jobs_to_remove = set()
         for job in jobs:
@@ -2540,6 +2582,10 @@ class Autosubmit:
                                                  "job_packages_" + expid).load()
         except BaseException as e:
             raise AutosubmitCritical("Issues during the wrapper loading, may be related to IO issues", 7040, str(e))
+        finally:
+            if profile:
+                profiler.stop()
+
         groups_dict = dict()
         try:
             if group_by:
@@ -2555,6 +2601,9 @@ class Autosubmit:
             raise AutosubmitCritical(
                 "Jobs can't be grouped, perhaps you're using an invalid format. Take a look into readthedocs", 7011,
                 str(e))
+        finally:
+            if profile:
+                profiler.stop()
 
         monitor_exp = Monitor()
         try:
@@ -2586,6 +2635,9 @@ class Autosubmit:
             raise AutosubmitCritical(
                 "An error has occurred while printing the workflow status. Check if you have X11 redirection and an img viewer correctly set",
                 7014, str(e))
+        finally:
+            if profile:
+                profiler.stop()
 
         return True
 
@@ -3408,7 +3460,7 @@ class Autosubmit:
                 if os.path.exists(template_file_path):
                     Log.info(
                         "Gathering the selected parameters (all keys are on upper_case)")
-                    template_file = open(template_file_path, 'rb')
+                    template_file = open(template_file_path, 'r')
                     template_content = template_file.read()
                     for key, value in parameters.items():
                         template_content = re.sub(
@@ -3426,7 +3478,7 @@ class Autosubmit:
                     report = '{0}_report_{1}.txt'.format(
                         expid, datetime.datetime.today().strftime('%Y%m%d-%H%M%S'))
                     open(os.path.join(tmp_path, report),
-                         'wb').write(template_content)
+                         'w').write(template_content)
                     os.chmod(os.path.join(tmp_path, report), 0o755)
                     template_file.close()
                     Log.result("Report {0} has been created on {1}".format(
@@ -4442,7 +4494,7 @@ class Autosubmit:
 
     @staticmethod
     def create(expid, noplot, hide, output='pdf', group_by=None, expand=list(), expand_status=list(),
-               notransitive=False, check_wrappers=False, detail=False):
+               notransitive=False, check_wrappers=False, detail=False, profile=False):
         """
         Creates job list for given experiment. Configuration files must be valid before executing this process.
 
@@ -4465,7 +4517,12 @@ class Autosubmit:
         :type hide: bool
         :param output: plot's file format. It can be pdf, png, ps or svg
         :type output: str
+
         """
+        # Start profiling if the flag has been used
+        if profile:
+            profiler = Profiler(expid)
+            profiler.start()
 
         # checking if there is a lock file to avoid multiple running on the same expid
         try:
@@ -4678,6 +4735,9 @@ class Autosubmit:
             raise AutosubmitCritical(e.message, e.code, e.trace)
         except BaseException as e:
             raise AutosubmitCritical(str(e), 7070)
+        finally:
+            if profile:
+                profiler.stop()
 
     @staticmethod
     def _copy_code(as_conf, expid, project_type, force):
@@ -5655,35 +5715,44 @@ class Autosubmit:
         return result
 
     @staticmethod
-    def testcase(copy_id, description, chunks=None, member=None, start_date=None, hpc=None, branch=None):
+    def testcase(description, chunks=None, member=None, start_date=None, hpc=None, copy_id=None, minimal_configuration=False, git_repo=None, git_branch=None, git_as_conf=None, use_local_minimal=False):
         """
-        Method to create a test case. It creates a new experiment whose id starts by 't'.
-
-
-        :param copy_id: experiment identifier
-        :type copy_id: str
-        :param description: test case experiment description
+        Method to conduct a test for a given experiment. It creates a new experiment for a given experiment with a
+        given number of chunks with a random start date and a random member to be run on a random HPC.
+        :param description: description of the experiment
         :type description: str
-        :param chunks: number of chunks to be run by the experiment. If None, it uses configured chunk(s).
+        :param chunks: number of chunks to be run by the experiment
         :type chunks: int
-        :param member: member to be used by the test. If None, it uses configured member(s).
+        :param member: member to be used by the test. If None, a random member will be chosen
         :type member: str
-        :param start_date: start date to be used by the test. If None, it uses configured start date(s).
+        :param start_date: start date of the experiment. If None, a random start date will be chosen
         :type start_date: str
-        :param hpc: HPC to be used by the test. If None, it uses configured HPC.
+        :param hpc: HPC to be used by the test. If None, a random HPC will be chosen
         :type hpc: str
-        :param branch: branch or revision to be used by the test. If None, it uses configured branch.
-        :type branch: str
-        :return: test case id
+        :param copy_id: copy id to be used by the test. If None, a random copy id will be chosen
+        :type copy_id: str
+        :param minimal_configuration: if True, the experiment will be run with a minimal configuration
+        :type minimal_configuration: bool
+        :param git_repo: git repository to be used by the test. If None, a random git repository will be chosen
+        :type git_repo: str
+        :param git_branch: git branch to be used by the test. If None, a random git branch will be chosen
+        :type git_branch: str
+        :param git_as_conf: git autosubmit configuration to be used by the test. If None, a random git autosubmit configuration will be chosen
+        :type git_as_conf: str
+        :param use_local_minimal: if True, the experiment will be run with a local minimal configuration
+        :type use_local_minimal: bool
+        :return: experiment identifier
         :rtype: str
         """
 
-        testcaseid = Autosubmit.expid(hpc, description, copy_id, False, True)
+
+
+        testcaseid = Autosubmit.expid(description, hpc, copy_id, False, minimal_configuration, git_repo, git_branch, git_as_conf, use_local_minimal=use_local_minimal, testcase=True)
         if testcaseid == '':
             return False
-
-        Autosubmit._change_conf(
-            testcaseid, hpc, start_date, member, chunks, branch, False)
+        # Disabled for now
+        # Autosubmit._change_conf(
+        #     testcaseid, hpc, start_date, member, chunks, None, False)
 
         return testcaseid
 

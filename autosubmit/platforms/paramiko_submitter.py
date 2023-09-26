@@ -179,7 +179,7 @@ class ParamikoSubmitter(Submitter):
             else:
                 host = platform_data[section].get('HOST', "")
 
-            remote_platform.host = host
+            remote_platform.host = host.strip(" ")
             # Retrieve more configurations settings and save them in the object
             remote_platform.max_wallclock = platform_data[section].get('MAX_WALLCLOCK',"2:00")
             remote_platform.max_processors = platform_data[section].get('MAX_PROCESSORS',asconf.get_max_processors())
@@ -206,8 +206,7 @@ class ParamikoSubmitter(Submitter):
             remote_platform.processors_per_node = platform_data[section].get('PROCESSORS_PER_NODE',"1")
             remote_platform.custom_directives = platform_data[section].get('CUSTOM_DIRECTIVES',"")
             if len(remote_platform.custom_directives) > 0:
-                Log.debug("Custom directives from platform.conf: {0}".format(
-                    remote_platform.custom_directives))
+                Log.debug(f'Custom directives for {section}: {remote_platform.custom_directives}')
             remote_platform.scratch_free_space = str(platform_data[section].get('SCRATCH_FREE_SPACE', False)).lower()
             try:
                 remote_platform.root_dir = os.path.join(remote_platform.scratch, remote_platform.project,remote_platform.user, remote_platform.expid)

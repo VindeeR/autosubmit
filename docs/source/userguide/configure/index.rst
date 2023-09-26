@@ -79,7 +79,7 @@ identifier and add this text:s
     new_job:
         FILE: <new_job_template>
 
-This will create a new job named "new_job" that will be executed once at the default platform. This job will user the
+This will create a new job named "new_job" that will be executed once at the default platform. This job will use the
 template located at <new_job_template> (path is relative to project folder).
 
 This is the minimum job definition and usually is not enough. You usually will need to add some others parameters:
@@ -119,7 +119,7 @@ To do this use:
 
 * DELAY_RETRY_TIME: Allows to put a delay between retries. Triggered when a job fails. If not specified, Autosubmit will retry the job as soon as possible. Accepted formats are: plain number (there will be a constant delay between retrials, of as many seconds as specified), plus (+) sign followed by a number (the delay will steadily increase by the addition of these number of seconds), or multiplication (*) sign follows by a number (the delay after n retries will be the number multiplied by 10*n). Having this in mind, the ideal scenario is to use +(number) or plain(number) in case that the HPC has little issues or the experiment will run for a little time. Otherwise, is better to use the \*(number) approach.
 
-.. code-block:: ini
+.. code-block:: yaml
 
     #DELAY_RETRY_TIME: 11
     #DELAY_RETRY_TIME: +11 # will wait 11 + number specified
@@ -146,6 +146,36 @@ There are also other, less used features that you can use:
 * EXECUTABLE: Allows to wrap a job for be launched with a set of env variables.
 
 * QUEUE: queue to add the job to. If not specified, uses PLATFORM default.
+
+How to add a new heterogeneous job (hetjob)
+-------------------------------------------
+
+A hetjob, is a job in which each component has virtually all job options available including partition, account and QOS (Quality Of Service).For example, part of a job might require four cores and 4 GB for each of 128 tasks while another part of the job would require 16 GB of memory and one CPU.
+
+This feature is only available for SLURM platforms. And it is automatically enabled when the processors or nodes paramater is a yaml list
+
+To add a new hetjob, open the <experiments_directory>/cxxx/conf/jobs_cxxx.yml file where cxxx is the experiment
+
+.. code-block:: yaml
+    JOBS:
+        new_hetjob:
+            FILE: <new_job_template>
+            PROCESSORS: # Determines the amount of components that will be created
+                - 4
+                - 1
+            MEMORY: # Determines the amount of memory that will be used by each component
+                - 4096
+                - 16384
+            WALLCLOCK: 00:30
+            PLATFORM: <platform_name> # Determines the platform where the job will be executed
+            PARTITION: # Determines the partition where the job will be executed
+                - <partition_name>
+                - <partition_name>
+            TASKS: 128 # Determines the amount of tasks that will be used by each component
+
+This will create a new job named "new_hetjob" with two components that will be executed once.
+
+
 
 How to configure email notifications
 ------------------------------------

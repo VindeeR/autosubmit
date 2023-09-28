@@ -77,7 +77,7 @@ class DicJobs:
         :return: dict with the changes
         :rtype: bool
         """
-        self.changes[current_section] = self.as_conf.detailed_deep_diff(self.as_conf.experiment_data["JOBS"].get(current_section,{}),self.as_conf.last_experiment_data["JOBS"].get(current_section,{}))
+        self.changes[current_section] = self.as_conf.detailed_deep_diff(self.as_conf.experiment_data["JOBS"].get(current_section,{}),self.as_conf.last_experiment_data.get("JOBS",{}).get(current_section,{}))
         # Only dependencies is relevant at this step, the rest is lookup by job name and if it inside the stored list
         if "DEPENDENCIES" not in self.changes[current_section]:
             del self.changes[current_section]
@@ -88,7 +88,7 @@ class DicJobs:
         :return:
         """
 
-        self.changes = self.as_conf.detailed_deep_diff(self.experiment_data["EXPERIMENT"],self.as_conf.last_experiment_data["EXPERIMENT"])
+        self.changes = self.as_conf.detailed_deep_diff(self.experiment_data.get("EXPERIMENT",{}),self.as_conf.last_experiment_data.get("EXPERIMENT",{}))
     def read_section(self, section, priority, default_job_type):
         """
         Read a section from jobs conf and creates all jobs for it
@@ -240,6 +240,22 @@ class DicJobs:
                 self.build_job(section, priority, date, member, chunk, default_job_type, section_data,current_split)
                 current_split += 1
 
+    # def parse_1_to_1_splits(self, jobs_list, split_filter, child):
+    #     associative_list = {}
+    #     if not child.splits:
+    #         child_splits = 0
+    #     else:
+    #         child_splits = int(child.splits)
+    #     for parent in jobs_list:
+    #         if not parent.splits:
+    #             parent_splits = 0
+    #         else:
+    #             parent_splits = int(parent.splits)
+    #         splits = max(child_splits, parent_splits)
+    #         if splits > 0:
+    #             associative_list["splits"] = [str(split) for split in range(1, int(splits) + 1)]
+    #         else:
+    #             associative_list["splits"] = None
     def get_jobs_filtered(self,section ,job, filters_to, natural_date, natural_member ,natural_chunk ):
         #  datetime.strptime("20020201", "%Y%m%d")
         final_jobs_list = []
@@ -305,10 +321,15 @@ class DicJobs:
             final_jobs_list += jobs
         if len(final_jobs_list) > 0:
             if filters_to.get("SPLITS_TO", None):
+                ## APPLY FILTERS THERE?
                 if "none" in filters_to['SPLITS_TO'].lower():
                     final_jobs_list = [f_job for f_job in final_jobs_list if (f_job.split is None or f_job.split == -1 or f_job.split == 0) and f_job.name != job.name]
                 elif "all" in filters_to['SPLITS_TO'].lower():
                     final_jobs_list = final_jobs_list
+                elif "*" in filters_to['SPLITS_TO'].lower():
+                    # to  calculate in apply_filters
+                    final_jobs_list = final_jobs_list
+                    #final_jobs_list = self.parse_1_to_1_splits(final_jobs_list, filters_to['SPLITS_TO'],job)
                 else:
                     final_jobs_list = [f_job for f_job in final_jobs_list if (f_job.split is None or f_job.split == -1 or f_job.split == 0 or str(f_job.split) in filters_to['SPLITS_TO'].split(',')) and f_job.name != job.name]
         # Print the time elapsed

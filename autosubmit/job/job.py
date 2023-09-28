@@ -238,7 +238,9 @@ class Job(object):
         # internal
         self.current_checkpoint_step = 0
         self.max_checkpoint_step = 0
-        self.reservation= ""
+        self.reservation = ""
+        self.delete_when_edgeless = False
+
         # hetjobs
         self.het = dict()
         self.het['HETSIZE'] = 0
@@ -282,7 +284,8 @@ class Job(object):
 
     @retrials.setter
     def retrials(self, value):
-        self._retrials = int(value)
+        if value is not None:
+            self._retrials = int(value)
 
     @property
     @autosubmit_parameter(name='checkpoint')
@@ -952,7 +955,7 @@ class Job(object):
         return
 
     @threaded
-    def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0,job_id=""):
+    def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0,job_id="",auth_password=None, local_auth_password = None):
         as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
         as_conf.reload(force_load=True)
         max_retrials = self.retrials
@@ -978,7 +981,7 @@ class Job(object):
                 max_logs = int(max_retrials) - fail_count
                 last_log = int(max_retrials) - fail_count
                 submitter = self._get_submitter(as_conf)
-                submitter.load_platforms(as_conf)
+                submitter.load_platforms(as_conf, auth_password=auth_password, local_auth_password=local_auth_password)
                 platform = submitter.platforms[platform_name]
                 platform.test_connection()
                 success = True
@@ -1241,7 +1244,7 @@ class Job(object):
             if as_conf.get_disable_recovery_threads(self.platform.name) == "true":
                 self.retrieve_logfiles_unthreaded(copy_remote_logs, local_logs)
             else:
-                self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count),job_id=self.id)
+                self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count),job_id=self.id,auth_password=self._platform.pw, local_auth_password=self._platform.pw)
             if self.wrapper_type == "vertical":
                 max_logs = int(self.retrials)
                 for i in range(0,max_logs):
@@ -1623,6 +1626,7 @@ class Job(object):
 
     def update_job_parameters(self,as_conf, parameters):
 
+        self.delete_when_edgeless = as_conf.jobs_data[self.section].get("DELETE_WHEN_EDGELESS", True)
         if self.checkpoint: # To activate placeholder sustitution per <empty> in the template
             parameters["AS_CHECKPOINT"] = self.checkpoint
         parameters['JOBNAME'] = self.name

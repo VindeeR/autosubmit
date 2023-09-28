@@ -462,6 +462,9 @@ class DicJobs:
                     final_jobs_list = final_jobs_list
                 elif "*" in filters_to['SPLITS_TO'].lower():
                     # to  calculate in apply_filters
+                    final_jobs_list = final_jobs_list
+                elif "*" in filters_to['SPLITS_TO'].lower():
+                    # to  calculate in apply_filters
                     easier_to_filter = "," + filters_to['SPLITS_TO'].lower() + ","
                     matches = re.findall(rf"\\[0-9]*", easier_to_filter)
                     if len(matches) > 0:  # get *\\

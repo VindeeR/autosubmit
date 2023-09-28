@@ -120,9 +120,7 @@ class JobList(object):
             found_member = False
             processed_job_list = []
             for job in self._job_list:  # We are assuming that the jobs are sorted in topological order (which is the default)
-                if (
-                        job.member is None and not found_member) or job.member in self._run_members or job.status not in [
-                    Status.WAITING, Status.READY]:
+                if (job.member is None and found_member is False) or job.member in self._run_members or job.status not in [Status.WAITING, Status.READY]:
                     processed_job_list.append(job)
                 if job.member is not None and len(str(job.member)) > 0:
                     found_member = True
@@ -159,7 +157,7 @@ class JobList(object):
 
     def generate(self, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
                  default_job_type, wrapper_type=None, wrapper_jobs=dict(), new=True, notransitive=False,
-                 update_structure=False, run_only_members=[], show_log=True, jobs_data={}, as_conf=""):
+                 update_structure=False, run_only_members=[], show_log=True, jobs_data={}, as_conf="", previous_run = False):
         """
         Creates all jobs needed for the current workflow
 

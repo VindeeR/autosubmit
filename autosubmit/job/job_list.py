@@ -848,11 +848,11 @@ class JobList(object):
         :param graph:
         :return:
         '''
-
-        #todo check if it has issues with the new changes
         parsed_date_list = []
         for dat in date_list:
             parsed_date_list.append(date2str(dat))
+        special_conditions = dict()
+
         dependencies_to_del = set()
         # IT is faster to check the conf instead of  calculate 90000000 tasks
         # Prune number of dependencies to check, to reduce the transitive reduction complexity
@@ -883,36 +883,41 @@ class JobList(object):
             if skip:
                 continue
 
-            #splits = dic_jobs.as_conf.experiment_data.get("JOBS",{}).get(dependency.section,{}).get("SPLITS",None)
             filters_to_apply = self._filter_current_job(job,copy.deepcopy(dependency.relationships))
-            #natural_parents = [ parent for parent in dic_jobs.get_jobs(dependency.section, date, member, chunk) if len(graph.nodes) == 0 or (parent.name != job.name and job.section in dic_jobs.changes and parent.section in dic_jobs.changes) ]
+            special_conditions["STATUS"] = filters_to_apply.pop("STATUS", None)
+            special_conditions["FROM_STEP"] = filters_to_apply.pop("FROM_STEP", None)
             # Get dates_to, members_to, chunks_to of the deepest level of the relationship.
             if len(filters_to_apply) == 0:
                 natural_parents = dic_jobs.get_jobs(dependency.section, date, member, chunk)
                 # Natural jobs, no filters to apply we can safely add the edge
                 for parent in natural_parents:
                     graph.add_edge(parent.name, job.name)
-                JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member,
-                                                           member_list, dependency.section, natural_parents)
             else:
-                #associative_list = {}
-                #associative_list["splits"] = range(1,int(splits)+1) if splits else None
-                # other_parents = list(set([parent for parent in dic_jobs.get_jobs(dependency.section, None, None, None) if
-                #                      len(graph.nodes) == 0 or (
-                #                                  parent.name != job.name and job.section in dic_jobs.changes and parent.section in dic_jobs.changes)]).symmetric_difference(
-                #     natural_parents))
                 possible_parents =  dic_jobs.get_jobs_filtered(dependency.section,job,filters_to_apply,date,member,chunk)
                 for parent in possible_parents:
-                    valid,optional = JobList._valid_parent(parent,filters_to_apply)
-                    # If the parent is valid, add it to the graph
-                    if valid:
+                    if JobList._valid_parent(parent,filters_to_apply):
                         graph.add_edge(parent.name, job.name)
-                        # Could be more variables in the future
-                        if optional:
-                            job.add_edge_info(parent.name,special_variables={"optional":True})
-                JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member,
+                        # Do parse checkpoint
+                        if special_conditions.get("STATUS", None):
+                            if only_marked_status:
+                                if str(job.split) + "?" in filters_to_apply.get("SPLITS_TO", "") or str(
+                                        job.chunk) + "?" in filters_to_apply.get("CHUNKS_TO", "") or str(
+                                    job.member) + "?" in filters_to_apply.get("MEMBERS_TO", "") or str(
+                                    job.date) + "?" in filters_to_apply.get("DATES_TO", ""):
+                                    selected = True
+                                else:
+                                    selected = False
+                            else:
+                                selected = True
+                            if selected:
+                                if special_conditions.get("FROM_STEP", None):
+                                    job.max_checkpoint_step = int(special_conditions.get("FROM_STEP", 0)) if int(
+                                        special_conditions.get("FROM_STEP",
+                                                               0)) > job.max_checkpoint_step else job.max_checkpoint_step
+                                self._add_edge_info(job, special_conditions["STATUS"])
+                                job.add_edge_info(parent, special_conditions)
+            JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member,
                                                            member_list, dependency.section, possible_parents)
-            pass
 
     @staticmethod
     def _calculate_dependency_metadata(chunk, chunk_list, member, member_list, date, date_list, dependency):

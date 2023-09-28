@@ -282,7 +282,8 @@ class Job(object):
 
     @retrials.setter
     def retrials(self, value):
-        self._retrials = int(value)
+        if value is not None:
+            self._retrials = int(value)
 
     @property
     @autosubmit_parameter(name='checkpoint')

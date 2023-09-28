@@ -155,9 +155,9 @@ class JobList(object):
         for i in jobs_to_delete:
             self._job_list.remove(i)
 
-    def generate(self, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
-                 default_job_type, wrapper_type=None, wrapper_jobs=dict(), new=True, notransitive=False,
-                 update_structure=False, run_only_members=[], show_log=True, jobs_data={}, as_conf="", previous_run = False):
+
+    def generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
+                 default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[],show_log=True,previous_run = False):
         """
         Creates all jobs needed for the current workflow
 
@@ -292,7 +292,7 @@ class JobList(object):
             for i,job in enumerate(jobs_gen):
                 # time this function
                 # print % of completion in steps of 10%
-                if i % (total_amount // 10) == 0:
+                if i % ((total_amount // 10) +1 ) == 0:
                     Log.info(f"{job_section} jobs: {str(i * 100 // total_amount)}% total:{str(total_amount)} of tasks")
                     end = time.time()
                     if start:
@@ -767,7 +767,8 @@ class JobList(object):
         return unified_filter
 
     def _filter_current_job(self,current_job, relationships):
-        ''' This function will filter the current job based on the relationships given
+        '''
+        This function will filter the current job based on the relationships given
         :param current_job: Current job to filter
         :param relationships: Relationships to apply
         :return: dict() with the filters to apply, or empty dict() if no filters to apply
@@ -883,7 +884,7 @@ class JobList(object):
                 continue
 
             #splits = dic_jobs.as_conf.experiment_data.get("JOBS",{}).get(dependency.section,{}).get("SPLITS",None)
-            filters_to_apply = JobList._filter_current_job(job,copy.deepcopy(dependency.relationships))
+            filters_to_apply = self._filter_current_job(job,copy.deepcopy(dependency.relationships))
             #natural_parents = [ parent for parent in dic_jobs.get_jobs(dependency.section, date, member, chunk) if len(graph.nodes) == 0 or (parent.name != job.name and job.section in dic_jobs.changes and parent.section in dic_jobs.changes) ]
             # Get dates_to, members_to, chunks_to of the deepest level of the relationship.
             if len(filters_to_apply) == 0:

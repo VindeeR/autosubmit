@@ -77,7 +77,7 @@ class DicJobs:
         :return: dict with the changes
         :rtype: bool
         """
-        self.changes[current_section] = self.as_conf.detailed_deep_diff(self.as_conf.experiment_data["JOBS"].get(current_section,{}),self.as_conf.last_experiment_data["JOBS"].get(current_section,{}))
+        self.changes[current_section] = self.as_conf.detailed_deep_diff(self.as_conf.experiment_data["JOBS"].get(current_section,{}),self.as_conf.last_experiment_data.get("JOBS",{}).get(current_section,{}))
         # Only dependencies is relevant at this step, the rest is lookup by job name and if it inside the stored list
         if "DEPENDENCIES" not in self.changes[current_section]:
             del self.changes[current_section]

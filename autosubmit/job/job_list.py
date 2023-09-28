@@ -833,8 +833,8 @@ class JobList(object):
 
 
 
-    @staticmethod
-    def _manage_job_dependencies(dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys, dependencies,
+    def _manage_job_dependencies(self, dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys,
+                                 dependencies,
                                  graph):
         '''
         Manage the dependencies of a job

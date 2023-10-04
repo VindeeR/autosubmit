@@ -574,7 +574,7 @@ class JobList(object):
                         included = True
                         break
             else:
-                inclued = True
+                included = True
             if filter_range.casefold() in ["ALL".casefold(),"NATURAL".casefold()] or included:
                 if not filter_data.get("STATUS", None):
                     filter_data["STATUS"] = status

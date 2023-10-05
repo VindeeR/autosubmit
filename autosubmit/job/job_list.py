@@ -216,7 +216,7 @@ class JobList(object):
             if len(self.graph.nodes) > 0:
                 Log.info("Load finished")
                 if as_conf.data_changed:
-                    self.compare_experiment_section()
+                    self._dic_jobs.compare_experiment_section()
                     self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
                 else:
                     self._dic_jobs.last_experiment_data = {}
@@ -368,58 +368,102 @@ class JobList(object):
 
 
     @staticmethod
-    def _apply_filter(parent_value, filter_value, associative_list, level_to_check="DATES_FROM", child=None, parent=None):
+    def _apply_filter_1_to_1_splits(parent_value, filter_value, associative_list, child=None, parent=None):
         """
         Check if the current_job_value is included in the filter_value
         :param parent_value:
         :param filter_value: filter
         :param associative_list: dates, members, chunks, splits.
         :param filter_type: dates, members, chunks, splits .
-        :param level_to_check: Can be dates,members, chunks, splits.
         :return:
         """
-        to_filter = []
-        # strip special chars if any
-        filter_value = filter_value.strip("?")
-        if not parent_value:
+        if "NONE".casefold() in str(parent_value).casefold():
             return True
-        if "all" in filter_value.lower():
-            return True
-        elif "natural" in filter_value.lower():
-            if parent_value in associative_list:
-                return True
-        elif "none" in filter_value.lower():
-            return False
-        elif "," in filter_value:
-            aux_filter = filter_value.split(",")
-            if filter_type not in ["chunks", "splits"]:
-                for value in aux_filter:
-                    if str(value).isdigit():
-                        to_filter.append(associative_list[int(value)])
-                    else:
-                        to_filter.append(value)
+        if parent and child:
+            if not parent.splits:
+                parent_splits = -1
             else:
-                to_filter = aux_filter
-            del aux_filter
-        elif ":" in filter_value:
-            start_end = filter_value.split(":")
-            start = start_end[0].strip("[]")
-            end = start_end[1].strip("[]")
-            del start_end
-            if filter_type not in ["chunks", "splits"]: # chunk directly
-                for value in range(int(start), int(end) + 1):
-                    to_filter.append(value)
-            else: # index
-                for value in range(int(start+1), int(end) + 1):
-                    to_filter.append(value)
+                parent_splits = int(parent.splits)
+            if not child.splits:
+                child_splits = -1
+            else:
+                child_splits = int(child.splits)
+            if parent_splits == child_splits:
+                to_look_at_lesser = associative_list
+                lesser_group = -1
+                lesser = str(parent_splits)
+                greater = str(child_splits)
+                lesser_value = "parent"
+            else:
+                if parent_splits > child_splits:
+                    lesser = str(child_splits)
+                    greater = str(parent_splits)
+                    lesser_value = "child"
+                else:
+                    lesser = str(parent_splits)
+                    greater = str(child_splits)
+                    lesser_value = "parent"
+                to_look_at_lesser = [associative_list[i:i + 1] for i in range(0, int(lesser), 1)]
+                for lesser_group in range(len(to_look_at_lesser)):
+                    if lesser_value == "parent":
+                        if str(parent_value) in to_look_at_lesser[lesser_group]:
+                            break
+                    else:
+                        if str(child.split) in to_look_at_lesser[lesser_group]:
+                            break
         else:
-            to_filter.append(filter_value)
-
-        if str(parent_value).upper() in str(to_filter).upper():
+            to_look_at_lesser = associative_list
+            lesser_group = -1
+        if "?" in filter_value:
+            # replace all ? for ""
+            filter_value = filter_value.replace("?", "")
+        if "*" in filter_value:
+            aux_filter = filter_value
+            filter_value = ""
+            for filter_ in aux_filter.split(","):
+                if "*" in filter_:
+                    filter_, split_info = filter_.split("*")
+                    if "\\" in split_info:
+                        split_info = int(split_info.split("\\")[-1])
+                    else:
+                        split_info = 1
+                    # split_info: if a value is 1, it means that the filter is 1-to-1, if it is 2, it means that the filter is 1-to-2, etc.
+                    if child and parent:
+                        if split_info == 1 and str(parent_value).casefold() == str(filter_).casefold():
+                            if child.split == parent_value:
+                                return True
+                        elif split_info > 1:
+                            # 1-to-X filter
+                            to_look_at_greater = [associative_list[i:i + split_info] for i in
+                                                  range(0, int(greater), split_info)]
+                            if lesser_value == "parent":
+                                if str(child.split) in to_look_at_greater[lesser_group]:
+                                    return True
+                            else:
+                                if str(parent_value) in to_look_at_greater[lesser_group]:
+                                    return True
+                    else:
+                        filter_value += filter_ + ","
+                else:
+                    filter_value += filter_ + ","
+            filter_value = filter_value[:-1]
+        to_filter = JobList._parse_filters_to_check(filter_value, associative_list, "splits")
+        if to_filter is None:
+            return False
+        elif len(to_filter) == 0:
+            return False
+        elif "ALL".casefold() == str(to_filter[0]).casefold():
+            return True
+        elif "NATURAL".casefold() == str(to_filter[0]).casefold():
+            if parent_value is None or parent_value in associative_list:
+                return True
+        elif "NONE".casefold() == str(to_filter[0]).casefold():
+            return False
+        elif len([filter_ for filter_ in to_filter if
+                  str(parent_value).strip(" ").casefold() == str(filter_).strip(" ").casefold()]) > 0:
             return True
         else:
             return False
-
 
 
     @staticmethod
@@ -882,7 +926,10 @@ class JobList(object):
                                                                                  dependency)
             if skip:
                 continue
-
+            if not job.splits:
+                child_splits = 0
+            else:
+                child_splits = int(job.splits)
             filters_to_apply = self._filter_current_job(job,copy.deepcopy(dependency.relationships))
             special_conditions["STATUS"] = filters_to_apply.pop("STATUS", None)
             special_conditions["FROM_STEP"] = filters_to_apply.pop("FROM_STEP", None)
@@ -895,27 +942,39 @@ class JobList(object):
             else:
                 possible_parents =  dic_jobs.get_jobs_filtered(dependency.section,job,filters_to_apply,date,member,chunk)
                 for parent in possible_parents:
-                    if JobList._valid_parent(parent,filters_to_apply):
-                        graph.add_edge(parent.name, job.name)
-                        # Do parse checkpoint
-                        if special_conditions.get("STATUS", None):
-                            if only_marked_status:
-                                if str(job.split) + "?" in filters_to_apply.get("SPLITS_TO", "") or str(
-                                        job.chunk) + "?" in filters_to_apply.get("CHUNKS_TO", "") or str(
-                                    job.member) + "?" in filters_to_apply.get("MEMBERS_TO", "") or str(
-                                    job.date) + "?" in filters_to_apply.get("DATES_TO", ""):
-                                    selected = True
-                                else:
-                                    selected = False
-                            else:
+                    splits_to = filters_to_apply.get("SPLITS_TO", None)
+                    if splits_to:
+                        if not parent.splits:
+                            parent_splits = 0
+                        else:
+                            parent_splits = int(parent.splits)
+                        splits = max(child_splits, parent_splits)
+                        if splits > 0:
+                            associative_list_splits = [str(split) for split in range(1, int(splits) + 1)]
+                        else:
+                            associative_list_splits = None
+                        if self._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, job, parent):
+                            continue # if the parent is not in the filter_to, skip it
+                    graph.add_edge(parent.name, job.name)
+                    # Do parse checkpoint
+                    if special_conditions.get("STATUS", None):
+                        if only_marked_status:
+                            if str(job.split) + "?" in filters_to_apply.get("SPLITS_TO", "") or str(
+                                    job.chunk) + "?" in filters_to_apply.get("CHUNKS_TO", "") or str(
+                                job.member) + "?" in filters_to_apply.get("MEMBERS_TO", "") or str(
+                                job.date) + "?" in filters_to_apply.get("DATES_TO", ""):
                                 selected = True
-                            if selected:
-                                if special_conditions.get("FROM_STEP", None):
-                                    job.max_checkpoint_step = int(special_conditions.get("FROM_STEP", 0)) if int(
-                                        special_conditions.get("FROM_STEP",
-                                                               0)) > job.max_checkpoint_step else job.max_checkpoint_step
-                                self._add_edge_info(job, special_conditions["STATUS"])
-                                job.add_edge_info(parent, special_conditions)
+                            else:
+                                selected = False
+                        else:
+                            selected = True
+                        if selected:
+                            if special_conditions.get("FROM_STEP", None):
+                                job.max_checkpoint_step = int(special_conditions.get("FROM_STEP", 0)) if int(
+                                    special_conditions.get("FROM_STEP",
+                                                           0)) > job.max_checkpoint_step else job.max_checkpoint_step
+                            self._add_edge_info(job, special_conditions["STATUS"])
+                            job.add_edge_info(parent, special_conditions)
             JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member,
                                                            member_list, dependency.section, possible_parents)
 

@@ -70,13 +70,16 @@ class JobListPersistencePkl(JobListPersistence):
             with open(path, 'rb') as fd:
                 graph = pickle.load(fd)
             # add again the children as it is deleted when saving the graph ( otherwise it raises a segvfault during pickle)
+            resetted_nodes = []
             for i, u in enumerate(graph):
                 u_nbrs = set(graph[u])
                 # Get JOB node atributte of all neighbors of current node
                 # and add it to current node as job_children
                 #debug
-                test = graph.nodes[u]["job"]
-                graph.nodes[u]["job"].children = set()
+                if graph.nodes[u]["job"] not in resetted_nodes:
+                    resetted_nodes.append(graph.nodes[u]["job"])
+                    graph.nodes[u]["job"].children = set()
+                    graph.nodes[u]["job"].parents = set()
                 graph.nodes[u]["job"].add_child([graph.nodes[v]["job"] for v in u_nbrs])
             return graph
         else:

@@ -42,13 +42,14 @@ def transitive_reduction(graph):
     :type graph: NetworkX DiGraph
     :return: The transitive reduction of G
     """
-
+    resetted_nodes = set()
     for i, u in enumerate(graph):
-        graph.nodes[u]["job"].parents = set()
-        graph.nodes[u]["job"].children = set()
+        if graph.nodes[u]["job"] not in resetted_nodes:
+            resetted_nodes.add(graph.nodes[u]["job"])
+            graph.nodes[u]["job"].parents = set()
+            graph.nodes[u]["job"].children = set()
         graph.nodes[u]["job"].add_child([graph.nodes[v]["job"] for v in graph[u]])
     return graph
-
     try:
         TR = nx.DiGraph()
         TR.add_nodes_from(graph.nodes(data=True))
@@ -68,8 +69,10 @@ def transitive_reduction(graph):
             TR.add_edges_from((u, v) for v in u_nbrs)
             # Get JOB node atributte of all neighbors of current node
             # and add it to current node as job_children
-            TR.nodes[u]["job"].parents = set()
-            TR.nodes[u]["job"].children = set()
+            if TR.nodes[u]["job"] not in resetted_nodes:
+                #resetted_nodes.add(TR.nodes[u]["job"])
+                TR.nodes[u]["job"].parents = set()
+                TR.nodes[u]["job"].children = set()
             TR.nodes[u]["job"].add_child([TR.nodes[v]["job"] for v in u_nbrs])
         return TR
     except Exception as exp:

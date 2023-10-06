@@ -939,6 +939,9 @@ class JobList(object):
                 # Natural jobs, no filters to apply we can safely add the edge
                 for parent in natural_parents:
                     graph.add_edge(parent.name, job.name)
+                JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job,
+                                                               member,
+                                                               member_list, dependency.section, natural_parents)
             else:
                 possible_parents =  dic_jobs.get_jobs_filtered(dependency.section,job,filters_to_apply,date,member,chunk)
                 for parent in possible_parents:
@@ -975,8 +978,8 @@ class JobList(object):
                                                            0)) > job.max_checkpoint_step else job.max_checkpoint_step
                             self._add_edge_info(job, special_conditions["STATUS"])
                             job.add_edge_info(parent, special_conditions)
-            JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member,
-                                                           member_list, dependency.section, possible_parents)
+                JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member,
+                                                               member_list, dependency.section, possible_parents)
 
     @staticmethod
     def _calculate_dependency_metadata(chunk, chunk_list, member, member_list, date, date_list, dependency):

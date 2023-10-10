@@ -42,12 +42,10 @@ def transitive_reduction(graph):
     :type graph: NetworkX DiGraph
     :return: The transitive reduction of G
     """
-    resetted_nodes = set()
     for i, u in enumerate(graph):
-        if graph.nodes[u]["job"] not in resetted_nodes:
-            resetted_nodes.add(graph.nodes[u]["job"])
-            graph.nodes[u]["job"].parents = set()
-            graph.nodes[u]["job"].children = set()
+        graph.nodes[u]["job"].parents = set()
+        graph.nodes[u]["job"].children = set()
+    for i, u in enumerate(graph):
         graph.nodes[u]["job"].add_child([graph.nodes[v]["job"] for v in graph[u]])
     return graph
     try:

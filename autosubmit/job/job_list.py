@@ -908,7 +908,11 @@ class JobList(object):
         dependencies_keys_aux = [key for key in dependencies_keys if key in dependencies]
 
         # If parent already has defined that dependency, skip it to reduce the transitive reduction complexity
+        depends_on_previous_chunk = False
         for dependency_key in dependencies_keys_aux:
+            if job.chunk and int(job.chunk) > 1:
+                if job.section in dependency_key:
+                    depends_on_previous_chunk = True
             # or dependencies_keys[dependency_key] means that it has an special relationship so it must be calculated separately
             if "-" in dependency_key or "+" in dependency_key or dependencies_keys[dependency_key]:
                 continue
@@ -938,6 +942,8 @@ class JobList(object):
                 natural_parents = dic_jobs.get_jobs(dependency.section, date, member, chunk)
                 # Natural jobs, no filters to apply we can safely add the edge
                 for parent in natural_parents:
+                    if depends_on_previous_chunk and parent.section != job.section:
+                        continue
                     graph.add_edge(parent.name, job.name)
                 JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job,
                                                                member,

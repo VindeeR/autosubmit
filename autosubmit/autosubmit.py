@@ -647,8 +647,6 @@ class Autosubmit:
                                    help='The target Workflow Manager engine', choices=[engine.value for engine in Engine])
             subparser.add_argument('args', nargs='?')
 
-            args = parser.parse_args()
-
             if len(sys.argv) > 1 and len(sys.argv[1]) > 1 and sys.argv[1] in ['generate']:
                 args, options = parser.parse_known_args()
             else:

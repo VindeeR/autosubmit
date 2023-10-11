@@ -31,3 +31,4 @@ typing>=3.7
 wheel
 psutil
 rocrate==0.*
+pyflow-workflow-generator

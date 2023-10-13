@@ -238,7 +238,9 @@ class Job(object):
         # internal
         self.current_checkpoint_step = 0
         self.max_checkpoint_step = 0
-        self.reservation= ""
+        self.reservation = ""
+        self.delete_when_edgeless = False
+
         # hetjobs
         self.het = dict()
         self.het['HETSIZE'] = 0
@@ -1624,6 +1626,7 @@ class Job(object):
 
     def update_job_parameters(self,as_conf, parameters):
 
+        self.delete_when_edgeless = as_conf.jobs_data[self.section].get("DELETE_WHEN_EDGELESS", False)
         if self.checkpoint: # To activate placeholder sustitution per <empty> in the template
             parameters["AS_CHECKPOINT"] = self.checkpoint
         parameters['JOBNAME'] = self.name

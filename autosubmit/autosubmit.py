@@ -1887,7 +1887,7 @@ class Autosubmit:
             Log.info("Recovering job_list")
         try:
             job_list = Autosubmit.load_job_list(
-                expid, as_conf, notransitive=notransitive)
+                expid, as_conf, notransitive=notransitive, previous_run=True)
         except IOError as e:
             raise AutosubmitError(
                 "Job_list not found", 6016, str(e))
@@ -2457,7 +2457,7 @@ class Autosubmit:
             output_type = as_conf.get_output_type()
             pkl_dir = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, 'pkl')
             job_list = Autosubmit.load_job_list(
-                expid, as_conf, notransitive=notransitive, monitor=True)
+                expid, as_conf, notransitive=notransitive, monitor=True, previous_run=True)
             Log.debug("Job list restored from {0} files", pkl_dir)
         except AutosubmitError as e:
             raise AutosubmitCritical(e.message, e.code, e.trace)

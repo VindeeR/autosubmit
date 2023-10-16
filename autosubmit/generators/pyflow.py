@@ -157,7 +157,7 @@ def _create_ecflow_suite(
             # N.B.: We used the code below in the beginning, but later we realized it would
             #       not work. In Autosubmit, the FILE: $FILE is a file, relative to the AS
             #       Project folder. The $FILE template script is then pre-processed to be
-            #       executed by AS. That is different than ecFlow, where the Task Script is
+            #       executed by AS. That is different from ecFlow, where the Task Script is
             #       value is pre-processed (i.e. if the value is ``templates/local_script.sh``
             #       that value is treated as a string when included in the final job file)
             #       to generate the ecFlow job file. So ecFlow pre-processes the ``.script``
@@ -170,7 +170,7 @@ def _create_ecflow_suite(
             #       The variables may still need to be manually adjusted, but once that is
             #       done, the script should then be ready to be executed (i.e. ported).
             # t.script = job.file
-            with open(Path(as_conf.get_local_project_path(), job.file)) as f:
+            with open(Path(as_conf.get_project_dir(), job.file)) as f:
                 t.script = f.read()
 
         return s

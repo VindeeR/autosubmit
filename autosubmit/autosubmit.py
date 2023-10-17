@@ -1206,7 +1206,8 @@ class Autosubmit:
             packages_persistence.reset_table(True)
             job_list_original = Autosubmit.load_job_list(
                 expid, as_conf, notransitive=notransitive)
-            job_list = copy.deepcopy(job_list_original)
+            job_list = Autosubmit.load_job_list(
+                expid, as_conf, notransitive=notransitive)
             job_list.packages_dict = {}
 
             Log.debug("Length of the jobs list: {0}", len(job_list))

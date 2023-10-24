@@ -21,7 +21,7 @@ import networkx as nx
 import re
 import os
 import pickle
-import re
+from contextlib import suppress
 import traceback
 from bscearth.utils.date import date2str, parse_date
 from networkx import DiGraph
@@ -130,9 +130,11 @@ class JobList(object):
             #     job.parents) == 0 or len(set(old_job_list_names).intersection(set([jobp.name for jobp in job.parents]))) == len(job.parents)]
 
     def create_dictionary(self, date_list, member_list, num_chunks, chunk_ini, date_format, default_retrials,
-                          wrapper_jobs):
+                          wrapper_jobs, as_conf):
         chunk_list = list(range(chunk_ini, num_chunks + 1))
-        dic_jobs = DicJobs(date_list, member_list, chunk_list, date_format, default_retrials,{},self.experiment_data)
+
+
+        dic_jobs = DicJobs(date_list, member_list, chunk_list, date_format, default_retrials, as_conf)
         self._dic_jobs = dic_jobs
         for wrapper_section in wrapper_jobs:
             if str(wrapper_jobs[wrapper_section]).lower() != 'none':
@@ -147,7 +149,7 @@ class JobList(object):
         # indices to delete
         for i, job in enumerate(self._job_list):
             if job.dependencies is not None:
-                if ((len(job.dependencies) > 0 and not job.has_parents()) and not job.has_children()) and str(job.delete_when_edgeless) .casefold() == "true".casefold():
+                if (len(job.dependencies) > 0 and not job.has_parents() and not job.has_children()) and str(job.delete_when_edgeless).casefold() == "true".casefold():
                     jobs_to_delete.append(job)
         # delete jobs by indices
         for i in jobs_to_delete:
@@ -156,7 +158,7 @@ class JobList(object):
 
 
     def generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
-                 default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[],show_log=True,previous_run = False):
+                 default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[],show_log=True):
         """
         Creates all jobs needed for the current workflow
 
@@ -195,7 +197,7 @@ class JobList(object):
         chunk_list = list(range(chunk_ini, num_chunks + 1))
         self._chunk_list = chunk_list
         self._dic_jobs = DicJobs(date_list, member_list, chunk_list, date_format, default_retrials, as_conf)
-        if previous_run or not new:
+        if not new:
             try:
                 self.graph = self.load()
                 if type(self.graph) is not DiGraph:
@@ -213,20 +215,24 @@ class JobList(object):
                     self._dic_jobs.compare_experiment_section()
                 self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
             else:
-                if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + ".pkl")):
+                # Remove the previous pkl, if it exists.
+                Log.info("Removing previous pkl file due to empty graph, likely due using an Autosubmit 4.0.XXX version")
+                with suppress(FileNotFoundError):
                     os.remove(os.path.join(self._persistence_path, self._persistence_file + ".pkl"))
-                if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl")):
+                with suppress(FileNotFoundError):
                     os.remove(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl"))
+                new = True
         # This generates the job object and also finds if dic_jobs has modified from previous iteration in order to expand the workflow
         self._create_jobs(self._dic_jobs, 0, default_job_type)
-
         if show_log:
             Log.info("Adding dependencies to the graph..")
         # del all nodes that are only in the current graph
         if len(self.graph.nodes) > 0:
             gen = ( name for name in np.setxor1d(self.graph.nodes, self._dic_jobs.workflow_jobs,True).tolist() )
             for name in gen:
-                self.graph.remove_node(name)
+                if name in self.graph.nodes:
+                    self.graph.remove_node(name)
+        # This actually, also adds the node to the graph if it isen't already there
         self._add_dependencies(date_list, member_list, chunk_list, self._dic_jobs)
         if show_log:
             Log.info("Adding dependencies to the job..")
@@ -238,9 +244,9 @@ class JobList(object):
                 Log.info("Considering only members {0}".format(
                     str(run_only_members)))
             old_job_list = [job for job in self._job_list]
-            self._job_list = [job for job in old_job_list if job.member is None or job.member in run_only_members or job.status not in [Status.WAITING, Status.READY]]
-            gen_joblist = [job for job in self._job_list]
-            for job in gen_joblist:
+            self._job_list = [
+                job for job in old_job_list if job.member is None or job.member in run_only_members or job.status not in [Status.WAITING, Status.READY]]
+            for job in self._job_list:
                 for jobp in job.parents:
                     if jobp in self._job_list:
                         job.parents.add(jobp)
@@ -252,6 +258,7 @@ class JobList(object):
         self._delete_edgeless_jobs()
         if new:
             for job in self._job_list:
+                job.parameters = parameters
                 if not job.has_parents():
                     job.status = Status.READY
         else:
@@ -280,7 +287,8 @@ class JobList(object):
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
             # If it does not have dependencies, just append it to job_list and continue
             dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
-            dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section)
+            # call function if dependencies_key is not None
+            dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section) if dependencies_keys else {}
             #if not dependencies_keys:
             #    Log.printlog(f"WARNING: Job Section {dependencies_keys} is not defined", Log.WARNING)
             total_amount = len(dic_jobs.get_jobs(job_section))
@@ -301,7 +309,7 @@ class JobList(object):
                 elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job",None) is None:
                     self.graph.nodes.get(job.name)["job"] = job
                 job = self.graph.nodes.get(job.name)['job']
-                job.dependencies = str(dic_jobs.as_conf.jobs_data[job.section].get("DEPENDENCIES",""))
+                job.dependencies = dic_jobs.as_conf.jobs_data[job.section].get("DEPENDENCIES","")
                 job.delete_when_edgeless = str(dic_jobs.as_conf.jobs_data[job.section].get("DELETE_WHEN_EDGELESS",True))
                 if not dependencies:
                     continue
@@ -609,9 +617,6 @@ class JobList(object):
         relationship = relationships.get(level_to_check, {})
         status = relationship.pop("STATUS", relationships.get("STATUS", None))
         from_step = relationship.pop("FROM_STEP", relationships.get("FROM_STEP", None))
-        # if filter_range.casefold() in ["ALL".casefold(), "NATURAL".casefold()] or (
-        #         not value_to_check or str(value_to_check).upper() in str(
-        #         JobList._parse_filters_to_check(filter_range, values_list, level_to_check)).upper()):
         for filter_range, filter_data in relationship.items():
             selected_filter = JobList._parse_filters_to_check(filter_range, values_list, level_to_check)
             if filter_range.casefold() in ["ALL".casefold(), "NATURAL".casefold(),
@@ -850,6 +855,7 @@ class JobList(object):
             elif "SPLITS_FROM" in relationships:
                 filters_to_apply = self._check_splits(relationships, current_job)
             else:
+
                 relationships.pop("CHUNKS_FROM", None)
                 relationships.pop("MEMBERS_FROM", None)
                 relationships.pop("DATES_FROM", None)
@@ -872,14 +878,25 @@ class JobList(object):
 
         # Apply all filters to look if this parent is an appropriated candidate for the current_job
         #if JobList._apply_filter(parent.split, filter_["SPLITS_TO"], associative_list["splits"], "splits"):
-        if True:
-            for value in [filter_.get("DATES_TO",""), filter_.get("MEMBERS_TO",""), filter_.get("CHUNKS_TO",""), filter_.get("SPLITS_TO","")]:
-                if "?" in value:
-                    return True, True
-            return True, False
-        return False,False
+        for value in [filter_.get("DATES_TO",""), filter_.get("MEMBERS_TO",""), filter_.get("CHUNKS_TO",""), filter_.get("SPLITS_TO","")]:
+            if "?" in value:
+                return True, True
+        return True, False
 
 
+    def _add_edge_info(self, job, special_status):
+        """
+        Special relations to be check in the update_list method
+        :param job: Current job
+        :param parent: parent jobs to check
+        :return:
+        """
+        if special_status not in self.jobs_edges:
+            self.jobs_edges[special_status] = set()
+        self.jobs_edges[special_status].add(job)
+        if "ALL" not in self.jobs_edges:
+            self.jobs_edges["ALL"] = set()
+        self.jobs_edges["ALL"].add(job)
 
     def _manage_job_dependencies(self, dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys,
                                  dependencies,
@@ -1046,7 +1063,7 @@ class JobList(object):
     @staticmethod
     def handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member, member_list,
                                                section_name,visited_parents):
-        if job.wait and job.frequency > 1:
+        if job.frequency and job.frequency > 1:
             if job.chunk is not None and len(str(job.chunk)) > 0:
                 max_distance = (chunk_list.index(chunk) + 1) % job.frequency
                 if max_distance == 0:
@@ -1136,11 +1153,11 @@ class JobList(object):
             str_date = self._get_date(date)
             for member in self._member_list:
                 # Filter list of fake jobs according to date and member, result not sorted at this point
-                sorted_jobs_list = list(filter(lambda job: job.name.split("_")[1] == str_date and
-                                                           job.name.split("_")[2] == member,
-                                               filtered_jobs_fake_date_member))
-                # sorted_jobs_list = [job for job in filtered_jobs_fake_date_member if job.name.split("_")[1] == str_date and
-                #                          job.name.split("_")[2] == member]
+                #sorted_jobs_list = list(filter(lambda job: job.name.split("_")[1] == str_date and
+                #                                           job.name.split("_")[2] == member,
+                #                               filtered_jobs_fake_date_member))
+                sorted_jobs_list = [job for job in filtered_jobs_fake_date_member if job.name.split("_")[1] == str_date and
+                                          job.name.split("_")[2] == member]
 
                 # There can be no jobs for this member when select chunk/member is enabled
                 if not sorted_jobs_list or len(sorted_jobs_list) == 0:

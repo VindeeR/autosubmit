@@ -138,6 +138,9 @@ class Job(object):
 
     CHECK_ON_SUBMISSION = 'on_submission'
 
+    # def __eq__(self, other):
+    #     return self.name == other.name and self.id == other.id
+
     def __str__(self):
         return "{0} STATUS: {1}".format(self.name, self.status)
 
@@ -145,7 +148,6 @@ class Job(object):
         return "{0} STATUS: {1}".format(self.name, self.status)
 
     def __init__(self, name, job_id, status, priority):
-        self.wait = None
         self.splits = None
         self.rerun_only = False
         self.script_name_wrapper = None
@@ -1641,7 +1643,7 @@ class Job(object):
             parameters['CHUNK'] = chunk
             total_chunk = int(parameters.get('EXPERIMENT.NUMCHUNKS', 1))
             chunk_length = int(parameters.get('EXPERIMENT.CHUNKSIZE', 1))
-            chunk_unit = str(parameters.get('EXPERIMENT.CHUNKSIZEUNIT', "")).lower()
+            chunk_unit = str(parameters.get('EXPERIMENT.CHUNKSIZEUNIT', "day")).lower()
             cal = str(parameters.get('EXPERIMENT.CALENDAR', "")).lower()
             chunk_start = chunk_start_date(
                 self.date, chunk, chunk_length, chunk_unit, cal)
@@ -1693,8 +1695,9 @@ class Job(object):
             else:
                 parameters['CHUNK_LAST'] = 'FALSE'
         parameters['NUMMEMBERS'] = len(as_conf.get_member_list())
-        parameters['DEPENDENCIES'] = str(as_conf.jobs_data[self.section].get("DEPENDENCIES",""))
-        self.dependencies = parameters['DEPENDENCIES']
+        self.dependencies = as_conf.jobs_data[self.section].get("DEPENDENCIES","")
+        self.dependencies  = str(self.dependencies)
+
         parameters['EXPORT'] = self.export
         parameters['PROJECT_TYPE'] = as_conf.get_project_type()
         self.wchunkinc = as_conf.get_wchunkinc(self.section)
@@ -1755,7 +1758,7 @@ class Job(object):
         :return: script code
         :rtype: str
         """
-        parameters = self.parameters
+        self.update_parameters(as_conf, self.parameters)
         try:
             if as_conf.get_project_type().lower() != "none" and len(as_conf.get_project_type()) > 0:
                 template_file = open(os.path.join(as_conf.get_project_dir(), self.file), 'r')

@@ -1469,8 +1469,7 @@ class TestWrappers(TestCase):
         self.job_list._member_list = member_list
         self.job_list._chunk_list = chunk_list
 
-        self.job_list._dic_jobs = DicJobs(
-            self.job_list, date_list, member_list, chunk_list, "", 0,jobs_data={},experiment_data=self.as_conf.experiment_data)
+        self.job_list._dic_jobs = DicJobs(date_list, member_list, chunk_list, "", 0, self.as_conf)
         self._manage_dependencies(sections_dict)
 
     def _manage_dependencies(self, sections_dict):
@@ -1523,6 +1522,7 @@ class TestWrappers(TestCase):
         job.section = section
 
         return job
+
 
 import inspect
 class FakeBasicConfig:

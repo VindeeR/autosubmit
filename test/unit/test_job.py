@@ -244,7 +244,7 @@ class TestJob(TestCase):
         update_content_mock.assert_called_with(config)
         self.assertTrue(checked)
 
-    @patch('autosubmitconfigparser.config.basicconfig.BasicConfig')
+    @patch('autosubmitconfigparser.config.basicconfig.BasicConfig' )
     def test_hetjob(self, mocked_global_basic_config: Mock):
         """
         Test job platforms with a platform. Builds job and platform using YAML data, without mocks.
@@ -276,7 +276,6 @@ class TestJob(TestCase):
                                 ADD_PROJECT_TO_HOST: False
                                 MAX_WALLCLOCK: '00:55'
                                 TEMP_DIR: ''
-                                
                             '''))
                 experiment_data.flush()
             # For could be added here to cover more configurations options
@@ -305,16 +304,23 @@ class TestJob(TestCase):
                                         - ['#SBATCH --export=ALL', '#SBATCH --distribution=block:cyclic:fcyclic', '#SBATCH --exclusive']
                 '''))
 
-            mocked_basic_config = Mock(spec=BasicConfig)
-            mocked_basic_config.LOCAL_ROOT_DIR = str(temp_dir)
-            mocked_global_basic_config.LOCAL_ROOT_DIR.return_value = str(temp_dir)
+            basic_config = FakeBasicConfig()
+            basic_config.read()
+            basic_config.LOCAL_ROOT_DIR = str(temp_dir)
 
-            config = AutosubmitConfig(expid, basic_config=mocked_basic_config, parser_factory=YAMLParserFactory())
+            config = AutosubmitConfig(expid, basic_config=basic_config, parser_factory=YAMLParserFactory())
             config.reload(True)
             parameters = config.load_parameters()
-            job_list_obj = JobList(expid, mocked_basic_config, YAMLParserFactory(),
+            job_list_obj = JobList(expid, basic_config, YAMLParserFactory(),
                                    Autosubmit._get_job_list_persistence(expid, config), config)
+
+            #generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format,
+            #             default_retrials,
+            #             default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[], show_log=True,
+            #             previous_run=False):
+            #good
             job_list_obj.generate(
+                as_conf=config,
                 date_list=[],
                 member_list=[],
                 num_chunks=1,
@@ -323,14 +329,12 @@ class TestJob(TestCase):
                 date_format='M',
                 default_retrials=config.get_retrials(),
                 default_job_type=config.get_default_job_type(),
-                wrapper_type=config.get_wrapper_type(),
                 wrapper_jobs={},
-                notransitive=True,
-                update_structure=True,
+                new=True,
                 run_only_members=config.get_member_list(run_only=True),
-                jobs_data=config.experiment_data,
-                as_conf=config
+                show_log=True,
             )
+
             job_list = job_list_obj.get_job_list()
             self.assertEqual(1, len(job_list))
 
@@ -399,17 +403,18 @@ class TestJob(TestCase):
                     '''))
                     minimal.flush()
 
-                mocked_basic_config = Mock(spec=BasicConfig)
-                mocked_basic_config.LOCAL_ROOT_DIR = str(temp_dir)
-                mocked_global_basic_config.LOCAL_ROOT_DIR.return_value = str(temp_dir)
+                basic_config = FakeBasicConfig()
+                basic_config.read()
+                basic_config.LOCAL_ROOT_DIR = str(temp_dir)
 
-                config = AutosubmitConfig(expid, basic_config=mocked_basic_config, parser_factory=YAMLParserFactory())
+                config = AutosubmitConfig(expid, basic_config=basic_config, parser_factory=YAMLParserFactory())
                 config.reload(True)
                 parameters = config.load_parameters()
 
-                job_list_obj = JobList(expid, mocked_basic_config, YAMLParserFactory(),
+                job_list_obj = JobList(expid, basic_config, YAMLParserFactory(),
                                        Autosubmit._get_job_list_persistence(expid, config), config)
                 job_list_obj.generate(
+                    as_conf=config,
                     date_list=[],
                     member_list=[],
                     num_chunks=1,
@@ -418,13 +423,10 @@ class TestJob(TestCase):
                     date_format='M',
                     default_retrials=config.get_retrials(),
                     default_job_type=config.get_default_job_type(),
-                    wrapper_type=config.get_wrapper_type(),
                     wrapper_jobs={},
-                    notransitive=True,
-                    update_structure=True,
+                    new=True,
                     run_only_members=config.get_member_list(run_only=True),
-                    jobs_data=config.experiment_data,
-                    as_conf=config
+                    show_log=True,
                 )
                 job_list = job_list_obj.get_job_list()
                 self.assertEqual(1, len(job_list))
@@ -511,7 +513,7 @@ class TestJob(TestCase):
             self.job.nodes = test['nodes']
             self.assertEqual(self.job.total_processors, test['expected'])
 
-    def test_job_script_checking_contains_the_right_default_variables(self):
+    def test_job_script_checking_contains_the_right_variables(self):
         # This test (and feature) was implemented in order to avoid
         # false positives on the checking process with auto-ecearth3
         # Arrange
@@ -573,6 +575,46 @@ class TestJob(TestCase):
         self.assertEqual('%d_%', parameters['d_'])
         self.assertEqual('%Y%', parameters['Y'])
         self.assertEqual('%Y_%', parameters['Y_'])
+        # update parameters when date is not none and chunk is none
+        self.job.date = datetime.datetime(1975, 5, 25, 22, 0, 0, 0, datetime.timezone.utc)
+        self.job.chunk = None
+        parameters = self.job.update_parameters(self.as_conf, parameters)
+        self.assertEqual(1,parameters['CHUNK'])
+        # update parameters when date is not none and chunk is not none
+        self.job.date = datetime.datetime(1975, 5, 25, 22, 0, 0, 0, datetime.timezone.utc)
+        self.job.chunk = 1
+        self.job.date_format = 'H'
+        parameters = self.job.update_parameters(self.as_conf, parameters)
+        self.assertEqual(1, parameters['CHUNK'])
+        self.assertEqual("TRUE", parameters['CHUNK_FIRST'])
+        self.assertEqual("TRUE", parameters['CHUNK_LAST'])
+        self.assertEqual("1975", parameters['CHUNK_START_YEAR'])
+        self.assertEqual("05", parameters['CHUNK_START_MONTH'])
+        self.assertEqual("25", parameters['CHUNK_START_DAY'])
+        self.assertEqual("22", parameters['CHUNK_START_HOUR'])
+        self.assertEqual("1975", parameters['CHUNK_END_YEAR'])
+        self.assertEqual("05", parameters['CHUNK_END_MONTH'])
+        self.assertEqual("26", parameters['CHUNK_END_DAY'])
+        self.assertEqual("22", parameters['CHUNK_END_HOUR'])
+        self.assertEqual("1975", parameters['CHUNK_SECOND_TO_LAST_YEAR'])
+
+        self.assertEqual("05", parameters['CHUNK_SECOND_TO_LAST_MONTH'])
+        self.assertEqual("25", parameters['CHUNK_SECOND_TO_LAST_DAY'])
+        self.assertEqual("22", parameters['CHUNK_SECOND_TO_LAST_HOUR'])
+        self.assertEqual('1975052522', parameters['CHUNK_START_DATE'])
+        self.assertEqual('1975052622', parameters['CHUNK_END_DATE'])
+        self.assertEqual('1975052522', parameters['CHUNK_SECOND_TO_LAST_DATE'])
+        self.assertEqual('1975052422', parameters['DAY_BEFORE'])
+        self.assertEqual('1', parameters['RUN_DAYS'])
+
+        self.job.chunk = 2
+        parameters = {"EXPERIMENT.NUMCHUNKS": 3, "EXPERIMENT.CHUNKSIZEUNIT": "hour"}
+        parameters = self.job.update_parameters(self.as_conf, parameters)
+        self.assertEqual(2, parameters['CHUNK'])
+        self.assertEqual("FALSE", parameters['CHUNK_FIRST'])
+        self.assertEqual("FALSE", parameters['CHUNK_LAST'])
+
+
 
     def test_sdate(self):
         """Test that the property getter for ``sdate`` works as expected."""
@@ -587,6 +629,19 @@ class TestJob(TestCase):
             self.job.date_format = test[1]
             self.assertEquals(test[2], self.job.sdate)
 
+    def test__repr__(self):
+        self.job.name = "dummy-name"
+        self.job.status = "dummy-status"
+        self.assertEqual("dummy-name STATUS: dummy-status", self.job.__repr__())
+
+    def test_add_child(self):
+        child = Job("child", 1, Status.WAITING, 0)
+        self.job.add_child([child])
+        self.assertEqual(1, len(self.job.children))
+        self.assertEqual(child, list(self.job.children)[0])
+
+
+
 class FakeBasicConfig:
     def __init__(self):
         pass
@@ -597,7 +652,16 @@ class FakeBasicConfig:
             if not name.startswith('__') and not inspect.ismethod(value) and not inspect.isfunction(value):
                 pr[name] = value
         return pr
-    #convert this to dict
+    def read(self):
+        FakeBasicConfig.DB_DIR = '/dummy/db/dir'
+        FakeBasicConfig.DB_FILE = '/dummy/db/file'
+        FakeBasicConfig.DB_PATH = '/dummy/db/path'
+        FakeBasicConfig.LOCAL_ROOT_DIR = '/dummy/local/root/dir'
+        FakeBasicConfig.LOCAL_TMP_DIR = '/dummy/local/temp/dir'
+        FakeBasicConfig.LOCAL_PROJ_DIR = '/dummy/local/proj/dir'
+        FakeBasicConfig.DEFAULT_PLATFORMS_CONF = ''
+        FakeBasicConfig.DEFAULT_JOBS_CONF = ''
+        FakeBasicConfig.STRUCTURES_DIR = '/dummy/structures/dir'
     DB_DIR = '/dummy/db/dir'
     DB_FILE = '/dummy/db/file'
     DB_PATH = '/dummy/db/path'
@@ -606,6 +670,8 @@ class FakeBasicConfig:
     LOCAL_PROJ_DIR = '/dummy/local/proj/dir'
     DEFAULT_PLATFORMS_CONF = ''
     DEFAULT_JOBS_CONF = ''
+    STRUCTURES_DIR = '/dummy/structures/dir'
+
 
 
 

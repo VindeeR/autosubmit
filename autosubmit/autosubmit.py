@@ -1418,7 +1418,8 @@ class Autosubmit:
             packages_persistence.reset_table(True)
             job_list_original = Autosubmit.load_job_list(
                 expid, as_conf, notransitive=notransitive)
-            job_list = copy.deepcopy(job_list_original)
+            job_list = Autosubmit.load_job_list(
+                expid, as_conf, notransitive=notransitive)
             job_list.packages_dict = {}
 
             Log.debug("Length of the jobs list: {0}", len(job_list))
@@ -1604,7 +1605,7 @@ class Autosubmit:
         if unparsed_two_step_start != "":
             job_list.parse_jobs_by_filter(unparsed_two_step_start)
         job_list.create_dictionary(date_list, member_list, num_chunks, chunk_ini, date_format, as_conf.get_retrials(),
-                                   wrapper_jobs)
+                                   wrapper_jobs, as_conf)
         for job in job_list.get_active():
             if job.status != Status.WAITING:
                 job.status = Status.READY
@@ -1887,7 +1888,7 @@ class Autosubmit:
             Log.info("Recovering job_list")
         try:
             job_list = Autosubmit.load_job_list(
-                expid, as_conf, notransitive=notransitive, previous_run=True)
+                expid, as_conf, notransitive=notransitive, new=False)
         except IOError as e:
             raise AutosubmitError(
                 "Job_list not found", 6016, str(e))
@@ -2460,7 +2461,7 @@ class Autosubmit:
             output_type = as_conf.get_output_type()
             pkl_dir = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, 'pkl')
             job_list = Autosubmit.load_job_list(
-                expid, as_conf, notransitive=notransitive, monitor=True, previous_run=True)
+                expid, as_conf, notransitive=notransitive, monitor=True, new=False)
             Log.debug("Job list restored from {0} files", pkl_dir)
         except AutosubmitError as e:
             raise AutosubmitCritical(e.message, e.code, e.trace)
@@ -4589,7 +4590,7 @@ class Autosubmit:
                     Log.info("\nCreating the jobs list...")
                     job_list = JobList(expid, BasicConfig, YAMLParserFactory(),Autosubmit._get_job_list_persistence(expid, as_conf), as_conf)
                     try:
-                        prev_job_list = Autosubmit.load_job_list(expid, as_conf, previous_run=True)
+                        prev_job_list = Autosubmit.load_job_list(expid, as_conf, new=False)
                     except:
                         prev_job_list = None
                     date_format = ''
@@ -5854,7 +5855,7 @@ class Autosubmit:
         open(as_conf.experiment_file, 'wb').write(content)
 
     @staticmethod
-    def load_job_list(expid, as_conf, notransitive=False, monitor=False,previous_run = False):
+    def load_job_list(expid, as_conf, notransitive=False, monitor=False, new = True):
         rerun = as_conf.get_rerun()
 
         job_list = JobList(expid, BasicConfig, YAMLParserFactory(),
@@ -5877,7 +5878,7 @@ class Autosubmit:
         job_list.generate(as_conf, date_list, as_conf.get_member_list(), as_conf.get_num_chunks(), as_conf.get_chunk_ini(),
                           as_conf.experiment_data, date_format, as_conf.get_retrials(),
                           as_conf.get_default_job_type(), wrapper_jobs,
-                          new=False, run_only_members=run_only_members, previous_run=previous_run)
+                          new=new, run_only_members=run_only_members)
 
         if str(rerun).lower() == "true":
             rerun_jobs = as_conf.get_rerun_jobs()

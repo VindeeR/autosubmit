@@ -30,7 +30,7 @@ class JobListPersistence(object):
 
     """
 
-    def save(self, persistence_path, persistence_file, job_list):
+    def save(self, persistence_path, persistence_file, job_list , graph):
         """
         Persists a job list
         :param job_list: JobList
@@ -86,7 +86,7 @@ class JobListPersistencePkl(JobListPersistence):
             Log.printlog('File {0} does not exist'.format(path),Log.WARNING)
             return list()
 
-    def save(self, persistence_path, persistence_file, job_list,graph):
+    def save(self, persistence_path, persistence_file, job_list, graph):
         """
         Persists a job list in a pkl file
         :param job_list: JobList
@@ -133,7 +133,7 @@ class JobListPersistenceDb(JobListPersistence):
         """
         return self.db_manager.select_all(self.JOB_LIST_TABLE)
 
-    def save(self, persistence_path, persistence_file, job_list):
+    def save(self, persistence_path, persistence_file, job_list, graph):
         """
         Persists a job list in a database
         :param job_list: JobList

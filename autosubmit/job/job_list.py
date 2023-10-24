@@ -147,12 +147,12 @@ class JobList(object):
         # indices to delete
         for i, job in enumerate(self._job_list):
             if job.dependencies is not None:
-                if ((len(job.dependencies) > 0 and not job.has_parents()) and not job.has_children()) and job.delete_when_edgeless in [
-                    "true", True, 1]:
+                if ((len(job.dependencies) > 0 and not job.has_parents()) and not job.has_children()) and str(job.delete_when_edgeless) .casefold() == "true".casefold():
                     jobs_to_delete.append(job)
         # delete jobs by indices
         for i in jobs_to_delete:
             self._job_list.remove(i)
+            self.graph.remove_node(i.name)
 
 
     def generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
@@ -297,9 +297,12 @@ class JobList(object):
                         Log.debug(f"Time to add dependencies for job {job.name}: {end - start}")
                     start = time.time()
                 if job.name not in self.graph.nodes:
-                    self.graph.add_node(job.name)
-                # restore status from disk
-                job = self.graph.nodes.get(job.name).get('job',job)
+                    self.graph.add_node(job.name,job=job)
+                elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job",None) is None:
+                    self.graph.nodes.get(job.name)["job"] = job
+                job = self.graph.nodes.get(job.name)['job']
+                job.dependencies = str(dic_jobs.as_conf.jobs_data[job.section].get("DEPENDENCIES",""))
+                job.delete_when_edgeless = str(dic_jobs.as_conf.jobs_data[job.section].get("DELETE_WHEN_EDGELESS",True))
                 if not dependencies:
                     continue
                 num_jobs = 1
@@ -589,35 +592,38 @@ class JobList(object):
         filters = []
         if level_to_check == "DATES_FROM":
             try:
-                value_to_check = date2str(value_to_check, "%Y%m%d") # need to convert in some cases
+                value_to_check = date2str(value_to_check, "%Y%m%d")  # need to convert in some cases
             except:
                 pass
             try:
-                values_list = [date2str(date_, "%Y%m%d") for date_ in self._date_list] # need to convert in some cases
+                values_list = [date2str(date_, "%Y%m%d") for date_ in self._date_list]  # need to convert in some cases
             except:
                 values_list = self._date_list
         elif level_to_check == "MEMBERS_FROM":
-            values_list = self._member_list # Str list
+            values_list = self._member_list  # Str list
         elif level_to_check == "CHUNKS_FROM":
-            values_list = self._chunk_list # int list
+            values_list = self._chunk_list  # int list
         else:
-            values_list = [] # splits, int list ( artificially generated later )
+            values_list = []  # splits, int list ( artificially generated later )
 
         relationship = relationships.get(level_to_check, {})
         status = relationship.pop("STATUS", relationships.get("STATUS", None))
         from_step = relationship.pop("FROM_STEP", relationships.get("FROM_STEP", None))
+        # if filter_range.casefold() in ["ALL".casefold(), "NATURAL".casefold()] or (
+        #         not value_to_check or str(value_to_check).upper() in str(
+        #         JobList._parse_filters_to_check(filter_range, values_list, level_to_check)).upper()):
         for filter_range, filter_data in relationship.items():
-            selected_filter = JobList._parse_filters_to_check(filter_range,values_list,level_to_check)
-            # check each value individually as 1 != 13 so in keyword is not enough
-            if value_to_check:
+            selected_filter = JobList._parse_filters_to_check(filter_range, values_list, level_to_check)
+            if filter_range.casefold() in ["ALL".casefold(), "NATURAL".casefold(),
+                                           "NONE".casefold()] or not value_to_check:
+                included = True
+            else:
                 included = False
                 for value in selected_filter:
-                    if str(value_to_check).casefold() == str(value).casefold():
+                    if str(value).strip(" ").casefold() == str(value_to_check).strip(" ").casefold():
                         included = True
                         break
-            else:
-                included = True
-            if filter_range.casefold() in ["ALL".casefold(),"NATURAL".casefold()] or included:
+            if included:
                 if not filter_data.get("STATUS", None):
                     filter_data["STATUS"] = status
                 if not filter_data.get("FROM_STEP", None):
@@ -2420,20 +2426,20 @@ class JobList(object):
                 except Exception as exp:
                     pass
             # if there is a saved structure, graph created and stored match and there are no relevant changes in the config file
-        if not new and len(self._dic_jobs.changes) == 0 and (current_structure) and len(self.graph) == len(current_structure):
-            Log.info("Transitive reduction is not neccesary")
-            self._job_list = [ job["job"] for job in self.graph.nodes().values() if job.get("job",None) ]
-        else:
-            Log.info("Transitive reduction...")
-            # This also adds the jobs edges to the job itself (job._parents and job._children)
-            self.graph = transitive_reduction(self.graph)
-            # update job list view as transitive_Reduction also fills job._parents and job._children if recreate is set
-            self._job_list = [ job["job"] for job in self.graph.nodes().values() ]
-            gen_job_list = ( job for job in self._job_list if not job.has_parents())
-            try:
-                DbStructure.save_structure(self.graph, self.expid, self._config.STRUCTURES_DIR)
-            except Exception as exp:
-                Log.warning(str(exp))
+        # if not new and len(self._dic_jobs.changes) == 0 and (current_structure) and len(self.graph) == len(current_structure):
+        #     Log.info("Transitive reduction is not neccesary")
+        #     self._job_list = [ job["job"] for job in self.graph.nodes().values() if job.get("job",None) ]
+        # else:
+        Log.info("Transitive reduction...")
+        # This also adds the jobs edges to the job itself (job._parents and job._children)
+        self.graph = transitive_reduction(self.graph)
+        # update job list view as transitive_Reduction also fills job._parents and job._children if recreate is set
+        self._job_list = [ job["job"] for job in self.graph.nodes().values() ]
+        gen_job_list = ( job for job in self._job_list if not job.has_parents())
+        try:
+            DbStructure.save_structure(self.graph, self.expid, self._config.STRUCTURES_DIR)
+        except Exception as exp:
+            Log.warning(str(exp))
     @threaded
     def check_scripts_threaded(self, as_conf):
         """

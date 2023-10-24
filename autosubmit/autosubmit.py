@@ -4585,8 +4585,10 @@ class Autosubmit:
 
                     Log.info("\nCreating the jobs list...")
                     job_list = JobList(expid, BasicConfig, YAMLParserFactory(),Autosubmit._get_job_list_persistence(expid, as_conf), as_conf)
-                    prev_job_list = Autosubmit.load_job_list(expid, as_conf, previous_run=True)
-
+                    try:
+                        prev_job_list = Autosubmit.load_job_list(expid, as_conf, previous_run=True)
+                    except:
+                        prev_job_list = None
                     date_format = ''
                     if as_conf.get_chunk_size_unit() == 'hour':
                         date_format = 'H'
@@ -4613,7 +4615,8 @@ class Autosubmit:
                     else:
                         job_list.remove_rerun_only_jobs(notransitive)
                     Log.info("\nSaving the jobs list...")
-                    job_list.add_logs(prev_job_list.get_logs())
+                    if prev_job_list:
+                        job_list.add_logs(prev_job_list.get_logs())
                     job_list.save()
                     JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
                                           "job_packages_" + expid).reset_table()
@@ -4764,14 +4767,13 @@ class Autosubmit:
             submitter = Autosubmit._get_submitter(as_conf)
             submitter.load_platforms(as_conf)
             try:
-                hpcarch = submitter.platforms[as_conf.get_platform()]
+                hpcarch = submitter.platforms.get(as_conf.get_platform(), "local")
             except BaseException as e:
                 error = str(e)
                 try:
                     hpcarch = submitter.platforms[as_conf.get_platform()]
                 except Exception as e:
                     hpcarch = "local"
-                Log.warning("Remote clone may be disabled due to: " + error)
             return AutosubmitGit.clone_repository(as_conf, force, hpcarch)
         elif project_type == "svn":
             svn_project_url = as_conf.get_svn_project_url()

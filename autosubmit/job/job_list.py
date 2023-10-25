@@ -614,8 +614,7 @@ class JobList(object):
         #         JobList._parse_filters_to_check(filter_range, values_list, level_to_check)).upper()):
         for filter_range, filter_data in relationship.items():
             selected_filter = JobList._parse_filters_to_check(filter_range, values_list, level_to_check)
-            if filter_range.casefold() in ["ALL".casefold(), "NATURAL".casefold(),
-                                           "NONE".casefold()] or not value_to_check:
+            if filter_range.casefold() in ["ALL".casefold(),"NATURAL".casefold(),"NONE".casefold()] or not value_to_check:
                 included = True
             else:
                 included = False

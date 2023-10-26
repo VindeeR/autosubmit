@@ -1693,8 +1693,9 @@ class Job(object):
             else:
                 parameters['CHUNK_LAST'] = 'FALSE'
         parameters['NUMMEMBERS'] = len(as_conf.get_member_list())
-        parameters['DEPENDENCIES'] = str(as_conf.jobs_data[self.section].get("DEPENDENCIES",""))
-        self.dependencies = parameters['DEPENDENCIES']
+        self.dependencies = as_conf.jobs_data[self.section].get("DEPENDENCIES","")
+        self.dependencies  = str(self.dependencies)
+
         parameters['EXPORT'] = self.export
         parameters['PROJECT_TYPE'] = as_conf.get_project_type()
         self.wchunkinc = as_conf.get_wchunkinc(self.section)

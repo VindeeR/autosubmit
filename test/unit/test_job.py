@@ -244,7 +244,7 @@ class TestJob(TestCase):
         update_content_mock.assert_called_with(config)
         self.assertTrue(checked)
 
-    @patch('autosubmitconfigparser.config.basicconfig.BasicConfig')
+    @patch('autosubmitconfigparser.config.basicconfig.BasicConfig' )
     def test_hetjob(self, mocked_global_basic_config: Mock):
         """
         Test job platforms with a platform. Builds job and platform using YAML data, without mocks.
@@ -276,7 +276,6 @@ class TestJob(TestCase):
                                 ADD_PROJECT_TO_HOST: False
                                 MAX_WALLCLOCK: '00:55'
                                 TEMP_DIR: ''
-                                
                             '''))
                 experiment_data.flush()
             # For could be added here to cover more configurations options
@@ -305,16 +304,23 @@ class TestJob(TestCase):
                                         - ['#SBATCH --export=ALL', '#SBATCH --distribution=block:cyclic:fcyclic', '#SBATCH --exclusive']
                 '''))
 
-            mocked_basic_config = Mock(spec=BasicConfig)
-            mocked_basic_config.LOCAL_ROOT_DIR = str(temp_dir)
-            mocked_global_basic_config.LOCAL_ROOT_DIR.return_value = str(temp_dir)
+            basic_config = FakeBasicConfig()
+            basic_config.read()
+            basic_config.LOCAL_ROOT_DIR = str(temp_dir)
 
-            config = AutosubmitConfig(expid, basic_config=mocked_basic_config, parser_factory=YAMLParserFactory())
+            config = AutosubmitConfig(expid, basic_config=basic_config, parser_factory=YAMLParserFactory())
             config.reload(True)
             parameters = config.load_parameters()
-            job_list_obj = JobList(expid, mocked_basic_config, YAMLParserFactory(),
+            job_list_obj = JobList(expid, basic_config, YAMLParserFactory(),
                                    Autosubmit._get_job_list_persistence(expid, config), config)
+
+            #generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format,
+            #             default_retrials,
+            #             default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[], show_log=True,
+            #             previous_run=False):
+            #good
             job_list_obj.generate(
+                as_conf=config,
                 date_list=[],
                 member_list=[],
                 num_chunks=1,
@@ -323,14 +329,13 @@ class TestJob(TestCase):
                 date_format='M',
                 default_retrials=config.get_retrials(),
                 default_job_type=config.get_default_job_type(),
-                wrapper_type=config.get_wrapper_type(),
                 wrapper_jobs={},
-                notransitive=True,
-                update_structure=True,
+                new=True,
                 run_only_members=config.get_member_list(run_only=True),
-                jobs_data=config.experiment_data,
-                as_conf=config
+                show_log=True,
+                previous_run=False
             )
+
             job_list = job_list_obj.get_job_list()
             self.assertEqual(1, len(job_list))
 
@@ -399,17 +404,18 @@ class TestJob(TestCase):
                     '''))
                     minimal.flush()
 
-                mocked_basic_config = Mock(spec=BasicConfig)
-                mocked_basic_config.LOCAL_ROOT_DIR = str(temp_dir)
-                mocked_global_basic_config.LOCAL_ROOT_DIR.return_value = str(temp_dir)
+                basic_config = FakeBasicConfig()
+                basic_config.read()
+                basic_config.LOCAL_ROOT_DIR = str(temp_dir)
 
-                config = AutosubmitConfig(expid, basic_config=mocked_basic_config, parser_factory=YAMLParserFactory())
+                config = AutosubmitConfig(expid, basic_config=basic_config, parser_factory=YAMLParserFactory())
                 config.reload(True)
                 parameters = config.load_parameters()
 
-                job_list_obj = JobList(expid, mocked_basic_config, YAMLParserFactory(),
+                job_list_obj = JobList(expid, basic_config, YAMLParserFactory(),
                                        Autosubmit._get_job_list_persistence(expid, config), config)
                 job_list_obj.generate(
+                    as_conf=config,
                     date_list=[],
                     member_list=[],
                     num_chunks=1,
@@ -418,13 +424,11 @@ class TestJob(TestCase):
                     date_format='M',
                     default_retrials=config.get_retrials(),
                     default_job_type=config.get_default_job_type(),
-                    wrapper_type=config.get_wrapper_type(),
                     wrapper_jobs={},
-                    notransitive=True,
-                    update_structure=True,
+                    new=True,
                     run_only_members=config.get_member_list(run_only=True),
-                    jobs_data=config.experiment_data,
-                    as_conf=config
+                    show_log=True,
+                    previous_run=False
                 )
                 job_list = job_list_obj.get_job_list()
                 self.assertEqual(1, len(job_list))
@@ -597,7 +601,16 @@ class FakeBasicConfig:
             if not name.startswith('__') and not inspect.ismethod(value) and not inspect.isfunction(value):
                 pr[name] = value
         return pr
-    #convert this to dict
+    def read(self):
+        FakeBasicConfig.DB_DIR = '/dummy/db/dir'
+        FakeBasicConfig.DB_FILE = '/dummy/db/file'
+        FakeBasicConfig.DB_PATH = '/dummy/db/path'
+        FakeBasicConfig.LOCAL_ROOT_DIR = '/dummy/local/root/dir'
+        FakeBasicConfig.LOCAL_TMP_DIR = '/dummy/local/temp/dir'
+        FakeBasicConfig.LOCAL_PROJ_DIR = '/dummy/local/proj/dir'
+        FakeBasicConfig.DEFAULT_PLATFORMS_CONF = ''
+        FakeBasicConfig.DEFAULT_JOBS_CONF = ''
+        FakeBasicConfig.STRUCTURES_DIR = '/dummy/structures/dir'
     DB_DIR = '/dummy/db/dir'
     DB_FILE = '/dummy/db/file'
     DB_PATH = '/dummy/db/path'
@@ -606,6 +619,7 @@ class FakeBasicConfig:
     LOCAL_PROJ_DIR = '/dummy/local/proj/dir'
     DEFAULT_PLATFORMS_CONF = ''
     DEFAULT_JOBS_CONF = ''
+    STRUCTURES_DIR = '/dummy/structures/dir'
 
 
 

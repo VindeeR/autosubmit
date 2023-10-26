@@ -147,7 +147,7 @@ class JobList(object):
         # indices to delete
         for i, job in enumerate(self._job_list):
             if job.dependencies is not None:
-                if ((len(job.dependencies) > 0 and not job.has_parents()) and not job.has_children()) and str(job.delete_when_edgeless) .casefold() == "true".casefold():
+                if (len(job.dependencies) > 0 and not job.has_parents() and not job.has_children()) and str(job.delete_when_edgeless).casefold() == "true".casefold():
                     jobs_to_delete.append(job)
         # delete jobs by indices
         for i in jobs_to_delete:
@@ -301,7 +301,7 @@ class JobList(object):
                 elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job",None) is None:
                     self.graph.nodes.get(job.name)["job"] = job
                 job = self.graph.nodes.get(job.name)['job']
-                job.dependencies = str(dic_jobs.as_conf.jobs_data[job.section].get("DEPENDENCIES",""))
+                job.dependencies = dic_jobs.as_conf.jobs_data[job.section].get("DEPENDENCIES","")
                 job.delete_when_edgeless = str(dic_jobs.as_conf.jobs_data[job.section].get("DELETE_WHEN_EDGELESS",True))
                 if not dependencies:
                     continue

@@ -609,9 +609,6 @@ class JobList(object):
         relationship = relationships.get(level_to_check, {})
         status = relationship.pop("STATUS", relationships.get("STATUS", None))
         from_step = relationship.pop("FROM_STEP", relationships.get("FROM_STEP", None))
-        # if filter_range.casefold() in ["ALL".casefold(), "NATURAL".casefold()] or (
-        #         not value_to_check or str(value_to_check).upper() in str(
-        #         JobList._parse_filters_to_check(filter_range, values_list, level_to_check)).upper()):
         for filter_range, filter_data in relationship.items():
             selected_filter = JobList._parse_filters_to_check(filter_range, values_list, level_to_check)
             if filter_range.casefold() in ["ALL".casefold(),"NATURAL".casefold(),"NONE".casefold()] or not value_to_check:
@@ -849,6 +846,7 @@ class JobList(object):
             elif "SPLITS_FROM" in relationships:
                 filters_to_apply = self._check_splits(relationships, current_job)
             else:
+
                 relationships.pop("CHUNKS_FROM", None)
                 relationships.pop("MEMBERS_FROM", None)
                 relationships.pop("DATES_FROM", None)
@@ -871,12 +869,10 @@ class JobList(object):
 
         # Apply all filters to look if this parent is an appropriated candidate for the current_job
         #if JobList._apply_filter(parent.split, filter_["SPLITS_TO"], associative_list["splits"], "splits"):
-        if True:
-            for value in [filter_.get("DATES_TO",""), filter_.get("MEMBERS_TO",""), filter_.get("CHUNKS_TO",""), filter_.get("SPLITS_TO","")]:
-                if "?" in value:
-                    return True, True
-            return True, False
-        return False,False
+        for value in [filter_.get("DATES_TO",""), filter_.get("MEMBERS_TO",""), filter_.get("CHUNKS_TO",""), filter_.get("SPLITS_TO","")]:
+            if "?" in value:
+                return True, True
+        return True, False
 
 
 

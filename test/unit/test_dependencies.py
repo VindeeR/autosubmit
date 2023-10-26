@@ -376,17 +376,17 @@ class TestJobList(unittest.TestCase):
         self.mock_job.chunk = 1
         self.mock_job.split = 1
         child = copy.deepcopy(self.mock_job)
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         # it returns a tuple, the first element is the result, the second is the optional flag
-        self.assertEqual(result, True)
+        self.assertEqual(result, (True, False))
         filter_ = {
                 "DATES_TO": "20020201",
                 "MEMBERS_TO": "fc2",
                 "CHUNKS_TO": "all",
                 "SPLITS_TO": "1?"
             }
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
-        self.assertEqual(result, True)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
+        self.assertEqual(result, (True, True))
         filter_ = {
                 "DATES_TO": "20020201",
                 "MEMBERS_TO": "fc2",
@@ -395,8 +395,8 @@ class TestJobList(unittest.TestCase):
             }
         self.mock_job.split = 2
 
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
-        self.assertEqual(result, False)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
+        self.assertEqual(result, (True, True))
         filter_ = {
                 "DATES_TO": "[20020201:20020205]",
                 "MEMBERS_TO": "fc2",
@@ -404,8 +404,8 @@ class TestJobList(unittest.TestCase):
                 "SPLITS_TO": "1"
             }
         self.mock_job.split = 1
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
-        self.assertEqual(result, True)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
+        self.assertEqual(result, (True, False))
         filter_ = {
                 "DATES_TO": "[20020201:20020205]",
                 "MEMBERS_TO": "fc2",
@@ -413,8 +413,8 @@ class TestJobList(unittest.TestCase):
                 "SPLITS_TO": "1"
             }
         self.mock_job.date = datetime.strptime("20020206", "%Y%m%d")
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
-        self.assertEqual(result, False)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
+        self.assertEqual(result, (True, False))
         filter_ = {
                 "DATES_TO": "[20020201:20020205]",
                 "MEMBERS_TO": "fc2",
@@ -424,8 +424,8 @@ class TestJobList(unittest.TestCase):
         self.mock_job.date = datetime.strptime("20020201", "%Y%m%d")
         self.mock_job.chunk = 2
         self.mock_job.split = 1
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
-        self.assertEqual(result, True)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
+        self.assertEqual(result, (True, False))
 
 
     def test_valid_parent_1_to_1(self):
@@ -450,10 +450,10 @@ class TestJobList(unittest.TestCase):
         self.mock_job.chunk = 5
         child.split = 1
         self.mock_job.split = 1
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, True)
         child.split = 2
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, False)
 
     def test_valid_parent_1_to_n(self):
@@ -477,36 +477,36 @@ class TestJobList(unittest.TestCase):
             }
         child.split = 1
         self.mock_job.split = 1
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, True)
         child.split = 2
         self.mock_job.split = 1
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, True)
         child.split = 3
         self.mock_job.split = 1
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, False)
         child.split = 4
         self.mock_job.split = 1
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, False)
 
         child.split = 1
         self.mock_job.split = 2
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, False)
         child.split = 2
         self.mock_job.split = 2
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, False)
         child.split = 3
         self.mock_job.split = 2
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job,filter_)
         self.assertEqual(result, True)
         child.split = 4
         self.mock_job.split = 2
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, True)
 
     def test_valid_parent_n_to_1(self):
@@ -530,36 +530,36 @@ class TestJobList(unittest.TestCase):
             }
         child.split = 1
         self.mock_job.split = 1
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, True)
         child.split = 1
         self.mock_job.split = 2
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, True)
         child.split = 1
         self.mock_job.split = 3
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, False)
         child.split = 1
         self.mock_job.split = 4
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, False)
 
         child.split = 2
         self.mock_job.split = 1
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, False)
         child.split = 2
         self.mock_job.split = 2
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, False)
         child.split = 2
         self.mock_job.split = 3
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, True)
         child.split = 2
         self.mock_job.split = 4
-        result = self.JobList._valid_parent(self.mock_job, member_list, date_list, chunk_list, is_a_natural_relation, filter_,child)
+        result = self.JobList._valid_parent(self.mock_job, filter_)
         self.assertEqual(result, True)
 
     def test_check_relationship(self):

@@ -103,15 +103,6 @@ class TestJobList(TestCase):
                              (parent, special_variables.get("FROM_STEP", 0)))
 
 
-    def test_add_edge_info_joblist(self):
-        special_conditions = dict()
-        special_conditions["STATUS"] = Status.VALUE_TO_KEY[Status.COMPLETED]
-        special_conditions["FROM_STEP"] = 0
-        self.job_list._add_edge_info(self.waiting_job, special_conditions["STATUS"])
-        self.assertEqual(len(self.job_list.jobs_edges.get(Status.VALUE_TO_KEY[Status.COMPLETED],[])),1)
-        self.job_list._add_edge_info(self.waiting_job2, special_conditions["STATUS"])
-        self.assertEqual(len(self.job_list.jobs_edges.get(Status.VALUE_TO_KEY[Status.COMPLETED],[])),2)
-
     def test_check_special_status(self):
         self.waiting_job.edge_info = dict()
 

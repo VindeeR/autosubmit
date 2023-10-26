@@ -17,13 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-import networkx as nx
 import os
-from contextlib import suppress
-from networkx.algorithms.dag import is_directed_acyclic_graph
-from networkx import DiGraph
-from networkx import dfs_edges
-from networkx import NetworkXError
 from autosubmit.job.job_package_persistence import JobPackagePersistence
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 from typing import Dict

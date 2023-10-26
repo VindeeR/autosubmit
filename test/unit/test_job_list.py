@@ -1,5 +1,8 @@
 from unittest import TestCase
 
+import networkx
+from networkx import DiGraph
+
 import shutil
 import tempfile
 from mock import Mock
@@ -229,13 +232,23 @@ class TestJobList(TestCase):
         chunk_list = list(range(1, num_chunks + 1))
         parameters = {'fake-key': 'fake-value',
                       'fake-key2': 'fake-value2'}
-        graph_mock = Mock()
+        graph = networkx.DiGraph()
         as_conf = Mock()
-        job_list.graph = graph_mock
+        job_list.graph = graph
         # act
-        job_list.generate(as_conf,date_list, member_list, num_chunks,
-                          1, parameters, 'H', 9999, Type.BASH, 'None', update_structure=True)
-
+        job_list.generate(
+            as_conf=as_conf,
+            date_list=date_list,
+            member_list=member_list,
+            num_chunks=num_chunks,
+            chunk_ini=1,
+            parameters=parameters,
+            date_format='H',
+            default_retrials=9999,
+            default_job_type=Type.BASH,
+            wrapper_jobs='None',
+            new=True,
+        )
 
 
         # assert
@@ -247,7 +260,7 @@ class TestJobList(TestCase):
         cj_args, cj_kwargs = job_list._create_jobs.call_args
         self.assertEqual(0, cj_args[2])
         job_list._add_dependencies.assert_called_once_with(date_list, member_list, chunk_list, cj_args[0],
-                                                           graph_mock)
+                                                           graph)
         # Adding flag update structure
         job_list.update_genealogy.assert_called_once_with(
             True, False, update_structure=True)
@@ -258,18 +271,16 @@ class TestJobList(TestCase):
         # arrange
         dic_mock = Mock()
         dic_mock.read_section = Mock()
-        dic_mock._jobs_data = dict()
-        dic_mock._jobs_data["JOBS"] = {'fake-section-1': {}, 'fake-section-2': {}}
-        self.job_list.experiment_data["JOBS"] = {'fake-section-1': {}, 'fake-section-2': {}}
-
+        dic_mock.experiment_data = dict()
+        dic_mock.experiment_data["JOBS"] = {'fake-section-1': {}, 'fake-section-2': {}}
         # act
-        JobList._create_jobs(dic_mock, 0, Type.BASH, jobs_data=dict())
+        JobList._create_jobs(dic_mock, 0, Type.BASH)
 
         # arrange
         dic_mock.read_section.assert_any_call(
-            'fake-section-1', 0, Type.BASH, dict())
+            'fake-section-1', 0, Type.BASH)
         dic_mock.read_section.assert_any_call(
-            'fake-section-2', 1, Type.BASH, dict())
+            'fake-section-2', 1, Type.BASH)
 
     def _createDummyJobWithStatus(self, status):
         job_name = str(randrange(999999, 999999999))

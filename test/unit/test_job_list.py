@@ -246,7 +246,7 @@ class TestJobList(TestCase):
             date_format='H',
             default_retrials=9999,
             default_job_type=Type.BASH,
-            wrapper_jobs='None',
+            wrapper_jobs={},
             new=True,
         )
 

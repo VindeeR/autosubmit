@@ -18,6 +18,7 @@ dependencies:
 - networkx
 - sqlite
 - pip:
+  - funcy
   - autosubmitconfigparser
   - argparse>=1.4.0
   - bcrypt>=3.2.0

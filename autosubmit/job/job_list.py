@@ -875,6 +875,19 @@ class JobList(object):
         return True, False
 
 
+    def _add_edge_info(self, job, special_status):
+        """
+        Special relations to be check in the update_list method
+        :param job: Current job
+        :param parent: parent jobs to check
+        :return:
+        """
+        if special_status not in self.jobs_edges:
+            self.jobs_edges[special_status] = set()
+        self.jobs_edges[special_status].add(job)
+        if "ALL" not in self.jobs_edges:
+            self.jobs_edges["ALL"] = set()
+        self.jobs_edges["ALL"].add(job)
 
     def _manage_job_dependencies(self, dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys,
                                  dependencies,

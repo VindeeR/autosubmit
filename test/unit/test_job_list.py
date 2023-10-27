@@ -259,11 +259,12 @@ class TestJobList(TestCase):
 
         cj_args, cj_kwargs = job_list._create_jobs.call_args
         self.assertEqual(0, cj_args[2])
-        job_list._add_dependencies.assert_called_once_with(date_list, member_list, chunk_list, cj_args[0],
-                                                           graph)
+
+        #_add_dependencies(self, date_list, member_list, chunk_list, dic_jobs, option="DEPENDENCIES"):
+
+        job_list._add_dependencies.assert_called_once_with(date_list, member_list, chunk_list, cj_args[0])
         # Adding flag update structure
-        job_list.update_genealogy.assert_called_once_with(
-            True, False, update_structure=True)
+        job_list.update_genealogy.assert_called_once_with(True)
         for job in job_list._job_list:
             self.assertEqual(parameters, job.parameters)
 

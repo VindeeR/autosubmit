@@ -517,6 +517,7 @@ class DicJobs:
             job.member = member
             job.chunk = chunk
             job.split = split
+
             section_data.append(job)
         else:
             # TO REcheck

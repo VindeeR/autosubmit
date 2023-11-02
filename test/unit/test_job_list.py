@@ -1,5 +1,5 @@
 from unittest import TestCase
-
+from copy import copy
 import networkx
 from networkx import DiGraph
 
@@ -282,6 +282,52 @@ class TestJobList(TestCase):
             'fake-section-1', 0, Type.BASH)
         dic_mock.read_section.assert_any_call(
             'fake-section-2', 1, Type.BASH)
+    # autosubmit run -rm "fc0"
+    def test_that_create_method_makes_the_correct_calls(self):
+        parser_mock = Mock()
+        parser_mock.read = Mock()
+
+        factory = YAMLParserFactory()
+        factory.create_parser = Mock(return_value=parser_mock)
+        job_list = JobList(self.experiment_id, FakeBasicConfig,
+                           factory, JobListPersistenceDb(self.temp_directory, 'db2'), self.as_conf)
+        job_list._create_jobs = Mock()
+        job_list._add_dependencies = Mock()
+        job_list.update_genealogy = Mock()
+        job_list._job_list = [Job('random-name', 9999, Status.WAITING, 0),
+                              Job('random-name2', 99999, Status.WAITING, 0)]
+        date_list = ['fake-date1', 'fake-date2']
+        member_list = ['fake-member1', 'fake-member2']
+        num_chunks = 2
+        parameters = {'fake-key': 'fake-value',
+                      'fake-key2': 'fake-value2'}
+        graph = networkx.DiGraph()
+        as_conf = Mock()
+        job_list.graph = graph
+        # act
+        job_list.generate(
+            as_conf=as_conf,
+            date_list=date_list,
+            member_list=member_list,
+            num_chunks=num_chunks,
+            chunk_ini=1,
+            parameters=parameters,
+            date_format='H',
+            default_retrials=1,
+            default_job_type=Type.BASH,
+            wrapper_jobs={},
+            new=True,
+        )
+        job_list._job_list[0].member = "fake-member1"
+        job_list._job_list[1].member = "fake-member2"
+        job_list_aux = copy(job_list)
+        job_list_aux.run_members = "fake-member1"
+        # assert len of job_list_aux._job_list match only fake-member1 jobs
+        self.assertEqual(len(job_list_aux._job_list), 1)
+        job_list_aux = copy(job_list)
+        job_list_aux.run_members = "not_exists"
+        self.assertEqual(len(job_list_aux._job_list), 0)
+
 
     def _createDummyJobWithStatus(self, status):
         job_name = str(randrange(999999, 999999999))

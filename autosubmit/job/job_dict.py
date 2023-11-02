@@ -46,7 +46,7 @@ class DicJobs:
     :type default_retrials: config_common
     """
 
-    def __init__(self, date_list, member_list, chunk_list, date_format, default_retrials,as_conf):
+    def __init__(self, date_list, member_list, chunk_list, date_format, default_retrials, as_conf):
         self._date_list = date_list
         self._member_list = member_list
         self._chunk_list = chunk_list

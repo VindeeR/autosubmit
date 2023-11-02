@@ -515,10 +515,8 @@ class DicJobs:
             job.member = member
             job.chunk = chunk
             job.split = split
-
             section_data.append(job)
         else:
-            # TO REcheck
             self._job_list[name].status = Status.WAITING if self._job_list[name].status in [Status.DELAYED,Status.PREPARED,Status.READY] else self._job_list[name].status
             section_data.append(self._job_list[name])
         self.workflow_jobs.append(name)

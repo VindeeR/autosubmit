@@ -515,7 +515,7 @@ class TestJob(TestCase):
             self.job.nodes = test['nodes']
             self.assertEqual(self.job.total_processors, test['expected'])
 
-    def test_job_script_checking_contains_the_right_default_variables(self):
+    def test_job_script_checking_contains_the_right_variables(self):
         # This test (and feature) was implemented in order to avoid
         # false positives on the checking process with auto-ecearth3
         # Arrange
@@ -609,6 +609,12 @@ class TestJob(TestCase):
         self.assertEqual('1975052422', parameters['DAY_BEFORE'])
         self.assertEqual('1', parameters['RUN_DAYS'])
 
+        self.job.chunk = 2
+        parameters = {"EXPERIMENT.NUMCHUNKS": 3, "EXPERIMENT.CHUNKSIZEUNIT": "hour"}
+        parameters = self.job.update_parameters(self.as_conf, parameters)
+        self.assertEqual(2, parameters['CHUNK'])
+        self.assertEqual("FALSE", parameters['CHUNK_FIRST'])
+        self.assertEqual("FALSE", parameters['CHUNK_LAST'])
 
 
 

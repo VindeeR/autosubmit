@@ -7,6 +7,8 @@ from mock import Mock
 import math
 import shutil
 import tempfile
+
+from autosubmit.job.job import Job
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_common import Type
@@ -570,6 +572,34 @@ class TestDicJobs(TestCase):
         self.assertEqual(len(self.dictionary._date_list), self.dictionary._get_date.call_count)
         for date in self.dictionary._date_list:
             self.dictionary._get_date.assert_any_call(list(), dic, date, member, chunk)
+
+    def test_job_list_returns_the_job_list_by_name(self):
+        # act
+        job_list = [ Job("child", 1, Status.WAITING, 0), Job("child2", 1, Status.WAITING, 0)]
+        self.dictionary.job_list = job_list
+        # arrange
+        self.assertEqual({'child': job_list[0], 'child2': job_list[1]}, self.dictionary.job_list)
+
+    def test_compare_section(self):
+        # arrange
+        section = 'fake-section'
+        self.dictionary._dic = {'fake-section': 'fake-job'}
+        self.dictionary.changes = dict()
+        self.dictionary.changes[section] = dict()
+        self.as_conf.detailed_deep_diff = Mock(return_value={})
+
+        self.dictionary._create_jobs_once = Mock()
+        self.dictionary._create_jobs_startdate = Mock()
+        self.dictionary._create_jobs_member = Mock()
+        self.dictionary._create_jobs_chunk = Mock()
+        # act
+        self.dictionary.compare_section(section)
+
+        # assert
+        self.dictionary._create_jobs_once.assert_not_called()
+        self.dictionary._create_jobs_startdate.assert_not_called()
+        self.dictionary._create_jobs_member.assert_not_called()
+        self.dictionary._create_jobs_chunk.assert_not_called()
 
     # def test_create_jobs_once_calls_create_job(self):
     #     mock_section = Mock()

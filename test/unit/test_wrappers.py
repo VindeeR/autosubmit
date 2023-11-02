@@ -1523,6 +1523,7 @@ class TestWrappers(TestCase):
 
         return job
 
+
 import inspect
 class FakeBasicConfig:
     def __init__(self):

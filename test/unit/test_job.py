@@ -596,6 +596,14 @@ class TestJob(TestCase):
         self.job.status = "dummy-status"
         self.assertEqual("dummy-name STATUS: dummy-status", self.job.__repr__())
 
+    def test_add_child(self):
+        child = Job("child", 1, Status.WAITING, 0)
+        self.job.add_child([child])
+        self.assertEqual(1, len(self.job.children))
+        self.assertEqual(child, list(self.job.children)[0])
+
+
+
 class FakeBasicConfig:
     def __init__(self):
         pass

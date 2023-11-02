@@ -130,9 +130,11 @@ class JobList(object):
             #     job.parents) == 0 or len(set(old_job_list_names).intersection(set([jobp.name for jobp in job.parents]))) == len(job.parents)]
 
     def create_dictionary(self, date_list, member_list, num_chunks, chunk_ini, date_format, default_retrials,
-                          wrapper_jobs):
+                          wrapper_jobs, as_conf):
         chunk_list = list(range(chunk_ini, num_chunks + 1))
-        dic_jobs = DicJobs(date_list, member_list, chunk_list, date_format, default_retrials,{},self.experiment_data)
+
+
+        dic_jobs = DicJobs(date_list, member_list, chunk_list, date_format, default_retrials, as_conf)
         self._dic_jobs = dic_jobs
         for wrapper_section in wrapper_jobs:
             if str(wrapper_jobs[wrapper_section]).lower() != 'none':

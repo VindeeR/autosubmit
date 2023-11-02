@@ -283,7 +283,7 @@ class TestJobList(TestCase):
         dic_mock.read_section.assert_any_call(
             'fake-section-2', 1, Type.BASH)
     # autosubmit run -rm "fc0"
-    def test_that_create_method_makes_the_correct_calls(self):
+    def test_run_member(self):
         parser_mock = Mock()
         parser_mock.read = Mock()
 
@@ -328,7 +328,22 @@ class TestJobList(TestCase):
         job_list_aux.run_members = "not_exists"
         self.assertEqual(len(job_list_aux._job_list), 0)
 
+    #autosubmit/job/job_list.py:create_dictionary - line 132
+    def test_create_dictionary(self):
+        # arrange
+        job_list = JobList(self.experiment_id, FakeBasicConfig, YAMLParserFactory(), JobListPersistenceDb(self.temp_directory, 'db2'), self.as_conf)
+        date_list = ['fake-date1', 'fake-date2']
+        member_list = ['fake-member1', 'fake-member2']
+        num_chunks = 2
+        chunk_ini = 1
+        date_format = 'day'
+        default_retrials = 1
+        #wrapper_jobs =
 
+        # act
+        job_list.create_dictionary(date_list, member_list, num_chunks, chunk_ini, date_format, default_retrials, wrapper_jobs, self.as_conf)
+        # assert
+        self.assertEqual(len(job_list._job_list), 4)
     def _createDummyJobWithStatus(self, status):
         job_name = str(randrange(999999, 999999999))
         job_id = randrange(1, 999)

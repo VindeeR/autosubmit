@@ -1640,7 +1640,7 @@ class Job(object):
             parameters['CHUNK'] = chunk
             total_chunk = int(parameters.get('EXPERIMENT.NUMCHUNKS', 1))
             chunk_length = int(parameters.get('EXPERIMENT.CHUNKSIZE', 1))
-            chunk_unit = str(parameters.get('EXPERIMENT.CHUNKSIZEUNIT', "")).lower()
+            chunk_unit = str(parameters.get('EXPERIMENT.CHUNKSIZEUNIT', "day")).lower()
             cal = str(parameters.get('EXPERIMENT.CALENDAR', "")).lower()
             chunk_start = chunk_start_date(
                 self.date, chunk, chunk_length, chunk_unit, cal)

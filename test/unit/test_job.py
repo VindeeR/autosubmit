@@ -591,6 +591,11 @@ class TestJob(TestCase):
             self.job.date_format = test[1]
             self.assertEquals(test[2], self.job.sdate)
 
+    def test__repr__(self):
+        self.job.name = "dummy-name"
+        self.job.status = "dummy-status"
+        self.assertEqual("dummy-name STATUS: dummy-status", self.job.__repr__())
+
 class FakeBasicConfig:
     def __init__(self):
         pass
@@ -620,6 +625,7 @@ class FakeBasicConfig:
     DEFAULT_PLATFORMS_CONF = ''
     DEFAULT_JOBS_CONF = ''
     STRUCTURES_DIR = '/dummy/structures/dir'
+
 
 
 

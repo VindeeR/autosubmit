@@ -577,6 +577,40 @@ class TestJob(TestCase):
         self.assertEqual('%d_%', parameters['d_'])
         self.assertEqual('%Y%', parameters['Y'])
         self.assertEqual('%Y_%', parameters['Y_'])
+        # update parameters when date is not none and chunk is none
+        self.job.date = datetime.datetime(1975, 5, 25, 22, 0, 0, 0, datetime.timezone.utc)
+        self.job.chunk = None
+        parameters = self.job.update_parameters(self.as_conf, parameters)
+        self.assertEqual(1,parameters['CHUNK'])
+        # update parameters when date is not none and chunk is not none
+        self.job.date = datetime.datetime(1975, 5, 25, 22, 0, 0, 0, datetime.timezone.utc)
+        self.job.chunk = 1
+        self.job.date_format = 'H'
+        parameters = self.job.update_parameters(self.as_conf, parameters)
+        self.assertEqual(1,parameters['CHUNK'])
+        self.assertEqual(1,parameters['CHUNK_FIRST'])
+        self.assertEqual(1,parameters['CHUNK_LAST'])
+        self.assertEqual(1975,parameters['CHUNK_START_YEAR'])
+        self.assertEqual(5,parameters['CHUNK_START_MONTH'])
+        self.assertEqual(25,parameters['CHUNK_START_DAY'])
+        self.assertEqual(22,parameters['CHUNK_START_HOUR'])
+        self.assertEqual(1975,parameters['CHUNK_END_YEAR'])
+        self.assertEqual(5,parameters['CHUNK_END_MONTH'])
+        self.assertEqual(25,parameters['CHUNK_END_DAY'])
+        self.assertEqual(22,parameters['CHUNK_END_HOUR'])
+        self.assertEqual(1975,parameters['CHUNK_SECOND_TO_LAST_YEAR'])
+
+        self.assertEqual(5,parameters['CHUNK_SECOND_TO_LAST_MONTH'])
+        self.assertEqual(25,parameters['CHUNK_SECOND_TO_LAST_DAY'])
+        self.assertEqual(21,parameters['CHUNK_SECOND_TO_LAST_HOUR'])
+        self.assertEqual('1975052522',parameters['CHUNK_START_DATE'])
+        self.assertEqual('1975052522',parameters['CHUNK_END_DATE'])
+        self.assertEqual('1975052521',parameters['CHUNK_SECOND_TO_LAST_DATE'])
+        self.assertEqual('19750525',parameters['DAY_BEFORE'])
+        self.assertEqual('19750525',parameters['RUN_DAYS'])
+
+
+
 
     def test_sdate(self):
         """Test that the property getter for ``sdate`` works as expected."""

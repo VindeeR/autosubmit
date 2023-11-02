@@ -53,12 +53,16 @@ class JobGrouping(object):
                 self.group_status_dict[group] = status
 
         final_jobs_group = dict()
-        for group, jobs in jobs_group_dict.items():
-            for job in jobs:
-                if job not in blacklist:
-                    if group not in final_jobs_group:
-                        final_jobs_group[group] = list()
-                    final_jobs_group[group].append(job)
+        for job, groups in jobs_group_dict.items():
+            for group in groups:
+                if group not in blacklist:
+                    while group in groups_map:
+                        group = groups_map[group]
+                    # to remove the jobs belonging to group that should be expanded
+                    if group in self.group_status_dict:
+                        if job not in final_jobs_group:
+                            final_jobs_group[job] = list()
+                        final_jobs_group[job].append(group)
 
         jobs_group_dict = final_jobs_group
 
@@ -167,8 +171,7 @@ class JobGrouping(object):
                 if self.group_by == 'split':
                     if job.split is not None and len(str(job.split)) > 0:
                         idx = job.name.rfind("_")
-                        split_len = len(str(job.split))
-                        groups.append(job.name[:idx - split_len] + job.name[idx + 1:])
+                        groups.append(job.name[:idx - 1] + job.name[idx + 1:])
                 elif self.group_by == 'chunk':
                     if job.chunk is not None and len(str(job.chunk)) > 0:
                         groups.append(date2str(job.date, self.date_format) + '_' + job.member + '_' + str(job.chunk))
@@ -195,9 +198,9 @@ class JobGrouping(object):
                         blacklist.append(group)
                         break
 
-                    if group not in jobs_group_dict:
-                        jobs_group_dict[group] = list()
-                    jobs_group_dict[group].append(job.name)
+                    if job.name not in jobs_group_dict:
+                        jobs_group_dict[job.name] = list()
+                    jobs_group_dict[job.name].append(group)
 
     def _check_synchronized_job(self, job, groups):
         synchronized = False

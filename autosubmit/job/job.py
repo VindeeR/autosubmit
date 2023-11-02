@@ -145,7 +145,6 @@ class Job(object):
         return "{0} STATUS: {1}".format(self.name, self.status)
 
     def __init__(self, name, job_id, status, priority):
-        self.wait = None
         self.splits = None
         self.rerun_only = False
         self.script_name_wrapper = None

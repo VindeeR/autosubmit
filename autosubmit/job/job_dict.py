@@ -72,9 +72,6 @@ class DicJobs:
 
         :param current_section: current section
         :type current_section: str
-        :param prev_dic: previous dictionary
-        :type prev_dic: dict
-        :return: dict with the changes
         :rtype: bool
         """
         self.changes[current_section] = self.as_conf.detailed_deep_diff(self.as_conf.experiment_data["JOBS"].get(current_section,{}),self.as_conf.last_experiment_data.get("JOBS",{}).get(current_section,{}))
@@ -514,6 +511,7 @@ class DicJobs:
             job.default_job_type = default_job_type
             job.section = section
             job.date = date
+            job.date_format = self._date_format
             job.member = member
             job.chunk = chunk
             job.split = split

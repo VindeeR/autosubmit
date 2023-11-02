@@ -1055,7 +1055,7 @@ class JobList(object):
     @staticmethod
     def handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member, member_list,
                                                section_name,visited_parents):
-        if job.wait and job.frequency > 1:
+        if job.frequency and job.frequency > 1:
             if job.chunk is not None and len(str(job.chunk)) > 0:
                 max_distance = (chunk_list.index(chunk) + 1) % job.frequency
                 if max_distance == 0:

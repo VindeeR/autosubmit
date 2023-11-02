@@ -451,10 +451,10 @@ class TestJobList(unittest.TestCase):
         child.split = 1
         self.mock_job.split = 1
         result = self.JobList._valid_parent(self.mock_job, filter_)
-        self.assertEqual(result, True)
+        self.assertEqual(result, (True,False))
         child.split = 2
         result = self.JobList._valid_parent(self.mock_job, filter_)
-        self.assertEqual(result, False)
+        self.assertEqual(result, (False,False))
 
     def test_valid_parent_1_to_n(self):
         self.mock_job.date = datetime.strptime("20020204", "%Y%m%d")
@@ -478,19 +478,19 @@ class TestJobList(unittest.TestCase):
         child.split = 1
         self.mock_job.split = 1
         result = self.JobList._valid_parent(self.mock_job, filter_)
-        self.assertEqual(result, True)
+        self.assertEqual(result, (True,False))
         child.split = 2
         self.mock_job.split = 1
         result = self.JobList._valid_parent(self.mock_job, filter_)
-        self.assertEqual(result, True)
+        self.assertEqual(result, (True,False))
         child.split = 3
         self.mock_job.split = 1
         result = self.JobList._valid_parent(self.mock_job, filter_)
-        self.assertEqual(result, False)
+        self.assertEqual(result, (False,False))
         child.split = 4
         self.mock_job.split = 1
         result = self.JobList._valid_parent(self.mock_job, filter_)
-        self.assertEqual(result, False)
+        self.assertEqual(result, (False,False))
 
         child.split = 1
         self.mock_job.split = 2

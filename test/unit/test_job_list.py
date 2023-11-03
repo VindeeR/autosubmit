@@ -330,20 +330,99 @@ class TestJobList(TestCase):
 
     #autosubmit/job/job_list.py:create_dictionary - line 132
     def test_create_dictionary(self):
-        # arrange
-        job_list = JobList(self.experiment_id, FakeBasicConfig, YAMLParserFactory(), JobListPersistenceDb(self.temp_directory, 'db2'), self.as_conf)
+        parser_mock = Mock()
+        parser_mock.read = Mock()
+        self.as_conf.experiment_data["JOBS"] = {'fake-section': {}, 'fake-section-2': {}}
+        self.as_conf.jobs_data = self.as_conf.experiment_data["JOBS"]
+        factory = YAMLParserFactory()
+        factory.create_parser = Mock(return_value=parser_mock)
+        job_list = JobList(self.experiment_id, FakeBasicConfig,
+                           factory, JobListPersistenceDb(self.temp_directory, 'db2'), self.as_conf)
+        job_list._create_jobs = Mock()
+        job_list._add_dependencies = Mock()
+        job_list.update_genealogy = Mock()
+        job_list._job_list = [Job('random-name_fake-date1_fake-member1', 9999, Status.WAITING, 0),
+                              Job('random-name2_fake_date2_fake-member2', 99999, Status.WAITING, 0)]
         date_list = ['fake-date1', 'fake-date2']
         member_list = ['fake-member1', 'fake-member2']
         num_chunks = 2
-        chunk_ini = 1
-        date_format = 'day'
-        default_retrials = 1
-        #wrapper_jobs =
-
+        parameters = {'fake-key': 'fake-value',
+                      'fake-key2': 'fake-value2'}
+        graph = networkx.DiGraph()
+        job_list.graph = graph
         # act
-        job_list.create_dictionary(date_list, member_list, num_chunks, chunk_ini, date_format, default_retrials, wrapper_jobs, self.as_conf)
+        job_list.generate(
+            as_conf=self.as_conf,
+            date_list=date_list,
+            member_list=member_list,
+            num_chunks=num_chunks,
+            chunk_ini=1,
+            parameters=parameters,
+            date_format='H',
+            default_retrials=1,
+            default_job_type=Type.BASH,
+            wrapper_jobs={},
+            new=True,
+        )
+        job_list._job_list[0].section = "fake-section"
+        job_list._job_list[0].date = "fake-date1"
+        job_list._job_list[0].member = "fake-member1"
+        job_list._job_list[0].chunk = 1
+        # job_list._job_list[1].date = "fake-date2"
+        # job_list._job_list[1].section = "fake-section2"
+        # job_list._job_list[1].member = "fake-member2"
+
+        wrapper_jobs = {"WRAPPER_FAKESECTION": 'fake-section'}
+        num_chunks = 2
+        chunk_ini = 1
+        date_format = "day"
+        default_retrials = 1
+        job_list._get_date = Mock(return_value="fake-date1")
+        # act
+        job_list.create_dictionary(date_list, member_list, num_chunks, chunk_ini, date_format, default_retrials,
+                                   wrapper_jobs, self.as_conf)
         # assert
-        self.assertEqual(len(job_list._job_list), 4)
+        self.assertEqual(len(job_list._ordered_jobs_by_date_member["WRAPPER_FAKESECTION"]["fake-date1"]["fake-member1"]), 1)
+
+    def test_generate_job_list(self):
+        parser_mock = Mock()
+        parser_mock.read = Mock()
+
+        factory = YAMLParserFactory()
+        factory.create_parser = Mock(return_value=parser_mock)
+
+        job_list = JobList(self.experiment_id, FakeBasicConfig,
+                           factory, JobListPersistenceDb(self.temp_directory, 'db2'), self.as_conf)
+        job_list._create_jobs = Mock()
+        job_list._add_dependencies = Mock()
+        job_list.update_genealogy = Mock()
+        job_list._job_list = [Job('random-name', 9999, Status.WAITING, 0),
+                              Job('random-name2', 99999, Status.WAITING, 0)]
+        date_list = ['fake-date1', 'fake-date2']
+        member_list = ['fake-member1', 'fake-member2']
+        num_chunks = 999
+        chunk_list = list(range(1, num_chunks + 1))
+        parameters = {'fake-key': 'fake-value',
+                      'fake-key2': 'fake-value2'}
+        graph = networkx.DiGraph()
+        as_conf = Mock()
+        job_list.graph = graph
+        # act
+        job_list.generate(
+            as_conf=as_conf,
+            date_list=date_list,
+            member_list=member_list,
+            num_chunks=num_chunks,
+            chunk_ini=1,
+            parameters=parameters,
+            date_format='H',
+            default_retrials=9999,
+            default_job_type=Type.BASH,
+            wrapper_jobs={},
+            new=True,
+        )
+
+
     def _createDummyJobWithStatus(self, status):
         job_name = str(randrange(999999, 999999999))
         job_id = randrange(1, 999)

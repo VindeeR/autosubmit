@@ -1755,7 +1755,7 @@ class Job(object):
         :return: script code
         :rtype: str
         """
-        parameters = self.parameters
+        self.update_parameters(as_conf, self.parameters)
         try:
             if as_conf.get_project_type().lower() != "none" and len(as_conf.get_project_type()) > 0:
                 template_file = open(os.path.join(as_conf.get_project_dir(), self.file), 'r')

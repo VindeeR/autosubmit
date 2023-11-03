@@ -384,7 +384,7 @@ class TestJobList(TestCase):
         # assert
         self.assertEqual(len(job_list._ordered_jobs_by_date_member["WRAPPER_FAKESECTION"]["fake-date1"]["fake-member1"]), 1)
 
-    def test_generate_job_list(self):
+    def test_generate_job_list_from_monitor_run(self):
         parser_mock = Mock()
         parser_mock.read = Mock()
 
@@ -421,6 +421,10 @@ class TestJobList(TestCase):
             wrapper_jobs={},
             new=True,
         )
+        # # Save job_list, and load it again
+        # job_list.save()
+
+
 
 
     def _createDummyJobWithStatus(self, status):

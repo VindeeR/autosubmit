@@ -653,6 +653,8 @@ class Job(object):
 
     @threaded
     def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0,job_id=""):
+        as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
+        as_conf.reload()
         max_logs = 0
         sleep(5)
         stat_file = self.script_name[:-4] + "_STAT_"
@@ -660,6 +662,7 @@ class Job(object):
         count = 0
         success = False
         error_message = ""
+        platform = None
         while (count < retries) and not success:
             try:
                 as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
@@ -667,19 +670,19 @@ class Job(object):
                 submitter = self._get_submitter(as_conf)
                 submitter.load_platforms(as_conf)
                 platform = submitter.platforms[str(platform_name).lower()]
+                platform.test_connection()
                 success = True
             except BaseException as e:
                 error_message = str(e)
                 sleep(5)
                 pass
             count=count+1
-        if not success:
-            raise AutosubmitError("Couldn't load the autosubmit platforms, seems that the local platform has some issue\n:{0}".format(error_message),6006)
+        if not success or not platform:
+            raise AutosubmitError("Couldn't load the autosubmit platforms, seems that the platform has some issue\n:{0}".format(error_message),6006)
         else:
             max_logs = int(as_conf.get_retrials()) - fail_count
             last_log = int(as_conf.get_retrials()) - fail_count
             try:
-                platform.test_connection()
                 if self.wrapper_type is not None and self.wrapper_type == "vertical":
                     found = False
                     retrials = 0

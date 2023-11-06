@@ -213,8 +213,13 @@ class ParamikoPlatform(Platform):
                     self._ssh.connect(self._host_config['hostname'], port, username=self.user,
                                       key_filename=self._host_config_id, timeout=60 , banner_timeout=60)
                 except Exception as e:
-                    self._ssh.connect(self._host_config['hostname'], port, username=self.user,
-                                      key_filename=self._host_config_id, timeout=60 , banner_timeout=60,disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']})
+                    try:
+                        self._ssh.connect(self._host_config['hostname'], port, username=self.user,
+                                          key_filename=self._host_config_id, timeout=60 , banner_timeout=60,disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']})
+                    except Exception as e:
+                        raise AutosubmitCritical(
+                            "Authentication Failed, please check the platform.conf of {0}".format(
+                                self._host_config['hostname']), 7050, str(e))
             self.transport = self._ssh.get_transport()
             self.transport.banner_timeout = 60
             self.transport.set_keepalive(120)

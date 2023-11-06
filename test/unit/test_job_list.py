@@ -12,7 +12,7 @@ from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_common import Type
 from autosubmit.job.job_list import JobList
-from autosubmit.job.job_list_persistence import JobListPersistenceDb
+from autosubmit.job.job_list_persistence import JobListPersistencePkl
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 
 
@@ -25,9 +25,10 @@ class TestJobList(TestCase):
         self.as_conf.jobs_data = self.as_conf.experiment_data["JOBS"]
         self.as_conf.experiment_data["PLATFORMS"] = dict()
         self.temp_directory = tempfile.mkdtemp()
-        self.job_list = JobList(self.experiment_id, FakeBasicConfig, YAMLParserFactory(),
-                                JobListPersistenceDb(self.temp_directory, 'db'), self.as_conf)
-
+        joblist_persistence = JobListPersistencePkl()
+        self.job_list = JobList(self.experiment_id, FakeBasicConfig, YAMLParserFactory(),joblist_persistence, self.as_conf)
+        # JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
+        #                       "job_packagesJobListPersistence_" + expid)
         # creating jobs for self list
         self.completed_job = self._createDummyJobWithStatus(Status.COMPLETED)
         self.completed_job2 = self._createDummyJobWithStatus(Status.COMPLETED)
@@ -220,7 +221,7 @@ class TestJobList(TestCase):
         factory.create_parser = Mock(return_value=parser_mock)
 
         job_list = JobList(self.experiment_id, FakeBasicConfig,
-                           factory, JobListPersistenceDb(self.temp_directory, 'db2'), self.as_conf)
+                           factory, JobListPersistencePkl(), self.as_conf)
         job_list._create_jobs = Mock()
         job_list._add_dependencies = Mock()
         job_list.update_genealogy = Mock()
@@ -290,7 +291,7 @@ class TestJobList(TestCase):
         factory = YAMLParserFactory()
         factory.create_parser = Mock(return_value=parser_mock)
         job_list = JobList(self.experiment_id, FakeBasicConfig,
-                           factory, JobListPersistenceDb(self.temp_directory, 'db2'), self.as_conf)
+                           factory, JobListPersistencePkl(), self.as_conf)
         job_list._create_jobs = Mock()
         job_list._add_dependencies = Mock()
         job_list.update_genealogy = Mock()
@@ -337,7 +338,7 @@ class TestJobList(TestCase):
         factory = YAMLParserFactory()
         factory.create_parser = Mock(return_value=parser_mock)
         job_list = JobList(self.experiment_id, FakeBasicConfig,
-                           factory, JobListPersistenceDb(self.temp_directory, 'db2'), self.as_conf)
+                           factory, JobListPersistencePkl(), self.as_conf)
         job_list._create_jobs = Mock()
         job_list._add_dependencies = Mock()
         job_list.update_genealogy = Mock()
@@ -392,7 +393,7 @@ class TestJobList(TestCase):
         factory.create_parser = Mock(return_value=parser_mock)
 
         job_list = JobList(self.experiment_id, FakeBasicConfig,
-                           factory, JobListPersistenceDb(self.temp_directory, 'db2'), self.as_conf)
+                           factory, JobListPersistencePkl(), self.as_conf)
         job_list._create_jobs = Mock()
         job_list._add_dependencies = Mock()
         job_list.update_genealogy = Mock()
@@ -422,7 +423,8 @@ class TestJobList(TestCase):
             new=True,
         )
         # # Save job_list, and load it again
-        # job_list.save()
+        job_list.save()
+        pass
 
 
 

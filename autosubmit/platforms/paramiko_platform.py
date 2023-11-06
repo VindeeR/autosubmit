@@ -1169,16 +1169,54 @@ class ParamikoPlatform(Platform):
         return timedelta(**time_params)
 
     def closeConnection(self):
-        if self._ftpChannel is not None:
-            self._ftpChannel.close()
-        if self._ssh is not None:
-            self._ssh.close()
-            self.transport.close()
-            self.transport.stop_thread()
-            try:
-                self.transport.sys.exit(0)
-            except:
-                pass
+        # Ensure to delete all references to the ssh connection, so that it frees all the file descriptors
+        try:
+            if self._ftpChannel:
+                self._ftpChannel.close()
+        except:
+            pass
+        try:
+            if self._ssh._agent: # May not be in all runs
+                self._ssh._agent.close()
+        except:
+            pass
+        try:
+            if self._ssh._transport:
+                self._ssh._transport.close()
+                self._ssh._transport.stop_thread()
+        except:
+            pass
+        try:
+            if self._ssh:
+                self._ssh.close()
+        except:
+            pass
+        try:
+            if self.transport:
+                self.transport.close()
+                self.transport.stop_thread()
+        except:
+            pass
+        try:
+            del self._ssh._agent
+        except:
+            pass
+        try:
+            del self._ssh._transport
+        except:
+            pass
+        try:
+            del self._ftpChannel
+        except:
+            pass
+        try:
+            del self.transport
+        except:
+            pass
+        try:
+            del self._ssh
+        except:
+            pass
 
     def check_tmp_exists(self):
         try:

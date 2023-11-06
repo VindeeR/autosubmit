@@ -846,11 +846,12 @@ class AutosubmitConfig(object):
                                       ['standard', 'noleap']):
             self.wrong_config["Expdef"] += [['experiment',
                                              "Mandatory CALENDAR choice is invalid"]]
-
-        if not parser.check_is_boolean('rerun', 'RERUN', True):
-            self.wrong_config["Expdef"] += [['experiment',
-                                             "Mandatory RERUN choice is not a boolean"]]
-
+        try:
+            if not parser.check_is_boolean('rerun', 'RERUN', True):
+                self.wrong_config["Expdef"] += [['experiment',
+                                                 "Mandatory RERUN choice is not a boolean"]]
+        except:
+            pass
         if parser.check_is_choice('project', 'PROJECT_TYPE', True, ['none', 'git', 'svn', 'local']):
             project_type = parser.get_option('project', 'PROJECT_TYPE', '')
 
@@ -1414,9 +1415,10 @@ class AutosubmitConfig(object):
         :return: rerurn value
         :rtype: list
         """
-
-        return self._exp_parser.get('rerun', 'RERUN').lower()
-
+        try:
+            return self._exp_parser.get('rerun', 'RERUN').lower()
+        except:
+            return "false"
 
 
     def get_platform(self):
@@ -1497,7 +1499,13 @@ class AutosubmitConfig(object):
         :rtype: str
         """
         return self._platforms_parser.get_option(section, 'DISABLE_RECOVERY_THREADS', 'FALSE').lower()
-
+    def get_disable_recovery_logs(self, section):
+        """
+        Returns FALSE/TRUE
+        :return: recovery_threads_option
+        :rtype: str
+        """
+        return self._platforms_parser.get_option(section, 'DISABLE_RECOVERY_LOGS', 'FALSE').lower()
     def get_max_processors(self):
         """
         Returns max processors from autosubmit's config file

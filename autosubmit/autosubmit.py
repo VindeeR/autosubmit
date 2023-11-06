@@ -5479,9 +5479,11 @@ class Autosubmit:
         as_conf = AutosubmitConfig(testid, BasicConfig, ConfigParserFactory())
         exp_parser = as_conf.get_parser(
             ConfigParserFactory(), as_conf.experiment_file)
-        if exp_parser.get_bool_option('rerun', "RERUN", True):
-            raise AutosubmitCritical('Can not test a RERUN experiment', 7014)
-
+        try:
+            if exp_parser.get_bool_option('rerun', "RERUN", True):
+                raise AutosubmitCritical('Can not test a RERUN experiment', 7014)
+        except:
+            pass
         content = open(as_conf.experiment_file).read()
 
         if random_select:

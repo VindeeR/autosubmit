@@ -660,7 +660,7 @@ class Job(object):
         count = 0
         success = False
         error_message = ""
-        while (count < retries) or not success:
+        while (count < retries) and not success:
             try:
                 as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
                 as_conf.reload()
@@ -670,7 +670,7 @@ class Job(object):
                 success = True
             except BaseException as e:
                 error_message = str(e)
-                sleep(60*5)
+                sleep(5)
                 pass
             count=count+1
         if not success:
@@ -791,21 +791,18 @@ class Job(object):
                                     self._tmp_path, 'LOG_' + str(self.expid), local_log))
                         except BaseException as e:
                             Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(
-                                e.message, self.name))
-                try:
-                    platform.closeConnection()
-                except BaseException as e:
-                    pass
-            return
+                                str(e), self.name))
+            try:
+                platform.closeConnection()
+            except:
+                pass
         except AutosubmitError as e:
             Log.printlog("Trace {0} \nFailed to retrieve log file for job {1}".format(
                 e.message, self.name), 6001)
             try:
                 platform.closeConnection()
-            except BaseException as e:
+            except:
                 pass
-
-            return
         except AutosubmitCritical as e:  # Critical errors can't be recovered. Failed configuration or autosubmit error
             Log.printlog("Trace {0} \nFailed to retrieve log file for job {0}".format(
                 e.message, self.name), 6001)
@@ -813,14 +810,8 @@ class Job(object):
                 platform.closeConnection()
             except:
                 pass
-
-            return
-        sleep(5)  # safe wait before end a thread
-        try:
-            platform.closeConnection()
-        except BaseException as e:
-            pass
         return
+
     def parse_time(self,wallclock):
         format = "minute"
         regex = re.compile(r'(((?P<hours>\d+):)((?P<minutes>\d+)))(:(?P<seconds>\d+))?')
@@ -937,10 +928,13 @@ class Job(object):
             as_conf = AutosubmitConfig(
                 expid, BasicConfig, ConfigParserFactory())
             as_conf.reload()
-            if as_conf.get_disable_recovery_threads(self.platform.name) == "true":
-                self.retrieve_logfiles_unthreaded(copy_remote_logs, local_logs)
+            if as_conf.get_disable_recovery_logs(self.platform.name) == "false":
+                if as_conf.get_disable_recovery_threads(self.platform.name) == "true":
+                    self.retrieve_logfiles_unthreaded(copy_remote_logs, local_logs)
+                else:
+                    self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count),job_id=self.id)
             else:
-                self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count),job_id=self.id)
+                Log.warning("Log recovery is disabled for this platform, you must go to the platform and check the logs there")
             if self.wrapper_type == "vertical":
                 max_logs = int(as_conf.get_retrials())
                 for i in range(0,max_logs):

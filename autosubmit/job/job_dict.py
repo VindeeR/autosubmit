@@ -477,7 +477,10 @@ class DicJobs:
         job.frequency = int(self.get_option(section, "FREQUENCY", 1))
         job.delay = int(self.get_option(section, "DELAY", -1))
         job.wait = self.get_option(section, "WAIT", 'true').lower() == 'true'
-        job.rerun_only = self.get_option(section, "RERUN_ONLY", 'false').lower() == 'true'
+        try:
+            job.rerun_only = self.get_option(section, "RERUN_ONLY", 'false').lower() == 'true'
+        except:
+            job.rerun_only = "false"
         job_type = self.get_option(section, "TYPE", default_job_type).lower()
         job.dependencies = self.get_option(section, "DEPENDENCIES", "").split()
         if job_type == 'bash':

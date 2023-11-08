@@ -490,7 +490,7 @@ class TestJobList(TestCase):
             # assert
             # check that name is the same
             for index, job in enumerate(job_list._job_list):
-                self.assertEquals(job_list2._job_list[index].name, job.name)
+                self.assertEquals(job_list3._job_list[index].name, job.name)
             # check that status is the same
             for index,job in enumerate(job_list._job_list):
                 self.assertEquals(job_list3._job_list[index].status, job.status)

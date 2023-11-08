@@ -138,8 +138,8 @@ class Job(object):
 
     CHECK_ON_SUBMISSION = 'on_submission'
 
-    def __eq__(self, other):
-        return self.name == other.name and self.id == other.id
+    # def __eq__(self, other):
+    #     return self.name == other.name and self.id == other.id
 
     def __str__(self):
         return "{0} STATUS: {1}".format(self.name, self.status)

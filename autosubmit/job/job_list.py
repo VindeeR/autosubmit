@@ -283,7 +283,8 @@ class JobList(object):
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
             # If it does not have dependencies, just append it to job_list and continue
             dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
-            dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section)
+            # call function if dependencies_key is not None
+            dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section) if dependencies_keys else {}
             #if not dependencies_keys:
             #    Log.printlog(f"WARNING: Job Section {dependencies_keys} is not defined", Log.WARNING)
             total_amount = len(dic_jobs.get_jobs(job_section))

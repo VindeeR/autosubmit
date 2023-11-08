@@ -2,12 +2,12 @@ from unittest import TestCase
 from copy import copy
 import networkx
 from networkx import DiGraph
-
+from textwrap import dedent
 import shutil
 import tempfile
 from mock import Mock
 from random import randrange
-
+from pathlib import Path
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_common import Type
@@ -27,8 +27,6 @@ class TestJobList(TestCase):
         self.temp_directory = tempfile.mkdtemp()
         joblist_persistence = JobListPersistencePkl()
         self.job_list = JobList(self.experiment_id, FakeBasicConfig, YAMLParserFactory(),joblist_persistence, self.as_conf)
-        # JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
-        #                       "job_packagesJobListPersistence_" + expid)
         # creating jobs for self list
         self.completed_job = self._createDummyJobWithStatus(Status.COMPLETED)
         self.completed_job2 = self._createDummyJobWithStatus(Status.COMPLETED)
@@ -385,46 +383,119 @@ class TestJobList(TestCase):
         # assert
         self.assertEqual(len(job_list._ordered_jobs_by_date_member["WRAPPER_FAKESECTION"]["fake-date1"]["fake-member1"]), 1)
 
-    def test_generate_job_list_from_monitor_run(self):
-        parser_mock = Mock()
-        parser_mock.read = Mock()
-
-        factory = YAMLParserFactory()
-        factory.create_parser = Mock(return_value=parser_mock)
-
+    def new_job_list(self,factory,temp_dir):
         job_list = JobList(self.experiment_id, FakeBasicConfig,
                            factory, JobListPersistencePkl(), self.as_conf)
-        job_list._create_jobs = Mock()
-        job_list._add_dependencies = Mock()
-        job_list.update_genealogy = Mock()
-        job_list._job_list = [Job('random-name', 9999, Status.WAITING, 0),
-                              Job('random-name2', 99999, Status.WAITING, 0)]
+        job_list._persistence_path = f'{str(temp_dir)}/{self.experiment_id}/pkl'
+
+
+        #job_list._create_jobs = Mock()
+        #job_list._add_dependencies = Mock()
+        #job_list.update_genealogy = Mock()
+        #job_list._job_list = [Job('random-name', 9999, Status.WAITING, 0),
+        #                      Job('random-name2', 99999, Status.WAITING, 0)]
+        return job_list
+    def test_generate_job_list_from_monitor_run(self):
+        as_conf = Mock()
+        as_conf.experiment_data = dict()
+        as_conf.experiment_data["JOBS"] = dict()
+        as_conf.experiment_data["JOBS"]["fake-section"] = dict()
+        as_conf.experiment_data["JOBS"]["fake-section"]["file"] = "fake-file"
+        as_conf.experiment_data["JOBS"]["fake-section"]["running"] = "once"
+        as_conf.experiment_data["JOBS"]["fake-section2"] = dict()
+        as_conf.experiment_data["JOBS"]["fake-section2"]["file"] = "fake-file2"
+        as_conf.experiment_data["JOBS"]["fake-section2"]["running"] = "once"
+        as_conf.jobs_data = as_conf.experiment_data["JOBS"]
+        as_conf.experiment_data["PLATFORMS"] = dict()
+        as_conf.experiment_data["PLATFORMS"]["fake-platform"] = dict()
+        as_conf.experiment_data["PLATFORMS"]["fake-platform"]["type"] = "fake-type"
+        as_conf.experiment_data["PLATFORMS"]["fake-platform"]["name"] = "fake-name"
+        as_conf.experiment_data["PLATFORMS"]["fake-platform"]["user"] = "fake-user"
+        parser_mock = Mock()
+        parser_mock.read = Mock()
+        factory = YAMLParserFactory()
+        factory.create_parser = Mock(return_value=parser_mock)
         date_list = ['fake-date1', 'fake-date2']
         member_list = ['fake-member1', 'fake-member2']
         num_chunks = 999
         chunk_list = list(range(1, num_chunks + 1))
         parameters = {'fake-key': 'fake-value',
                       'fake-key2': 'fake-value2'}
-        graph = networkx.DiGraph()
-        as_conf = Mock()
-        job_list.graph = graph
-        # act
-        job_list.generate(
-            as_conf=as_conf,
-            date_list=date_list,
-            member_list=member_list,
-            num_chunks=num_chunks,
-            chunk_ini=1,
-            parameters=parameters,
-            date_format='H',
-            default_retrials=9999,
-            default_job_type=Type.BASH,
-            wrapper_jobs={},
-            new=True,
-        )
-        # # Save job_list, and load it again
-        job_list.save()
-        pass
+        with tempfile.TemporaryDirectory() as temp_dir:
+            job_list = self.new_job_list(factory,temp_dir)
+            FakeBasicConfig.LOCAL_ROOT_DIR = str(temp_dir)
+            Path(temp_dir, self.experiment_id).mkdir()
+            for path in [f'{self.experiment_id}/tmp', f'{self.experiment_id}/tmp/ASLOGS', f'{self.experiment_id}/tmp/ASLOGS_{self.experiment_id}', f'{self.experiment_id}/proj',
+                         f'{self.experiment_id}/conf', f'{self.experiment_id}/pkl']:
+                Path(temp_dir, path).mkdir()
+            job_list.changes = Mock(return_value={})
+            as_conf.detailed_deep_diff = Mock(return_value={})
+
+            # act
+            job_list.generate(
+                as_conf=as_conf,
+                date_list=date_list,
+                member_list=member_list,
+                num_chunks=num_chunks,
+                chunk_ini=1,
+                parameters=parameters,
+                date_format='H',
+                default_retrials=9999,
+                default_job_type=Type.BASH,
+                wrapper_jobs={},
+                new=True,
+            )
+
+            job_list.save()
+            job_list2 = self.new_job_list(factory,temp_dir)
+            job_list2.generate(
+                as_conf=as_conf,
+                date_list=date_list,
+                member_list=member_list,
+                num_chunks=num_chunks,
+                chunk_ini=1,
+                parameters=parameters,
+                date_format='H',
+                default_retrials=9999,
+                default_job_type=Type.BASH,
+                wrapper_jobs={},
+                new=False,
+            )
+            # check joblist ( this uses __eq__ from JOB which compares the id and name
+            self.assertEquals(job_list2._job_list, job_list._job_list)
+            # check that status is the same
+            for index,job in enumerate(job_list._job_list):
+                self.assertEquals(job_list2._job_list[index].status, job.status)
+            self.assertEqual(job_list2._date_list, job_list._date_list)
+            self.assertEqual(job_list2._member_list, job_list._member_list)
+            self.assertEqual(job_list2._chunk_list, job_list._chunk_list)
+            self.assertEqual(job_list2.parameters, job_list.parameters)
+            job_list3 = self.new_job_list(factory,temp_dir)
+            job_list3.generate(
+                as_conf=as_conf,
+                date_list=date_list,
+                member_list=member_list,
+                num_chunks=num_chunks,
+                chunk_ini=1,
+                parameters=parameters,
+                date_format='H',
+                default_retrials=9999,
+                default_job_type=Type.BASH,
+                wrapper_jobs={},
+                new=False,
+                previous_run=True,
+            )
+            # assert
+            self.assertEquals(job_list3._job_list, job_list._job_list)
+            # check that status is the same
+            for index,job in enumerate(job_list._job_list):
+                self.assertEquals(job_list3._job_list[index].status, job.status)
+            self.assertEqual(job_list3._date_list, job_list._date_list)
+            self.assertEqual(job_list3._member_list, job_list._member_list)
+            self.assertEqual(job_list3._chunk_list, job_list._chunk_list)
+            self.assertEqual(job_list3.parameters, job_list.parameters)
+
+
 
 
 
@@ -454,3 +525,4 @@ class FakeBasicConfig:
     LOCAL_PROJ_DIR = '/dummy/local/proj/dir'
     DEFAULT_PLATFORMS_CONF = ''
     DEFAULT_JOBS_CONF = ''
+    STRUCTURES_DIR = '/dummy/structure/dir'

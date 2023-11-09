@@ -237,22 +237,6 @@ class DicJobs:
                 self.build_job(section, priority, date, member, chunk, default_job_type, section_data,current_split)
                 current_split += 1
 
-    # def parse_1_to_1_splits(self, jobs_list, split_filter, child):
-    #     associative_list = {}
-    #     if not child.splits:
-    #         child_splits = 0
-    #     else:
-    #         child_splits = int(child.splits)
-    #     for parent in jobs_list:
-    #         if not parent.splits:
-    #             parent_splits = 0
-    #         else:
-    #             parent_splits = int(parent.splits)
-    #         splits = max(child_splits, parent_splits)
-    #         if splits > 0:
-    #             associative_list["splits"] = [str(split) for split in range(1, int(splits) + 1)]
-    #         else:
-    #             associative_list["splits"] = None
     def get_jobs_filtered(self,section , job, filters_to, natural_date, natural_member ,natural_chunk ):
         #  datetime.strptime("20020201", "%Y%m%d")
         jobs = self._dic.get(section, {})
@@ -274,15 +258,15 @@ class DicJobs:
                             elif type(jobs.get(date, None)) == dict:
                                 jobs_aux.update(jobs[date])
                 else:
-                    for date in filters_to('DATES_TO',"").split(","):
-                        if jobs.get(datetime.strptime(date, "%Y%m%d"), None):
-                            if type(jobs.get(date, None)) == list:
-                                for aux_job in jobs[date]:
+                    for date in filters_to.get('DATES_TO',"").split(","):
+                        if jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None):
+                            if type(jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None)) == list:
+                                for aux_job in jobs[datetime.datetime.strptime(date, "%Y%m%d")]:
                                     final_jobs_list.append(aux_job)
-                            elif type(jobs.get(date, None)) == Job:
-                                final_jobs_list.append(jobs[date])
-                            elif type(jobs.get(date.upper(), None)) == dict:
-                                jobs_aux.update(jobs[date])
+                            elif type(jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None)) == Job:
+                                final_jobs_list.append(jobs[datetime.datetime.strptime(date, "%Y%m%d")])
+                            elif type(jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None)) == dict:
+                                jobs_aux.update(jobs[datetime.datetime.strptime(date, "%Y%m%d")])
             else:
                 if job.running == "once":
                     for key in jobs.keys():
@@ -305,7 +289,7 @@ class DicJobs:
                     jobs_aux = {}
             jobs = jobs_aux
         if len(jobs) > 0:
-            # pass keys to uppercase
+            # pass keys to uppercase to normalize the member name as it can be whatever the user wants
             jobs = {k.upper(): v for k, v in jobs.items()}
             jobs_aux = {}
             if filters_to.get('MEMBERS_TO', None):
@@ -367,7 +351,8 @@ class DicJobs:
                         elif type(jobs.get(chunk, None)) == dict:
                             jobs_aux.update(jobs[chunk])
                 else:
-                    for chunk in filters_to('CHUNKS_TO', "").split(","):
+                    for chunk in filters_to.get('CHUNKS_TO', "").split(","):
+                        chunk = int(chunk)
                         if type(jobs.get(chunk, None)) == list:
                             for aux_job in jobs[chunk]:
                                 final_jobs_list.append(aux_job)
@@ -391,14 +376,6 @@ class DicJobs:
                             final_jobs_list.append(aux_job)
                     elif type(jobs.get(natural_chunk, None)) == Job:
                         final_jobs_list.append(jobs[natural_chunk])
-                    elif type(jobs.get(natural_chunk, None)) == dict:
-                        jobs_aux.update(jobs[natural_chunk])
-                else:
-                    jobs_aux = {}
-            jobs = jobs_aux
-        # final_jobs_list += [ f_job for f_job in jobs.values() if isinstance(f_job, Job) ]
-        # list_of_jobs = [ f_job for f_job in jobs.values() if isinstance(f_job, list) ]
-        # final_jobs_list += [ f_job for job_list in list_of_jobs for f_job in job_list ]
         if len(final_jobs_list) > 0:
             if filters_to.get("SPLITS_TO", None):
                 if "none" in filters_to['SPLITS_TO'].lower():
@@ -410,13 +387,7 @@ class DicJobs:
                     final_jobs_list = final_jobs_list
                 else:
                     final_jobs_list = [f_job for f_job in final_jobs_list if (f_job.split is None or f_job.split == -1 or f_job.split == 0 or str(f_job.split) in filters_to['SPLITS_TO'].split(',')) and f_job.name != job.name]
-        # Print the time elapsed
         return final_jobs_list
-
-
-
-
-
 
     def get_jobs(self, section, date=None, member=None, chunk=None):
         """

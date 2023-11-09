@@ -5878,7 +5878,7 @@ class Autosubmit:
         job_list.generate(as_conf, date_list, as_conf.get_member_list(), as_conf.get_num_chunks(), as_conf.get_chunk_ini(),
                           as_conf.experiment_data, date_format, as_conf.get_retrials(),
                           as_conf.get_default_job_type(), wrapper_jobs,
-                          new=previous_run, run_only_members=run_only_members)
+                          new=new, run_only_members=run_only_members)
 
         if str(rerun).lower() == "true":
             rerun_jobs = as_conf.get_rerun_jobs()

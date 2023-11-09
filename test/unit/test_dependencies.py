@@ -6,6 +6,7 @@ import unittest
 from copy import deepcopy
 from datetime import datetime
 
+from autosubmit.job.job_dict import DicJobs
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_list import JobList
@@ -585,6 +586,101 @@ class TestJobList(unittest.TestCase):
         result = self.JobList._check_relationship(relationships,level_to_check,value_to_check )
         expected_output = [{'CHUNKS_TO': 'None', 'DATES_TO': 'None', 'FROM_STEP': None, 'MEMBERS_TO': 'None', 'STATUS': None}]
         self.assertEqual(result, expected_output)
+
+    #@mock.patch('autosubmit.job.job_dict.date2str')
+    def test_get_jobs_filtered_and_apply_filter_1_to_1_splits(self):
+        # This function is the new 1-to-1, 1-to-N and N-to-1 tests these previous tests should be here
+        # To get possible_parents def get_jobs_filtered(self, section , job, filters_to, natural_date, natural_member ,natural_chunk )
+        # To apply the filter def self._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, job, parent):
+        self.mock_job.date = datetime.strptime("20020204", "%Y%m%d")
+        self.mock_job.chunk = 5
+        once_jobs = [Job('Fake-Section-once', 1, Status.READY,1 ),Job('Fake-Section-once2', 2, Status.READY,1 )]
+        for job in once_jobs:
+            job.date = None
+            job.member = None
+            job.chunk = None
+            job.split = None
+        date_jobs = [Job('Fake-section-date', 1, Status.READY,1 ),Job('Fake-section-date2', 2, Status.READY,1 )]
+        for job in date_jobs:
+            job.date = datetime.strptime("20200128", "%Y%m%d")
+            job.member = None
+            job.chunk = None
+            job.split = None
+        member_jobs = [Job('Fake-section-member', 1, Status.READY,1 ),Job('Fake-section-member2', 2, Status.READY,1 )]
+        for job in member_jobs:
+            job.date = datetime.strptime("20200128", "%Y%m%d")
+            job.member = "fc0"
+            job.chunk = None
+            job.split = None
+        chunk_jobs = [Job('Fake-section-chunk', 1, Status.READY,1 ),Job('Fake-section-chunk2', 2, Status.READY,1 )]
+        for index,job in enumerate(chunk_jobs):
+            job.date = datetime.strptime("20200128", "%Y%m%d")
+            job.member = "fc0"
+            job.chunk = index
+            job.split = None
+        split_jobs = [Job('Fake-section-split', 1, Status.READY,1 ),Job('Fake-section-split2', 2, Status.READY,1 ), Job('Fake-section-split3', 3, Status.READY,1 ), Job('Fake-section-split4', 4, Status.READY,1 )]
+        for index,job in enumerate(split_jobs):
+            job.date = datetime.strptime("20200128", "%Y%m%d")
+            job.member = "fc0"
+            job.chunk = 1
+            job.split = index
+            job.splits = len(split_jobs)
+        split_jobs2 = [Job('Fake-section-split', 1, Status.READY,1 ),Job('Fake-section-split2', 2, Status.READY,1 ), Job('Fake-section-split3', 3, Status.READY,1 ), Job('Fake-section-split4', 4, Status.READY,1 )]
+        for index,job in enumerate(split_jobs2):
+            job.date = datetime.strptime("20200128", "%Y%m%d")
+            job.member = "fc0"
+            job.chunk = 1
+            job.split = index
+            job.splits = len(split_jobs2)
+        jobs_dic = DicJobs(self.date_list, self.member_list, self.chunk_list, "hour",default_retrials=0,as_conf=self.as_conf)
+        date = "20200128"
+        jobs_dic._dic = {
+            'fake-section-once': once_jobs[0],
+            'fake-section-date': {datetime.strptime(date, "%Y%m%d"): date_jobs[0]},
+            'fake-section-member': {datetime.strptime(date, "%Y%m%d"): {"fc0": member_jobs[0]} },
+            'fake-section-chunk': {datetime.strptime(date, "%Y%m%d"): {"fc0": {1: chunk_jobs[0], 2: chunk_jobs[1]} } },
+            'fake-section-split': {datetime.strptime(date, "%Y%m%d"): {"fc0": {1: split_jobs } } },
+            'fake-section-split2': {datetime.strptime(date, "%Y%m%d"): {"fc0": {1: split_jobs2[0:2]}}}
+
+        }
+        parent = copy.deepcopy(self.mock_job)
+        # Get possible parents
+        filters_to = {
+            "DATES_TO": "20200128,20200129,20200130",
+            "MEMBERS_TO": "fc0,fc1",
+            "CHUNKS_TO": "1,2,3,4,5,6",
+            "SPLITS_TO": "1*\\2,2*\\2,3*\\2,4*\\2"
+        }
+        self.mock_job.section = "fake-section-split"
+        self.mock_job.splits = 4
+        self.mock_job.chunk = 1
+
+        parent.section = "fake-section-split2"
+        parent.splits = 2
+        if not self.mock_job.splits:
+            child_splits = 0
+        else:
+            child_splits = int(self.mock_job.splits)
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date, self.mock_job.member, self.mock_job.chunk)
+        nodes_added = []
+        for parent in possible_parents:
+            splits_to = filters_to.get("SPLITS_TO", None)
+            if splits_to:
+                if not parent.splits:
+                    parent_splits = 0
+                else:
+                    parent_splits = int(parent.splits)
+                splits = max(child_splits, parent_splits)
+                if splits > 0:
+                    associative_list_splits = [str(split) for split in range(1, int(splits) + 1)]
+                else:
+                    associative_list_splits = None
+                if not JobList._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, self.mock_job, parent):
+                    nodes_added.append(parent)
+        # assert
+        self.assertEqual(len(nodes_added), 2)
+
+
 
 if __name__ == '__main__':
     unittest.main()

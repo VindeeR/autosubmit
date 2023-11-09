@@ -367,21 +367,19 @@ class TestJobList(TestCase):
         job_list._job_list[0].date = "fake-date1"
         job_list._job_list[0].member = "fake-member1"
         job_list._job_list[0].chunk = 1
-        # job_list._job_list[1].date = "fake-date2"
-        # job_list._job_list[1].section = "fake-section2"
-        # job_list._job_list[1].member = "fake-member2"
-
         wrapper_jobs = {"WRAPPER_FAKESECTION": 'fake-section'}
         num_chunks = 2
         chunk_ini = 1
         date_format = "day"
         default_retrials = 1
         job_list._get_date = Mock(return_value="fake-date1")
+
         # act
         job_list.create_dictionary(date_list, member_list, num_chunks, chunk_ini, date_format, default_retrials,
                                    wrapper_jobs, self.as_conf)
         # assert
         self.assertEqual(len(job_list._ordered_jobs_by_date_member["WRAPPER_FAKESECTION"]["fake-date1"]["fake-member1"]), 1)
+
 
     def new_job_list(self,factory,temp_dir):
         job_list = JobList(self.experiment_id, FakeBasicConfig,
@@ -485,7 +483,6 @@ class TestJobList(TestCase):
                 default_job_type=Type.BASH,
                 wrapper_jobs={},
                 new=False,
-                previous_run=True,
             )
             # assert
             # check that name is the same
@@ -498,6 +495,32 @@ class TestJobList(TestCase):
             self.assertEqual(job_list3._member_list, job_list._member_list)
             self.assertEqual(job_list3._chunk_list, job_list._chunk_list)
             self.assertEqual(job_list3.parameters, job_list.parameters)
+            # DELETE WHEN EDGELESS TEST
+            job_list3._job_list[0].dependencies = {"not_exist":None}
+            job_list3._delete_edgeless_jobs()
+            self.assertEqual(len(job_list3._job_list), 1)
+            # Update Mayor Version test ( 4.0 -> 4.1)
+            job_list3.graph = DiGraph()
+            job_list3.save()
+            job_list3 = self.new_job_list(factory,temp_dir)
+            job_list3.update_genealogy = Mock(wraps=job_list3.update_genealogy)
+            job_list3.generate(
+                as_conf=as_conf,
+                date_list=date_list,
+                member_list=member_list,
+                num_chunks=num_chunks,
+                chunk_ini=1,
+                parameters=parameters,
+                date_format='H',
+                default_retrials=9999,
+                default_job_type=Type.BASH,
+                wrapper_jobs={},
+                new=False,
+            )
+            # assert update_genealogy called with right values
+            # When using an 4.0 experiment, the pkl has to be recreated and act as a new one.
+            job_list3.update_genealogy.assert_called_once_with(True)
+
 
 
 

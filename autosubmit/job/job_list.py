@@ -21,7 +21,7 @@ import networkx as nx
 import re
 import os
 import pickle
-import re
+from contextlib import suppress
 import traceback
 from bscearth.utils.date import date2str, parse_date
 from networkx import DiGraph
@@ -158,7 +158,7 @@ class JobList(object):
 
 
     def generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
-                 default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[],show_log=True,previous_run = False):
+                 default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[],show_log=True):
         """
         Creates all jobs needed for the current workflow
 
@@ -197,7 +197,7 @@ class JobList(object):
         chunk_list = list(range(chunk_ini, num_chunks + 1))
         self._chunk_list = chunk_list
         self._dic_jobs = DicJobs(date_list, member_list, chunk_list, date_format, default_retrials, as_conf)
-        if previous_run or not new:
+        if not new:
             try:
                 self.graph = self.load()
                 if type(self.graph) is not DiGraph:
@@ -215,13 +215,15 @@ class JobList(object):
                     self._dic_jobs.compare_experiment_section()
                 self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
             else:
-                if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + ".pkl")):
+                # Remove the previous pkl, if it exists.
+                Log.info("Removing previous pkl file due to empty graph, likely due using an Autosubmit 4.0.XXX version")
+                with suppress(FileNotFoundError):
                     os.remove(os.path.join(self._persistence_path, self._persistence_file + ".pkl"))
-                if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl")):
+                with suppress(FileNotFoundError):
                     os.remove(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl"))
+                new = True
         # This generates the job object and also finds if dic_jobs has modified from previous iteration in order to expand the workflow
         self._create_jobs(self._dic_jobs, 0, default_job_type)
-
         if show_log:
             Log.info("Adding dependencies to the graph..")
         # del all nodes that are only in the current graph

@@ -333,7 +333,6 @@ class TestJob(TestCase):
                 new=True,
                 run_only_members=config.get_member_list(run_only=True),
                 show_log=True,
-                previous_run=False
             )
 
             job_list = job_list_obj.get_job_list()
@@ -428,7 +427,6 @@ class TestJob(TestCase):
                     new=True,
                     run_only_members=config.get_member_list(run_only=True),
                     show_log=True,
-                    previous_run=False
                 )
                 job_list = job_list_obj.get_job_list()
                 self.assertEqual(1, len(job_list))

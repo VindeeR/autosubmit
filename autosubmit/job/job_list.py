@@ -386,8 +386,9 @@ class JobList(object):
         :param filter_type: dates, members, chunks, splits .
         :return:
         """
+        lesser_group = None
         if "NONE".casefold() in str(parent_value).casefold():
-            return True
+            return False
         if parent and child:
             if not parent.splits:
                 parent_splits = -1
@@ -399,7 +400,6 @@ class JobList(object):
                 child_splits = int(child.splits)
             if parent_splits == child_splits:
                 to_look_at_lesser = associative_list
-                lesser_group = -1
                 lesser = str(parent_splits)
                 greater = str(child_splits)
                 lesser_value = "parent"
@@ -422,7 +422,6 @@ class JobList(object):
                             break
         else:
             to_look_at_lesser = associative_list
-            lesser_group = -1
         if "?" in filter_value:
             # replace all ? for ""
             filter_value = filter_value.replace("?", "")
@@ -445,12 +444,16 @@ class JobList(object):
                             # 1-to-X filter
                             to_look_at_greater = [associative_list[i:i + split_info] for i in
                                                   range(0, int(greater), split_info)]
-                            if lesser_value == "parent":
-                                if str(child.split) in to_look_at_greater[lesser_group]:
+                            if not lesser_group:
+                                if child.split in associative_list:
                                     return True
                             else:
-                                if str(parent_value) in to_look_at_greater[lesser_group]:
-                                    return True
+                                if lesser_value == "parent":
+                                    if child.split in to_look_at_greater[lesser_group]:
+                                        return True
+                                else:
+                                    if parent_value in to_look_at_greater[lesser_group]:
+                                        return True
                     else:
                         filter_value += filter_ + ","
                 else:
@@ -459,7 +462,7 @@ class JobList(object):
         to_filter = JobList._parse_filters_to_check(filter_value, associative_list, "splits")
         if to_filter is None:
             return False
-        elif len(to_filter) == 0:
+        elif not to_filter or len(to_filter) == 0 or ( len(to_filter) == 1 and not to_filter[0] ):
             return False
         elif "ALL".casefold() == str(to_filter[0]).casefold():
             return True
@@ -982,7 +985,7 @@ class JobList(object):
                             associative_list_splits = [str(split) for split in range(1, int(splits) + 1)]
                         else:
                             associative_list_splits = None
-                        if self._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, job, parent):
+                        if not self._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, job, parent):
                             continue # if the parent is not in the filter_to, skip it
                     graph.add_edge(parent.name, job.name)
                     # Do parse checkpoint

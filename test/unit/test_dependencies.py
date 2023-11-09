@@ -587,6 +587,23 @@ class TestJobList(unittest.TestCase):
         expected_output = [{'CHUNKS_TO': 'None', 'DATES_TO': 'None', 'FROM_STEP': None, 'MEMBERS_TO': 'None', 'STATUS': None}]
         self.assertEqual(result, expected_output)
 
+    def apply_filter(self,possible_parents,filters_to,child_splits):
+        nodes_added = []
+        for parent in possible_parents:
+            splits_to = filters_to.get("SPLITS_TO", None)
+            if splits_to:
+                if not parent.splits:
+                    parent_splits = 0
+                else:
+                    parent_splits = int(parent.splits)
+                splits = max(child_splits, parent_splits)
+                if splits > 0:
+                    associative_list_splits = [str(split) for split in range(1, int(splits) + 1)]
+                else:
+                    associative_list_splits = None
+                if not JobList._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, self.mock_job, parent):
+                    nodes_added.append(parent)
+        return nodes_added
     #@mock.patch('autosubmit.job.job_dict.date2str')
     def test_get_jobs_filtered_and_apply_filter_1_to_1_splits(self):
         # This function is the new 1-to-1, 1-to-N and N-to-1 tests these previous tests should be here
@@ -662,23 +679,28 @@ class TestJobList(unittest.TestCase):
         else:
             child_splits = int(self.mock_job.splits)
         possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date, self.mock_job.member, self.mock_job.chunk)
-        nodes_added = []
-        for parent in possible_parents:
-            splits_to = filters_to.get("SPLITS_TO", None)
-            if splits_to:
-                if not parent.splits:
-                    parent_splits = 0
-                else:
-                    parent_splits = int(parent.splits)
-                splits = max(child_splits, parent_splits)
-                if splits > 0:
-                    associative_list_splits = [str(split) for split in range(1, int(splits) + 1)]
-                else:
-                    associative_list_splits = None
-                if not JobList._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, self.mock_job, parent):
-                    nodes_added.append(parent)
+        # Apply the filter
+        nodes_added = self.apply_filter(possible_parents,filters_to,child_splits)
         # assert
         self.assertEqual(len(nodes_added), 2)
+        filters_to = {
+            "DATES_TO": "all",
+            "MEMBERS_TO": "fc0,fc1",
+            "CHUNKS_TO": "1,2,3,4,5,6",
+            "SPLITS_TO": "1*\\2,2*\\2,3*\\2,4*\\2"
+        }
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date, self.mock_job.member, self.mock_job.chunk)
+        nodes_added = self.apply_filter(possible_parents,filters_to,child_splits)
+        self.assertEqual(len(nodes_added), 2)
+        filters_to = {
+            "DATES_TO": "none",
+            "MEMBERS_TO": "fc0,fc1",
+            "CHUNKS_TO": "1,2,3,4,5,6",
+            "SPLITS_TO": "1*\\2,2*\\2,3*\\2,4*\\2"
+        }
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date, self.mock_job.member, self.mock_job.chunk)
+        nodes_added = self.apply_filter(possible_parents,filters_to,child_splits)
+        self.assertEqual(len(nodes_added), 0)
 
 
 

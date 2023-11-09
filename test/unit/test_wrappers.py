@@ -1471,6 +1471,8 @@ class TestWrappers(TestCase):
 
         self.job_list._dic_jobs = DicJobs(date_list, member_list, chunk_list, "", 0, self.as_conf)
         self._manage_dependencies(sections_dict)
+        for job in self.job_list.get_job_list():
+            job._init_runtime_parameters()
 
     def _manage_dependencies(self, sections_dict):
         for job in self.job_list.get_job_list():

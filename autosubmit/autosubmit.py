@@ -75,7 +75,7 @@ import signal
 import datetime
 import log.fd_show as fd_show
 import portalocker
-from pkg_resources import require, resource_listdir, resource_string, resource_filename
+from pkg_resources import require, resource_listdir, resource_exists, resource_string, resource_filename
 from collections import defaultdict
 from pyparsing import nestedExpr
 from .history.experiment_status import ExperimentStatus
@@ -442,6 +442,8 @@ class Autosubmit:
                                    default=False, help='Update experiment version')
             subparser.add_argument('-p', '--profile', action='store_true', default=False, required=False,
                                    help='Prints performance parameters of the execution of this command.')
+            subparser.add_argument(
+                '-f', '--force', action='store_true', default=False, help='force regenerate job_list')
             # Configure
             subparser = subparsers.add_parser('configure', description="configure database and path for autosubmit. It "
                                                                        "can be done at machine, user or local level."
@@ -607,6 +609,8 @@ class Autosubmit:
                                    help='Only does a container without compress')
             subparser.add_argument('-v', '--update_version', action='store_true',
                                    default=False, help='Update experiment version')
+            subparser.add_argument('--rocrate', action='store_true', default=False,
+                                   help='Produce an RO-Crate file')
             # Unarchive
             subparser = subparsers.add_parser(
                 'unarchive', description='unarchives an experiment')
@@ -617,6 +621,8 @@ class Autosubmit:
                                    help='Untar an uncompressed tar')
             subparser.add_argument('-v', '--update_version', action='store_true',
                                    default=False, help='Update experiment version')
+            subparser.add_argument('--rocrate', action='store_true', default=False,
+                                   help='Unarchive an RO-Crate file')
             # update proj files
             subparser = subparsers.add_parser('upgrade', description='Updates autosubmit 3 proj files to autosubmit 4')
             subparser.add_argument('expid', help='experiment identifier')
@@ -693,7 +699,7 @@ class Autosubmit:
             return Autosubmit.migrate(args.expid, args.offer, args.pickup, args.onlyremote)
         elif args.command == 'create':
             return Autosubmit.create(args.expid, args.noplot, args.hide, args.output, args.group_by, args.expand,
-                                     args.expand_status, args.notransitive, args.check_wrapper, args.detail, args.profile)
+                                     args.expand_status, args.notransitive, args.check_wrapper, args.detail, args.profile, args.force)
         elif args.command == 'configure':
             if not args.advanced or (args.advanced and dialog is None):
                 return Autosubmit.configure(args.advanced, args.databasepath, args.databasefilename,
@@ -720,9 +726,9 @@ class Autosubmit:
         elif args.command == 'upgrade':
             return Autosubmit.upgrade_scripts(args.expid,files=args.files)
         elif args.command == 'archive':
-            return Autosubmit.archive(args.expid, noclean=args.noclean, uncompress=args.uncompress)
+                return Autosubmit.archive(args.expid, noclean=args.noclean, uncompress=args.uncompress, rocrate=args.rocrate)
         elif args.command == 'unarchive':
-            return Autosubmit.unarchive(args.expid, uncompressed=args.uncompressed)
+            return Autosubmit.unarchive(args.expid, uncompressed=args.uncompressed, rocrate=args.rocrate)
 
         elif args.command == 'readme':
             if os.path.isfile(Autosubmit.readme_path):
@@ -1500,30 +1506,12 @@ class Autosubmit:
                         else:
                             jobs = job_list.get_job_list()
             if isinstance(jobs, type([])):
-                referenced_jobs_to_remove = set()
-                for job in jobs:
-                    for child in job.children:
-                        if child not in jobs:
-                            referenced_jobs_to_remove.add(child)
-                    for parent in job.parents:
-                        if parent not in jobs:
-                            referenced_jobs_to_remove.add(parent)
-
                 for job in jobs:
                     job.status = Status.WAITING
 
                 Autosubmit.generate_scripts_andor_wrappers(
                     as_conf, job_list, jobs, packages_persistence, False)
             if len(jobs_cw) > 0:
-                referenced_jobs_to_remove = set()
-                for job in jobs_cw:
-                    for child in job.children:
-                        if child not in jobs_cw:
-                            referenced_jobs_to_remove.add(child)
-                    for parent in job.parents:
-                        if parent not in jobs_cw:
-                            referenced_jobs_to_remove.add(parent)
-
                 for job in jobs_cw:
                     job.status = Status.WAITING
                 Autosubmit.generate_scripts_andor_wrappers(
@@ -1596,7 +1584,6 @@ class Autosubmit:
                 platforms_to_test.add(job.platform)
 
         job_list.check_scripts(as_conf)
-
         job_list.update_list(as_conf, False)
         # Loading parameters again
         Autosubmit._load_parameters(as_conf, job_list, submitter.platforms)
@@ -1615,6 +1602,8 @@ class Autosubmit:
             # for job in job_list.get_uncompleted_and_not_waiting():
             #    job.status = Status.COMPLETED
             job_list.update_list(as_conf, False)
+        for job in job_list.get_job_list():
+            job.status = Status.WAITING
 
     @staticmethod
     def terminate(all_threads):
@@ -1965,6 +1954,7 @@ class Autosubmit:
         Log.debug("Checking job_list current status")
         job_list.update_list(as_conf, first_time=True)
         job_list.save()
+        as_conf.save()
         if not recover:
             Log.info("Autosubmit is running with v{0}", Autosubmit.autosubmit_version)
             # Before starting main loop, setup historical database tables and main information
@@ -2118,6 +2108,8 @@ class Autosubmit:
                             Autosubmit.submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence, hold=False)
                             job_list.update_list(as_conf, submitter=submitter)
                             job_list.save()
+                            as_conf.save()
+
                         # Submit jobs that are prepared to hold (if remote dependencies parameter are enabled)
                         # This currently is not used as SLURM no longer allows to jobs to adquire priority while in hold state.
                         # This only works for SLURM. ( Prepare status can not be achieved in other platforms )
@@ -2126,6 +2118,7 @@ class Autosubmit:
                                 as_conf, job_list, platforms_to_test, packages_persistence, hold=True)
                             job_list.update_list(as_conf, submitter=submitter)
                             job_list.save()
+                            as_conf.save()
                         # Safe spot to store changes
                         try:
                             exp_history = Autosubmit.process_historical_data_iteration(job_list, job_changes_tracker, expid)
@@ -2142,6 +2135,7 @@ class Autosubmit:
                         job_changes_tracker = {}
                         if Autosubmit.exit:
                             job_list.save()
+                            as_conf.save()
                         time.sleep(safetysleeptime)
                         #Log.debug(f"FD endsubmit: {fd_show.fd_table_status_str()}")
 
@@ -2378,6 +2372,9 @@ class Autosubmit:
                                                                                                               hold=hold)
                 # Jobs that are being retrieved in batch. Right now, only available for slurm platforms.
                 if not inspect and len(valid_packages_to_submit) > 0:
+                    for package in (package for package in valid_packages_to_submit):
+                        for job in (job for job in package.jobs):
+                            job._clean_runtime_parameters()
                     job_list.save()
                 save_2 = False
                 if platform.type.lower() in [ "slurm" , "pjm" ] and not inspect and not only_wrappers:
@@ -2386,6 +2383,9 @@ class Autosubmit:
                                                                                          failed_packages,
                                                                                          error_message="", hold=hold)
                     if not inspect and len(valid_packages_to_submit) > 0:
+                        for package in (package for package in valid_packages_to_submit):
+                            for job in (job for job in package.jobs):
+                                job._clean_runtime_parameters()
                         job_list.save()
                 # Save wrappers(jobs that has the same id) to be visualized and checked in other parts of the code
                 job_list.save_wrappers(valid_packages_to_submit, failed_packages, as_conf, packages_persistence,
@@ -2536,18 +2536,6 @@ class Autosubmit:
             if profile:
                 profiler.stop()
 
-        referenced_jobs_to_remove = set()
-        for job in jobs:
-            for child in job.children:
-                if child not in jobs:
-                    referenced_jobs_to_remove.add(child)
-            for parent in job.parents:
-                if parent not in jobs:
-                    referenced_jobs_to_remove.add(parent)
-        if len(referenced_jobs_to_remove) > 0:
-            for job in jobs:
-                job.children = job.children - referenced_jobs_to_remove
-                job.parents = job.parents - referenced_jobs_to_remove
         # WRAPPERS
         try:
             if as_conf.get_wrapper_type() != 'none' and check_wrapper:
@@ -2558,24 +2546,8 @@ class Autosubmit:
                 os.chmod(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl", "job_packages_" + expid + ".db"), 0o644)
                 # Database modification
                 packages_persistence.reset_table(True)
-                referenced_jobs_to_remove = set()
-                job_list_wrappers = copy.deepcopy(job_list)
-                jobs_wr_aux = copy.deepcopy(jobs)
-                jobs_wr = []
-                [jobs_wr.append(job) for job in jobs_wr_aux]
-                for job in jobs_wr:
-                    for child in job.children:
-                        if child not in jobs_wr:
-                            referenced_jobs_to_remove.add(child)
-                    for parent in job.parents:
-                        if parent not in jobs_wr:
-                            referenced_jobs_to_remove.add(parent)
 
-                for job in jobs_wr:
-                    job.children = job.children - referenced_jobs_to_remove
-                    job.parents = job.parents - referenced_jobs_to_remove
-
-                Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list_wrappers, jobs_wr,
+                Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list, job_list.get_job_list(),
                                                            packages_persistence, True)
 
                 packages = packages_persistence.load(True)
@@ -2670,6 +2642,8 @@ class Autosubmit:
 
             pkl_dir = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, 'pkl')
             job_list = Autosubmit.load_job_list(expid, as_conf, notransitive=notransitive)
+            for job in job_list.get_job_list():
+                job._init_runtime_parameters()
             Log.debug("Job list restored from {0} files", pkl_dir)
             jobs = StatisticsUtils.filter_by_section(job_list.get_job_list(), filter_type)
             jobs, period_ini, period_fi = StatisticsUtils.filter_by_time_period(jobs, filter_period)
@@ -2922,15 +2896,8 @@ class Autosubmit:
                                             groups=groups_dict,
                                             job_list_object=job_list)
 
-            if detail is True:
-                current_length = len(job_list.get_job_list())
-                if current_length > 1000:
-                    Log.warning(
-                        "-d option: Experiment has too many jobs to be printed in the terminal. Maximum job quantity is 1000, your experiment has " + str(
-                            current_length) + " jobs.")
-                else:
-                    Log.info(job_list.print_with_status())
-                    Log.status(job_list.print_with_status())
+            if detail:
+                Autosubmit.detail(job_list)
             # Warnings about precedence completion
             # time_0 = time.time()
             notcompleted_parents_completed_jobs = [job for job in job_list.get_job_list(
@@ -3336,7 +3303,7 @@ class Autosubmit:
                 if job.platform_name is None:
                     job.platform_name = hpc_architecture
                 job.platform = submitter.platforms[job.platform_name]
-                job.update_parameters(as_conf, job_list.parameters)
+
         except AutosubmitError:
             raise
         except BaseException as e:
@@ -3431,6 +3398,7 @@ class Autosubmit:
                 try:
                     for job in job_list.get_job_list():
                         job_parameters = job.update_parameters(as_conf, {})
+                        job._clean_runtime_parameters()
                         for key, value in job_parameters.items():
                             jobs_parameters["JOBS"+"."+job.section+"."+key] = value
                 except:
@@ -4321,7 +4289,91 @@ class Autosubmit:
             Log.critical(str(exp))
 
     @staticmethod
-    def archive(expid, noclean=True, uncompress=True):
+    def rocrate(expid, path: Path):
+        """
+        Produces an RO-Crate archive for an Autosubmit experiment.
+
+        :param expid: experiment ID
+        :type expid: str
+        :param path: path to save the RO-Crate in
+        :type path: Path
+        :return: ``True`` if successful, ``False`` otherwise
+        :rtype: bool
+        """
+        from autosubmit.statistics.statistics import Statistics
+        from textwrap import dedent
+
+        as_conf = AutosubmitConfig(expid)
+        # ``.reload`` will call the function to unify the YAML configuration.
+        as_conf.reload(True)
+
+        workflow_configuration = as_conf.experiment_data
+
+        # Load the rocrate prepopulated file, or raise an error and write the template.
+        # Similar to what COMPSs does.
+        # See: https://github.com/bsc-wdc/compss/blob/9e79542eef60afa9e288e7246e697bd7ac42db08/compss/runtime/scripts/system/provenance/generate_COMPSs_RO-Crate.py
+        rocrate_json = workflow_configuration.get('ROCRATE', None)
+        if not rocrate_json:
+            Log.error(dedent('''\
+                No ROCRATE configuration value provided! Use it to create your
+                JSON-LD schema, using @id, @type, and other schema.org attributes,
+                and it will be merged with the values retrieved from the workflow
+                configuration. Some values are not present in Autosubmit, such as
+                license, so you must provide it if you want to include in your
+                RO-Crate data, e.g. create a file $expid/conf/rocrate.yml (or use
+                an existing one) with a top level ROCRATE key, containing your
+                JSON-LD data:
+
+                ROCRATE:
+                  INPUTS:
+                    # Add the extra keys to be exported.
+                    - "MHM"
+                  OUTPUTS:
+                    # Relative to the Autosubmit project folder.
+                    - "*/*.gif"
+                  PATCH: |
+                    {
+                      "@graph": [
+                        {
+                          "@id": "./",
+                          "license": "Apache-2.0",
+                          "creator": {
+                            "@id": "https://orcid.org/0000-0001-8250-4074"
+                          }
+                        },
+                        {
+                          "@id": "https://orcid.org/0000-0001-8250-4074",
+                          "@type": "Person",
+                          "affiliation": {
+                              "@id": "https://ror.org/05sd8tv96"
+                          }
+                        },
+                        ...
+                      ]
+                    }
+                ''').replace('{', '{{').replace('}', '}}'))
+            raise AutosubmitCritical("You must provide an ROCRATE configuration key when using RO-Crate...", 7014)
+
+        # Read job list (from pickles) to retrieve start and end time.
+        # Code adapted from ``autosubmit stats``.
+        job_list = Autosubmit.load_job_list(expid, as_conf, notransitive=False)
+        jobs = job_list.get_job_list()
+        exp_stats = Statistics(jobs=jobs, start=None, end=None, queue_time_fix={})
+        exp_stats.calculate_statistics()
+        start_time = None
+        end_time = None
+        # N.B.: ``exp_stats.jobs_stat`` is sorted in reverse order.
+        number_of_jobs = len(exp_stats.jobs_stat)
+        if number_of_jobs > 0:
+            start_time = exp_stats.jobs_stat[-1].start_time.replace(microsecond=0).isoformat()
+        if number_of_jobs > 1:
+            end_time = exp_stats.jobs_stat[0].finish_time.replace(microsecond=0).isoformat()
+
+        from autosubmit.provenance.rocrate import create_rocrate_archive
+        return create_rocrate_archive(as_conf, rocrate_json, jobs, start_time, end_time, path)
+
+    @staticmethod
+    def archive(expid, noclean=True, uncompress=True, rocrate=False):
         """
         Archives an experiment: call clean (if experiment is of version 3 or later), compress folder
         to tar.gz and moves to year's folder
@@ -4332,9 +4384,10 @@ class Autosubmit:
         :type noclean: bool
         :param uncompress: flag telling it whether to decompress or not.
         :type uncompress: bool
+        :param rocrate: flag to enable RO-Crate
+        :type rocrate: bool
         :return: ``True`` if the experiment has been successfully archived. ``False`` otherwise.
         :rtype: bool
-
         """
 
         exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
@@ -4361,29 +4414,36 @@ class Autosubmit:
 
         if year is None:
             year = time.localtime(os.path.getmtime(exp_folder)).tm_year
-        Log.info("Archiving in year {0}", year)
-
-        # Creating tar file
-        Log.info("Creating tar file ... ")
         try:
             year_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, str(year))
             if not os.path.exists(year_path):
                 os.mkdir(year_path)
                 os.chmod(year_path, 0o775)
-            if not uncompress:
-                compress_type = "w:gz"
-                output_filepath = '{0}.tar.gz'.format(expid)
-            else:
-                compress_type = "w"
-                output_filepath = '{0}.tar'.format(expid)
-            with tarfile.open(os.path.join(year_path, output_filepath), compress_type) as tar:
-                tar.add(exp_folder, arcname='')
-                tar.close()
-                os.chmod(os.path.join(year_path, output_filepath), 0o775)
         except Exception as e:
-            raise AutosubmitCritical("Can not write tar file", 7012, str(e))
+            raise AutosubmitCritical(f"Failed to create year-directory {str(year)} for experiment {expid}", 7012, str(e))
+        Log.info(f"Archiving in year {str(year)}")
 
-        Log.info("Tar file created!")
+        if rocrate:
+            Autosubmit.rocrate(expid, Path(year_path))
+            Log.info('RO-Crate ZIP file created!')
+        else:
+            # Creating tar file
+            Log.info("Creating tar file ... ")
+            try:
+                if not uncompress:
+                    compress_type = "w:gz"
+                    output_filepath = '{0}.tar.gz'.format(expid)
+                else:
+                    compress_type = "w"
+                    output_filepath = '{0}.tar'.format(expid)
+                with tarfile.open(os.path.join(year_path, output_filepath), compress_type) as tar:
+                    tar.add(exp_folder, arcname='')
+                    tar.close()
+                    os.chmod(os.path.join(year_path, output_filepath), 0o775)
+            except Exception as e:
+                raise AutosubmitCritical("Can not write tar file", 7012, str(e))
+
+            Log.info("Tar file created!")
 
         try:
             shutil.rmtree(exp_folder)
@@ -4399,7 +4459,7 @@ class Autosubmit:
                     Log.warning("Experiment folder renamed to: {0}".format(
                         exp_folder + "_to_delete "))
                 except Exception as e:
-                    Autosubmit.unarchive(expid, uncompressed=False)
+                    Autosubmit.unarchive(expid, uncompressed=False, rocrate=rocrate)
                     raise AutosubmitCritical(
                         "Can not remove or rename experiments folder", 7012, str(e))
 
@@ -4407,7 +4467,7 @@ class Autosubmit:
         return True
 
     @staticmethod
-    def unarchive(experiment_id, uncompressed=True):
+    def unarchive(experiment_id, uncompressed=True, rocrate=False):
         """
         Unarchives an experiment: uncompress folder from tar.gz and moves to experiment root folder
 
@@ -4415,14 +4475,18 @@ class Autosubmit:
         :type experiment_id: str
         :param uncompressed: if True, the tar file is uncompressed
         :type uncompressed: bool
-
+        :param rocrate: flag to enable RO-Crate
+        :type rocrate: bool
         """
         exp_folder = os.path.join(BasicConfig.LOCAL_ROOT_DIR, experiment_id)
 
         # Searching by year. We will store it on database
         year = datetime.datetime.today().year
         archive_path = None
-        if not uncompressed:
+        if rocrate:
+            compress_type = None
+            output_pathfile = f'{experiment_id}.zip'
+        elif not uncompressed:
             compress_type = "r:gz"
             output_pathfile = '{0}.tar.gz'.format(experiment_id)
         else:
@@ -4445,12 +4509,17 @@ class Autosubmit:
         if not os.path.isdir(exp_folder):
             os.mkdir(exp_folder)
         try:
-            with tarfile.open(os.path.join(archive_path), compress_type) as tar:
-                tar.extractall(exp_folder)
-                tar.close()
+            if rocrate:
+                import zipfile
+                with zipfile.ZipFile(archive_path, 'r') as zip:
+                    zip.extractall(exp_folder)
+            else:
+                with tarfile.open(os.path.join(archive_path), compress_type) as tar:
+                    tar.extractall(exp_folder)
+                    tar.close()
         except Exception as e:
             shutil.rmtree(exp_folder, ignore_errors=True)
-            Log.printlog("Can not extract tar file: {0}".format(str(e)), 6012)
+            Log.printlog("Can not extract file: {0}".format(str(e)), 6012)
             return False
 
         Log.info("Unpacking finished")
@@ -4498,7 +4567,7 @@ class Autosubmit:
 
     @staticmethod
     def create(expid, noplot, hide, output='pdf', group_by=None, expand=list(), expand_status=list(),
-               notransitive=False, check_wrappers=False, detail=False, profile=False):
+               notransitive=False, check_wrappers=False, detail=False, profile=False, force=False):
         """
         Creates job list for given experiment. Configuration files must be valid before executing this process.
 
@@ -4590,9 +4659,9 @@ class Autosubmit:
                     Log.info("\nCreating the jobs list...")
                     job_list = JobList(expid, BasicConfig, YAMLParserFactory(),Autosubmit._get_job_list_persistence(expid, as_conf), as_conf)
                     try:
-                        prev_job_list = Autosubmit.load_job_list(expid, as_conf, new=False)
+                         prev_job_list_logs = Autosubmit.load_logs_from_previous_run(expid, as_conf)
                     except:
-                        prev_job_list = None
+                        prev_job_list_logs = None
                     date_format = ''
                     if as_conf.get_chunk_size_unit() == 'hour':
                         date_format = 'H'
@@ -4612,16 +4681,17 @@ class Autosubmit:
                     job_list.generate(as_conf,date_list, member_list, num_chunks, chunk_ini, parameters, date_format,
                                       as_conf.get_retrials(),
                                       as_conf.get_default_job_type(),
-                                      wrapper_jobs, run_only_members=run_only_members)
+                                      wrapper_jobs, run_only_members=run_only_members, force=force)
 
                     if str(rerun).lower() == "true":
                         job_list.rerun(as_conf.get_rerun_jobs(),as_conf)
                     else:
                         job_list.remove_rerun_only_jobs(notransitive)
                     Log.info("\nSaving the jobs list...")
-                    if prev_job_list:
-                        job_list.add_logs(prev_job_list.get_logs())
+                    if prev_job_list_logs:
+                        job_list.add_logs(prev_job_list_logs)
                     job_list.save()
+                    as_conf.save()
                     JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
                                           "job_packages_" + expid).reset_table()
                     groups_dict = dict()
@@ -4666,30 +4736,12 @@ class Autosubmit:
                             packages_persistence = JobPackagePersistence(
                                 os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"), "job_packages_" + expid)
                             packages_persistence.reset_table(True)
-                            referenced_jobs_to_remove = set()
-                            job_list_wrappers = copy.deepcopy(job_list)
-                            jobs_wr = job_list_wrappers.get_job_list()
-                            for job in jobs_wr:
-                                for child in job.children:
-                                    if child not in jobs_wr:
-                                        referenced_jobs_to_remove.add(child)
-                                for parent in job.parents:
-                                    if parent not in jobs_wr:
-                                        referenced_jobs_to_remove.add(parent)
-
-                            for job in jobs_wr:
-                                job.children = job.children - referenced_jobs_to_remove
-                                job.parents = job.parents - referenced_jobs_to_remove
                             Autosubmit.generate_scripts_andor_wrappers(
-                                as_conf, job_list_wrappers, jobs_wr, packages_persistence, True)
+                                as_conf, job_list, job_list.get_job_list(), packages_persistence, True)
 
                             packages = packages_persistence.load(True)
                         else:
                             packages = None
-                        #Log.info("\nSaving unified data..")
-                        #as_conf.save()
-                        Log.info("")
-
                         Log.info("\nPlotting the jobs list...")
                         monitor_exp = Monitor()
                         # if output is set, use output
@@ -4706,17 +4758,8 @@ class Autosubmit:
                         "Remember to MODIFY the MODEL config files!")
                     fh.flush()
                     os.fsync(fh.fileno())
-
-                    # Detail after lock has been closed.
-                    if detail is True:
-                        current_length = len(job_list.get_job_list())
-                        if current_length > 1000:
-                            Log.warning(
-                                "-d option: Experiment has too many jobs to be printed in the terminal. Maximum job quantity is 1000, your experiment has " + str(
-                                    current_length) + " jobs.")
-                        else:
-                            Log.info(job_list.print_with_status())
-                            Log.status(job_list.print_with_status())
+                    if detail:
+                        Autosubmit.detail(job_list)
                     return True
                 # catching Exception
                 except KeyboardInterrupt as e:
@@ -4745,6 +4788,18 @@ class Autosubmit:
         finally:
             if profile:
                 profiler.stop()
+
+    @staticmethod
+    def detail(job_list):
+        current_length = len(job_list.get_job_list())
+        if current_length > 1000:
+            Log.warning(
+                "-d option: Experiment has too many jobs to be printed in the terminal. Maximum job quantity is 1000, your experiment has " + str(
+                    current_length) + " jobs.")
+        else:
+            Log.info(job_list.print_with_status())
+            Log.status(job_list.print_with_status())
+
 
     @staticmethod
     def _copy_code(as_conf, expid, project_type, force):
@@ -5322,20 +5377,17 @@ class Autosubmit:
                     if str(ft).upper() == 'ANY':
                         for job in job_list.get_job_list():
                             final_list.append(job)
-                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
                         for section in ft:
                             for job in job_list.get_job_list():
                                 if job.section == section:
                                     final_list.append(job)
-                                    #Autosubmit.change_status(final, final_status, job, save)
                 if filter_chunks:
                     ft = filter_chunks.split(",")[1:]
                     # Any located in section part
                     if str(ft).upper() == "ANY":
                         for job in job_list.get_job_list():
                             final_list.append(job)
-                            #Autosubmit.change_status(final, final_status, job, save)
                         for job in job_list.get_job_list():
                             if job.section == section:
                                 if filter_chunks:
@@ -5347,7 +5399,6 @@ class Autosubmit:
                     if str(fc).upper() == "ANY":
                         for job in jobs_filtered:
                             final_list.append(job)
-                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
                         data = json.loads(Autosubmit._create_json(fc))
                         for date_json in data['sds']:
@@ -5373,25 +5424,19 @@ class Autosubmit:
                                     chunk = int(chunk_json)
                                     for job in [j for j in jobs_date if j.chunk == chunk and j.synchronize is not None]:
                                         final_list.append(job)
-                                        #Autosubmit.change_status(final, final_status, job, save)
                                     for job in [j for j in jobs_member if j.chunk == chunk]:
                                         final_list.append(job)
-
-                                        #Autosubmit.change_status(final, final_status, job, save)
-
                 if filter_status:
                     status_list = filter_status.split()
                     Log.debug("Filtering jobs with status {0}", filter_status)
                     if str(status_list).upper() == 'ANY':
                         for job in job_list.get_job_list():
                             final_list.append(job)
-                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
                         for status in status_list:
                             fs = Autosubmit._get_status(status)
                             for job in [j for j in job_list.get_job_list() if j.status == fs]:
                                 final_list.append(job)
-                                #Autosubmit.change_status(final, final_status, job, save)
 
                 if filter_list:
                     jobs = filter_list.split()
@@ -5406,12 +5451,10 @@ class Autosubmit:
                     if str(jobs).upper() == 'ANY':
                         for job in job_list.get_job_list():
                             final_list.append(job)
-                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
                         for job in job_list.get_job_list():
                             if job.name in jobs:
                                 final_list.append(job)
-                                #Autosubmit.change_status(final, final_status, job, save)
                 # All filters should be in a function but no have time to do it
                 # filter_Type_chunk_split == filter_type_chunk, but with the split essencially is the same but not sure about of changing the name to the filter itself
                 if filter_type_chunk_split is not None:
@@ -5473,22 +5516,10 @@ class Autosubmit:
                                               expid, "pkl", "job_packages_" + expid + ".db"), 0o775)
                         packages_persistence.reset_table(True)
                         referenced_jobs_to_remove = set()
-                        job_list_wrappers = copy.deepcopy(job_list)
-                        jobs_wr = copy.deepcopy(job_list.get_job_list())
+                        jobs_wr = job_list.get_job_list()
                         [job for job in jobs_wr if (
                                 job.status != Status.COMPLETED)]
-                        for job in jobs_wr:
-                            for child in job.children:
-                                if child not in jobs_wr:
-                                    referenced_jobs_to_remove.add(child)
-                            for parent in job.parents:
-                                if parent not in jobs_wr:
-                                    referenced_jobs_to_remove.add(parent)
-
-                        for job in jobs_wr:
-                            job.children = job.children - referenced_jobs_to_remove
-                            job.parents = job.parents - referenced_jobs_to_remove
-                        Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list_wrappers, jobs_wr,
+                        Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list, jobs_wr,
                                                                    packages_persistence, True)
 
                         packages = packages_persistence.load(True)
@@ -5855,6 +5886,20 @@ class Autosubmit:
         open(as_conf.experiment_file, 'wb').write(content)
 
     @staticmethod
+    def load_logs_from_previous_run(expid,as_conf):
+        logs = None
+        if Path(f'{BasicConfig.LOCAL_ROOT_DIR}/{expid}/pkl/job_list_{expid}.pkl').exists():
+            job_list = JobList(expid, BasicConfig, YAMLParserFactory(),Autosubmit._get_job_list_persistence(expid, as_conf), as_conf)
+            with suppress(BaseException):
+                graph = job_list.load()
+                if len(graph.nodes) > 0:
+                    # fast-look if graph existed, skips some steps
+                    job_list._job_list = [job["job"] for _, job in graph.nodes.data() if
+                                                job.get("job", None)]
+                logs = job_list.get_logs()
+            del job_list
+        return logs
+    @staticmethod
     def load_job_list(expid, as_conf, notransitive=False, monitor=False, new = True):
         rerun = as_conf.get_rerun()
 
@@ -5878,7 +5923,7 @@ class Autosubmit:
         job_list.generate(as_conf, date_list, as_conf.get_member_list(), as_conf.get_num_chunks(), as_conf.get_chunk_ini(),
                           as_conf.experiment_data, date_format, as_conf.get_retrials(),
                           as_conf.get_default_job_type(), wrapper_jobs,
-                          new=new, run_only_members=run_only_members)
+                          new=new, run_only_members=run_only_members,monitor=monitor)
 
         if str(rerun).lower() == "true":
             rerun_jobs = as_conf.get_rerun_jobs()

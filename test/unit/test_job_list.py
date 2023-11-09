@@ -520,6 +520,47 @@ class TestJobList(TestCase):
             # assert update_genealogy called with right values
             # When using an 4.0 experiment, the pkl has to be recreated and act as a new one.
             job_list3.update_genealogy.assert_called_once_with(True)
+            # Test workflow_jobs and graph_jobs
+
+            # Test when the graph previous run has more jobs than the current run
+            job_list3.graph.add_node("fake-node",job=job_list3._job_list[0])
+            job_list3.save()
+            job_list3.generate(
+                as_conf=as_conf,
+                date_list=date_list,
+                member_list=member_list,
+                num_chunks=num_chunks,
+                chunk_ini=1,
+                parameters=parameters,
+                date_format='H',
+                default_retrials=9999,
+                default_job_type=Type.BASH,
+                wrapper_jobs={},
+                new=False,
+            )
+            self.assertEqual(len(job_list3.graph.nodes),len(job_list3._job_list))
+            # Test when the graph previous run has fewer jobs than the current run
+            as_conf.experiment_data["JOBS"]["fake-section3"] = dict()
+            as_conf.experiment_data["JOBS"]["fake-section3"]["file"] = "fake-file3"
+            as_conf.experiment_data["JOBS"]["fake-section3"]["running"] = "once"
+            job_list3.generate(
+                as_conf=as_conf,
+                date_list=date_list,
+                member_list=member_list,
+                num_chunks=num_chunks,
+                chunk_ini=1,
+                parameters=parameters,
+                date_format='H',
+                default_retrials=9999,
+                default_job_type=Type.BASH,
+                wrapper_jobs={},
+                new=False,
+            )
+            self.assertEqual(len(job_list3.graph.nodes), len(job_list3._job_list))
+            for node in job_list3.graph.nodes:
+                # if name is in the job_list
+                if node in [job.name for job in job_list3._job_list]:
+                    self.assertTrue(job_list3.graph.nodes[node]["job"] in job_list3._job_list)
 
 
 

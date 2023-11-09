@@ -230,7 +230,8 @@ class JobList(object):
         if len(self.graph.nodes) > 0:
             gen = ( name for name in np.setxor1d(self.graph.nodes, self._dic_jobs.workflow_jobs,True).tolist() )
             for name in gen:
-                self.graph.remove_node(name)
+                if name in self.graph.nodes:
+                    self.graph.remove_node(name)
         self._add_dependencies(date_list, member_list, chunk_list, self._dic_jobs)
         if show_log:
             Log.info("Adding dependencies to the job..")

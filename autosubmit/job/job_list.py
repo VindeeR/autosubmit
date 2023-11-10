@@ -309,8 +309,7 @@ class JobList(object):
                 elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job",None) is None:
                     self.graph.nodes.get(job.name)["job"] = job
                 job = self.graph.nodes.get(job.name)['job']
-                job.dependencies = dic_jobs.as_conf.jobs_data[job.section].get("DEPENDENCIES","")
-                job.delete_when_edgeless = str(dic_jobs.as_conf.jobs_data[job.section].get("DELETE_WHEN_EDGELESS",True))
+                job.update_job_parameters(dic_jobs.as_conf,{})
                 if not dependencies:
                     continue
                 num_jobs = 1
@@ -933,7 +932,7 @@ class JobList(object):
         # If parent already has defined that dependency, skip it to reduce the transitive reduction complexity
         depends_on_previous_chunk = False
         for dependency_key in dependencies_keys_aux:
-            if job.chunk and int(job.chunk) > 1:
+            if job.chunk and int(job.chunk) > 1 and (not job.split or (job.split and int(job.split) > 1 )) :
                 if job.section in dependency_key:
                     depends_on_previous_chunk = True
             # or dependencies_keys[dependency_key] means that it has an special relationship so it must be calculated separately

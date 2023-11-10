@@ -1,77 +1,76 @@
-from collections import namedtuple
-from unittest import TestCase
+# Copyright 2015-2023 Earth Sciences Department, BSC-CNS
+# This file is part of Autosubmit.
+#
+# Autosubmit is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Autosubmit is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-from pathlib import Path
-from tempfile import TemporaryDirectory
-from unittest.mock import MagicMock
+from pytest import raises
+from pytest_mock import MockerFixture
+from typing import Callable
 
-from autosubmit.platforms.slurmplatform import SlurmPlatform
 from log.log import AutosubmitCritical, AutosubmitError
 
 
-class TestSlurmPlatform(TestCase):
+def test_properties(autosubmit_exp: Callable):
+    exp = autosubmit_exp('a000')
+    platform = exp.platform
+    props = {
+        'name': 'foo',
+        'host': 'localhost1',
+        'user': 'sam',
+        'project': 'proj1',
+        'budget': 100,
+        'reservation': 1,
+        'exclusivity': True,
+        'hyperthreading': True,
+        'type': 'SuperSlurm',
+        'scratch': '/scratch/1',
+        'project_dir': '/proj1',
+        'root_dir': '/root_1',
+        'partition': 'inter',
+        'queue': 'prio1'
+    }
+    for prop, value in props.items():
+        setattr(platform, prop, value)
+    for prop, value in props.items():
+        assert value == getattr(platform, prop)
 
-    Config = namedtuple('Config', ['LOCAL_ROOT_DIR', 'LOCAL_TMP_DIR', 'LOCAL_ASLOG_DIR'])
 
-    def setUp(self):
-        self.local_root_dir = TemporaryDirectory()
-        self.config = {
-            "LOCAL_ROOT_DIR" : self.local_root_dir.name,
-            "LOCAL_TMP_DIR" : 'tmp',
-            "LOCAL_ASLOG_DIR" : 'ASLOG_a000'
-        }
-        # We need to create the submission archive that AS expects to find in this location:
-        p = Path(self.local_root_dir.name) / 'a000' / 'tmp' / 'ASLOG_a000'
-        p.mkdir(parents=True)
-        submit_platform_script = Path(p) / 'submit_local.sh'
-        submit_platform_script.touch(exist_ok=True)
+def test_slurm_platform_submit_script_raises_autosubmit_critical_with_trace(
+        autosubmit_exp: Callable,
+        mocker: MockerFixture):
+    exp = autosubmit_exp('a000')
 
-        self.platform = SlurmPlatform(expid='a000', name='local', config=self.config)
+    platform = exp.platform
 
-    def tearDown(self) -> None:
-        self.local_root_dir.cleanup()
+    package = mocker.MagicMock()
+    package.jobs.return_value = []
+    valid_packages_to_submit = [
+        package
+    ]
 
-    def test_properties(self):
-        props = {
-            'name': 'foo',
-            'host': 'localhost1',
-            'user': 'sam',
-            'project': 'proj1',
-            'budget': 100,
-            'reservation': 1,
-            'exclusivity': True,
-            'hyperthreading': True,
-            'type': 'SuperSlurm',
-            'scratch': '/scratch/1',
-            'project_dir': '/proj1',
-            'root_dir': '/root_1',
-            'partition': 'inter',
-            'queue': 'prio1'
-        }
-        for prop, value in props.items():
-            setattr(self.platform, prop, value)
-        for prop, value in props.items():
-            self.assertEqual(value, getattr(self.platform, prop))
+    ae = AutosubmitError(message='invalid partition', code=123, trace='ERR!')
+    platform.submit_Script = mocker.MagicMock(side_effect=ae)
 
-    def test_slurm_platform_submit_script_raises_autosubmit_critical_with_trace(self):
-        package = MagicMock()
-        package.jobs.return_value = []
-        valid_packages_to_submit = [
-            package
-        ]
+    # AS will handle the AutosubmitError above, but then raise an AutosubmitCritical.
+    # This new error won't contain all the info from the upstream error.
+    with raises(AutosubmitCritical) as e:
+        platform.process_batch_ready_jobs(
+            valid_packages_to_submit=valid_packages_to_submit,
+            failed_packages=[]
+        )
 
-        ae = AutosubmitError(message='invalid partition', code=123, trace='ERR!')
-        self.platform.submit_Script = MagicMock(side_effect=ae)
-
-        # AS will handle the AutosubmitError above, but then raise an AutosubmitCritical.
-        # This new error won't contain all the info from the upstream error.
-        with self.assertRaises(AutosubmitCritical) as cm:
-            self.platform.process_batch_ready_jobs(
-                valid_packages_to_submit=valid_packages_to_submit,
-                failed_packages=[]
-            )
-
-        # AS will handle the error and then later will raise another error message.
-        # But the AutosubmitError object we created will have been correctly used
-        # without raising any exceptions (such as AttributeError).
-        assert cm.exception.message != ae.message
+    # AS will handle the error and then later will raise another error message.
+    # But the AutosubmitError object we created will have been correctly used
+    # without raising any exceptions (such as AttributeError).
+    assert e.value.message != ae.message

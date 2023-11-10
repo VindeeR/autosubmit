@@ -1,48 +1,75 @@
-from unittest import TestCase, mock
+# Copyright 2015-2023 Earth Sciences Department, BSC-CNS
+# This file is part of Autosubmit.
+#
+# Autosubmit is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Autosubmit is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
+
+import pytest
+from pytest_mock import MockerFixture
+
 from autosubmit.profiler.profiler import Profiler
 from log.log import AutosubmitCritical
 
 
-class TestProfiler(TestCase):
-    def setUp(self):
-        self.profiler = Profiler("a000")
+@pytest.fixture
+def profiler():
+    return Profiler("a000")
 
-    # Black box techniques for status machine based software
-    #
-    #   O---->__init__------> start
-    #                           |
-    #                           |
-    #                         stop ----> report --->0
 
-    # Transition coverage
-    def test_transitions(self):
-        # __init__ -> start
-        self.profiler.start()
+# Black box techniques for status machine based software
+#
+#   O---->__init__------> start
+#                           |
+#                           |
+#                         stop ----> report --->0
 
-        # start -> stop
-        self.profiler.stop()
+# Transition coverage
+def test_transitions(profiler):
+    # __init__ -> start
+    profiler.start()
 
-    def test_transitions_fail_cases(self):
-        # __init__ -> stop
-        self.assertRaises(AutosubmitCritical, self.profiler.stop)
+    # start -> stop
+    profiler.stop()
 
-        # start -> start
-        self.profiler.start()
-        self.assertRaises(AutosubmitCritical, self.profiler.start)
 
-        # stop -> stop
-        self.profiler.stop()
-        self.assertRaises(AutosubmitCritical, self.profiler.stop)
+def test_transitions_fail_cases(profiler):
+    # __init__ -> stop
+    with pytest.raises(AutosubmitCritical):
+        profiler.stop()
 
-    # White box tests
-    @mock.patch("os.access")
-    def test_writing_permission_check_fails(self, mock_response):
-        mock_response.return_value = False
+    # start -> start
+    profiler.start()
 
-        self.profiler.start()
-        self.assertRaises(AutosubmitCritical, self.profiler.stop)
+    with pytest.raises(AutosubmitCritical):
+        profiler.start()
 
-    def test_memory_profiling_loop(self):
-        self.profiler.start()
-        bytearray(1024*1024)
-        self.profiler.stop()
+    # stop -> stop
+    profiler.stop()
+    with pytest.raises(AutosubmitCritical):
+        profiler.stop()
+
+
+# White box tests
+def test_writing_permission_check_fails(profiler, mocker: MockerFixture):
+    mock_response = mocker.patch("os.access")
+    mock_response.return_value = False
+
+    profiler.start()
+    with pytest.raises(AutosubmitCritical):
+        profiler.stop()
+
+
+def test_memory_profiling_loop(profiler):
+    profiler.start()
+    bytearray(1024 * 1024)
+    profiler.stop()

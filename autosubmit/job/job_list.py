@@ -932,7 +932,7 @@ class JobList(object):
         # If parent already has defined that dependency, skip it to reduce the transitive reduction complexity
         depends_on_previous_chunk = False
         for dependency_key in dependencies_keys_aux:
-            if job.chunk and int(job.chunk) > 1 and (not job.split or (job.split and int(job.split) > 1 )) :
+            if job.chunk and int(job.chunk) > 1 and job.split <= 0:
                 if job.section in dependency_key:
                     depends_on_previous_chunk = True
             # or dependencies_keys[dependency_key] means that it has an special relationship so it must be calculated separately

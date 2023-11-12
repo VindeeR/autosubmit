@@ -2922,15 +2922,8 @@ class Autosubmit:
                                             groups=groups_dict,
                                             job_list_object=job_list)
 
-            if detail is True:
-                current_length = len(job_list.get_job_list())
-                if current_length > 1000:
-                    Log.warning(
-                        "-d option: Experiment has too many jobs to be printed in the terminal. Maximum job quantity is 1000, your experiment has " + str(
-                            current_length) + " jobs.")
-                else:
-                    Log.info(job_list.print_with_status())
-                    Log.status(job_list.print_with_status())
+            if detail:
+                Autosubmit.detail(job_list)
             # Warnings about precedence completion
             # time_0 = time.time()
             notcompleted_parents_completed_jobs = [job for job in job_list.get_job_list(
@@ -4706,17 +4699,8 @@ class Autosubmit:
                         "Remember to MODIFY the MODEL config files!")
                     fh.flush()
                     os.fsync(fh.fileno())
-
-                    # Detail after lock has been closed.
-                    if detail is True:
-                        current_length = len(job_list.get_job_list())
-                        if current_length > 1000:
-                            Log.warning(
-                                "-d option: Experiment has too many jobs to be printed in the terminal. Maximum job quantity is 1000, your experiment has " + str(
-                                    current_length) + " jobs.")
-                        else:
-                            Log.info(job_list.print_with_status())
-                            Log.status(job_list.print_with_status())
+                    if detail:
+                        Autosubmit.detail(job_list)
                     return True
                 # catching Exception
                 except KeyboardInterrupt as e:
@@ -4745,6 +4729,18 @@ class Autosubmit:
         finally:
             if profile:
                 profiler.stop()
+
+    @staticmethod
+    def detail(job_list):
+        current_length = len(job_list.get_job_list())
+        if current_length > 1000:
+            Log.warning(
+                "-d option: Experiment has too many jobs to be printed in the terminal. Maximum job quantity is 1000, your experiment has " + str(
+                    current_length) + " jobs.")
+        else:
+            Log.info(job_list.print_with_status())
+            Log.status(job_list.print_with_status())
+
 
     @staticmethod
     def _copy_code(as_conf, expid, project_type, force):

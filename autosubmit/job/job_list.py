@@ -148,7 +148,7 @@ class JobList(object):
         jobs_to_delete = []
         # indices to delete
         for i, job in enumerate(self._job_list):
-            if job.dependencies is not None:
+            if job.dependencies is not None and job.dependencies not in ["{}","[]"]:
                 if (len(job.dependencies) > 0 and not job.has_parents() and not job.has_children()) and str(job.delete_when_edgeless).casefold() == "true".casefold():
                     jobs_to_delete.append(job)
         # delete jobs by indices
@@ -309,7 +309,7 @@ class JobList(object):
                 elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job",None) is None:
                     self.graph.nodes.get(job.name)["job"] = job
                 job = self.graph.nodes.get(job.name)['job']
-                job.update_job_parameters(dic_jobs.as_conf,{})
+                job.update_dict_parameters(dic_jobs.as_conf)
                 if not dependencies:
                     continue
                 num_jobs = 1
@@ -2036,7 +2036,6 @@ class JobList(object):
             try:
                 self._persistence.save(self._persistence_path,
                                        self._persistence_file, self._job_list if self.run_members is None or job_list is None else job_list,self.graph)
-                pass
             except BaseException as e:
                 raise AutosubmitError(str(e), 6040, "Failure while saving the job_list")
         except AutosubmitError as e:

@@ -1616,6 +1616,12 @@ class Job(object):
                 as_conf.get_extensible_wallclock(as_conf.experiment_data["WRAPPERS"].get(wrapper_section)))
         return parameters
 
+    def update_dict_parameters(self,as_conf):
+        self.splits = as_conf.jobs_data[self.section].get("SPLITS", None)
+        self.delete_when_edgeless = as_conf.jobs_data[self.section].get("DELETE_WHEN_EDGELESS", True)
+        self.dependencies = as_conf.jobs_data[self.section].get("DEPENDENCIES","")
+        self.dependencies  = str(self.dependencies)
+
     def update_job_parameters(self,as_conf, parameters):
         self.splits = as_conf.jobs_data[self.section].get("SPLITS", None)
         self.delete_when_edgeless = as_conf.jobs_data[self.section].get("DELETE_WHEN_EDGELESS", True)

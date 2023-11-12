@@ -2,10 +2,11 @@ from unittest import TestCase
 from copy import copy
 import networkx
 from networkx import DiGraph
+#import patch
 from textwrap import dedent
 import shutil
 import tempfile
-from mock import Mock
+from mock import Mock, patch
 from random import randrange
 from pathlib import Path
 from autosubmit.job.job import Job
@@ -393,6 +394,7 @@ class TestJobList(TestCase):
         #job_list._job_list = [Job('random-name', 9999, Status.WAITING, 0),
         #                      Job('random-name2', 99999, Status.WAITING, 0)]
         return job_list
+
     def test_generate_job_list_from_monitor_run(self):
         as_conf = Mock()
         as_conf.experiment_data = dict()
@@ -409,6 +411,7 @@ class TestJobList(TestCase):
         as_conf.experiment_data["PLATFORMS"]["fake-platform"]["type"] = "fake-type"
         as_conf.experiment_data["PLATFORMS"]["fake-platform"]["name"] = "fake-name"
         as_conf.experiment_data["PLATFORMS"]["fake-platform"]["user"] = "fake-user"
+
         parser_mock = Mock()
         parser_mock.read = Mock()
         factory = YAMLParserFactory()
@@ -428,7 +431,7 @@ class TestJobList(TestCase):
                 Path(temp_dir, path).mkdir()
             job_list.changes = Mock(return_value={})
             as_conf.detailed_deep_diff = Mock(return_value={})
-
+            #as_conf.get_member_list = Mock(return_value=member_list)
             # act
             job_list.generate(
                 as_conf=as_conf,
@@ -520,7 +523,6 @@ class TestJobList(TestCase):
             # assert update_genealogy called with right values
             # When using an 4.0 experiment, the pkl has to be recreated and act as a new one.
             job_list3.update_genealogy.assert_called_once_with(True)
-            # Test workflow_jobs and graph_jobs
 
             # Test when the graph previous run has more jobs than the current run
             job_list3.graph.add_node("fake-node",job=job_list3._job_list[0])

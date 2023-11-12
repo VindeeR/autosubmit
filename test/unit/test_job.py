@@ -314,11 +314,6 @@ class TestJob(TestCase):
             job_list_obj = JobList(expid, basic_config, YAMLParserFactory(),
                                    Autosubmit._get_job_list_persistence(expid, config), config)
 
-            #generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format,
-            #             default_retrials,
-            #             default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[], show_log=True,
-            #             previous_run=False):
-            #good
             job_list_obj.generate(
                 as_conf=config,
                 date_list=[],
@@ -331,7 +326,8 @@ class TestJob(TestCase):
                 default_job_type=config.get_default_job_type(),
                 wrapper_jobs={},
                 new=True,
-                run_only_members=config.get_member_list(run_only=True),
+                run_only_members=[],
+                #config.get_member_list(run_only=True),
                 show_log=True,
             )
 

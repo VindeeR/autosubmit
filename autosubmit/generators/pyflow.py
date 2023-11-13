@@ -114,7 +114,7 @@ def _create_ecflow_suite(
         # in ecFlow, `a000_20220401_fc0_INI` is `a000/20220401/fc0/INI`, and so on.
         for job in jobs:
             ecflow_node = _autosubmit_id_to_ecflow_id(job.long_name, job.running)
-            if job.split is not None:
+            if job.split is not None and job.split > 0:
                 t = Task(f'{job.section}_{job.split}', SPLIT=job.split)
             else:
                 t = Task(job.section)
@@ -137,7 +137,10 @@ def _create_ecflow_suite(
                 parent_node = s
                 for node in dependency_node.split('/')[1:-1]:
                     parent_node = parent_node[node]
-                dependency_node = parent_node[parent.section]
+                parent_key = parent.section
+                if parent.split is not None and parent.split > 0:
+                    parent_key = f'{parent_key}_{parent.split}'
+                dependency_node = parent_node[parent_key]
 
                 # In case we ever need to use the pre-processed file.
                 #
@@ -169,9 +172,11 @@ def _create_ecflow_suite(
             #
             #       The variables may still need to be manually adjusted, but once that is
             #       done, the script should then be ready to be executed (i.e. ported).
+            # FIXME
             # t.script = job.file
-            with open(Path(as_conf.get_project_dir(), job.file)) as f:
-                t.script = f.read()
+            # with open(Path(as_conf.get_project_dir(), job.file)) as f:
+            #     t.script = f.read()
+            t.script = 'sleep 5'
 
         return s
 

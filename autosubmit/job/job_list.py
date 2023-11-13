@@ -289,37 +289,21 @@ class JobList(object):
             dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
             # call function if dependencies_key is not None
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section) if dependencies_keys else {}
-            #if not dependencies_keys:
-            #    Log.printlog(f"WARNING: Job Section {dependencies_keys} is not defined", Log.WARNING)
-            total_amount = len(dic_jobs.get_jobs(job_section))
             jobs_gen = (job for job in dic_jobs.get_jobs(job_section))
-            import time
-            start = None
             for i,job in enumerate(jobs_gen):
-                # time this function
-                # print % of completion in steps of 10%
-                if i % ((total_amount // 10) +1 ) == 0:
-                    Log.info(f"{job_section} jobs: {str(i * 100 // total_amount)}% total:{str(total_amount)} of tasks")
-                    end = time.time()
-                    if start:
-                        Log.debug(f"Time to add dependencies for job {job.name}: {end - start}")
-                    start = time.time()
                 if job.name not in self.graph.nodes:
                     self.graph.add_node(job.name,job=job)
                 elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job",None) is None:
                     self.graph.nodes.get(job.name)["job"] = job
-                job = self.graph.nodes.get(job.name)['job']
-                job.update_dict_parameters(dic_jobs.as_conf)
-                if not dependencies:
-                    continue
-                num_jobs = 1
-                if isinstance(job, list):
-                    num_jobs = len(job)
-                for i in range(num_jobs):
-                    _job = job[i] if num_jobs > 1 else job
-                    self._manage_job_dependencies(dic_jobs, _job, date_list, member_list, chunk_list, dependencies_keys,
-                                                     dependencies, self.graph)
-            Log.info(f"{job_section} jobs: 100% total:{str(total_amount)} of tasks")
+                if dependencies:
+                    job = self.graph.nodes.get(job.name)['job']
+                    num_jobs = 1
+                    if isinstance(job, list):
+                        num_jobs = len(job)
+                    for i in range(num_jobs):
+                        _job = job[i] if num_jobs > 1 else job
+                        self._manage_job_dependencies(dic_jobs, _job, date_list, member_list, chunk_list, dependencies_keys,
+                                                         dependencies, self.graph)
 
     @staticmethod
     def _manage_dependencies(dependencies_keys, dic_jobs, job_section):
@@ -430,7 +414,8 @@ class JobList(object):
             for filter_ in aux_filter.split(","):
                 if "*" in filter_:
                     filter_, split_info = filter_.split("*")
-                    if "\\" in split_info:
+                    # If parent and childs has the same amount of splits \\ doesn't make sense so it is disabled
+                    if "\\" in split_info and str(parent.splits).casefold() != str(child.splits).casefold():
                         split_info = int(split_info.split("\\")[-1])
                     else:
                         split_info = 1

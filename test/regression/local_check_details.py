@@ -1,9 +1,8 @@
 """
-This test checks that the autosubmit report command works as expected.
-It is a regression test, so it is not run by default.
-It only run within my home desktop computer. It is not run in the CI. Eventually it will be included TODO
-Just to be sure that the autosubmitconfigparser work as expected if there are changes.
+This test took the now ordered by name -d option of autosubmit create and checks that the workflow of 4.1 and 4.0 match.
+Works under local_computer TODO introduce in CI
 """
+
 import os
 import subprocess
 BIN_PATH = '../../bin'

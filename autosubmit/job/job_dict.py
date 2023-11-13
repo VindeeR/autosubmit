@@ -486,6 +486,7 @@ class DicJobs:
             job.member = member
             job.chunk = chunk
             job.split = split
+            job.update_dict_parameters(self.as_conf)
             section_data.append(job)
         else:
             self._job_list[name].status = Status.WAITING if self._job_list[name].status in [Status.DELAYED,Status.PREPARED,Status.READY] else self._job_list[name].status

@@ -969,7 +969,7 @@ class JobList(object):
                     if parent.name == job.name:
                         continue
                     if not actual_job_depends_on_previous_chunk:
-                        if not parent.chunk or parent.chunk == self.depends_on_previous_chunk.get(parent.section, parent.chunk):
+                        if not parent.chunk or ("+" not in key and "-" not in key and parent.chunk == self.depends_on_previous_chunk.get(parent.section, parent.chunk)):
                             graph.add_edge(parent.name, job.name)
                     else:
                         if parent.section == job.section:

@@ -964,7 +964,7 @@ class JobList(object):
                 natural_parents = dic_jobs.get_jobs(dependency.section, date, member, chunk)
                 # Natural jobs, no filters to apply we can safely add the edge
                 for parent in natural_parents:
-                    if depends_on_previous_chunk and parent.section != job.section:
+                    if parent.name == job.name or (depends_on_previous_chunk and parent.section != job.section):
                         continue
                     graph.add_edge(parent.name, job.name)
                 JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job,
@@ -973,6 +973,8 @@ class JobList(object):
             else:
                 possible_parents =  dic_jobs.get_jobs_filtered(dependency.section,job,filters_to_apply,date,member,chunk)
                 for parent in possible_parents:
+                    if parent.name == job.name:
+                        continue
                     splits_to = filters_to_apply.get("SPLITS_TO", None)
                     if splits_to:
                         if not parent.splits:

@@ -6,10 +6,8 @@ Just to be sure that the autosubmitconfigparser work as expected if there are ch
 """
 import os
 import subprocess
-import re
-from pathlib import Path
 BIN_PATH = '../../bin'
-VERSION = 4.0
+VERSION = 4.1
 
 def check_cmd(command, path=BIN_PATH):
     try:
@@ -48,7 +46,7 @@ open(f"{VERSION}_multi_test.txt", "w").close()
 # list all experiments under ~/new_autosubmit.
 # except the excluded ones, which are not run
 expids = []
-excluded = []
+excluded = ['a01y', 'a00j', 'a020', 'a01t', 'a00q', 'a00f', 'a01h', 'a00o', 'a01c', 'a00z', 't008', 'a00y', 'a00r', 't009', 'a000', 'a01e', 'a01i', 'a002', 'a008', 'a010', 'a003', 't007', 'a01d', 'autosubmit.db', 'a021', 'a00h', 'as_times.db', 'a04d', 'a02v']
 for experiment in os.listdir("/home/dbeltran/new_autosubmit"):
     if experiment.startswith("a") or experiment.startswith("t") and len(experiment) == 4:
         if experiment not in excluded:

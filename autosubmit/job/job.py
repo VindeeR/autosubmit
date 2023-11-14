@@ -1529,9 +1529,9 @@ class Job(object):
         # Ignore the heterogeneous parameters if the cores or nodes are no specefied as a list
         if self.het['HETSIZE'] == 1:
             self.het = dict()
-        if self.wallclock is None and job_platform.type not in ['ps', "local", "PS", "LOCAL"]:
+        if self.wallclock is None and job_platform.type.lower() not in ['ps', "local", "PS", "LOCAL"]:
             self.wallclock = "01:59"
-        elif self.wallclock is None and job_platform.type in ['ps', 'local', "PS", "LOCAL"]:
+        elif self.wallclock is None and job_platform.type.lower() in ['ps', 'local', "PS", "LOCAL"]:
             self.wallclock = "00:00"
         # Increasing according to chunk
         self.wallclock = increase_wallclock_by_chunk(
@@ -1621,6 +1621,9 @@ class Job(object):
         self.delete_when_edgeless = as_conf.jobs_data.get(self.section,{}).get("DELETE_WHEN_EDGELESS", True)
         self.dependencies = str(as_conf.jobs_data.get(self.section,{}).get("DEPENDENCIES",""))
         self.running = as_conf.jobs_data.get(self.section,{}).get("RUNNING", "once")
+        self.platform_name = as_conf.jobs_data.get(self.section,{}).get("PLATFORM", as_conf.experiment_data.get("DEFAULT",{}).get("HPCARCH", None))
+        if self.platform_name:
+            self.platform_name = self.platform_name.upper()
 
     def update_job_parameters(self,as_conf, parameters):
         self.splits = as_conf.jobs_data[self.section].get("SPLITS", None)
@@ -1725,6 +1728,8 @@ class Job(object):
         :type parameters: dict
         """
         as_conf.reload()
+        # Parameters that affect to all the rest of parameters
+        self.update_dict_parameters(as_conf)
         parameters = parameters.copy()
         parameters.update(as_conf.parameters)
         parameters.update(default_parameters)

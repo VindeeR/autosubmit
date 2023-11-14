@@ -813,7 +813,7 @@ class Job(object):
                 self._parents.add(new_parent)
                 new_parent.__add_child(self)
 
-    def add_child(self, children):
+    def add_children(self, children):
         """
         Add children for the job. It also adds current job as a parent for all the new children
 
@@ -1609,9 +1609,9 @@ class Job(object):
         # Ignore the heterogeneous parameters if the cores or nodes are no specefied as a list
         if self.het['HETSIZE'] == 1:
             self.het = dict()
-        if self.wallclock is None and job_platform.type.lower() not in ['ps', "local", "PS", "LOCAL"]:
+        if self.wallclock is None and job_platform.type.lower() not in ['ps', "local"]:
             self.wallclock = "01:59"
-        elif self.wallclock is None and job_platform.type.lower() in ['ps', 'local', "PS", "LOCAL"]:
+        elif self.wallclock is None and job_platform.type.lower() in ['ps', 'local']:
             self.wallclock = "00:00"
         # Increasing according to chunk
         self.wallclock = increase_wallclock_by_chunk(
@@ -1708,6 +1708,19 @@ class Job(object):
         self.dependencies = str(as_conf.jobs_data.get(self.section,{}).get("DEPENDENCIES",""))
         self.running = as_conf.jobs_data.get(self.section,{}).get("RUNNING", "once")
         self.platform_name = as_conf.jobs_data.get(self.section,{}).get("PLATFORM", as_conf.experiment_data.get("DEFAULT",{}).get("HPCARCH", None))
+        type_ = str(as_conf.jobs_data.get(self.section,{}).get("TYPE", "bash")).lower()
+        if type_ == "bash":
+            self.type = Type.BASH
+        elif type_ == "python":
+            self.type = Type.PYTHON
+        elif type_ == "r":
+            self.type = Type.R
+        elif type_ == "python2":
+            self.type = Type.PYTHON2
+        else:
+            self.type = Type.BASH
+        self.ext_header_path = str(as_conf.jobs_data.get(self.section,{}).get('EXTENDED_HEADER_PATH', ''))
+        self.ext_tailer_path = str(as_conf.jobs_data.get(self.section,{}).get('EXTENDED_TAILER_PATH', ''))
         if self.platform_name:
             self.platform_name = self.platform_name.upper()
 
@@ -1790,7 +1803,7 @@ class Job(object):
             else:
                 parameters['CHUNK_LAST'] = 'FALSE'
         parameters['NUMMEMBERS'] = len(as_conf.get_member_list())
-        self.dependencies = as_conf.jobs_data[self.section].get("DEPENDENCIES","")
+        self.dependencies = as_conf.jobs_data[self.section].get("DEPENDENCIES", "")
         self.dependencies  = str(self.dependencies)
 
         parameters['EXPORT'] = self.export
@@ -2124,8 +2137,7 @@ class Job(object):
         """
         timestamp = date2str(datetime.datetime.now(), 'S')
 
-        self.local_logs = (self.name + "." + timestamp +
-                           ".out", self.name + "." + timestamp + ".err")
+        self.local_logs = (f"{self.name}.{timestamp}.out", f"{self.name}.{timestamp}.err")
 
         if self.wrapper_type != "vertical" or enabled:
             if self._platform.get_stat_file(self.name, retries=5): #fastlook

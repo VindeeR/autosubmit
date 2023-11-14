@@ -80,7 +80,7 @@ class JobListPersistencePkl(JobListPersistence):
                     resetted_nodes.append(graph.nodes[u]["job"])
                     graph.nodes[u]["job"].children = set()
                     graph.nodes[u]["job"].parents = set()
-                graph.nodes[u]["job"].add_child([graph.nodes[v]["job"] for v in u_nbrs])
+                graph.nodes[u]["job"].add_children([graph.nodes[v]["job"] for v in u_nbrs])
             return graph
         else:
             Log.printlog('File {0} does not exist'.format(path),Log.WARNING)

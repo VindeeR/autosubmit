@@ -4,6 +4,8 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from autosubmit.job.job_list_persistence import JobListPersistencePkl
+
 # compatibility with both versions (2 & 3)
 from sys import version_info
 from textwrap import dedent
@@ -248,7 +250,6 @@ class TestJob(TestCase):
         update_content_mock.assert_called_with(config)
         self.assertTrue(checked)
 
-    @patch('autosubmitconfigparser.config.basicconfig.BasicConfig' )
     @patch('autosubmitconfigparser.config.basicconfig.BasicConfig')
     def test_header_tailer(self, mocked_global_basic_config: Mock):
         """Test if header and tailer are being properly substituted onto the final .cmd file without
@@ -412,8 +413,12 @@ CONFIG:
 
                                 configuration.flush()
 
-                            mocked_basic_config = Mock(spec=BasicConfig)
+                            mocked_basic_config = FakeBasicConfig
+                            mocked_basic_config.read = MagicMock()
+
                             mocked_basic_config.LOCAL_ROOT_DIR = str(temp_dir)
+                            mocked_basic_config.STRUCTURES_DIR = '/dummy/structures/dir'
+
                             mocked_global_basic_config.LOCAL_ROOT_DIR.return_value = str(temp_dir)
 
                             config = AutosubmitConfig(expid, basic_config=mocked_basic_config, parser_factory=YAMLParserFactory())
@@ -422,10 +427,12 @@ CONFIG:
                             # act
 
                             parameters = config.load_parameters()
+                            joblist_persistence = JobListPersistencePkl()
 
-                            job_list_obj = JobList(expid, mocked_basic_config, YAMLParserFactory(),
-                                                   Autosubmit._get_job_list_persistence(expid, config), config)
+                            job_list_obj = JobList(expid, mocked_basic_config, YAMLParserFactory(),joblist_persistence, config)
+
                             job_list_obj.generate(
+                                as_conf=config,
                                 date_list=[],
                                 member_list=[],
                                 num_chunks=1,
@@ -434,15 +441,11 @@ CONFIG:
                                 date_format='M',
                                 default_retrials=config.get_retrials(),
                                 default_job_type=config.get_default_job_type(),
-                                wrapper_type=config.get_wrapper_type(),
                                 wrapper_jobs={},
-                                notransitive=True,
-                                update_structure=True,
+                                new=True,
                                 run_only_members=config.get_member_list(run_only=True),
-                                jobs_data=config.experiment_data,
-                                as_conf=config
+                                show_log=True,
                             )
-
                             job_list = job_list_obj.get_job_list()
 
                             submitter = Autosubmit._get_submitter(config)
@@ -904,7 +907,7 @@ CONFIG:
 
     def test_add_child(self):
         child = Job("child", 1, Status.WAITING, 0)
-        self.job.add_child([child])
+        self.job.add_children([child])
         self.assertEqual(1, len(self.job.children))
         self.assertEqual(child, list(self.job.children)[0])
 

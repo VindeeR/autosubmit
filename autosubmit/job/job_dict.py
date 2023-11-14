@@ -66,10 +66,9 @@ class DicJobs:
     def job_list(self, job_list):
         self._job_list = { job.name: job for job in job_list }
 
-    def compare_section(self,current_section):
+    def compare_section(self, current_section):
         """
         Compare the current section metadata with the last run one to see if it has changed
-
         :param current_section: current section
         :type current_section: str
         :rtype: bool
@@ -78,14 +77,15 @@ class DicJobs:
         # Only dependencies is relevant at this step, the rest is lookup by job name and if it inside the stored list
         if "DEPENDENCIES" not in self.changes[current_section]:
             del self.changes[current_section]
+
     def compare_experiment_section(self):
         """
         Compare the experiment structure metadata with the last run one to see if it has changed
-        :param as_conf:
         :return:
         """
 
         self.changes = self.as_conf.detailed_deep_diff(self.experiment_data.get("EXPERIMENT",{}),self.as_conf.last_experiment_data.get("EXPERIMENT",{}))
+
     def read_section(self, section, priority, default_job_type):
         """
         Read a section from jobs conf and creates all jobs for it
@@ -479,7 +479,7 @@ class DicJobs:
         name += "_" + section
         if name not in self._job_list.keys():
             job = Job(name, 0, Status.WAITING, priority)
-            job.default_job_type = default_job_type
+            job.type = default_job_type
             job.section = section
             job.date = date
             job.date_format = self._date_format

@@ -4662,17 +4662,17 @@ class Autosubmit:
                             referenced_jobs_to_remove = set()
                             job_list_wrappers = copy.deepcopy(job_list)
                             jobs_wr = job_list_wrappers.get_job_list()
-                            for job in jobs_wr:
-                                for child in job.children:
-                                    if child not in jobs_wr:
-                                        referenced_jobs_to_remove.add(child)
-                                for parent in job.parents:
-                                    if parent not in jobs_wr:
-                                        referenced_jobs_to_remove.add(parent)
-
-                            for job in jobs_wr:
-                                job.children = job.children - referenced_jobs_to_remove
-                                job.parents = job.parents - referenced_jobs_to_remove
+                            # for job in jobs_wr:
+                            #     for child in job.children:
+                            #         if child not in jobs_wr:
+                            #             referenced_jobs_to_remove.add(child)
+                            #     for parent in job.parents:
+                            #         if parent not in jobs_wr:
+                            #             referenced_jobs_to_remove.add(parent)
+                            #
+                            # for job in jobs_wr:
+                            #     job.children = job.children - referenced_jobs_to_remove
+                            #     job.parents = job.parents - referenced_jobs_to_remove
                             Autosubmit.generate_scripts_andor_wrappers(
                                 as_conf, job_list_wrappers, jobs_wr, packages_persistence, True)
 

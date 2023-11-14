@@ -971,7 +971,7 @@ class JobList(object):
                         if job.running == "chunk" or parent.chunk == self.depends_on_previous_chunk.get(parent.section, parent.chunk):
                             graph.add_edge(parent.name, job.name)
                     else:
-                        if parent.section == job.section:
+                        if parent.section == job.section or (job.running  == "chunk" and parent.running == "chunk"):
                             graph.add_edge(parent.name, job.name)
 
                 JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job,

@@ -1617,6 +1617,7 @@ class Job(object):
         return parameters
 
     def update_dict_parameters(self,as_conf):
+        self.retrials = as_conf.jobs_data.get(self.section,{}).get("RETRIALS", as_conf.experiment_data.get("CONFIG",{}).get("RETRIALS", 0))
         self.splits = as_conf.jobs_data.get(self.section,{}).get("SPLITS", None)
         self.delete_when_edgeless = as_conf.jobs_data.get(self.section,{}).get("DELETE_WHEN_EDGELESS", True)
         self.dependencies = str(as_conf.jobs_data.get(self.section,{}).get("DEPENDENCIES",""))
@@ -2031,6 +2032,11 @@ class Job(object):
         :return: True if successful, False otherwise
         :rtype: bool
         """
+        timestamp = date2str(datetime.datetime.now(), 'S')
+
+        self.local_logs = (self.name + "." + timestamp +
+                           ".out", self.name + "." + timestamp + ".err")
+
         if self.wrapper_type != "vertical" or enabled:
             if self._platform.get_stat_file(self.name, retries=5): #fastlook
                 start_time = self.check_start_time()

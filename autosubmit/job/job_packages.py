@@ -399,12 +399,12 @@ class JobPackageThread(JobPackageBase):
         # temporal hetjob code , to be upgraded in the future
         if configuration is not None:
             self.inner_retrials = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,
-                                                                                {}).get("RETRIALS",
-                                                                                        configuration.get_retrials())
+                                                                                {}).get("RETRIALS",self.jobs[0].retrials)
             if self.inner_retrials == 0:
                 self.inner_retrials = configuration.experiment_data["WRAPPERS"].get(self.current_wrapper_section,
-                                                                                    {}).get("INNER_RETRIALS",
-                                                                                            configuration.get_retrials())
+                                                                                    {}).get("INNER_RETRIALS",self.jobs[0].retrials)
+            for job in self.jobs:
+                job.retrials = self.inner_retrials
             self.export = configuration.get_wrapper_export(configuration.experiment_data["WRAPPERS"][self.current_wrapper_section])
             if self.export.lower() != "none" and len(self.export) > 0:
                 for job in self.jobs:

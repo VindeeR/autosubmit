@@ -479,7 +479,7 @@ class DicJobs:
         name += "_" + section
         if name not in self._job_list.keys():
             job = Job(name, 0, Status.WAITING, priority)
-            job.default_job_type = default_job_type
+            job.type = default_job_type
             job.section = section
             job.date = date
             job.date_format = self._date_format

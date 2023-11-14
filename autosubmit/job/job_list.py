@@ -959,11 +959,9 @@ class JobList(object):
                     break
             if (all_none or len(filters_to_apply) == 0) and key in dependencies_non_natural_to_del:
                 continue
-
             if len(filters_to_apply) == 0:
                 natural_parents = dic_jobs.get_jobs(dependency.section, date, member, chunk)
                 # Natural jobs, no filters to apply we can safely add the edge
-
                 for parent in natural_parents:
                     if parent.name == job.name:
                         continue

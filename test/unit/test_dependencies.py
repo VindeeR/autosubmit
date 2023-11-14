@@ -590,6 +590,8 @@ class TestJobList(unittest.TestCase):
     def apply_filter(self,possible_parents,filters_to,child_splits):
         nodes_added = []
         for parent in possible_parents:
+            if parent.name == self.mock_job.name:
+                continue
             splits_to = filters_to.get("SPLITS_TO", None)
             if splits_to:
                 if not parent.splits:
@@ -598,12 +600,26 @@ class TestJobList(unittest.TestCase):
                     parent_splits = int(parent.splits)
                 splits = max(child_splits, parent_splits)
                 if splits > 0:
-                    associative_list_splits = [int(split) for split in range(1, int(splits) + 1)]
+                    associative_list_splits = [str(split) for split in range(1, int(splits) + 1)]
                 else:
                     associative_list_splits = None
                 if JobList._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, self.mock_job, parent):
                     nodes_added.append(parent)
         return nodes_added
+    # def apply_filter(self,possible_parents,filters_to_apply,child_splits):
+    #     if len(filters_to_apply) == 0:
+    #         natural_parents = dic_jobs.get_jobs(dependency.section, date, member, chunk)
+    #         # Natural jobs, no filters to apply we can safely add the edge
+    #         for parent in natural_parents:
+    #             if parent.name == job.name:
+    #                 continue
+    #             if not actual_job_depends_on_previous_chunk:
+    #                 if job.running == "chunk" or parent.chunk == self.depends_on_previous_chunk.get(parent.section,
+    #                                                                                                 parent.chunk):
+    #                     graph.add_edge(parent.name, job.name)
+    #             else:
+    #                 if parent.section == job.section or (job.running == "chunk" and parent.running == "chunk"):
+    #                     graph.add_edge(parent.name, job.name)
     #@mock.patch('autosubmit.job.job_dict.date2str')
     def test_get_jobs_filtered_and_apply_filter_1_to_1_splits(self):
         # This function is the new 1-to-1, 1-to-N and N-to-1 tests these previous tests should be here

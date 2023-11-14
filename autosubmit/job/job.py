@@ -1617,10 +1617,10 @@ class Job(object):
         return parameters
 
     def update_dict_parameters(self,as_conf):
-        self.splits = as_conf.jobs_data[self.section].get("SPLITS", None)
-        self.delete_when_edgeless = as_conf.jobs_data[self.section].get("DELETE_WHEN_EDGELESS", True)
-        self.dependencies = str(as_conf.jobs_data[self.section].get("DEPENDENCIES",""))
-        self.running = as_conf.jobs_data[self.section].get("RUNNING", "once")
+        self.splits = as_conf.jobs_data.get(self.section,{}).get("SPLITS", None)
+        self.delete_when_edgeless = as_conf.jobs_data.get(self.section,{}).get("DELETE_WHEN_EDGELESS", True)
+        self.dependencies = str(as_conf.jobs_data.get(self.section,{}).get("DEPENDENCIES",""))
+        self.running = as_conf.jobs_data.get(self.section,{}).get("RUNNING", "once")
 
     def update_job_parameters(self,as_conf, parameters):
         self.splits = as_conf.jobs_data[self.section].get("SPLITS", None)

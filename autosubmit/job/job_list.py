@@ -965,11 +965,10 @@ class JobList(object):
                 # Natural jobs, no filters to apply we can safely add the edge
 
                 for parent in natural_parents:
-                    visited_sections_with_chunks = []
                     if parent.name == job.name:
                         continue
                     if not actual_job_depends_on_previous_chunk:
-                        if not parent.chunk or ("+" not in key and "-" not in key and parent.chunk == self.depends_on_previous_chunk.get(parent.section, parent.chunk)):
+                        if job.running == "chunk" or parent.chunk == self.depends_on_previous_chunk.get(parent.section, parent.chunk):
                             graph.add_edge(parent.name, job.name)
                     else:
                         if parent.section == job.section:

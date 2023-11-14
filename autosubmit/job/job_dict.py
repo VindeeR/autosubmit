@@ -325,14 +325,14 @@ class DicJobs:
                             final_jobs_list.append(jobs[key])
                         elif type(jobs.get(key.upper(), None)) == dict:
                             jobs_aux.update(jobs[key.upper()])
-                elif jobs.get(job.member, None):
-                    if type(jobs.get(natural_member, None)) == list:
-                        for aux_job in jobs[natural_member]:
+                elif jobs.get(job.member.upper(), None):
+                    if type(jobs.get(natural_member.upper(), None)) == list:
+                        for aux_job in jobs[natural_member.upper()]:
                             final_jobs_list.append(aux_job)
-                    elif type(jobs.get(natural_member, None)) == Job:
+                    elif type(jobs.get(natural_member.upper(), None)) == Job:
                         final_jobs_list.append(jobs[natural_member])
-                    elif type(jobs.get(natural_member, None)) == dict:
-                        jobs_aux.update(jobs[natural_member])
+                    elif type(jobs.get(natural_member.upper(), None)) == dict:
+                        jobs_aux.update(jobs[natural_member.upper()])
                 else:
                     jobs_aux = {}
             jobs = jobs_aux

@@ -360,7 +360,7 @@ class TestDicJobs(TestCase):
         self.assertEqual('random-id_2016010100_fc0_ch0_test', created_job.name)
         self.assertEqual(Status.WAITING, created_job.status)
         self.assertEqual(priority, created_job.priority)
-        self.assertEqual(section, created_job.section)
+        self.assertEqual(section, created_job.SECTION)
         self.assertEqual(date, created_job.date)
         self.assertEqual(member, created_job.member)
         self.assertEqual(chunk, created_job.chunk)

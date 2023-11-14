@@ -1475,7 +1475,7 @@ class TestWrappers(TestCase):
 
     def _manage_dependencies(self, sections_dict):
         for job in self.job_list.get_job_list():
-            section = job.section
+            section = job.SECTION
             dependencies = sections_dict['sections'][section][
                 'DEPENDENCIES'] if 'DEPENDENCIES' in sections_dict['sections'][section] else ''
             self._manage_job_dependencies(job, dependencies, sections_dict)
@@ -1505,7 +1505,7 @@ class TestWrappers(TestCase):
 
     def _filter_jobs(self, section, date=None, member=None, chunk=None):
         # TODO: improve the efficiency
-        jobs = [job for job in self.job_list.get_job_list() if job.section == section and job.date == date and job.member == member and job.chunk == chunk]
+        jobs = [job for job in self.job_list.get_job_list() if job.SECTION == section and job.date == date and job.member == member and job.chunk == chunk]
         return jobs
 
     def _createDummyJob(self, name, total_wallclock, section, date=None, member=None, chunk=None):

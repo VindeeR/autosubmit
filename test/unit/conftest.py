@@ -5,11 +5,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from shutil import rmtree
 from tempfile import TemporaryDirectory
-from typing import Callable
+from typing import Any, Dict, Callable, List
 
 from autosubmit.autosubmit import Autosubmit
 from autosubmit.platforms.slurmplatform import SlurmPlatform, ParamikoPlatform
 from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmitconfigparser.config.configcommon import AutosubmitConfig
+from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 
 
 @dataclass
@@ -24,9 +26,7 @@ class AutosubmitExperiment:
     platform: ParamikoPlatform
 
 
-@pytest.fixture(
-    scope='function'
-)
+@pytest.fixture(scope='function')
 def autosubmit_exp(autosubmit: Autosubmit, request: pytest.FixtureRequest) -> Callable:
     """Create an instance of ``Autosubmit`` with an experiment."""
 
@@ -39,15 +39,15 @@ def autosubmit_exp(autosubmit: Autosubmit, request: pytest.FixtureRequest) -> Ca
         root_dir = tmp_path
         BasicConfig.LOCAL_ROOT_DIR = str(root_dir)
         exp_path = root_dir / expid
-        tmp_dir = exp_path / BasicConfig.LOCAL_TMP_DIR
-        aslogs_dir = tmp_dir / BasicConfig.LOCAL_ASLOG_DIR
+        exp_tmp_dir = exp_path / BasicConfig.LOCAL_TMP_DIR
+        aslogs_dir = exp_tmp_dir / BasicConfig.LOCAL_ASLOG_DIR
         status_dir = exp_path / 'status'
         aslogs_dir.mkdir(parents=True)
         status_dir.mkdir()
 
         platform_config = {
             "LOCAL_ROOT_DIR": BasicConfig.LOCAL_ROOT_DIR,
-            "LOCAL_TMP_DIR": str(tmp_dir),
+            "LOCAL_TMP_DIR": str(exp_tmp_dir),
             "LOCAL_ASLOG_DIR": str(aslogs_dir)
         }
         platform = SlurmPlatform(expid=expid, name='slurm_platform', config=platform_config)
@@ -64,7 +64,7 @@ def autosubmit_exp(autosubmit: Autosubmit, request: pytest.FixtureRequest) -> Ca
             expid=expid,
             autosubmit=autosubmit,
             exp_path=exp_path,
-            tmp_dir=tmp_dir,
+            tmp_dir=exp_tmp_dir,
             aslogs_dir=aslogs_dir,
             status_dir=status_dir,
             platform=platform
@@ -80,9 +80,30 @@ def autosubmit_exp(autosubmit: Autosubmit, request: pytest.FixtureRequest) -> Ca
 
 
 @pytest.fixture(scope='module')
-def autosubmit():
+def autosubmit() -> Autosubmit:
     """Create an instance of ``Autosubmit``.
 
     Useful when you need ``Autosubmit`` but do not need any experiments."""
     autosubmit = Autosubmit()
     return autosubmit
+
+
+@pytest.fixture(scope='function')
+def create_as_conf() -> Callable:
+    def _create_as_conf(autosubmit_exp: AutosubmitExperiment, yaml_files: List[Path], experiment_data: Dict[str, Any]):
+        basic_config = BasicConfig
+        parser_factory = YAMLParserFactory()
+        as_conf = AutosubmitConfig(
+            expid=autosubmit_exp.expid,
+            basic_config=basic_config,
+            parser_factory=parser_factory
+        )
+        for yaml_file in yaml_files:
+            parser = parser_factory.create_parser()
+            parser.data = parser.load(yaml_file)
+            as_conf.experiment_data.update(parser.data)
+        # add user-provided experiment data
+        as_conf.experiment_data.update(experiment_data)
+        return as_conf
+
+    return _create_as_conf

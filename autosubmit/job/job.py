@@ -832,19 +832,19 @@ class Job(object):
         """
         self.children.add(new_child)
 
-    def add_edge_info(self, parent, special_variables):
+    def add_edge_info(self, parent, special_conditions):
         """
         Adds edge information to the job
 
         :param parent: parent job
         :type parent: Job
-        :param special_variables: special variables
-        :type special_variables: dict
+        :param special_conditions: special variables
+        :type special_conditions: dict
         """
-        if special_variables["STATUS"] not in self.edge_info:
-            self.edge_info[special_variables["STATUS"]] = {}
+        if special_conditions["STATUS"] not in self.edge_info:
+            self.edge_info[special_conditions["STATUS"]] = {}
 
-        self.edge_info[special_variables["STATUS"]][parent.name] = (parent,special_variables.get("FROM_STEP", 0))
+        self.edge_info[special_conditions["STATUS"]][parent.name] = (parent,special_conditions.get("FROM_STEP", 0))
 
     def delete_parent(self, parent):
         """
@@ -1708,6 +1708,7 @@ class Job(object):
         self.dependencies = str(as_conf.jobs_data.get(self.section,{}).get("DEPENDENCIES",""))
         self.running = as_conf.jobs_data.get(self.section,{}).get("RUNNING", "once")
         self.platform_name = as_conf.jobs_data.get(self.section,{}).get("PLATFORM", as_conf.experiment_data.get("DEFAULT",{}).get("HPCARCH", None))
+        self.file = as_conf.jobs_data.get(self.section,{}).get("FILE", None)
         type_ = str(as_conf.jobs_data.get(self.section,{}).get("TYPE", "bash")).lower()
         if type_ == "bash":
             self.type = Type.BASH

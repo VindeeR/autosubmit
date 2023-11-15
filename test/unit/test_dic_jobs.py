@@ -375,22 +375,8 @@ class TestDicJobs(TestCase):
         member = 'fc0'
         chunk = 'ch0'
         # arrange
-        options = {
-            # 'FREQUENCY': 123,
-            # 'DELAY': -1,
-            # 'PLATFORM': 'FAKE-PLATFORM',
-            # 'FILE': 'fake-file',
-            # 'QUEUE': 'fake-queue',
-            # 'PROCESSORS': '111',
-            # 'THREADS': '222',
-            # 'TASKS': '333',
-            # 'MEMORY': 'memory_per_task= 444',
-            # 'WALLCLOCK': 555,
-            # 'NOTIFY_ON': 'COMPLETED FAILED',
-            # 'SYNCHRONIZE': None,
-            # 'RERUN_ONLY': 'True',
-        }
-        self.job_list.jobs_data[section] = options
+
+        self.job_list.jobs_data[section] = {}
         self.dictionary.experiment_data = dict()
         self.dictionary.experiment_data["DEFAULT"] =  dict()
         self.dictionary.experiment_data["DEFAULT"]["EXPID"] = "random-id"
@@ -421,7 +407,7 @@ class TestDicJobs(TestCase):
         self.assertTrue(created_job.check)
         self.assertEqual(0, created_job.retrials)
 
-        # should be moved dict class now only generates the paramaters relevant to the structure
+        # TODO should be moved dict class now only generates the paramaters relevant to the structure
         # # Test retrials
         # self.dictionary.experiment_data["CONFIG"]["RETRIALS"] = 2
         # section_data = []

@@ -205,7 +205,6 @@ class JobList(object):
                     self.graph = nx.DiGraph()
             except:
                 self.graph = nx.DiGraph()
-            self._dic_jobs.job_list = {}
         if show_log:
             Log.info("Creating jobs...")
         if not new:
@@ -237,7 +236,7 @@ class JobList(object):
         self._add_dependencies(date_list, member_list, chunk_list, self._dic_jobs)
         if show_log:
             Log.info("Adding dependencies to the job..")
-        self.update_genealogy(new)
+        self.update_genealogy()
         # Checking for member constraints
         if len(run_only_members) > 0:
             # Found
@@ -263,10 +262,9 @@ class JobList(object):
                 if not job.has_parents():
                     job.status = Status.READY
         else:
-            jobs_in_graph = ( job["job"] for _,job in self.graph.nodes.data() if job.get("job",None) and job.get("job").status > 0 )
+            jobs_in_graph = ( job["job"] for _,job in self.graph.nodes.data() if job.get("job",None) and job["job"].status > 0 and job in self._job_list)
             for job in jobs_in_graph:
-                if job in self._job_list:
-                    self._job_list[self._job_list.index(job)].status = job.status
+                self._job_list[self._job_list.index(job)].status = job.status
 
         for wrapper_section in wrapper_jobs:
             try:
@@ -291,7 +289,7 @@ class JobList(object):
             # call function if dependencies_key is not None
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section) if dependencies_keys else {}
             jobs_gen = (job for job in dic_jobs.get_jobs(job_section))
-            for i,job in enumerate(jobs_gen):
+            for job in jobs_gen:
                 if job.name not in self.graph.nodes:
                     self.graph.add_node(job.name,job=job)
                 elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job",None) is None:
@@ -331,7 +329,7 @@ class JobList(object):
                     key_split = key.split(sign)
                     section = key_split[0]
                     distance = int(key_split[1])
-            if parameters.get(section,None) is not None:
+            if parameters.get(section,None):
                 dependency_running_type = str(parameters[section].get('RUNNING', 'once')).lower()
                 delay = int(parameters[section].get('DELAY', -1))
                 dependency = Dependency(section, distance, dependency_running_type, sign, delay, splits,relationships=dependencies_keys[key])
@@ -864,7 +862,6 @@ class JobList(object):
         #check if current_parent is listed on dependency.relationships
 
         # Apply all filters to look if this parent is an appropriated candidate for the current_job
-        #if JobList._apply_filter(parent.split, filter_["SPLITS_TO"], associative_list["splits"], "splits"):
         for value in [filter_.get("DATES_TO",""), filter_.get("MEMBERS_TO",""), filter_.get("CHUNKS_TO",""), filter_.get("SPLITS_TO","")]:
             if "?" in value:
                 return True, True
@@ -884,6 +881,33 @@ class JobList(object):
         if "ALL" not in self.jobs_edges:
             self.jobs_edges["ALL"] = set()
         self.jobs_edges["ALL"].add(job)
+
+    def add_special_conditions(self, job, special_conditions, only_marked_status, filters_to_apply, parent):
+        """
+        Add special conditions to the job edge
+        :param job: Job
+        :param special_conditions: dict
+        :param only_marked_status: bool
+        :param filters_to_apply: dict
+        :param parent: parent job
+        :return:
+        """
+        if special_conditions.get("STATUS", None):
+            if only_marked_status:
+                if str(job.split) + "?" in filters_to_apply.get("SPLITS_TO", "") or str(
+                        job.chunk) + "?" in filters_to_apply.get("CHUNKS_TO", "") or str(
+                    job.member) + "?" in filters_to_apply.get("MEMBERS_TO", "") or str(
+                    job.date) + "?" in filters_to_apply.get("DATES_TO", ""):
+                    selected = True
+                else:
+                    selected = False
+            else:
+                selected = True
+            if selected:
+                if special_conditions.get("FROM_STEP", None):
+                    job.max_checkpoint_step = int(special_conditions.get("FROM_STEP", 0)) if int(special_conditions.get("FROM_STEP",0)) > job.max_checkpoint_step else job.max_checkpoint_step
+                self._add_edge_info(job, special_conditions["STATUS"])  # job_list map
+                job.add_edge_info(parent, special_conditions) # this job
 
     def _manage_job_dependencies(self, dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys,
                                  dependencies,
@@ -912,13 +936,8 @@ class JobList(object):
         dependencies_to_del = set()
         dependencies_non_natural_to_del = set()
 
-        # IT is faster to check the conf instead of  calculate 90000000 tasks
+        # It is faster to check the conf instead of  calculate 90000000 tasks
         # Prune number of dependencies to check, to reduce the transitive reduction complexity
-        # if (job.section+"-" in dependencies_keys.keys() or job.section+"+" in dependencies_keys.keys()) and job.chunk and int(job.chunk) > 1:
-        #     # Get only the dependency key that has the job_section and "+" or "-" in the key as a dictionary key
-        #     #dependencies_keys_aux = [key for key in dependencies_keys if dependencies[key].running == "chunk" or job.section+"-" in key or job.section+"+" in key]
-        #     dependencies_keys_aux = [key for key in dependencies_keys if dependencies[key].running == "chunk" or dependencies_keys[key] is not None and key in dependencies]
-        # else:
         dependencies_keys_aux = [key for key in dependencies_keys if key in dependencies]
 
         # If parent already has defined that dependency, skip it to reduce the transitive reduction complexity
@@ -949,13 +968,14 @@ class JobList(object):
             if skip:
                 continue
             filters_to_apply = self._filter_current_job(job,copy.deepcopy(dependency.relationships))
+
             special_conditions["STATUS"] = filters_to_apply.pop("STATUS", None)
             special_conditions["FROM_STEP"] = filters_to_apply.pop("FROM_STEP", None)
             # # Get dates_to, members_to, chunks_to of the deepest level of the relationship.
-            all_none = False
+            all_none = True
             for filter_value in filters_to_apply.values():
-                if str(filter_value).lower() == "none":
-                    all_none = True
+                if str(filter_value).lower() != "none":
+                    all_none = False
                     break
             if (all_none or len(filters_to_apply) == 0) and key in dependencies_non_natural_to_del:
                 continue
@@ -977,6 +997,12 @@ class JobList(object):
                                                                member_list, dependency.section, natural_parents)
             else:
                 possible_parents =  dic_jobs.get_jobs_filtered(dependency.section,job,filters_to_apply,date,member,chunk)
+                if "?" in filters_to_apply.get("SPLITS_TO", "") or "?" in filters_to_apply.get("DATES_TO",
+                                                                                               "") or "?" in filters_to_apply.get(
+                        "MEMBERS_TO", "") or "?" in filters_to_apply.get("CHUNKS_TO", ""):
+                    only_marked_status = True
+                else:
+                    only_marked_status = False
                 for parent in possible_parents:
                     if parent.name == job.name:
                         continue
@@ -988,31 +1014,15 @@ class JobList(object):
                             parent_splits = int(parent.splits)
                         splits = max(child_splits, parent_splits)
                         if splits > 0:
-                            associative_list_splits = [str(split) for split in range(1, int(splits) + 1)]
+                            associative_list_splits = [str(split) for split in range(1, splits + 1)]
                         else:
                             associative_list_splits = None
                         if not self._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, job, parent):
                             continue # if the parent is not in the filter_to, skip it
                     graph.add_edge(parent.name, job.name)
                     # Do parse checkpoint
-                    if special_conditions.get("STATUS", None):
-                        if only_marked_status:
-                            if str(job.split) + "?" in filters_to_apply.get("SPLITS_TO", "") or str(
-                                    job.chunk) + "?" in filters_to_apply.get("CHUNKS_TO", "") or str(
-                                job.member) + "?" in filters_to_apply.get("MEMBERS_TO", "") or str(
-                                job.date) + "?" in filters_to_apply.get("DATES_TO", ""):
-                                selected = True
-                            else:
-                                selected = False
-                        else:
-                            selected = True
-                        if selected:
-                            if special_conditions.get("FROM_STEP", None):
-                                job.max_checkpoint_step = int(special_conditions.get("FROM_STEP", 0)) if int(
-                                    special_conditions.get("FROM_STEP",
-                                                           0)) > job.max_checkpoint_step else job.max_checkpoint_step
-                            self._add_edge_info(job, special_conditions["STATUS"])
-                            job.add_edge_info(parent, special_conditions)
+                    self.add_special_conditions(job,special_conditions,only_marked_status,filters_to_apply,parent)
+
                 JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member,
                                                                member_list, dependency.section, possible_parents)
 
@@ -1022,20 +1032,19 @@ class JobList(object):
         if dependency.sign == '-':
             if chunk is not None and len(str(chunk)) > 0 and dependency.running == 'chunk':
                 chunk_index = chunk-1
-                #chunk_list.index(chunk)
                 if chunk_index >= dependency.distance:
                     chunk = chunk_list[chunk_index - dependency.distance]
                 else:
                     skip = True
             elif member is not None and len(str(member)) > 0 and dependency.running in ['chunk', 'member']:
-                #improve this
+                #improve this TODO
                 member_index = member_list.index(member)
                 if member_index >= dependency.distance:
                     member = member_list[member_index - dependency.distance]
                 else:
                     skip = True
             elif date is not None and len(str(date)) > 0 and dependency.running in ['chunk', 'member', 'startdate']:
-                #improve this
+                #improve this TODO
                 date_index = date_list.index(date)
                 if date_index >= dependency.distance:
                     date = date_list[date_index - dependency.distance]
@@ -2430,36 +2439,16 @@ class JobList(object):
         Log.debug('Update finished')
         return save
 
-    def update_genealogy(self, new=True):
+    def update_genealogy(self):
         """
         When we have created the job list, every type of job is created.
         Update genealogy remove jobs that have no templates
-        :param update_structure:
-        :param new: if it is a new job list or not
-        :type new: bool
         """
-        current_structure = None
-        structure_valid = False
-
-        if not new:
-            db_path = os.path.join(self._config.STRUCTURES_DIR, "structure_" + self.expid + ".db")
-            if os.path.exists(db_path):
-                try:
-                    current_structure = DbStructure.get_structure(
-                        self.expid, self._config.STRUCTURES_DIR)
-                except Exception as exp:
-                    pass
-            # if there is a saved structure, graph created and stored match and there are no relevant changes in the config file
-        # if not new and len(self._dic_jobs.changes) == 0 and (current_structure) and len(self.graph) == len(current_structure):
-        #     Log.info("Transitive reduction is not neccesary")
-        #     self._job_list = [ job["job"] for job in self.graph.nodes().values() if job.get("job",None) ]
-        # else:
         Log.info("Transitive reduction...")
         # This also adds the jobs edges to the job itself (job._parents and job._children)
         self.graph = transitive_reduction(self.graph)
         # update job list view as transitive_Reduction also fills job._parents and job._children if recreate is set
         self._job_list = [ job["job"] for job in self.graph.nodes().values() ]
-        gen_job_list = ( job for job in self._job_list if not job.has_parents())
         try:
             DbStructure.save_structure(self.graph, self.expid, self._config.STRUCTURES_DIR)
         except Exception as exp:
@@ -2667,7 +2656,6 @@ class JobList(object):
             result += " ## "
 
         # Find root
-        root = None
         roots = []
         for job in allJobs:
             if len(job.parents) == 0:
@@ -2696,10 +2684,7 @@ class JobList(object):
             jobs = self.get_active()
         else:
             jobs = self.get_all()
-        result = "## String representation of Job List [" + str(
-            len(jobs)) + "] ##"
         # Find root
-        root = None
         roots = []
         if get_active:
             for job in jobs:
@@ -2710,16 +2695,18 @@ class JobList(object):
                 if len(job.parents) == 0:
                     roots.append(job)
         visited = list()
-        #print(root)
+        results = [f"## String representation of Job List [{len(jobs)}] ##"]
         # root exists
         for root in roots:
             if root is not None and len(str(root)) > 0:
-                result += self._recursion_print(root, 0, visited,nocolor=nocolor)
+                results.append(self._recursion_print(root, 0, visited,nocolor=nocolor))
             else:
-                result += "\nCannot find root."
-        return result
+                results.append("Cannot find root.")
+        return "\n".join(results)
+
     def __repr__(self):
         return self.__str__(True,True)
+
     def _recursion_print(self, job, level, visited=[], statusChange=None, nocolor=False):
         """
         Returns the list of children in a recursive way

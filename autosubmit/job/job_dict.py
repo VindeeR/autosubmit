@@ -66,7 +66,7 @@ class DicJobs:
     def job_list(self, job_list):
         self._job_list = { job.name: job for job in job_list }
 
-    def compare_section(self,current_section):
+    def compare_section(self, current_section):
         """
         Compare the current section metadata with the last run one to see if it has changed
 

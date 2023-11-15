@@ -42,42 +42,6 @@ def transitive_reduction(graph):
     for i, u in enumerate(graph):
         graph.nodes[u]["job"].add_children([graph.nodes[v]["job"] for v in graph[u]])
     return graph
-    # try:
-    #     TR = nx.DiGraph()
-    #     TR.add_nodes_from(graph.nodes(data=True))
-    #     descendants = {}
-    #     # count before removing set stored in descendants
-    #     check_count = dict(graph.in_degree)
-    #     for i,u in enumerate(graph):
-    #         u_nbrs = set(graph[u])
-    #         for v in graph[u]:
-    #             if v in u_nbrs:
-    #                 if v not in descendants:
-    #                     descendants[v] = {y for x, y in nx.dfs_edges(graph, v)}
-    #                 u_nbrs -= descendants[v]
-    #             check_count[v] -= 1
-    #             if check_count[v] == 0:
-    #                 del descendants[v]
-    #         TR.add_edges_from((u, v) for v in u_nbrs)
-    #         # Get JOB node atributte of all neighbors of current node
-    #         # and add it to current node as job_children
-    #         if TR.nodes[u]["job"] not in resetted_nodes:
-    #             #resetted_nodes.add(TR.nodes[u]["job"])
-    #             TR.nodes[u]["job"].parents = set()
-    #             TR.nodes[u]["job"].children = set()
-    #         TR.nodes[u]["job"].add_child([TR.nodes[v]["job"] for v in u_nbrs])
-    #     return TR
-    # except Exception as exp:
-    #     if not is_directed_acyclic_graph(graph):
-    #         raise NetworkXError("Transitive reduction only uniquely defined on directed acyclic graphs.")
-    #     reduced_graph = DiGraph()
-    #     reduced_graph.add_nodes_from(graph.nodes())
-    #     for u in graph:
-    #         u_edges = set(graph[u])
-    #         for v in graph[u]:
-    #             u_edges -= {y for x, y in dfs_edges(graph, v)}
-    #         reduced_graph.add_edges_from((u, v) for v in u_edges)
-    #     return reduced_graph
 
 def get_job_package_code(expid, job_name):
     # type: (str, str) -> int

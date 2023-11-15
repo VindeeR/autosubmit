@@ -1,6 +1,5 @@
 import locale
 import os
-from pathlib import Path
 
 import traceback
 from autosubmit.job.job_common import Status
@@ -8,7 +7,17 @@ from typing import List, Union
 
 from autosubmit.helpers.parameters import autosubmit_parameter
 from log.log import AutosubmitCritical, AutosubmitError, Log
-import getpass
+from threading import Thread
+from queue import Queue
+
+
+def threaded(fn):
+    def wrapper(*args, **kwargs):
+        thread = Thread(target=fn, args=args, kwargs=kwargs, daemon=True)
+        thread.start()
+        return thread
+
+    return wrapper
 class Platform(object):
     """
     Class to manage the connections to the different platforms.
@@ -78,6 +87,7 @@ class Platform(object):
                 self.pw = auth_password
         else:
             self.pw = None
+        self.recovery_queue = Queue()
 
 
     @property
@@ -819,4 +829,15 @@ class Platform(object):
         Sends a Submit file Script, execute it  in the platform and retrieves the Jobs_ID of all jobs at once.
         """
         raise NotImplementedError
+
+    def add_job_to_log_recover(self,job):
+        self.recovery_queue.put(job)
+
+    @threaded
+    def recover_logs(self):
+        while True:
+            job = self.recovery_queue.get()
+            self.get_logs_files(job.expid, job.remote_logs)
+            self.recovery_queue.task_done()
+
 

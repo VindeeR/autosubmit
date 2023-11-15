@@ -40,7 +40,7 @@ def transitive_reduction(graph):
         graph.nodes[u]["job"].parents = set()
         graph.nodes[u]["job"].children = set()
     for i, u in enumerate(graph):
-        graph.nodes[u]["job"].add_child([graph.nodes[v]["job"] for v in graph[u]])
+        graph.nodes[u]["job"].add_children([graph.nodes[v]["job"] for v in graph[u]])
     return graph
     # try:
     #     TR = nx.DiGraph()

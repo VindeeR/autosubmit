@@ -1609,9 +1609,9 @@ class Job(object):
         # Ignore the heterogeneous parameters if the cores or nodes are no specefied as a list
         if self.het['HETSIZE'] == 1:
             self.het = dict()
-        if self.wallclock is None and job_platform.type.lower() not in ['ps', "local", "PS", "LOCAL"]:
+        if self.wallclock is None and job_platform.type.lower() not in ['ps', "local"]:
             self.wallclock = "01:59"
-        elif self.wallclock is None and job_platform.type.lower() in ['ps', 'local', "PS", "LOCAL"]:
+        elif self.wallclock is None and job_platform.type.lower() in ['ps', 'local']:
             self.wallclock = "00:00"
         # Increasing according to chunk
         self.wallclock = increase_wallclock_by_chunk(

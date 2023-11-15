@@ -2137,8 +2137,7 @@ class Job(object):
         """
         timestamp = date2str(datetime.datetime.now(), 'S')
 
-        self.local_logs = (self.name + "." + timestamp +
-                           ".out", self.name + "." + timestamp + ".err")
+        self.local_logs = (f"{self.name}.{timestamp}.out", f"{self.name}.{timestamp}.err")
 
         if self.wrapper_type != "vertical" or enabled:
             if self._platform.get_stat_file(self.name, retries=5): #fastlook

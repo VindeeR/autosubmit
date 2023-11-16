@@ -376,7 +376,7 @@ class TestDicJobs(TestCase):
         chunk = 'ch0'
         # arrange
 
-        self.job_list.jobs_data[section] = options
+        self.job_list.jobs_data[section] = {}
         self.dictionary.experiment_data = dict()
         self.dictionary.experiment_data["DEFAULT"] =  dict()
         self.dictionary.experiment_data["DEFAULT"]["EXPID"] = "random-id"

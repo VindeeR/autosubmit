@@ -248,6 +248,7 @@ class Job(object):
         # hetjobs
         self.het = dict()
         self.het['HETSIZE'] = 0
+        self.log_retrieved = False
 
 
     @property
@@ -984,44 +985,11 @@ class Job(object):
                 retrials_list.insert(0, retrial_dates)
         return retrials_list
 
-    def retrieve_logfiles(self, platform_name):
-        as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
-        as_conf.reload(force_load=True)
-        max_retrials = self.retrials
-        max_logs = 0
-        last_log = 0
-        stat_file = self.script_name[:-4] + "_STAT_"
-        lang = locale.getlocale()[1]
-        if lang is None:
-            lang = locale.getdefaultlocale()[1]
-            if lang is None:
-                lang = 'UTF-8'
-        retries = 2
-        count = 0
-        success = False
-        error_message = ""
-        platform = None
-        while (count < retries) and not success:
-            try:
-                as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
-                as_conf.reload(force_load=True)
-                max_retrials = self.retrials
-                max_logs = int(max_retrials) - fail_count
-                last_log = int(max_retrials) - fail_count
-                submitter = self._get_submitter(as_conf)
-                submitter.load_platforms(as_conf, auth_password=auth_password, local_auth_password=local_auth_password)
-                platform = submitter.platforms[platform_name]
-                platform.test_connection()
-                success = True
-            except BaseException as e:
-                error_message = str(e)
-                sleep(5)
-                pass
-            count = count + 1
-        if not success:
-            raise AutosubmitError(
-                "Couldn't load the autosubmit platforms, seems that the local platform has some issue\n:{0}".format(
-                    error_message), 6006)
+    def get_new_remotelog(self, platform, max_logs, last_log, stat_file):
+        """
+        Checks if stat file exists on remote host
+        if it exists, remote_log variable is updated
+        """
         try:
             if self.wrapper_type is not None and self.wrapper_type == "vertical":
                 found = False
@@ -1038,113 +1006,127 @@ class Job(object):
                 remote_logs = (self.script_name + ".out." + str(last_log), self.script_name + ".err." + str(last_log))
 
             else:
-                remote_logs = (self.script_name + ".out."+str(fail_count), self.script_name + ".err." + str(fail_count))
-
+                remote_logs = (self.script_name + ".out."+str(self._fail_count), self.script_name + ".err." + str(self._fail_count))
         except BaseException as e:
-            Log.printlog(
-                "{0} \n Couldn't connect to the remote platform for {1} job err/out files. ".format(str(e), self.name), 6001)
+            remote_logs = ""
+            Log.printlog(f"Trace {e} \n Failed to retrieve stat file for job {self.name}", 6000)
+        return remote_logs
+    def check_remote_log_exists(self, platform):
         out_exist = False
         err_exist = False
         retries = 3
         i = 0
-        try:
-            while (not out_exist and not err_exist) and i < retries:
-                try:
-                    out_exist = platform.check_file_exists(
-                        remote_logs[0], False, sleeptime=0, max_retries=1)
-                except IOError as e:
-                    out_exist = False
-                try:
-                    err_exist = platform.check_file_exists(
-                        remote_logs[1], False, sleeptime=0, max_retries=1)
-                except IOError as e:
-                    err_exist = False
-                if not out_exist or not err_exist:
-                    i = i + 1
-                    sleep(5)
+        while (not out_exist and not err_exist) and i < retries:
+            try:
+                out_exist = platform.check_file_exists(self.remote_logs[0], False, sleeptime=0, max_retries=1)
+            except IOError:
+                out_exist = False
+            try:
+                err_exist = platform.check_file_exists(self.remote_logs[1], False, sleeptime=0, max_retries=1)
+            except IOError:
+                err_exist = False
+            if not out_exist or not err_exist:
+                i = i + 1
+        if out_exist or err_exist:
+            return True
+        else:
+            return False
+    def retrieve_vertical_wrapper_logs(self, last_log, max_logs, platform, stat_file, max_retrials, fail_count):
+        """
+        Retrieves log files from remote host meant to be used inside a daemon thread.
+        :param last_log:
+        :param max_logs:
+        :param platform:
+        :param stat_file:
+        :param max_retrials:
+        :param fail_count:
+        :return:
+        """
+        lang = locale.getlocale()[1]
+        if not lang:
+            lang = locale.getdefaultlocale()[1]
+            if not lang:
+                lang = 'UTF-8'
+        log_start = last_log
+        exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, self.name[:4])
+        tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
+        time_stamp = "1970"
+        at_least_one_recovered = False
+        while log_start <= max_logs:
+            try:
+                if platform.get_stat_file_by_retrials(stat_file + str(max_logs)):
+                    with open(os.path.join(tmp_path, stat_file + str(max_logs)), 'r+') as f:
+                        total_stats = [f.readline()[:-1], f.readline()[:-1], f.readline()[:-1]]
                     try:
-                        platform.restore_connection()
-                    except BaseException as e:
-                        Log.printlog("{0} \n Couldn't connect to the remote platform for this {1} job err/out files. ".format(
-                            str(e), self.name), 6001)
-            if i >= retries:
-                if not out_exist or not err_exist:
-                    Log.printlog("Failed to retrieve log files {1} and {2} e=6001".format(
-                        retries, remote_logs[0], remote_logs[1]))
-                    return
-            if copy_remote_logs:
-                l_log = copy.deepcopy(local_logs)
-                # unifying names for log files
-                if remote_logs != local_logs:
-                    if self.wrapper_type == "vertical": # internal_Retrial mechanism
-                        log_start = last_log
-                        exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
-                        tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
-                        time_stamp = "1970"
-                        total_stats = ["", "","FAILED"]
-                        while log_start <= max_logs:
-                            try:
-                                if platform.get_stat_file_by_retrials(stat_file+str(max_logs)):
-                                    with open(os.path.join(tmp_path,stat_file+str(max_logs)), 'r+') as f:
-                                        total_stats = [f.readline()[:-1],f.readline()[:-1],f.readline()[:-1]]
-                                    try:
-                                        total_stats[0] = float(total_stats[0])
-                                        total_stats[1] = float(total_stats[1])
-                                    except Exception as e:
-                                        total_stats[0] = int(str(total_stats[0]).split('.')[0])
-                                        total_stats[1] = int(str(total_stats[1]).split('.')[0])
-                                    if max_logs != ( int(max_retrials) - fail_count ):
-                                        time_stamp = date2str(datetime.datetime.fromtimestamp(total_stats[0]), 'S')
-                                    else:
-                                        with open(os.path.join(self._tmp_path, self.name + '_TOTAL_STATS_TMP'), 'rb+') as f2:
-                                            for line in f2.readlines():
-                                                if len(line) > 0:
-                                                    line = line.decode(lang)
-                                                    time_stamp = line.split(" ")[0]
+                        total_stats[0] = float(total_stats[0])
+                        total_stats[1] = float(total_stats[1])
+                    except Exception as e:
+                        total_stats[0] = int(str(total_stats[0]).split('.')[0])
+                        total_stats[1] = int(str(total_stats[1]).split('.')[0])
+                    if max_logs != (int(max_retrials) - fail_count):
+                        time_stamp = date2str(datetime.datetime.fromtimestamp(total_stats[0]), 'S')
+                    else:
+                        with open(os.path.join(self._tmp_path, self.name + '_TOTAL_STATS_TMP'), 'rb+') as f2:
+                            for line in f2.readlines():
+                                if len(line) > 0:
+                                    line = line.decode(lang)
+                                    time_stamp = line.split(" ")[0]
 
-                                    self.write_total_stat_by_retries(total_stats,max_logs == ( int(max_retrials) - fail_count ))
-                                    platform.remove_stat_file_by_retrials(stat_file+str(max_logs))
-                                    l_log = (self.script_name[:-4] + "." + time_stamp + ".out",self.script_name[:-4] + "." + time_stamp + ".err")
-                                    r_log = ( remote_logs[0][:-1]+str(max_logs) , remote_logs[1][:-1]+str(max_logs) )
-                                    self.synchronize_logs(platform, r_log, l_log,last = False)
-                                    platform.get_logs_files(self.expid, l_log)
-                                    try:
-                                        for local_log in l_log:
-                                            platform.write_jobid(job_id, os.path.join(self._tmp_path, 'LOG_' + str(self.expid), local_log))
-                                    except BaseException as e:
-                                        pass
-                                    max_logs = max_logs - 1
-                                else:
-                                    max_logs = -1   # exit, no more logs
-                            except BaseException as e:
-                                max_logs = -1 # exit
-                        local_logs = copy.deepcopy(l_log)
-                        remote_logs = copy.deepcopy(local_logs)
-                    if self.wrapper_type != "vertical":
-                        self.synchronize_logs(platform, remote_logs, local_logs)
-                        remote_logs = copy.deepcopy(local_logs)
-                        platform.get_logs_files(self.expid, remote_logs)
-                        # Update the logs with Autosubmit Job ID Brand
-                        try:
-                            for local_log in local_logs:
-                                platform.write_jobid(job_id, os.path.join(
-                                    self._tmp_path, 'LOG_' + str(self.expid), local_log))
-                        except BaseException as e:
-                            Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(
-                                str(e), self.name))
-            with suppress(Exception):
-                platform.closeConnection()
-        except AutosubmitError as e:
-            Log.printlog("Trace {0} \nFailed to retrieve log file for job {1}".format(
-                e.message, self.name), 6001)
-            with suppress(Exception):
-                platform.closeConnection()
-        except AutosubmitCritical as e:  # Critical errors can't be recovered. Failed configuration or autosubmit error
-            Log.printlog("Trace {0} \nFailed to retrieve log file for job {0}".format(
-                e.message, self.name), 6001)
-            with suppress(Exception):
-                platform.closeConnection()
-        return
+                    self.write_total_stat_by_retries(total_stats, max_logs == (int(max_retrials) - fail_count))
+                    platform.remove_stat_file_by_retrials(stat_file + str(max_logs))
+                    l_log = (self.script_name[:-4] + "." + time_stamp + ".out",
+                             self.script_name[:-4] + "." + time_stamp + ".err")
+                    r_log = (self.remote_logs[0][:-1] + str(max_logs), self.remote_logs[1][:-1] + str(max_logs))
+                    self.synchronize_logs(platform, r_log, l_log, last=False)
+                    platform.get_logs_files(self.expid, l_log)
+                    with suppress(BaseException):
+                        for local_log in l_log:
+                            platform.write_jobid(self.id,os.path.join(self._tmp_path, 'LOG_' + str(self.expid), local_log))
+                    max_logs = max_logs - 1
+                    at_least_one_recovered = True
+                else:
+                    max_logs = -1  # exit, no more logs
+            except Exception:
+                return False
+        return at_least_one_recovered
+
+    def retrieve_logfiles(self, platform):
+        """
+        Retrieves log files from remote host meant to be used inside a daemon thread.
+        :param platform: platform that is calling the function, already connected.
+        :return:
+        """
+        log_retrieved = False
+        max_retrials = self.retrials
+        max_logs = int(max_retrials) - self._fail_count
+        last_log = int(max_retrials) - self._fail_count
+        stat_file = self.script_name[:-4] + "_STAT_"
+        self.remote_logs = self.get_new_remotelog(platform, max_logs, last_log, stat_file)
+        if not self.remote_logs:
+            self.log_retrieved = False
+        else:
+            self.check_remote_log_exists(platform)
+            # retrieve logs and stat files
+            if self.wrapper_type is not None and self.wrapper_type == "vertical":
+                if self.retrieve_vertical_wrapper_logs(last_log, max_logs, platform, stat_file, max_retrials, self._fail_count):
+                    log_retrieved = True
+            else:
+                try:
+                    self.synchronize_logs(platform, self.remote_logs, self.local_logs)
+                    remote_logs = copy.deepcopy(self.local_logs)
+                    platform.get_logs_files(self.expid, remote_logs)
+                except:
+                    log_retrieved = False
+                # Update the logs with Autosubmit Job ID Brand
+                try:
+                    for local_log in self.local_logs:
+                        platform.write_jobid(self.id, os.path.join(
+                            self._tmp_path, 'LOG_' + str(self.expid), local_log))
+                except BaseException as e:
+                    Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(str(e), self.name))
+        self.log_retrieved = log_retrieved
+        if not self.log_retrieved:
+            Log.printlog("Failed to retrieve logs for job {0}".format(self.name), 6001)
 
     def parse_time(self,wallclock):
         regex = re.compile(r'(((?P<hours>\d+):)((?P<minutes>\d+)))(:(?P<seconds>\d+))?')

@@ -830,7 +830,7 @@ class Platform(object):
         """
         raise NotImplementedError
 
-    def add_job_to_log_recover(self,job):
+    def add_job_to_log_recover(self, job):
         self.recovery_queue.put(job)
 
     @threaded
@@ -839,5 +839,6 @@ class Platform(object):
             job = self.recovery_queue.get()
             self.get_logs_files(job.expid, job.remote_logs)
             self.recovery_queue.task_done()
+
 
 

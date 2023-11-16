@@ -1,5 +1,4 @@
 import locale
-from binascii import hexlify
 from contextlib import suppress
 from time import sleep
 import sys
@@ -7,7 +6,6 @@ import socket
 import os
 import paramiko
 import datetime
-import time
 import select
 import re
 from datetime import timedelta
@@ -15,17 +13,16 @@ import random
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_common import Type
 from autosubmit.platforms.platform import Platform
-from bscearth.utils.date import date2str
 from log.log import AutosubmitError, AutosubmitCritical, Log
 from paramiko.ssh_exception import (SSHException)
 import Xlib.support.connect as xlib_connect
 from threading import Thread
+import threading
 import getpass
 
-
-def threaded(fn):
+def threaded_x11(fn):
     def wrapper(*args, **kwargs):
-        thread = Thread(target=fn, args=args, kwargs=kwargs)
+        thread = Thread(target=fn, args=args, kwargs=kwargs, name=f"{args[0].name}_X11")
         thread.start()
         return thread
 
@@ -297,7 +294,13 @@ class ParamikoPlatform(Platform):
             self._ftpChannel = paramiko.SFTPClient.from_transport(self.transport,window_size=pow(4, 12) ,max_packet_size=pow(4, 12) )
             self._ftpChannel.get_channel().settimeout(120)
             self.connected = True
-            if not reconnect:
+            all_threads = threading.enumerate()
+            found = False
+            for thread in all_threads:
+                if f"{self.name}_platform" == thread.name:
+                    found = True
+                    break
+            if not found:
                 self.recover_job_logs()
         except SSHException:
             raise
@@ -885,7 +888,8 @@ class ParamikoPlatform(Platform):
             sys.stdout.write(session.recv(4096))
         while session.recv_stderr_ready():
             sys.stderr.write(session.recv_stderr(4096))
-    @threaded
+
+    @threaded_x11
     def x11_status_checker(self, session, session_fileno):
         self.transport.accept()
         while not session.exit_status_ready():

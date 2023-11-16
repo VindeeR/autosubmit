@@ -842,15 +842,21 @@ class Platform(object):
     def connect(self, reconnect=False):
         raise NotImplementedError
 
+    def restore_connection(self):
+        raise NotImplementedError
+
     @threaded
     def recover_job_logs(self):
-        self.connect(True)
+        self.restore_connection()
         while True:
-            if not self.recovery_queue.empty():
-                job = self.recovery_queue.get_nowait()
-                self.recovery_queue.task_done()
-                #job.platform = self
-                job.retrieve_logfiles(self)
+            try:
+                if not self.recovery_queue.empty():
+                    job = self.recovery_queue.get_nowait()
+                    self.recovery_queue.task_done()
+                    #job.platform = self
+                    job.retrieve_logfiles(self)
+            except:
+                self.restore_connection()
             time.sleep(1)
 
 

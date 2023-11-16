@@ -171,8 +171,15 @@ class EcPlatform(ParamikoPlatform):
                 self.connected = False
         except:
             self.connected = False
-        if not reconnect:
+        all_threads = enumerate()
+        found = False
+        for thread in all_threads:
+            if f"{self.name}_platform" == thread.name:
+                found = True
+                break
+        if not found:
             self.recover_job_logs()
+
     def restore_connection(self):
         """
         In this case, it does nothing because connection is established for each command

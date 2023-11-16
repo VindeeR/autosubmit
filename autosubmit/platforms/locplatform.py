@@ -28,7 +28,7 @@ from autosubmit.platforms.headers.local_header import LocalHeader
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 from time import sleep
 from log.log import Log, AutosubmitError, AutosubmitCritical
-
+import threading
 class LocalPlatform(ParamikoPlatform):
     """
     Class to manage jobs to localhost
@@ -113,11 +113,18 @@ class LocalPlatform(ParamikoPlatform):
 
     def connect(self, reconnect=False):
         self.connected = True
-        if not reconnect:
+        all_threads = threading.enumerate()
+        found = False
+        for thread in all_threads:
+            if f"{self.name}_platform" == thread.name:
+                found = True
+                break
+        if not found:
             self.recover_job_logs()
 
+
     def test_connection(self):
-        self.connect(False)
+        self.connected = True
 
     def restore_connection(self):
         self.connected = True

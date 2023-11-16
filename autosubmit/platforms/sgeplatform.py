@@ -122,7 +122,13 @@ class SgePlatform(ParamikoPlatform):
         :rtype: bool
         """
         self.connected = True
-        if not reconnect:
+        all_threads = enumerate()
+        found = False
+        for thread in all_threads:
+            if f"{self.name}_platform" == thread.name:
+                found = True
+                break
+        if not found:
             self.recover_job_logs()
     def restore_connection(self):
         """

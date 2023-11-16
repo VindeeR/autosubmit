@@ -999,14 +999,14 @@ class Job(object):
                         found = True
                     retrials = retrials + 1
                 for i in range(max_logs-1,-1,-1):
-                    if platform.check_stat_file_by_retrials(stat_file + str(i)):
+                    if platform.check_stat_file_by_retrials(stat_file + str(i), first=False):
                         last_log = i
                     else:
                         break
-                remote_logs = (self.script_name + ".out." + str(last_log), self.script_name + ".err." + str(last_log))
-
+                remote_logs = (f"{self.script_name}.out.{last_log}", f"{self.script_name}.err.{last_log}")
             else:
-                remote_logs = (self.script_name + ".out."+str(self._fail_count), self.script_name + ".err." + str(self._fail_count))
+                remote_logs = (f"{self.script_name}.out.{self._fail_count}", f"{self.script_name}.err.{self._fail_count}")
+
         except BaseException as e:
             remote_logs = ""
             Log.printlog(f"Trace {e} \n Failed to retrieve stat file for job {self.name}", 6000)
@@ -1105,25 +1105,26 @@ class Job(object):
         if not self.remote_logs:
             self.log_retrieved = False
         else:
-            self.check_remote_log_exists(platform)
-            # retrieve logs and stat files
-            if self.wrapper_type is not None and self.wrapper_type == "vertical":
-                if self.retrieve_vertical_wrapper_logs(last_log, max_logs, platform, stat_file, max_retrials, self._fail_count):
-                    log_retrieved = True
-            else:
-                try:
-                    self.synchronize_logs(platform, self.remote_logs, self.local_logs)
-                    remote_logs = copy.deepcopy(self.local_logs)
-                    platform.get_logs_files(self.expid, remote_logs)
-                except:
-                    log_retrieved = False
-                # Update the logs with Autosubmit Job ID Brand
-                try:
-                    for local_log in self.local_logs:
-                        platform.write_jobid(self.id, os.path.join(
-                            self._tmp_path, 'LOG_' + str(self.expid), local_log))
-                except BaseException as e:
-                    Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(str(e), self.name))
+            if self.check_remote_log_exists(platform):
+                # retrieve logs and stat files
+                if self.wrapper_type is not None and self.wrapper_type == "vertical":
+                    if self.retrieve_vertical_wrapper_logs(last_log, max_logs, platform, stat_file, max_retrials, self._fail_count):
+                        log_retrieved = True
+                else:
+                    try:
+                        self.synchronize_logs(platform, self.remote_logs, self.local_logs)
+                        remote_logs = copy.deepcopy(self.local_logs)
+                        platform.get_logs_files(self.expid, remote_logs)
+                        log_retrieved = True
+                    except:
+                        log_retrieved = False
+                    # Update the logs with Autosubmit Job ID Brand
+                    try:
+                        for local_log in self.local_logs:
+                            platform.write_jobid(self.id, os.path.join(
+                                self._tmp_path, 'LOG_' + str(self.expid), local_log))
+                    except BaseException as e:
+                        Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(str(e), self.name))
         self.log_retrieved = log_retrieved
         if not self.log_retrieved:
             Log.printlog("Failed to retrieve logs for job {0}".format(self.name), 6001)
@@ -1238,22 +1239,15 @@ class Job(object):
             self.write_submit_time()
         # Updating logs
         if self.status in [Status.COMPLETED, Status.FAILED, Status.UNKNOWN]:
-            # New thread, check if file exist
-            # expid = copy.deepcopy(self.expid)
-            # platform_name = copy.deepcopy(self.platform_name)
-            # local_logs = copy.deepcopy(self.local_logs)
-            # remote_logs = copy.deepcopy(self.remote_logs)
-            self.log_avaliable = True
-            # if as_conf.get_disable_recovery_threads(self.platform.name) == "true":
-            #     self.retrieve_logfiles_unthreaded(copy_remote_logs, local_logs)
-            # else:
-            #     self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count),job_id=self.id,auth_password=self._platform.pw, local_auth_password=self._platform.pw)
-            # if self.wrapper_type == "vertical":
-            #     max_logs = int(self.retrials)
-            #     for i in range(0,max_logs):
-            #         self.inc_fail_count()
-            # else:
-            #     self.write_end_time(self.status == Status.COMPLETED)
+            Log.printlog(f"Beggining to retrieve logs for job {self.name}", 1000)
+            self.platform.add_job_to_log_recover(self)
+            Log.printlog(f"Job {self.name} added to log recover", 1000)
+            if self.wrapper_type == "vertical":
+                max_logs = int(self.retrials)
+                for i in range(0,max_logs):
+                    self.inc_fail_count()
+            else:
+                self.write_end_time(self.status == Status.COMPLETED)
         return self.status
 
     @staticmethod

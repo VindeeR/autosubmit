@@ -114,7 +114,7 @@ class SgePlatform(ParamikoPlatform):
     def get_checkjob_cmd(self, job_id):
         return self.get_qstatjob(job_id)
 
-    def connect(self,reconnect=False):
+    def connect(self, reconnect=False):
         """
         In this case, it does nothing because connection is established for each command
 
@@ -122,6 +122,8 @@ class SgePlatform(ParamikoPlatform):
         :rtype: bool
         """
         self.connected = True
+        if not reconnect:
+            self.recover_job_logs()
     def restore_connection(self):
         """
         In this case, it does nothing because connection is established for each command
@@ -138,3 +140,5 @@ class SgePlatform(ParamikoPlatform):
         :rtype: bool
         """
         self.connected = True
+        self.connected(True)
+

@@ -2168,7 +2168,6 @@ class Autosubmit:
                             Log.printlog("Error trying to store failed job count", Log.WARNING)
                         Log.result("Storing failed job count...done")
                         while not recovery and (recovery_retrials < max_recovery_retrials or max_recovery_retrials <= 0 ):
-
                             delay = min(15 * consecutive_retrials, 120)
                             recovery_retrials += 1
                             sleep(delay)

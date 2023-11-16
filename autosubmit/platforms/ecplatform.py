@@ -171,6 +171,8 @@ class EcPlatform(ParamikoPlatform):
                 self.connected = False
         except:
             self.connected = False
+        if not reconnect:
+            self.recover_job_logs()
     def restore_connection(self):
         """
         In this case, it does nothing because connection is established for each command

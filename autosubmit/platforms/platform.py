@@ -1,3 +1,5 @@
+import time
+
 import locale
 import os
 
@@ -13,7 +15,7 @@ from queue import Queue
 
 def threaded(fn):
     def wrapper(*args, **kwargs):
-        thread = Thread(target=fn, args=args, kwargs=kwargs, daemon=True)
+        thread = Thread(target=fn, args=args, kwargs=kwargs, daemon=True, name=f"{args[0].name}_platform")
         thread.start()
         return thread
 
@@ -88,6 +90,7 @@ class Platform(object):
         else:
             self.pw = None
         self.recovery_queue = Queue()
+        self.log_variables_queue = Queue()
 
 
     @property
@@ -633,7 +636,7 @@ class Platform(object):
         if self.check_file_exists(filename):
             self.delete_file(filename)
 
-    def check_file_exists(self, src, wrapper_failed=False, sleeptime=5, max_retries=3):
+    def check_file_exists(self, src, wrapper_failed=False, sleeptime=5, max_retries=3, first=True):
         return True
 
     def get_stat_file(self, job_name, retries=0):
@@ -659,19 +662,19 @@ class Platform(object):
         Log.debug('{0}_STAT file not found', job_name)
         return False
 
-    def check_stat_file_by_retrials(self, job_name, retries=0):
+    def check_stat_file_by_retrials(self, job_name, first=True):
         """
          check *STAT* file
 
          :param retries: number of intents to get the completed files
-         :type retries: int
+         :type first: int
          :param job_name: name of job to check
          :type job_name: str
          :return: True if successful, False otherwise
          :rtype: bool
          """
         filename = job_name
-        if self.check_file_exists(filename):
+        if self.check_file_exists(filename,first=first):
             return True
         else:
             return False
@@ -831,14 +834,24 @@ class Platform(object):
         raise NotImplementedError
 
     def add_job_to_log_recover(self, job):
-        self.recovery_queue.put(job)
+        self.recovery_queue.put_nowait(job)
+
+    def add_job_to_update_log_variables(self, job):
+        self.log_variables_queue.put_nowait(job)
+
+    def connect(self, reconnect=False):
+        raise NotImplementedError
 
     @threaded
-    def recover_logs(self):
+    def recover_job_logs(self):
+        self.connect(True)
         while True:
-            job = self.recovery_queue.get()
-            self.get_logs_files(job.expid, job.remote_logs)
-            self.recovery_queue.task_done()
+            if not self.recovery_queue.empty():
+                job = self.recovery_queue.get_nowait()
+                self.recovery_queue.task_done()
+                #job.platform = self
+                job.retrieve_logfiles(self)
+            time.sleep(1)
 
 
 

@@ -2252,6 +2252,15 @@ class JobList(object):
             Log.debug(f"Special condition fullfilled for job {job.name}")
         # if waiting jobs has all parents completed change its State to READY
         for job in self.get_completed():
+            # update_logs variables // add to queue if log still not retrieved
+            if not job.platform.log_variables_queue.empty():
+                aux_job = job.platform.log_variables_queue.get_nowait()
+                job.platform.log_variables_queue.task_done()
+                job.log_retrieved = aux_job.log_retrieved
+                job.local_logs = aux_job.local_logs
+                job.remote_logs = aux_job.remote_logs
+                if not job.log_retrieved:
+                    job.platform.recover_job_logs.put(job)
             if job.synchronize is not None and len(str(job.synchronize)) > 0:
                 tmp = [parent for parent in job.parents if parent.status == Status.COMPLETED]
                 if len(tmp) != len(job.parents):

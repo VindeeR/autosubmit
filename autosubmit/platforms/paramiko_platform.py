@@ -134,6 +134,7 @@ class ParamikoPlatform(Platform):
                     except:
                         message = "Timeout connection"
                 return message
+
         except EOFError as e:
             self.connected = False
             raise AutosubmitError("[{0}] not alive. Host: {1}".format(
@@ -162,7 +163,7 @@ class ParamikoPlatform(Platform):
                         "First connection to {0} is failed, check host configuration or try another login node ".format(self.host), 7050,str(e))
             while self.connected is False and retry < retries:
                 try:
-                      self.connect(True)
+                    self.connect(True)
                 except Exception as e:
                     pass
                 retry += 1
@@ -296,7 +297,9 @@ class ParamikoPlatform(Platform):
             self._ftpChannel = paramiko.SFTPClient.from_transport(self.transport,window_size=pow(4, 12) ,max_packet_size=pow(4, 12) )
             self._ftpChannel.get_channel().settimeout(120)
             self.connected = True
-        except SSHException as e:
+            if not reconnect:
+                self.recover_job_logs()
+        except SSHException:
             raise
         except IOError as e:
             if "refused" in str(e.strerror).lower():

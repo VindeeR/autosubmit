@@ -330,7 +330,7 @@ class DicJobs:
                         for aux_job in jobs[natural_member.upper()]:
                             final_jobs_list.append(aux_job)
                     elif type(jobs.get(natural_member.upper(), None)) == Job:
-                        final_jobs_list.append(jobs[natural_member])
+                        final_jobs_list.append(jobs[natural_member.upper()])
                     elif type(jobs.get(natural_member.upper(), None)) == dict:
                         jobs_aux.update(jobs[natural_member.upper()])
                 else:

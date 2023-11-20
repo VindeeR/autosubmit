@@ -534,8 +534,11 @@ class TestJobList(unittest.TestCase):
             'fake-section-member': {datetime.strptime(date, "%Y%m%d"): {"fc0": member_jobs[0]}},
             'fake-section-chunk': {datetime.strptime(date, "%Y%m%d"): {"fc0": {1: chunk_jobs[0], 2: chunk_jobs[1]}}},
             'fake-section-split': {datetime.strptime(date, "%Y%m%d"): {"fc0": {1: split_jobs}}},
-            'fake-section-split2': {datetime.strptime(date, "%Y%m%d"): {"fc0": {1: split_jobs2[0:2]}}}
-
+            'fake-section-split2': {datetime.strptime(date, "%Y%m%d"): {"fc0": {1: split_jobs2[0:2]}}},
+            'fake-section-dates': {datetime.strptime(date, "%Y%m%d"): date_jobs},
+            'fake-section-members': {datetime.strptime(date, "%Y%m%d"): {"fc0": member_jobs}},
+            'fake-section-chunks': {datetime.strptime(date, "%Y%m%d"): {"fc0": {1: chunk_jobs, 2: chunk_jobs}}},
+            'fake-section-single-chunk': {datetime.strptime(date, "%Y%m%d"): {"fc0": {1: chunk_jobs[0]}}},
         }
         parent = copy.deepcopy(self.mock_job)
         # Get possible parents
@@ -656,16 +659,144 @@ class TestJobList(unittest.TestCase):
         nodes_added = self.apply_filter(possible_parents, filters_to, child_splits)
         self.assertEqual(len(nodes_added), 0)
 
-        self.mock_job.date = "20200128"
+        self.mock_job.date = datetime.strptime("20200128", "%Y%m%d")
+        self.mock_job.member = None
+        self.mock_job.chunk = None
+        filters_to = {
+            "DATES_TO": "all",
+            "MEMBERS_TO": "all",
+            "CHUNKS_TO": "all",
+            "SPLITS_TO": "all"
+        }
+        parent.section = "fake-section-date"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      self.mock_job.member, self.mock_job.chunk)
+        self.assertEqual(len(possible_parents), 1)
+        parent.section = "fake-section-member"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      self.mock_job.member, self.mock_job.chunk)
+        self.assertEqual(len(possible_parents), 1)
+        parent.section = "fake-section-chunk"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      self.mock_job.member, 1)
+        self.assertEqual(len(possible_parents), 2)
+        parent.section = "fake-section-dates"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      self.mock_job.member, 1)
+        self.assertEqual(len(possible_parents), 2)
+        parent.section = "fake-section-members"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      "fc0", 1)
+        self.assertEqual(len(possible_parents), 2)
+        parent.section = "fake-section-chunks"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      "fc0", 1)
+        self.assertEqual(len(possible_parents), 4)
+
         filters_to = {
             "DATES_TO": "20200128,20200129,20200130",
             "MEMBERS_TO": "fc0,fc1",
-            "CHUNKS_TO": "1,2,3,4,5,6",
-            "SPLITS_TO": "1*\\2,2*\\2,3*\\2,4*\\2"
+            "CHUNKS_TO": "1,2,3",
+            "SPLITS_TO": "all"
         }
+        parent.section = "fake-section-dates"
         possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
-                                                      self.mock_job.member, self.mock_job.chunk)
-        nodes_added = self.apply_filter(possible_parents, {}, child_splits)
+                                                      self.mock_job.member, 1)
+        self.assertEqual(len(possible_parents), 2)
+        parent.section = "fake-section-member"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      "fc0", 1)
+        self.assertEqual(len(possible_parents), 1)
+        parent.section = "fake-section-members"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      "fc0", 1)
+        self.assertEqual(len(possible_parents), 2)
+        parent.section = "fake-section-single-chunk"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                        "fc0", 1)
+        self.assertEqual(len(possible_parents), 1)
+        parent.section = "fake-section-chunks"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                        "fc0", 1)
+        self.assertEqual(len(possible_parents), 4)
+
+        filters_to = {
+            "DATES_TO": "20200128,20200129,20200130",
+            "SPLITS_TO": "all"
+        }
+        self.mock_job.running = "member"
+        self.mock_job.member = "fc0"
+        self.mock_job.chunk = 1
+        parent.section = "fake-section-member"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      self.mock_job.member, 1)
+        self.assertEqual(len(possible_parents), 1)
+        parent.section = "fake-section-members"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      "fc0", 1)
+        self.assertEqual(len(possible_parents), 2)
+        parent.section = "fake-section-chunk"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      "fc0", 1)
+        self.assertEqual(len(possible_parents), 1)
+        parent.section = "fake-section-chunks"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      "fc0", 1)
+        self.assertEqual(len(possible_parents), 2)
+
+        filters_to = {
+            "SPLITS_TO": "all"
+        }
+
+        parent.section = "fake-section-date"
+        parent.date = datetime.strptime("20200128", "%Y%m%d")
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      self.mock_job.member, 1)
+        self.assertEqual(len(possible_parents), 1)
+        parent.section = "fake-section-dates"
+        parent.date = datetime.strptime("20200128", "%Y%m%d")
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      self.mock_job.member, 1)
+        self.assertEqual(len(possible_parents), 2)
+        ## Testing parent == once
+        # and natural jobs
+        self.mock_job.date = datetime.strptime("20200128", "%Y%m%d")
+        self.mock_job.member = "fc0"
+        self.mock_job.chunk = 1
+        self.mock_job.running = "once"
+        filters_to = {}
+        parent.running = "chunks"
+        parent.section = "fake-section-date"
+        parent.date = datetime.strptime("20200128", "%Y%m%d")
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      self.mock_job.member, 1)
+        self.assertEqual(len(possible_parents), 1)
+        parent.section = "fake-section-dates"
+        parent.date = datetime.strptime("20200128", "%Y%m%d")
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      self.mock_job.member, 1)
+        self.assertEqual(len(possible_parents), 2)
+        parent.section = "fake-section-member"
+        parent.date = datetime.strptime("20200128", "%Y%m%d")
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      "fc0", 1)
+        self.assertEqual(len(possible_parents), 1)
+        parent.section = "fake-section-members"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                      "fc0", 1)
+        self.assertEqual(len(possible_parents), 2)
+        parent.section = "fake-section-single-chunk"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                        "fc0", 1)
+        self.assertEqual(len(possible_parents), 1)
+        parent.section = "fake-section-chunks"
+        possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
+                                                        "fc0", 1)
+        self.assertEqual(len(possible_parents), 4)
+
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

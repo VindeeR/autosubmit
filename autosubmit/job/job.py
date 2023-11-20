@@ -163,6 +163,7 @@ class Job(object):
                               'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
         self._threads = '1'
         self._processors = '1'
+        self._processors_per_node = None
         self._memory = ''
         self._memory_per_task = ''
         self._chunk = None
@@ -775,6 +776,17 @@ class Job(object):
     @processors.setter
     def processors(self, value):
         self._processors = value
+
+    @property
+    @autosubmit_parameter(name=['processors_per_node'])
+    def processors_per_node(self):
+        """Number of processors per node that the job can use."""
+        return self._processors_per_node
+
+    @processors_per_node.setter
+    def processors_per_node(self, value):
+        """Number of processors per node that the job can use."""
+        self._processors_per_node = value
 
     def inc_fail_count(self):
         """
@@ -1600,6 +1612,7 @@ class Job(object):
         self.total_jobs = as_conf.jobs_data[self.section].get("TOTALJOBS", job_platform.total_jobs)
         self.max_waiting_jobs = as_conf.jobs_data[self.section].get("MAXWAITINGJOBS", job_platform.max_waiting_jobs)
         self.processors = as_conf.jobs_data[self.section].get("PROCESSORS",as_conf.platforms_data.get(job_platform.name,{}).get("PROCESSORS","1"))
+        self.processors_per_node = as_conf.jobs_data[self.section].get("PROCESSORS_PER_NODE",as_conf.platforms_data.get(job_platform.name,{}).get("PROCESSORS_PER_NODE","1"))
         self.nodes = as_conf.jobs_data[self.section].get("NODES",as_conf.platforms_data.get(job_platform.name,{}).get("NODES",""))
         self.exclusive = as_conf.jobs_data[self.section].get("EXCLUSIVE",as_conf.platforms_data.get(job_platform.name,{}).get("EXCLUSIVE",False))
         self.threads = as_conf.jobs_data[self.section].get("THREADS",as_conf.platforms_data.get(job_platform.name,{}).get("THREADS","1"))
@@ -1934,20 +1947,21 @@ class Job(object):
         #enumerate and get value
         #TODO regresion test
         for additional_file, additional_template_content in zip(self.additional_files, additional_templates):
-            for key, value in parameters.items():
-                final_sub = str(value)
-                if "\\" in final_sub:
-                    final_sub = re.escape(final_sub)
-                # Check if key is in the additional template
-                if "%(?<!%%)" + key + "%(?!%%)" in additional_template_content:
-                    additional_template_content = re.sub('%(?<!%%)' + key + '%(?!%%)', final_sub, additional_template_content,flags=re.I)
-            for variable in self.undefined_variables:
-                additional_template_content = re.sub('%(?<!%%)' + variable + '%(?!%%)', '', additional_template_content,flags=re.I)
-
+            # append to a list all names don't matter the location, inside additional_template_content that  starts with % and ends with %
+            placeholders_inside_additional_template = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', additional_template_content,flags=re.IGNORECASE)
+            for placeholder in placeholders_inside_additional_template:
+                placeholder = placeholder[1:-1]
+                value = str(parameters.get(placeholder.upper(),""))
+                if not value:
+                    additional_template_content = re.sub('%(?<!%%)' + placeholder + '%(?!%%)', '',
+                                                         additional_template_content, flags=re.I)
+                else:
+                    if "\\" in value:
+                        value = re.escape(value)
+                    additional_template_content = re.sub('%(?<!%%)' + placeholder + '%(?!%%)', value, additional_template_content,flags=re.I)
             additional_template_content = additional_template_content.replace("%%", "%")
             #Write to file
             try:
-
                 filename = os.path.basename(os.path.splitext(additional_file)[0])
                 full_path = os.path.join(self._tmp_path,filename ) + "_" + self.name[5:]
                 open(full_path, 'wb').write(additional_template_content.encode(lang))
@@ -2009,11 +2023,11 @@ class Job(object):
         parameters = self.update_parameters(as_conf, parameters)
         template_content,additional_templates = self.update_content(as_conf)
         if template_content is not False:
-            variables = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', template_content,flags=re.IGNORECASE)
+            variables = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', template_content,flags=re.IGNORECASE)
             variables = [variable[1:-1] for variable in variables]
             variables = [variable for variable in variables if variable not in self.default_parameters]
             for template in additional_templates:
-                variables_tmp = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', template,flags=re.IGNORECASE)
+                variables_tmp = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', template,flags=re.IGNORECASE)
                 variables_tmp = [variable[1:-1] for variable in variables_tmp]
                 variables_tmp = [variable for variable in variables_tmp if variable not in self.default_parameters]
                 variables.extend(variables_tmp)

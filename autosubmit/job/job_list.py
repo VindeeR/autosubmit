@@ -396,6 +396,10 @@ class JobList(object):
         :param level_to_check: Can be dates,members, chunks, splits.
         :return:
         """
+        # temporal
+        if filter_value.lower() == "previous" and parent.section.lower() == child.section.lower():
+            if int(parent.split) == int(child.split) - 1:
+                return True
         if "NONE".casefold() in str(parent_value).casefold():
             return True
         if parent and child and level_to_check.casefold() == "splits".casefold():
@@ -666,7 +670,7 @@ class JobList(object):
             # Will enter chunks_from, and obtain [{DATES_TO: "20020201", MEMBERS_TO: "fc2", CHUNKS_TO: "ALL", SPLITS_TO: "2"]
             if "CHUNKS_FROM" in filter:
                 filters_to_apply_c = self._check_chunks({"CHUNKS_FROM": (filter.pop("CHUNKS_FROM"))}, current_job)
-                if len(filters_to_apply_c) > 0 and len(filters_to_apply_c[0]) > 0:
+                if len(filters_to_apply_c) > 0 and ( type(filters_to_apply_c) != list or ( type(filters_to_apply_c) == list and len(filters_to_apply_c[0]) > 0 ) ):
                     filters_to_apply[i].update(filters_to_apply_c)
             # IGNORED
             if "SPLITS_FROM" in filter:
@@ -759,7 +763,7 @@ class JobList(object):
                     if element == "":
                         continue
                     # Get only the first alphanumeric part and [:] chars
-                    parsed_element = re.findall(r"([\[:\]a-zA-Z0-9]+)", element)[0].lower()
+                    parsed_element = re.findall(r"([\[:\]a-zA-Z0-9._-]+)", element)[0].lower()
                     extra_data = element[len(parsed_element):]
                     parsed_element = JobList._parse_filter_to_check(parsed_element, value_list = value_list, level_to_check = filter_type)
                     # convert list to str
@@ -2971,17 +2975,17 @@ class JobList(object):
 
             # Using standard procedure
             if status_code in [Status.RUNNING, Status.SUBMITTED, Status.QUEUING,
-                               Status.FAILED] or make_exception is True:
+                               Status.FAILED]    or make_exception is True:
                 # COMPLETED adds too much overhead so these values are now stored in a database and retrieved separately
                 submit_time, start_time, finish_time, status = JobList._job_running_check(
                     status_code, name, tmp_path)
-                if status_code in [Status.RUNNING, Status.FAILED]:
+                if status_code in [Status.RUNNING, Status.FAILED, Status.COMPLETED]:
                     running_for_min = (finish_time - start_time)
                     queuing_for_min = (start_time - submit_time)
                     submit_time = mktime(submit_time.timetuple())
                     start_time = mktime(start_time.timetuple())
                     finish_time = mktime(finish_time.timetuple()) if status_code in [
-                        Status.FAILED] else 0
+                        Status.FAILED, Status.COMPLETED] else 0
                 else:
                     queuing_for_min = (
                             datetime.datetime.now() - submit_time)

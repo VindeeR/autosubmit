@@ -2075,6 +2075,8 @@ class Autosubmit:
                     try:
                         if Autosubmit.exit:
                             Autosubmit.terminate(threading.enumerate())
+                            if job_list.get_failed():
+                                return 1
                             return 0
                         # reload parameters changes
                         Log.debug("Reloading parameters...")
@@ -2275,6 +2277,12 @@ class Autosubmit:
         finally:
             if profile:
                 profiler.stop()
+
+        # Suppress in case ``job_list`` was not defined yet...
+        with suppress(NameError):
+            if job_list.get_failed():
+                return 1
+            return 0
 
     @staticmethod
     def restore_platforms(platform_to_test, mail_notify=False, as_conf=None, expid=None):
@@ -2679,7 +2687,7 @@ class Autosubmit:
                 current_table_structure = get_structure(expid, BasicConfig.STRUCTURES_DIR)
                 subjobs = []
                 for job in job_list.get_job_list():
-                    job_info = JobList.retrieve_times(job.status, job.name, job._tmp_path, make_exception=False,
+                    job_info = JobList.retrieve_times(job.status, job.name, job._tmp_path, make_exception=True,
                                                       job_times=None, seconds=True, job_data_collection=None)
                     time_total = (job_info.queue_time + job_info.run_time) if job_info else 0
                     subjobs.append(
@@ -4044,7 +4052,7 @@ class Autosubmit:
                 shutil.copyfile(template_path, backup_path)
             template_content = open(template_path, 'r', encoding=locale.getlocale()[1]).read()
             # Look for %_%
-            variables = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', template_content,flags=re.IGNORECASE)
+            variables = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', template_content,flags=re.IGNORECASE)
             variables = [variable[1:-1].upper() for variable in variables]
             results = {}
             # Change format
@@ -4070,7 +4078,7 @@ class Autosubmit:
             # write_it
             # Deletes unused keys from confs
             if template_path.name.lower().find("autosubmit") > -1:
-                template_content = re.sub('(?m)^( )*(EXPID:)( )*[a-zA-Z0-9]*(\n)*', "", template_content, flags=re.I)
+                template_content = re.sub('(?m)^( )*(EXPID:)( )*[a-zA-Z0-9._-]*(\n)*', "", template_content, flags=re.I)
             # Write final result
             open(template_path, "w").write(template_content)
 

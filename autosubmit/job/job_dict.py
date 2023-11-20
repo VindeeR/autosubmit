@@ -391,15 +391,19 @@ class DicJobs:
         job.queue = str(parameters[section].get( "QUEUE", ""))
 
         job.ec_queue = str(parameters[section].get("EC_QUEUE", ""))
-        if job.ec_queue == "" and job.platform_name != "LOCAL":
-            job.ec_queue = str(self.experiment_data["PLATFORMS"][job.platform_name].get("EC_QUEUE","hpc"))
+        if job.ec_queue == "":
+            job.ec_queue = str(self.experiment_data["PLATFORMS"].get(job.platform_name,{}).get("EC_QUEUE","hpc"))
 
         job.partition = str(parameters[section].get( "PARTITION", ""))
         job.check = str(parameters[section].get( "CHECK", "true")).lower()
         job.export = str(parameters[section].get( "EXPORT", ""))
-        job.processors = str(parameters[section].get( "PROCESSORS", ""))
-        job.threads = str(parameters[section].get( "THREADS", ""))
-        job.tasks = str(parameters[section].get( "TASKS", ""))
+        # Used by Stat command # check in 4.1+ as this doesn't exist
+        job.processors = str(parameters[section].get("PROCESSORS",self.experiment_data.get("PLATFORMS",{}).get(job.platform_name,{}).get("PROCESSORS","")))
+        job.processors_per_node = str(parameters[section].get("PROCESSORS_PER_NODE",self.experiment_data.get("PLATFORMS",{}).get(job.platform_name,{}).get("PROCESSORS_PER_NODE","")))
+        job.nodes = str(parameters[section].get("NODES",self.experiment_data.get("PLATFORMS",{}).get(job.platform_name,{}).get("NODES","")))
+        job.threads = str(parameters[section].get("THREADS",self.experiment_data.get("PLATFORMS",{}).get(job.platform_name,{}).get("THREADS","")))
+        job.tasks = str(parameters[section].get("TASKS",self.experiment_data.get("PLATFORMS",{}).get(job.platform_name,{}).get("TASKS","")))
+        job.exclusive = parameters[section].get("EXCLUSIVE",self.experiment_data.get("PLATFORMS",{}).get(job.platform_name,{}).get("EXCLUSIVE",False))
         job.memory = str(parameters[section].get("MEMORY", ""))
         job.memory_per_task = str(parameters[section].get("MEMORY_PER_TASK", ""))
         remote_max_wallclock = self.experiment_data["PLATFORMS"].get(job.platform_name,{})

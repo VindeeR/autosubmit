@@ -1934,20 +1934,21 @@ class Job(object):
         #enumerate and get value
         #TODO regresion test
         for additional_file, additional_template_content in zip(self.additional_files, additional_templates):
-            for key, value in parameters.items():
-                final_sub = str(value)
-                if "\\" in final_sub:
-                    final_sub = re.escape(final_sub)
-                # Check if key is in the additional template
-                if "%(?<!%%)" + key + "%(?!%%)" in additional_template_content:
-                    additional_template_content = re.sub('%(?<!%%)' + key + '%(?!%%)', final_sub, additional_template_content,flags=re.I)
-            for variable in self.undefined_variables:
-                additional_template_content = re.sub('%(?<!%%)' + variable + '%(?!%%)', '', additional_template_content,flags=re.I)
-
+            # append to a list all names don't matter the location, inside additional_template_content that  starts with % and ends with %
+            placeholders_inside_additional_template = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', additional_template_content,flags=re.IGNORECASE)
+            for placeholder in placeholders_inside_additional_template:
+                placeholder = placeholder[1:-1]
+                value = str(parameters.get(placeholder.upper(),""))
+                if not value:
+                    additional_template_content = re.sub('%(?<!%%)' + placeholder + '%(?!%%)', '',
+                                                         additional_template_content, flags=re.I)
+                else:
+                    if "\\" in value:
+                        value = re.escape(value)
+                    additional_template_content = re.sub('%(?<!%%)' + placeholder + '%(?!%%)', value, additional_template_content,flags=re.I)
             additional_template_content = additional_template_content.replace("%%", "%")
             #Write to file
             try:
-
                 filename = os.path.basename(os.path.splitext(additional_file)[0])
                 full_path = os.path.join(self._tmp_path,filename ) + "_" + self.name[5:]
                 open(full_path, 'wb').write(additional_template_content.encode(lang))

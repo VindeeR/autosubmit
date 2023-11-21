@@ -715,11 +715,11 @@ class TestJobList(unittest.TestCase):
         self.assertEqual(len(possible_parents), 2)
         parent.section = "fake-section-single-chunk"
         possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
-                                                        "fc0", 1)
+                                                      "fc0", 1)
         self.assertEqual(len(possible_parents), 1)
         parent.section = "fake-section-chunks"
         possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
-                                                        "fc0", 1)
+                                                      "fc0", 1)
         self.assertEqual(len(possible_parents), 4)
 
         filters_to = {
@@ -789,11 +789,11 @@ class TestJobList(unittest.TestCase):
         self.assertEqual(len(possible_parents), 2)
         parent.section = "fake-section-single-chunk"
         possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
-                                                        "fc0", 1)
+                                                      "fc0", 1)
         self.assertEqual(len(possible_parents), 1)
         parent.section = "fake-section-chunks"
         possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
-                                                        "fc0", 1)
+                                                      "fc0", 1)
         self.assertEqual(len(possible_parents), 4)
 
     def test_add_special_conditions(self):
@@ -821,13 +821,14 @@ class TestJobList(unittest.TestCase):
         job_list = Mock(wraps=self.JobList)
         job_list._job_list = [job, parent]
         job_list.add_special_conditions(job, special_conditions, only_marked_status, filters_to_apply, parent)
-        #self.JobList.jobs_edges
-        #job.edges = self.JobList.jobs_edges[job.name]
+        # self.JobList.jobs_edges
+        # job.edges = self.JobList.jobs_edges[job.name]
         # assert
         self.assertEqual(job.max_checkpoint_step, 2)
-        value = job.edge_info.get("RUNNING","").get("parent",())
-        self.assertEqual((value[0].name,value[1]), (parent.name,"2"))
-        self.assertEqual(str(job_list.jobs_edges.get("RUNNING",())), str({job}))
+        value = job.edge_info.get("RUNNING", "").get("parent", ())
+        self.assertEqual((value[0].name, value[1]), (parent.name, "2"))
+        self.assertEqual(str(job_list.jobs_edges.get("RUNNING", ())), str({job}))
+
 
 if __name__ == '__main__':
     unittest.main()

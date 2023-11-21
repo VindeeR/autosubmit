@@ -27,22 +27,20 @@ import datetime
 
 class DicJobs:
     """
-    Class to create jobs from conf file and to find jobs by start date, member and chunk
-
-    :param jobs_list: jobs list to use
-    :type jobs_list: Joblist
+    Class to create and build jobs from conf file and to find jobs by start date, member and chunk
 
     :param date_list: start dates
     :type date_list: list
-    :param member_list: member
+    :param member_list: members
     :type member_list: list
-    :param chunk_list: chunks
+    :param chunk_list chunks
     :type chunk_list: list
-    :param date_format: option to format dates
+    :param date_format: H/M/D (hour, month, day)
     :type date_format: str
-    :param default_retrials: default retrials for ech job
+    :param default_retrials: 0 by default
     :type default_retrials: int
-    :type default_retrials: config_common
+    :param as_conf: Comes from config parser, contains all experiment yml info
+    :type as_conf: as_conf
     """
 
     def __init__(self, date_list, member_list, chunk_list, date_format, default_retrials, as_conf):

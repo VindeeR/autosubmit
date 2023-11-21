@@ -4764,7 +4764,6 @@ class Autosubmit:
                             packages_persistence = JobPackagePersistence(
                                 os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"), "job_packages_" + expid)
                             packages_persistence.reset_table(True)
-                            referenced_jobs_to_remove = set()
                             job_list_wrappers = copy.deepcopy(job_list)
                             jobs_wr = job_list_wrappers.get_job_list()
                             Autosubmit.generate_scripts_andor_wrappers(
@@ -4773,10 +4772,6 @@ class Autosubmit:
                             packages = packages_persistence.load(True)
                         else:
                             packages = None
-                        #Log.info("\nSaving unified data..")
-                        #as_conf.save()
-                        Log.info("")
-
                         Log.info("\nPlotting the jobs list...")
                         monitor_exp = Monitor()
                         # if output is set, use output

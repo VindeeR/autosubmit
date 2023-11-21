@@ -1146,9 +1146,6 @@ class JobList(object):
             str_date = self._get_date(date)
             for member in self._member_list:
                 # Filter list of fake jobs according to date and member, result not sorted at this point
-                #sorted_jobs_list = list(filter(lambda job: job.name.split("_")[1] == str_date and
-                #                                           job.name.split("_")[2] == member,
-                #                               filtered_jobs_fake_date_member))
                 sorted_jobs_list = [job for job in filtered_jobs_fake_date_member if job.name.split("_")[1] == str_date and
                                           job.name.split("_")[2] == member]
 

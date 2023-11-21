@@ -370,8 +370,7 @@ class JobList(object):
         """
         lesser_group = None
         lesser_value = "parent"
-        greater = str(-1)
-
+        greater = "-1"
         if "NONE".casefold() in str(parent_value).casefold():
             return False
         if parent and child:

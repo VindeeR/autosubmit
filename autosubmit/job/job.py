@@ -815,7 +815,7 @@ class Job(object):
         Add children for the job. It also adds current job as a parent for all the new children
 
         :param children: job's children to add
-        :type children: Job
+        :type children: list of Job objects
         """
         for child in children:
             self.__add_child(child)

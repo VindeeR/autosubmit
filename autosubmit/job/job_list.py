@@ -970,6 +970,12 @@ class JobList(object):
                                                                member_list, dependency.section, natural_parents)
             else:
                 possible_parents =  dic_jobs.get_jobs_filtered(dependency.section,job,filters_to_apply,date,member,chunk)
+                if "?" in filters_to_apply.get("SPLITS_TO", "") or "?" in filters_to_apply.get("DATES_TO",
+                                                                                               "") or "?" in filters_to_apply.get(
+                        "MEMBERS_TO", "") or "?" in filters_to_apply.get("CHUNKS_TO", ""):
+                    only_marked_status = True
+                else:
+                    only_marked_status = False
                 for parent in possible_parents:
                     if parent.name == job.name:
                         continue
@@ -988,11 +994,6 @@ class JobList(object):
                             continue # if the parent is not in the filter_to, skip it
                     graph.add_edge(parent.name, job.name)
                     # Do parse checkpoint
-                    if "?" in filters_to_apply.get("SPLITS_TO", "") or "?" in filters_to_apply.get("DATES_TO","") or "?" in filters_to_apply.get(
-                            "MEMBERS_TO", "") or "?" in filters_to_apply.get("CHUNKS_TO", ""):
-                        only_marked_status = True
-                    else:
-                        only_marked_status = False
                     if special_conditions.get("STATUS", None):
                         if only_marked_status:
                             if str(job.split) + "?" in filters_to_apply.get("SPLITS_TO", "") or str(

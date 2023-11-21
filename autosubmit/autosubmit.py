@@ -4764,7 +4764,6 @@ class Autosubmit:
                             packages_persistence = JobPackagePersistence(
                                 os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"), "job_packages_" + expid)
                             packages_persistence.reset_table(True)
-                            referenced_jobs_to_remove = set()
                             job_list_wrappers = copy.deepcopy(job_list)
                             jobs_wr = job_list_wrappers.get_job_list()
                             Autosubmit.generate_scripts_andor_wrappers(
@@ -4773,10 +4772,6 @@ class Autosubmit:
                             packages = packages_persistence.load(True)
                         else:
                             packages = None
-                        #Log.info("\nSaving unified data..")
-                        #as_conf.save()
-                        Log.info("")
-
                         Log.info("\nPlotting the jobs list...")
                         monitor_exp = Monitor()
                         # if output is set, use output
@@ -5412,20 +5407,17 @@ class Autosubmit:
                     if str(ft).upper() == 'ANY':
                         for job in job_list.get_job_list():
                             final_list.append(job)
-                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
                         for section in ft:
                             for job in job_list.get_job_list():
                                 if job.section == section:
                                     final_list.append(job)
-                                    #Autosubmit.change_status(final, final_status, job, save)
                 if filter_chunks:
                     ft = filter_chunks.split(",")[1:]
                     # Any located in section part
                     if str(ft).upper() == "ANY":
                         for job in job_list.get_job_list():
                             final_list.append(job)
-                            #Autosubmit.change_status(final, final_status, job, save)
                         for job in job_list.get_job_list():
                             if job.section == section:
                                 if filter_chunks:
@@ -5437,7 +5429,6 @@ class Autosubmit:
                     if str(fc).upper() == "ANY":
                         for job in jobs_filtered:
                             final_list.append(job)
-                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
                         data = json.loads(Autosubmit._create_json(fc))
                         for date_json in data['sds']:
@@ -5463,25 +5454,19 @@ class Autosubmit:
                                     chunk = int(chunk_json)
                                     for job in [j for j in jobs_date if j.chunk == chunk and j.synchronize is not None]:
                                         final_list.append(job)
-                                        #Autosubmit.change_status(final, final_status, job, save)
                                     for job in [j for j in jobs_member if j.chunk == chunk]:
                                         final_list.append(job)
-
-                                        #Autosubmit.change_status(final, final_status, job, save)
-
                 if filter_status:
                     status_list = filter_status.split()
                     Log.debug("Filtering jobs with status {0}", filter_status)
                     if str(status_list).upper() == 'ANY':
                         for job in job_list.get_job_list():
                             final_list.append(job)
-                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
                         for status in status_list:
                             fs = Autosubmit._get_status(status)
                             for job in [j for j in job_list.get_job_list() if j.status == fs]:
                                 final_list.append(job)
-                                #Autosubmit.change_status(final, final_status, job, save)
 
                 if filter_list:
                     jobs = filter_list.split()
@@ -5496,12 +5481,10 @@ class Autosubmit:
                     if str(jobs).upper() == 'ANY':
                         for job in job_list.get_job_list():
                             final_list.append(job)
-                            #Autosubmit.change_status(final, final_status, job, save)
                     else:
                         for job in job_list.get_job_list():
                             if job.name in jobs:
                                 final_list.append(job)
-                                #Autosubmit.change_status(final, final_status, job, save)
                 # All filters should be in a function but no have time to do it
                 # filter_Type_chunk_split == filter_type_chunk, but with the split essencially is the same but not sure about of changing the name to the filter itself
                 if filter_type_chunk_split is not None:

@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import copy
-import numpy as np
 import networkx as nx
 import re
 import os
@@ -228,11 +227,12 @@ class JobList(object):
             Log.info("Adding dependencies to the graph..")
         # del all nodes that are only in the current graph
         if len(self.graph.nodes) > 0:
-            gen = ( name for name in np.setxor1d(self.graph.nodes, self._dic_jobs.workflow_jobs,True).tolist() )
+            #gen = ( name for name in np.setxor1d(self.graph.nodes, self._dic_jobs.workflow_jobs,True).tolist() )
+            gen = (name for name in set(self.graph.nodes).symmetric_difference(set(self._dic_jobs.workflow_jobs)))
             for name in gen:
                 if name in self.graph.nodes:
                     self.graph.remove_node(name)
-        # This actually, also adds the node to the graph if it isen't already there
+        # This actually, also adds the node to the graph if it isn't already there
         self._add_dependencies(date_list, member_list, chunk_list, self._dic_jobs)
         if show_log:
             Log.info("Adding dependencies to the job..")
@@ -369,6 +369,8 @@ class JobList(object):
         :return:
         """
         lesser_group = None
+        lesser_value = "parent"
+        greater = "-1"
         if "NONE".casefold() in str(parent_value).casefold():
             return False
         if parent and child:
@@ -381,10 +383,7 @@ class JobList(object):
             else:
                 child_splits = int(child.splits)
             if parent_splits == child_splits:
-                to_look_at_lesser = associative_list
-                lesser = str(parent_splits)
                 greater = str(child_splits)
-                lesser_value = "parent"
             else:
                 if parent_splits > child_splits:
                     lesser = str(child_splits)
@@ -393,7 +392,6 @@ class JobList(object):
                 else:
                     lesser = str(parent_splits)
                     greater = str(child_splits)
-                    lesser_value = "parent"
                 to_look_at_lesser = [associative_list[i:i + 1] for i in range(0, int(lesser), 1)]
                 for lesser_group in range(len(to_look_at_lesser)):
                     if lesser_value == "parent":
@@ -402,8 +400,6 @@ class JobList(object):
                     else:
                         if str(child.split) in to_look_at_lesser[lesser_group]:
                             break
-        else:
-            to_look_at_lesser = associative_list
         if "?" in filter_value:
             # replace all ? for ""
             filter_value = filter_value.replace("?", "")
@@ -413,7 +409,7 @@ class JobList(object):
             for filter_ in aux_filter.split(","):
                 if "*" in filter_:
                     filter_, split_info = filter_.split("*")
-                    # If parent and childs has the same amount of splits \\ doesn't make sense so it is disabled
+                    # If parent and children has the same amount of splits \\ doesn't make sense so it is disabled
                     if "\\" in split_info:
                         split_info = int(split_info.split("\\")[-1])
                     else:
@@ -848,26 +844,6 @@ class JobList(object):
                 filters_to_apply = relationships
         return filters_to_apply
 
-    @staticmethod
-    def _valid_parent(parent,filter_,):
-        '''
-        Check if the parent is valid for the current job
-        :param parent: job to check
-        :param member_list: list of members
-        :param date_list: list of dates
-        :param chunk_list: list of chunks
-        :param is_a_natural_relation: if the relation is natural or not
-        :return: True if the parent is valid, False otherwise
-        '''
-        #check if current_parent is listed on dependency.relationships
-
-        # Apply all filters to look if this parent is an appropriated candidate for the current_job
-        for value in [filter_.get("DATES_TO",""), filter_.get("MEMBERS_TO",""), filter_.get("CHUNKS_TO",""), filter_.get("SPLITS_TO","")]:
-            if "?" in value:
-                return True, True
-        return True, False
-
-
     def _add_edge_info(self, job, special_status):
         """
         Special relations to be check in the update_list method
@@ -1170,9 +1146,6 @@ class JobList(object):
             str_date = self._get_date(date)
             for member in self._member_list:
                 # Filter list of fake jobs according to date and member, result not sorted at this point
-                #sorted_jobs_list = list(filter(lambda job: job.name.split("_")[1] == str_date and
-                #                                           job.name.split("_")[2] == member,
-                #                               filtered_jobs_fake_date_member))
                 sorted_jobs_list = [job for job in filtered_jobs_fake_date_member if job.name.split("_")[1] == str_date and
                                           job.name.split("_")[2] == member]
 

@@ -2686,8 +2686,10 @@ class JobList(object):
             else:
                 results.append("Cannot find root.")
         return "\n".join(results)
+
     def __repr__(self):
         return self.__str__(True,True)
+
     def _recursion_print(self, job, level, visited=[], statusChange=None, nocolor=False):
         """
         Returns the list of children in a recursive way

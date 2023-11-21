@@ -2667,8 +2667,6 @@ class JobList(object):
             jobs = self.get_active()
         else:
             jobs = self.get_all()
-        result = "## String representation of Job List [" + str(
-            len(jobs)) + "] ##"
         # Find root
         roots = []
         if get_active:
@@ -2680,14 +2678,14 @@ class JobList(object):
                 if len(job.parents) == 0:
                     roots.append(job)
         visited = list()
-        #print(root)
+        results = [f"## String representation of Job List [{len(jobs)}] ##"]
         # root exists
         for root in roots:
             if root is not None and len(str(root)) > 0:
-                result += self._recursion_print(root, 0, visited,nocolor=nocolor)
+                results.append(self._recursion_print(root, 0, visited,nocolor=nocolor))
             else:
-                result += "\nCannot find root."
-        return result
+                results.append("Cannot find root.")
+        return "\n".join(results)
     def __repr__(self):
         return self.__str__(True,True)
     def _recursion_print(self, job, level, visited=[], statusChange=None, nocolor=False):

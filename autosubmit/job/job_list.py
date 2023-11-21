@@ -289,7 +289,7 @@ class JobList(object):
             # call function if dependencies_key is not None
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section) if dependencies_keys else {}
             jobs_gen = (job for job in dic_jobs.get_jobs(job_section))
-            for i,job in enumerate(jobs_gen):
+            for job in jobs_gen:
                 if job.name not in self.graph.nodes:
                     self.graph.add_node(job.name,job=job)
                 elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job",None) is None:

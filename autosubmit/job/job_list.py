@@ -381,7 +381,6 @@ class JobList(object):
             else:
                 child_splits = int(child.splits)
             if parent_splits == child_splits:
-                to_look_at_lesser = associative_list
                 lesser = str(parent_splits)
                 greater = str(child_splits)
                 lesser_value = "parent"
@@ -402,8 +401,6 @@ class JobList(object):
                     else:
                         if str(child.split) in to_look_at_lesser[lesser_group]:
                             break
-        else:
-            to_look_at_lesser = associative_list
         if "?" in filter_value:
             # replace all ? for ""
             filter_value = filter_value.replace("?", "")

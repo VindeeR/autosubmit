@@ -97,12 +97,6 @@ class JobListPersistencePkl(JobListPersistence):
         path = os.path.join(persistence_path, persistence_file + '.pkl')
         setrecursionlimit(500000000)
         Log.debug("Saving JobList: " + path)
-        #jobs_data = [(job.name, job.id, job.status,
-        #              job.priority, job.section, job.date,
-        #              job.member, job.chunk, job.split,
-        #              job.local_logs[0], job.local_logs[1],
-        #              job.remote_logs[0], job.remote_logs[1],job.wrapper_type) for job in job_list]
-
         with open(path, 'wb') as fd:
             pickle.dump(graph, fd, pickle.HIGHEST_PROTOCOL)
         Log.debug('Job list saved')

@@ -228,7 +228,8 @@ class JobList(object):
             Log.info("Adding dependencies to the graph..")
         # del all nodes that are only in the current graph
         if len(self.graph.nodes) > 0:
-            gen = ( name for name in np.setxor1d(self.graph.nodes, self._dic_jobs.workflow_jobs,True).tolist() )
+            #gen = ( name for name in np.setxor1d(self.graph.nodes, self._dic_jobs.workflow_jobs,True).tolist() )
+            gen = (name for name in set(self.graph.nodes).symmetric_difference(set(self._dic_jobs.workflow_jobs)))
             for name in gen:
                 if name in self.graph.nodes:
                     self.graph.remove_node(name)

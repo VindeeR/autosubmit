@@ -36,10 +36,10 @@ def transitive_reduction(graph):
     :type graph: NetworkX DiGraph
     :return: The transitive reduction of G
     """
-    for i, u in enumerate(graph):
+    for u in graph:
         graph.nodes[u]["job"].parents = set()
         graph.nodes[u]["job"].children = set()
-    for i, u in enumerate(graph):
+    for u in graph:
         graph.nodes[u]["job"].add_children([graph.nodes[v]["job"] for v in graph[u]])
     return graph
 

@@ -827,8 +827,25 @@ class TestJobList(unittest.TestCase):
         self.assertEqual(job.max_checkpoint_step, 2)
         value = job.edge_info.get("RUNNING", "").get("parent", ())
         self.assertEqual((value[0].name, value[1]), (parent.name, "2"))
-        self.assertEqual(str(job_list.jobs_edges.get("RUNNING", ())), str({job}))
+        self.assertEqual(len(job.edge_info.get("RUNNING", "")), 1)
 
+        self.assertEqual(str(job_list.jobs_edges.get("RUNNING", ())), str({job}))
+        only_marked_status = False
+        parent2 = Job("parent2", 1, Status.READY, 1)
+        parent2.section = "parent_two"
+        parent2.date = datetime.strptime("20200128", "%Y%m%d")
+        parent2.member = "fc0"
+        parent2.chunk = 1
+
+        job_list.add_special_conditions(job, special_conditions, only_marked_status, filters_to_apply, parent2)
+        value = job.edge_info.get("RUNNING", "").get("parent2", ())
+        self.assertEqual(len(job.edge_info.get("RUNNING", "")), 2)
+        self.assertEqual((value[0].name, value[1]), (parent2.name, "2"))
+        self.assertEqual(str(job_list.jobs_edges.get("RUNNING", ())), str({job}))
+        only_marked_status = False
+        job_list.add_special_conditions(job, special_conditions, only_marked_status, filters_to_apply, parent2)
+        value = job.edge_info.get("RUNNING", "").get("parent2", ())
+        self.assertEqual(len(job.edge_info.get("RUNNING", "")), 2)
 
 if __name__ == '__main__':
     unittest.main()

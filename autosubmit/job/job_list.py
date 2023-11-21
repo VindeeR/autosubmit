@@ -2432,7 +2432,6 @@ class JobList(object):
         self.graph = transitive_reduction(self.graph)
         # update job list view as transitive_Reduction also fills job._parents and job._children if recreate is set
         self._job_list = [ job["job"] for job in self.graph.nodes().values() ]
-        gen_job_list = ( job for job in self._job_list if not job.has_parents())
         try:
             DbStructure.save_structure(self.graph, self.expid, self._config.STRUCTURES_DIR)
         except Exception as exp:

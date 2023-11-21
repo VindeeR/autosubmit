@@ -882,6 +882,33 @@ class JobList(object):
             self.jobs_edges["ALL"] = set()
         self.jobs_edges["ALL"].add(job)
 
+    def add_special_conditions(self, job, special_conditions, only_marked_status, filters_to_apply, parent):
+        """
+        Add special conditions to the job edge
+        :param job: Job
+        :param special_conditions: dict
+        :param only_marked_status: bool
+        :param filters_to_apply: dict
+        :param parent: parent job
+        :return:
+        """
+        if special_conditions.get("STATUS", None):
+            if only_marked_status:
+                if str(job.split) + "?" in filters_to_apply.get("SPLITS_TO", "") or str(
+                        job.chunk) + "?" in filters_to_apply.get("CHUNKS_TO", "") or str(
+                    job.member) + "?" in filters_to_apply.get("MEMBERS_TO", "") or str(
+                    job.date) + "?" in filters_to_apply.get("DATES_TO", ""):
+                    selected = True
+                else:
+                    selected = False
+            else:
+                selected = True
+            if selected:
+                if special_conditions.get("FROM_STEP", None):
+                    job.max_checkpoint_step = int(special_conditions.get("FROM_STEP", 0)) if int(special_conditions.get("FROM_STEP",0)) > job.max_checkpoint_step else job.max_checkpoint_step
+                self._add_edge_info(job, special_conditions["STATUS"])  # job_list map
+                job.add_edge_info(parent, special_conditions) # this job
+
     def _manage_job_dependencies(self, dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys,
                                  dependencies,
                                  graph):
@@ -994,24 +1021,8 @@ class JobList(object):
                             continue # if the parent is not in the filter_to, skip it
                     graph.add_edge(parent.name, job.name)
                     # Do parse checkpoint
-                    if special_conditions.get("STATUS", None):
-                        if only_marked_status:
-                            if str(job.split) + "?" in filters_to_apply.get("SPLITS_TO", "") or str(
-                                    job.chunk) + "?" in filters_to_apply.get("CHUNKS_TO", "") or str(
-                                job.member) + "?" in filters_to_apply.get("MEMBERS_TO", "") or str(
-                                job.date) + "?" in filters_to_apply.get("DATES_TO", ""):
-                                selected = True
-                            else:
-                                selected = False
-                        else:
-                            selected = True
-                        if selected:
-                            if special_conditions.get("FROM_STEP", None):
-                                job.max_checkpoint_step = int(special_conditions.get("FROM_STEP", 0)) if int(
-                                    special_conditions.get("FROM_STEP",
-                                                           0)) > job.max_checkpoint_step else job.max_checkpoint_step
-                            self._add_edge_info(job, special_conditions["STATUS"])
-                            job.add_edge_info(parent, special_conditions)
+                    self.add_special_conditions(job,special_conditions,only_marked_status,filters_to_apply,parent)
+
                 JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job, member,
                                                                member_list, dependency.section, possible_parents)
 

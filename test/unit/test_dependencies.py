@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 import copy
 import inspect
 import mock
@@ -147,7 +149,7 @@ class TestJobList(unittest.TestCase):
             "SPLITS_TO": "1*,2*,3*,4*,5*"
         }
         # Create a mock Job object
-        self.mock_job = mock.MagicMock(spec=Job)
+        self.mock_job = Mock(wraps=Job)
 
         # Set the attributes on the mock object
         self.mock_job.name = "Job1"
@@ -794,9 +796,38 @@ class TestJobList(unittest.TestCase):
                                                         "fc0", 1)
         self.assertEqual(len(possible_parents), 4)
 
-
-
-
+    def test_add_special_conditions(self):
+        # Method from job_list
+        job = Job("child", 1, Status.READY, 1)
+        job.section = "child_one"
+        job.date = datetime.strptime("20200128", "%Y%m%d")
+        job.member = "fc0"
+        job.chunk = 1
+        job.split = 1
+        job.splits = 1
+        job.max_checkpoint_step = 0
+        special_conditions = {"STATUS": "RUNNING", "FROM_STEP": "2"}
+        only_marked_status = False
+        filters_to_apply = {"DATES_TO": "all", "MEMBERS_TO": "all", "CHUNKS_TO": "all", "SPLITS_TO": "all"}
+        parent = Job("parent", 1, Status.READY, 1)
+        parent.section = "parent_one"
+        parent.date = datetime.strptime("20200128", "%Y%m%d")
+        parent.member = "fc0"
+        parent.chunk = 1
+        parent.split = 1
+        parent.splits = 1
+        parent.max_checkpoint_step = 0
+        job.status = Status.READY
+        job_list = Mock(wraps=self.JobList)
+        job_list._job_list = [job, parent]
+        job_list.add_special_conditions(job, special_conditions, only_marked_status, filters_to_apply, parent)
+        #self.JobList.jobs_edges
+        #job.edges = self.JobList.jobs_edges[job.name]
+        # assert
+        self.assertEqual(job.max_checkpoint_step, 2)
+        value = job.edge_info.get("RUNNING","").get("parent",())
+        self.assertEqual((value[0].name,value[1]), (parent.name,"2"))
+        self.assertEqual(str(job_list.jobs_edges.get("RUNNING",())), str({job}))
 
 if __name__ == '__main__':
     unittest.main()

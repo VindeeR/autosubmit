@@ -381,7 +381,6 @@ class JobList(object):
             else:
                 child_splits = int(child.splits)
             if parent_splits == child_splits:
-                lesser = str(parent_splits)
                 greater = str(child_splits)
                 lesser_value = "parent"
             else:

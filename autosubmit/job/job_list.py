@@ -232,7 +232,7 @@ class JobList(object):
             for name in gen:
                 if name in self.graph.nodes:
                     self.graph.remove_node(name)
-        # This actually, also adds the node to the graph if it isen't already there
+        # This actually, also adds the node to the graph if it isn't already there
         self._add_dependencies(date_list, member_list, chunk_list, self._dic_jobs)
         if show_log:
             Log.info("Adding dependencies to the job..")

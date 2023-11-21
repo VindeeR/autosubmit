@@ -21,7 +21,7 @@
 from bscearth.utils.date import date2str
 
 from autosubmit.job.job import Job
-from autosubmit.job.job_common import Status, Type
+from autosubmit.job.job_common import Status
 import datetime
 
 

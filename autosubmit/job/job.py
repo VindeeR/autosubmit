@@ -1708,6 +1708,7 @@ class Job(object):
         self.dependencies = str(as_conf.jobs_data.get(self.section,{}).get("DEPENDENCIES",""))
         self.running = as_conf.jobs_data.get(self.section,{}).get("RUNNING", "once")
         self.platform_name = as_conf.jobs_data.get(self.section,{}).get("PLATFORM", as_conf.experiment_data.get("DEFAULT",{}).get("HPCARCH", None))
+        self.file = as_conf.jobs_data.get(self.section,{}).get("FILE", None)
         type_ = str(as_conf.jobs_data.get(self.section,{}).get("TYPE", "bash")).lower()
         if type_ == "bash":
             self.type = Type.BASH

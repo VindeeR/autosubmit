@@ -355,78 +355,7 @@ class TestJobList(unittest.TestCase):
         }
         self.assertEqual(result, expected_output)
 
-    def test_valid_parent(self):
 
-        # Call the function to get the result
-        date_list = ["20020201", "20020202", "20020203", "20020204", "20020205", "20020206", "20020207", "20020208",
-                     "20020209", "20020210"]
-        member_list = ["fc1", "fc2", "fc3"]
-        chunk_list = [1, 2, 3]
-        self.mock_job.splits = 10
-        is_a_natural_relation = False
-        # Filter_to values
-        filter_ = {
-            "DATES_TO": "20020201",
-            "MEMBERS_TO": "fc2",
-            "CHUNKS_TO": "all",
-            "SPLITS_TO": "1"
-        }
-        # PArent job values
-        self.mock_job.date = datetime.strptime("20020201", "%Y%m%d")
-        self.mock_job.member = "fc2"
-        self.mock_job.chunk = 1
-        self.mock_job.split = 1
-        child = copy.deepcopy(self.mock_job)
-        result = self.JobList._valid_parent(self.mock_job, filter_)
-        # it returns a tuple, the first element is the result, the second is the optional flag
-        self.assertEqual(result, (True, False))
-        filter_ = {
-            "DATES_TO": "20020201",
-            "MEMBERS_TO": "fc2",
-            "CHUNKS_TO": "all",
-            "SPLITS_TO": "1?"
-        }
-        result = self.JobList._valid_parent(self.mock_job, filter_)
-        self.assertEqual(result, (True, True))
-        filter_ = {
-            "DATES_TO": "20020201",
-            "MEMBERS_TO": "fc2",
-            "CHUNKS_TO": "all",
-            "SPLITS_TO": "1?"
-        }
-        self.mock_job.split = 2
-
-        result = self.JobList._valid_parent(self.mock_job, filter_)
-        self.assertEqual(result, (True, True))
-        filter_ = {
-            "DATES_TO": "[20020201:20020205]",
-            "MEMBERS_TO": "fc2",
-            "CHUNKS_TO": "all",
-            "SPLITS_TO": "1"
-        }
-        self.mock_job.split = 1
-        result = self.JobList._valid_parent(self.mock_job, filter_)
-        self.assertEqual(result, (True, False))
-        filter_ = {
-            "DATES_TO": "[20020201:20020205]",
-            "MEMBERS_TO": "fc2",
-            "CHUNKS_TO": "all",
-            "SPLITS_TO": "1"
-        }
-        self.mock_job.date = datetime.strptime("20020206", "%Y%m%d")
-        result = self.JobList._valid_parent(self.mock_job, filter_)
-        self.assertEqual(result, (True, False))
-        filter_ = {
-            "DATES_TO": "[20020201:20020205]",
-            "MEMBERS_TO": "fc2",
-            "CHUNKS_TO": "[2:4]",
-            "SPLITS_TO": "[1:5]"
-        }
-        self.mock_job.date = datetime.strptime("20020201", "%Y%m%d")
-        self.mock_job.chunk = 2
-        self.mock_job.split = 1
-        result = self.JobList._valid_parent(self.mock_job, filter_)
-        self.assertEqual(result, (True, False))
 
     def test_check_relationship(self):
         relationships = {'MEMBERS_FROM': {

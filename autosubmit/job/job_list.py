@@ -844,26 +844,6 @@ class JobList(object):
                 filters_to_apply = relationships
         return filters_to_apply
 
-    @staticmethod
-    def _valid_parent(parent,filter_,):
-        '''
-        Check if the parent is valid for the current job
-        :param parent: job to check
-        :param member_list: list of members
-        :param date_list: list of dates
-        :param chunk_list: list of chunks
-        :param is_a_natural_relation: if the relation is natural or not
-        :return: True if the parent is valid, False otherwise
-        '''
-        #check if current_parent is listed on dependency.relationships
-
-        # Apply all filters to look if this parent is an appropriated candidate for the current_job
-        for value in [filter_.get("DATES_TO",""), filter_.get("MEMBERS_TO",""), filter_.get("CHUNKS_TO",""), filter_.get("SPLITS_TO","")]:
-            if "?" in value:
-                return True, True
-        return True, False
-
-
     def _add_edge_info(self, job, special_status):
         """
         Special relations to be check in the update_list method

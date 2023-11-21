@@ -205,7 +205,6 @@ class JobList(object):
                     self.graph = nx.DiGraph()
             except:
                 self.graph = nx.DiGraph()
-            self._dic_jobs.job_list = {}
         if show_log:
             Log.info("Creating jobs...")
         if not new:

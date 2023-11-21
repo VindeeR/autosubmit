@@ -369,6 +369,9 @@ class JobList(object):
         :return:
         """
         lesser_group = None
+        lesser_value = "parent"
+        greater = str(-1)
+
         if "NONE".casefold() in str(parent_value).casefold():
             return False
         if parent and child:
@@ -382,7 +385,6 @@ class JobList(object):
                 child_splits = int(child.splits)
             if parent_splits == child_splits:
                 greater = str(child_splits)
-                lesser_value = "parent"
             else:
                 if parent_splits > child_splits:
                     lesser = str(child_splits)
@@ -391,7 +393,6 @@ class JobList(object):
                 else:
                     lesser = str(parent_splits)
                     greater = str(child_splits)
-                    lesser_value = "parent"
                 to_look_at_lesser = [associative_list[i:i + 1] for i in range(0, int(lesser), 1)]
                 for lesser_group in range(len(to_look_at_lesser)):
                     if lesser_value == "parent":
@@ -409,7 +410,7 @@ class JobList(object):
             for filter_ in aux_filter.split(","):
                 if "*" in filter_:
                     filter_, split_info = filter_.split("*")
-                    # If parent and childs has the same amount of splits \\ doesn't make sense so it is disabled
+                    # If parent and children has the same amount of splits \\ doesn't make sense so it is disabled
                     if "\\" in split_info:
                         split_info = int(split_info.split("\\")[-1])
                     else:

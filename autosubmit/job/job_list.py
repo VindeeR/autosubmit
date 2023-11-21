@@ -262,10 +262,9 @@ class JobList(object):
                 if not job.has_parents():
                     job.status = Status.READY
         else:
-            jobs_in_graph = ( job["job"] for _,job in self.graph.nodes.data() if job.get("job",None) and job.get("job").status > 0 )
+            jobs_in_graph = ( job["job"] for _,job in self.graph.nodes.data() if job.get("job",None) and job["job"].status > 0 and job in self._job_list)
             for job in jobs_in_graph:
-                if job in self._job_list:
-                    self._job_list[self._job_list.index(job)].status = job.status
+                self._job_list[self._job_list.index(job)].status = job.status
 
         for wrapper_section in wrapper_jobs:
             try:

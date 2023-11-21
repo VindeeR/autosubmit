@@ -844,7 +844,6 @@ class TestJobList(unittest.TestCase):
         self.assertEqual(str(job_list.jobs_edges.get("RUNNING", ())), str({job}))
         only_marked_status = False
         job_list.add_special_conditions(job, special_conditions, only_marked_status, filters_to_apply, parent2)
-        value = job.edge_info.get("RUNNING", "").get("parent2", ())
         self.assertEqual(len(job.edge_info.get("RUNNING", "")), 2)
 
 if __name__ == '__main__':

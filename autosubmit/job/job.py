@@ -193,9 +193,6 @@ class Job(object):
         self.hyperthreading = None
         self.scratch_free_space = None
         self.custom_directives = []
-        #self._hyperthreading = "none"
-        #self._scratch_free_space = None
-        #self._custom_directives = []
         self.undefined_variables = set()
         self.log_retries = 5
         self.id = job_id

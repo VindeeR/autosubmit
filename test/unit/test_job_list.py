@@ -264,7 +264,7 @@ class TestJobList(TestCase):
 
         job_list._add_dependencies.assert_called_once_with(date_list, member_list, chunk_list, cj_args[0])
         # Adding flag update structure
-        job_list.update_genealogy.assert_called_once_with(True)
+        job_list.update_genealogy.assert_called_once_with()
         for job in job_list._job_list:
             self.assertEqual(parameters, job.parameters)
 
@@ -522,7 +522,7 @@ class TestJobList(TestCase):
             )
             # assert update_genealogy called with right values
             # When using an 4.0 experiment, the pkl has to be recreated and act as a new one.
-            job_list3.update_genealogy.assert_called_once_with(True)
+            job_list3.update_genealogy.assert_called_once_with()
 
             # Test when the graph previous run has more jobs than the current run
             job_list3.graph.add_node("fake-node",job=job_list3._job_list[0])

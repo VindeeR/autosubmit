@@ -2639,7 +2639,6 @@ class JobList(object):
             result += " ## "
 
         # Find root
-        root = None
         roots = []
         for job in allJobs:
             if len(job.parents) == 0:
@@ -2671,7 +2670,6 @@ class JobList(object):
         result = "## String representation of Job List [" + str(
             len(jobs)) + "] ##"
         # Find root
-        root = None
         roots = []
         if get_active:
             for job in jobs:

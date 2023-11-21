@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import copy
-import numpy as np
 import networkx as nx
 import re
 import os

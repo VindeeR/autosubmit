@@ -941,6 +941,7 @@ class JobList(object):
             if skip:
                 continue
             filters_to_apply = self._filter_current_job(job,copy.deepcopy(dependency.relationships))
+
             special_conditions["STATUS"] = filters_to_apply.pop("STATUS", None)
             special_conditions["FROM_STEP"] = filters_to_apply.pop("FROM_STEP", None)
             # # Get dates_to, members_to, chunks_to of the deepest level of the relationship.
@@ -987,7 +988,11 @@ class JobList(object):
                             continue # if the parent is not in the filter_to, skip it
                     graph.add_edge(parent.name, job.name)
                     # Do parse checkpoint
-                    # todo only_marked_status dissapeared
+                    if "?" in filters_to_apply.get("SPLITS_TO", "") or "?" in filters_to_apply.get("DATES_TO","") or "?" in filters_to_apply.get(
+                            "MEMBERS_TO", "") or "?" in filters_to_apply.get("CHUNKS_TO", ""):
+                        only_marked_status = True
+                    else:
+                        only_marked_status = False
                     if special_conditions.get("STATUS", None):
                         if only_marked_status:
                             if str(job.split) + "?" in filters_to_apply.get("SPLITS_TO", "") or str(

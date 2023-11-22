@@ -429,9 +429,10 @@ class TestJobList(TestCase):
             for path in [f'{self.experiment_id}/tmp', f'{self.experiment_id}/tmp/ASLOGS', f'{self.experiment_id}/tmp/ASLOGS_{self.experiment_id}', f'{self.experiment_id}/proj',
                          f'{self.experiment_id}/conf', f'{self.experiment_id}/pkl']:
                 Path(temp_dir, path).mkdir()
-            job_list.changes = Mock(return_value={})
-            as_conf.detailed_deep_diff = Mock(return_value={})
+            job_list.changes = Mock(return_value=['random_section', 'random_section'])
+            as_conf.detailed_diff = Mock(return_value={})
             #as_conf.get_member_list = Mock(return_value=member_list)
+
             # act
             job_list.generate(
                 as_conf=as_conf,
@@ -446,7 +447,6 @@ class TestJobList(TestCase):
                 wrapper_jobs={},
                 new=True,
             )
-
             job_list.save()
             job_list2 = self.new_job_list(factory,temp_dir)
             job_list2.generate(
@@ -462,7 +462,11 @@ class TestJobList(TestCase):
                 wrapper_jobs={},
                 new=False,
             )
-            # check joblist ( this uses __eq__ from JOB which compares the id and name
+            #return False
+            job_list2.update_from_file = Mock()
+            job_list2.update_from_file.return_value = False
+            job_list2.update_list(as_conf, False)
+
             # check that name is the same
             for index,job in enumerate(job_list._job_list):
                 self.assertEquals(job_list2._job_list[index].name, job.name)
@@ -487,6 +491,9 @@ class TestJobList(TestCase):
                 wrapper_jobs={},
                 new=False,
             )
+            job_list3.update_from_file = Mock()
+            job_list3.update_from_file.return_value = False
+            job_list3.update_list(as_conf, False)
             # assert
             # check that name is the same
             for index, job in enumerate(job_list._job_list):

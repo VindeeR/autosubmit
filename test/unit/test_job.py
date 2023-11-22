@@ -207,10 +207,13 @@ class TestJob(TestCase):
 
     def test_that_check_script_returns_false_when_there_is_an_unbound_template_variable(self):
         # arrange
+        self.job._init_runtime_parameters()
         update_content_mock = Mock(return_value=('some-content: %UNBOUND%','some-content: %UNBOUND%'))
         self.job.update_content = update_content_mock
         #template_content = update_content_mock
+
         update_parameters_mock = Mock(return_value=self.job.parameters)
+        self.job._init_runtime_parameters()
         self.job.update_parameters = update_parameters_mock
 
         config = Mock(spec=AutosubmitConfig)
@@ -237,6 +240,7 @@ class TestJob(TestCase):
         self.job.update_content = update_content_mock
 
         update_parameters_mock = Mock(return_value=self.job.parameters)
+        self.job._init_runtime_parameters()
         self.job.update_parameters = update_parameters_mock
 
         config = Mock(spec=AutosubmitConfig)
@@ -789,6 +793,7 @@ CONFIG:
         # false positives on the checking process with auto-ecearth3
         # Arrange
         section = "RANDOM-SECTION"
+        self.job._init_runtime_parameters()
         self.job.section = section
         self.job.parameters['ROOTDIR'] = "none"
         self.job.parameters['PROJECT_TYPE'] = "none"

@@ -208,6 +208,9 @@ class JobList(object):
             Log.info("Creating jobs...")
         if not new:
             if len(self.graph.nodes) > 0:
+                # fast-look if graph existed, skips some steps
+                self._dic_jobs._job_list = {job["job"].name: job["job"] for _, job in self.graph.nodes.data() if
+                                 job.get("job", None) }
                 if show_log:
                     Log.info("Load finished")
                 if as_conf.data_changed:
@@ -215,7 +218,8 @@ class JobList(object):
                 self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
             else:
                 # Remove the previous pkl, if it exists.
-                Log.info("Removing previous pkl file due to empty graph, likely due using an Autosubmit 4.0.XXX version")
+                if not new:
+                    Log.info("Removing previous pkl file due to empty graph, likely due using an Autosubmit 4.0.XXX version")
                 with suppress(FileNotFoundError):
                     os.remove(os.path.join(self._persistence_path, self._persistence_file + ".pkl"))
                 with suppress(FileNotFoundError):
@@ -223,9 +227,12 @@ class JobList(object):
                 new = True
         # This generates the job object and also finds if dic_jobs has modified from previous iteration in order to expand the workflow
         self._create_jobs(self._dic_jobs, 0, default_job_type)
+        # not needed anymore
+        del self._dic_jobs._job_list
         if show_log:
             Log.info("Adding dependencies to the graph..")
         # del all nodes that are only in the current graph
+        #import numpy as np
         if len(self.graph.nodes) > 0:
             #gen = ( name for name in np.setxor1d(self.graph.nodes, self._dic_jobs.workflow_jobs,True).tolist() )
             gen = (name for name in set(self.graph.nodes).symmetric_difference(set(self._dic_jobs.workflow_jobs)))
@@ -1087,7 +1094,7 @@ class JobList(object):
                             job.add_parent(parent)
     @staticmethod
     def _create_jobs(dic_jobs, priority, default_job_type):
-        for section in dic_jobs.experiment_data.get("JOBS",{}).keys():
+        for section in (job for job in dic_jobs.experiment_data.get("JOBS",{}).keys() ):
             Log.debug("Creating {0} jobs".format(section))
             dic_jobs.read_section(section, priority, default_job_type)
             priority += 1

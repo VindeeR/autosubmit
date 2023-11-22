@@ -446,7 +446,6 @@ class TestJobList(TestCase):
                 wrapper_jobs={},
                 new=True,
             )
-
             job_list.save()
             job_list2 = self.new_job_list(factory,temp_dir)
             job_list2.generate(
@@ -462,7 +461,11 @@ class TestJobList(TestCase):
                 wrapper_jobs={},
                 new=False,
             )
-            # check joblist ( this uses __eq__ from JOB which compares the id and name
+            #return False
+            job_list2.update_from_file = Mock()
+            job_list2.update_from_file.return_value = False
+            job_list2.update_list(as_conf, False)
+
             # check that name is the same
             for index,job in enumerate(job_list._job_list):
                 self.assertEquals(job_list2._job_list[index].name, job.name)
@@ -487,6 +490,9 @@ class TestJobList(TestCase):
                 wrapper_jobs={},
                 new=False,
             )
+            job_list3.update_from_file = Mock()
+            job_list3.update_from_file.return_value = False
+            job_list3.update_list(as_conf, False)
             # assert
             # check that name is the same
             for index, job in enumerate(job_list._job_list):

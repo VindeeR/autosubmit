@@ -1600,7 +1600,6 @@ class Autosubmit:
                 platforms_to_test.add(job.platform)
 
         job_list.check_scripts(as_conf)
-
         job_list.update_list(as_conf, False)
         # Loading parameters again
         Autosubmit._load_parameters(as_conf, job_list, submitter.platforms)
@@ -2122,6 +2121,8 @@ class Autosubmit:
                             Autosubmit.submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence, hold=False)
                             job_list.update_list(as_conf, submitter=submitter)
                             job_list.save()
+                            as_conf.save()
+
                         # Submit jobs that are prepared to hold (if remote dependencies parameter are enabled)
                         # This currently is not used as SLURM no longer allows to jobs to adquire priority while in hold state.
                         # This only works for SLURM. ( Prepare status can not be achieved in other platforms )
@@ -2130,6 +2131,7 @@ class Autosubmit:
                                 as_conf, job_list, platforms_to_test, packages_persistence, hold=True)
                             job_list.update_list(as_conf, submitter=submitter)
                             job_list.save()
+                            as_conf.save()
                         # Safe spot to store changes
                         try:
                             exp_history = Autosubmit.process_historical_data_iteration(job_list, job_changes_tracker, expid)
@@ -2146,6 +2148,7 @@ class Autosubmit:
                         job_changes_tracker = {}
                         if Autosubmit.exit:
                             job_list.save()
+                            as_conf.save()
                         time.sleep(safetysleeptime)
                         #Log.debug(f"FD endsubmit: {fd_show.fd_table_status_str()}")
 
@@ -2382,6 +2385,8 @@ class Autosubmit:
                                                                                                               hold=hold)
                 # Jobs that are being retrieved in batch. Right now, only available for slurm platforms.
                 if not inspect and len(valid_packages_to_submit) > 0:
+                    for job in valid_packages_to_submit:
+                        job._clean_runtime_parameters()
                     job_list.save()
                 save_2 = False
                 if platform.type.lower() in [ "slurm" , "pjm" ] and not inspect and not only_wrappers:
@@ -2390,6 +2395,8 @@ class Autosubmit:
                                                                                          failed_packages,
                                                                                          error_message="", hold=hold)
                     if not inspect and len(valid_packages_to_submit) > 0:
+                        for job in valid_packages_to_submit:
+                            job._clean_runtime_parameters()
                         job_list.save()
                 # Save wrappers(jobs that has the same id) to be visualized and checked in other parts of the code
                 job_list.save_wrappers(valid_packages_to_submit, failed_packages, as_conf, packages_persistence,
@@ -3333,7 +3340,7 @@ class Autosubmit:
                 if job.platform_name is None:
                     job.platform_name = hpc_architecture
                 job.platform = submitter.platforms[job.platform_name]
-                job.update_parameters(as_conf, job_list.parameters)
+                #job.update_parameters(as_conf, job_list.parameters)
         except AutosubmitError:
             raise
         except BaseException as e:
@@ -3428,6 +3435,7 @@ class Autosubmit:
                 try:
                     for job in job_list.get_job_list():
                         job_parameters = job.update_parameters(as_conf, {})
+                        job._clean_runtime_parameters()
                         for key, value in job_parameters.items():
                             jobs_parameters["JOBS"+"."+job.section+"."+key] = value
                 except:
@@ -4688,9 +4696,9 @@ class Autosubmit:
                     Log.info("\nCreating the jobs list...")
                     job_list = JobList(expid, BasicConfig, YAMLParserFactory(),Autosubmit._get_job_list_persistence(expid, as_conf), as_conf)
                     try:
-                        prev_job_list = Autosubmit.load_job_list(expid, as_conf, new=False)
+                         prev_job_list_logs = Autosubmit.load_logs_from_previous_run(expid, as_conf)
                     except:
-                        prev_job_list = None
+                        prev_job_list_logs = None
                     date_format = ''
                     if as_conf.get_chunk_size_unit() == 'hour':
                         date_format = 'H'
@@ -4717,9 +4725,10 @@ class Autosubmit:
                     else:
                         job_list.remove_rerun_only_jobs(notransitive)
                     Log.info("\nSaving the jobs list...")
-                    if prev_job_list:
-                        job_list.add_logs(prev_job_list.get_logs())
+                    if prev_job_list_logs:
+                        job_list.add_logs(prev_job_list_logs)
                     job_list.save()
+                    as_conf.save()
                     JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
                                           "job_packages_" + expid).reset_table()
                     groups_dict = dict()
@@ -5927,6 +5936,20 @@ class Autosubmit:
 
         open(as_conf.experiment_file, 'wb').write(content)
 
+    @staticmethod
+    def load_logs_from_previous_run(expid,as_conf):
+        logs = None
+        if Path(f'{BasicConfig.LOCAL_ROOT_DIR}/{expid}/pkl/job_list_{expid}.pkl').exists():
+            job_list = JobList(expid, BasicConfig, YAMLParserFactory(),Autosubmit._get_job_list_persistence(expid, as_conf), as_conf)
+            with suppress(BaseException):
+                graph = job_list.load()
+                if len(graph.nodes) > 0:
+                    # fast-look if graph existed, skips some steps
+                    job_list._job_list = [job["job"] for _, job in graph.nodes.data() if
+                                                job.get("job", None)]
+                logs = job_list.get_logs()
+            del job_list
+        return logs
     @staticmethod
     def load_job_list(expid, as_conf, notransitive=False, monitor=False, new = True):
         rerun = as_conf.get_rerun()

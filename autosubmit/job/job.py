@@ -154,28 +154,23 @@ class Job(object):
         self.retrials = None
         self.delay_end = None
         self.delay_retrials = None
-        #self.delay_end = datetime.datetime.now()
-        #self._delay_retrials = "0"
         self.wrapper_type = None
         self._wrapper_queue = None
         self._platform = None
         self._queue = None
         self._partition = None
-
         self.retry_delay = None
-        self.platform_name = None # type: str
         #: (str): Type of the job, as given on job configuration file. (job: TASKTYPE)
         self._section = None # type: str
         self._wallclock = None # type: str
         self.wchunkinc = None
-        self._tasks = '1'
-        self._nodes = ""
-        self.default_parameters = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
-                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
-        self._threads = '1'
-        self._processors = '1'
-        self._memory = ''
-        self._memory_per_task = ''
+        self._tasks = None
+        self._nodes = None
+        self.default_parameters = None
+        self._threads = None
+        self._processors = None
+        self._memory = None
+        self._memory_per_task = None
         self._chunk = None
         self._member = None
         self.date = None
@@ -213,7 +208,7 @@ class Job(object):
         #: (int) Number of failed attempts to run this job. (FAIL_COUNT)
         self._fail_count = 0
         self.expid = name.split('_')[0] # type: str
-        self.parameters = dict()
+        self.parameters = None
         self._tmp_path = os.path.join(
             BasicConfig.LOCAL_ROOT_DIR, self.expid, BasicConfig.LOCAL_TMP_DIR)
         self.write_start = False
@@ -226,27 +221,101 @@ class Job(object):
         self.level = 0
         self._export = "none"
         self._dependencies = []
-        self.running = "once"
+        self.running = None
         self.start_time = None
-        self.ext_header_path = ''
-        self.ext_tailer_path = ''
+        self.ext_header_path = None
+        self.ext_tailer_path = None
         self.edge_info = dict()
         self.total_jobs = None
         self.max_waiting_jobs = None
         self.exclusive = ""
         self._retrials = 0
-
         # internal
         self.current_checkpoint_step = 0
         self.max_checkpoint_step = 0
         self.reservation = ""
         self.delete_when_edgeless = False
+        # hetjobs
+        self.het = None
+
+    def _init_runtime_parameters(self):
+        # hetjobs
+        self.het = {'HETSIZE': 0}
+        self.parameters = dict()
+        self._tasks = '1'
+        self._nodes = ""
+        self.default_parameters = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
+                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
+        self._threads = '1'
+        self._processors = '1'
+        self._memory = ''
+        self._memory_per_task = ''
+
+    def _clean_runtime_parameters(self):
+        self.ec_queue = None
+        self.executable = None
+        self.total_jobs = None
+        self.max_waiting_jobs = None
+        self.processors = None
+        self.nodes = None
+        self.exclusive = None
+        self.threads = None
+        self.tasks = None
+        self.reservation = None
+        self.hyperthreading = None
+        self.queue = None
+        self.partition = None
+        self.scratch_free_space = None
+        self.memory = None
+        self.memory_per_task = None
+        self.wallclock = None
+        self.custom_directives = None
+        self.wchunkinc = None
+        self.het = None
+        self.rerun_only = False
+        self.script_name_wrapper = None
+        self.delay_end = None
+        self.delay_retrials = None
+        self.wrapper_type = None
+        self._wrapper_queue = None
+        self._queue = None
+        self._partition = None
+        self.retry_delay = None
+        self._section = None # type: str
+        self._wallclock = None # type: str
+        self.wchunkinc = None
+        self._tasks = None
+        self._nodes = None
+        self._threads = None
+        self._processors = None
+        self._memory = None
+        self._memory_per_task = None
+        self._chunk = None
+        self._member = None
+        self.date = None
+        self._split = None
+        self._delay = None
+        self._frequency = None
+        self._synchronize = None
+        self.skippable = False
+        self.hyperthreading = None
+        self.scratch_free_space = None
+        self.executable = None
+        self.x11 = False
+        self.parameters = None
+        self.write_start = False
+        self.check_warnings = False
+        self.start_time = None
+        self.ext_header_path = None
+        self.ext_tailer_path = None
+        self.exclusive = ""
+
+        # internal
+        self.current_checkpoint_step = 0
+        self.max_checkpoint_step = 0
 
         # hetjobs
-        self.het = dict()
-        self.het['HETSIZE'] = 0
-
-
+        self.het = None
     @property
     @autosubmit_parameter(name='tasktype')
     def section(self):
@@ -510,7 +579,8 @@ class Job(object):
         self._splits = value
 
     def __getstate__(self):
-        return funcy.omit(self.__dict__, ["_platform","_children"])
+        return {k: v for k, v in self.__dict__.items() if k not in ["_platform", "_children"]}
+        #return funcy.omit(self.__dict__, ["_platform","_children"])
 
 
     def read_header_tailer_script(self, script_path: str, as_conf: AutosubmitConfig, is_header: bool):
@@ -523,13 +593,15 @@ class Job(object):
         :param as_conf: Autosubmit configuration file
         :param is_header: boolean indicating if it is header extended script
         """
-
+        if not script_path:
+            return ''
         found_hashbang = False
         script_name = script_path.rsplit("/")[-1]  # pick the name of the script for a more verbose error
-        script = ''
         # the value might be None string if the key has been set, but with no value
-        if script_path == '' or script_path == "None":
-            return script
+        if not script_name:
+            return ''
+        script = ''
+
 
         # adjusts the error message to the type of the script
         if is_header:
@@ -1717,8 +1789,8 @@ class Job(object):
             self.type = Type.PYTHON2
         else:
             self.type = Type.BASH
-        self.ext_header_path = str(as_conf.jobs_data.get(self.section,{}).get('EXTENDED_HEADER_PATH', ''))
-        self.ext_tailer_path = str(as_conf.jobs_data.get(self.section,{}).get('EXTENDED_TAILER_PATH', ''))
+        self.ext_header_path = as_conf.jobs_data.get(self.section,{}).get('EXTENDED_HEADER_PATH', None)
+        self.ext_tailer_path = as_conf.jobs_data.get(self.section,{}).get('EXTENDED_TAILER_PATH', None)
         if self.platform_name:
             self.platform_name = self.platform_name.upper()
 
@@ -1825,6 +1897,7 @@ class Job(object):
         :type parameters: dict
         """
         as_conf.reload()
+        self._init_runtime_parameters()
         # Parameters that affect to all the rest of parameters
         self.update_dict_parameters(as_conf)
         parameters = parameters.copy()

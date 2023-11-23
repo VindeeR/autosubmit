@@ -2681,6 +2681,8 @@ class Autosubmit:
 
             pkl_dir = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, 'pkl')
             job_list = Autosubmit.load_job_list(expid, as_conf, notransitive=notransitive)
+            for job in job_list.get_job_list():
+                job._init_runtime_parameters()
             Log.debug("Job list restored from {0} files", pkl_dir)
             jobs = StatisticsUtils.filter_by_section(job_list.get_job_list(), filter_type)
             jobs, period_ini, period_fi = StatisticsUtils.filter_by_time_period(jobs, filter_period)

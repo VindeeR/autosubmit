@@ -252,70 +252,16 @@ class Job(object):
         self._memory_per_task = ''
 
     def _clean_runtime_parameters(self):
-        self.ec_queue = None
-        self.executable = None
-        self.total_jobs = None
-        self.max_waiting_jobs = None
-        self.processors = None
-        self.nodes = None
-        self.exclusive = None
-        self.threads = None
-        self.tasks = None
-        self.reservation = None
-        self.hyperthreading = None
-        self.queue = None
-        self.partition = None
-        self.scratch_free_space = None
-        self.memory = None
-        self.memory_per_task = None
-        self.wallclock = None
-        self.custom_directives = None
-        self.wchunkinc = None
+        # hetjobs
         self.het = None
-        self.rerun_only = False
-        self.script_name_wrapper = None
-        self.delay_end = None
-        self.delay_retrials = None
-        self.wrapper_type = None
-        self._wrapper_queue = None
-        self._queue = None
-        self._partition = None
-        self.retry_delay = None
-        self._section = None # type: str
-        self._wallclock = None # type: str
-        self.wchunkinc = None
+        self.parameters = None
         self._tasks = None
         self._nodes = None
+        self.default_parameters = None
         self._threads = None
         self._processors = None
         self._memory = None
         self._memory_per_task = None
-        self._chunk = None
-        self._member = None
-        self.date = None
-        self._split = None
-        self._delay = None
-        self._frequency = None
-        self._synchronize = None
-        self.skippable = False
-        self.hyperthreading = None
-        self.scratch_free_space = None
-        self.executable = None
-        self.x11 = False
-        self.parameters = None
-        self.write_start = False
-        self.check_warnings = False
-        self.start_time = None
-        self.ext_header_path = None
-        self.ext_tailer_path = None
-        self.exclusive = ""
-
-        # internal
-        self.current_checkpoint_step = 0
-        self.max_checkpoint_step = 0
-
-        # hetjobs
-        self.het = None
     @property
     @autosubmit_parameter(name='tasktype')
     def section(self):
@@ -706,7 +652,7 @@ class Job(object):
         :return HPCPlatform object for the job to use
         :rtype: HPCPlatform
         """
-        if self.is_serial:
+        if self.is_serial and self._platform:
             return self._platform.serial_platform
         else:
             return self._platform
@@ -889,7 +835,7 @@ class Job(object):
         :param children: job's children to add
         :type children: list of Job objects
         """
-        for child in children:
+        for child in (child for child in children if child.name != self.name):
             self.__add_child(child)
             child._parents.add(self)
     def __add_child(self, new_child):

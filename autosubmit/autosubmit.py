@@ -1504,30 +1504,12 @@ class Autosubmit:
                         else:
                             jobs = job_list.get_job_list()
             if isinstance(jobs, type([])):
-                referenced_jobs_to_remove = set()
-                for job in jobs:
-                    for child in job.children:
-                        if child not in jobs:
-                            referenced_jobs_to_remove.add(child)
-                    for parent in job.parents:
-                        if parent not in jobs:
-                            referenced_jobs_to_remove.add(parent)
-
                 for job in jobs:
                     job.status = Status.WAITING
 
                 Autosubmit.generate_scripts_andor_wrappers(
                     as_conf, job_list, jobs, packages_persistence, False)
             if len(jobs_cw) > 0:
-                referenced_jobs_to_remove = set()
-                for job in jobs_cw:
-                    for child in job.children:
-                        if child not in jobs_cw:
-                            referenced_jobs_to_remove.add(child)
-                    for parent in job.parents:
-                        if parent not in jobs_cw:
-                            referenced_jobs_to_remove.add(parent)
-
                 for job in jobs_cw:
                     job.status = Status.WAITING
                 Autosubmit.generate_scripts_andor_wrappers(
@@ -1968,6 +1950,7 @@ class Autosubmit:
         Log.debug("Checking job_list current status")
         job_list.update_list(as_conf, first_time=True)
         job_list.save()
+        as_conf.save()
         if not recover:
             Log.info("Autosubmit is running with v{0}", Autosubmit.autosubmit_version)
             # Before starting main loop, setup historical database tables and main information
@@ -2385,8 +2368,9 @@ class Autosubmit:
                                                                                                               hold=hold)
                 # Jobs that are being retrieved in batch. Right now, only available for slurm platforms.
                 if not inspect and len(valid_packages_to_submit) > 0:
-                    for job in valid_packages_to_submit:
-                        job._clean_runtime_parameters()
+                    for package in (package for package in valid_packages_to_submit):
+                        for job in (job for job in package.jobs):
+                            job._clean_runtime_parameters()
                     job_list.save()
                 save_2 = False
                 if platform.type.lower() in [ "slurm" , "pjm" ] and not inspect and not only_wrappers:
@@ -2395,8 +2379,9 @@ class Autosubmit:
                                                                                          failed_packages,
                                                                                          error_message="", hold=hold)
                     if not inspect and len(valid_packages_to_submit) > 0:
-                        for job in valid_packages_to_submit:
-                            job._clean_runtime_parameters()
+                        for package in (package for package in valid_packages_to_submit):
+                            for job in (job for job in package.jobs):
+                                job._clean_runtime_parameters()
                         job_list.save()
                 # Save wrappers(jobs that has the same id) to be visualized and checked in other parts of the code
                 job_list.save_wrappers(valid_packages_to_submit, failed_packages, as_conf, packages_persistence,
@@ -2547,18 +2532,18 @@ class Autosubmit:
             if profile:
                 profiler.stop()
 
-        referenced_jobs_to_remove = set()
-        for job in jobs:
-            for child in job.children:
-                if child not in jobs:
-                    referenced_jobs_to_remove.add(child)
-            for parent in job.parents:
-                if parent not in jobs:
-                    referenced_jobs_to_remove.add(parent)
-        if len(referenced_jobs_to_remove) > 0:
-            for job in jobs:
-                job.children = job.children - referenced_jobs_to_remove
-                job.parents = job.parents - referenced_jobs_to_remove
+        # referenced_jobs_to_remove = set()
+        # for job in jobs:
+        #     for child in job.children:
+        #         if child not in jobs:
+        #             referenced_jobs_to_remove.add(child)
+        #     for parent in job.parents:
+        #         if parent not in jobs:
+        #             referenced_jobs_to_remove.add(parent)
+        # if len(referenced_jobs_to_remove) > 0:
+        #     for job in jobs:
+        #         job.children = job.children - referenced_jobs_to_remove
+        #         job.parents = job.parents - referenced_jobs_to_remove
         # WRAPPERS
         try:
             if as_conf.get_wrapper_type() != 'none' and check_wrapper:
@@ -2569,22 +2554,22 @@ class Autosubmit:
                 os.chmod(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl", "job_packages_" + expid + ".db"), 0o644)
                 # Database modification
                 packages_persistence.reset_table(True)
-                referenced_jobs_to_remove = set()
+                # referenced_jobs_to_remove = set()
                 job_list_wrappers = copy.deepcopy(job_list)
                 jobs_wr_aux = copy.deepcopy(jobs)
                 jobs_wr = []
                 [jobs_wr.append(job) for job in jobs_wr_aux]
-                for job in jobs_wr:
-                    for child in job.children:
-                        if child not in jobs_wr:
-                            referenced_jobs_to_remove.add(child)
-                    for parent in job.parents:
-                        if parent not in jobs_wr:
-                            referenced_jobs_to_remove.add(parent)
-
-                for job in jobs_wr:
-                    job.children = job.children - referenced_jobs_to_remove
-                    job.parents = job.parents - referenced_jobs_to_remove
+                # for job in jobs_wr:
+                #     for child in job.children:
+                #         if child not in jobs_wr:
+                #             referenced_jobs_to_remove.add(child)
+                #     for parent in job.parents:
+                #         if parent not in jobs_wr:
+                #             referenced_jobs_to_remove.add(parent)
+                #
+                # for job in jobs_wr:
+                #     job.children = job.children - referenced_jobs_to_remove
+                #     job.parents = job.parents - referenced_jobs_to_remove
 
                 Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list_wrappers, jobs_wr,
                                                            packages_persistence, True)
@@ -5561,17 +5546,17 @@ class Autosubmit:
                         jobs_wr = copy.deepcopy(job_list.get_job_list())
                         [job for job in jobs_wr if (
                                 job.status != Status.COMPLETED)]
-                        for job in jobs_wr:
-                            for child in job.children:
-                                if child not in jobs_wr:
-                                    referenced_jobs_to_remove.add(child)
-                            for parent in job.parents:
-                                if parent not in jobs_wr:
-                                    referenced_jobs_to_remove.add(parent)
+                        # for job in jobs_wr:
+                        #     for child in job.children:
+                        #         if child not in jobs_wr:
+                        #             referenced_jobs_to_remove.add(child)
+                        #     for parent in job.parents:
+                        #         if parent not in jobs_wr:
+                        #             referenced_jobs_to_remove.add(parent)
 
-                        for job in jobs_wr:
-                            job.children = job.children - referenced_jobs_to_remove
-                            job.parents = job.parents - referenced_jobs_to_remove
+                        # for job in jobs_wr:
+                        #     job.children = job.children - referenced_jobs_to_remove
+                        #     job.parents = job.parents - referenced_jobs_to_remove
                         Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list_wrappers, jobs_wr,
                                                                    packages_persistence, True)
 
@@ -5976,7 +5961,7 @@ class Autosubmit:
         job_list.generate(as_conf, date_list, as_conf.get_member_list(), as_conf.get_num_chunks(), as_conf.get_chunk_ini(),
                           as_conf.experiment_data, date_format, as_conf.get_retrials(),
                           as_conf.get_default_job_type(), wrapper_jobs,
-                          new=new, run_only_members=run_only_members)
+                          new=new, run_only_members=run_only_members,monitor=monitor)
 
         if str(rerun).lower() == "true":
             rerun_jobs = as_conf.get_rerun_jobs()

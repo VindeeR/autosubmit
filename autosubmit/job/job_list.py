@@ -158,83 +158,72 @@ class JobList(object):
 
 
     def generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
-                 default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[],show_log=True):
+                 default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[], show_log=True, monitor=False):
         """
-        Creates all jobs needed for the current workflow
-
-        :param as_conf:
-        :param jobs_data:
-        :param show_log:
-        :param run_only_members:
-        :param update_structure:
-        :param notransitive:
-        :param default_job_type: default type for jobs
-        :type default_job_type: str
-        :param date_list: start dates
-        :type date_list: list
-        :param member_list: members
-        :type member_list: list
-        :param num_chunks: number of chunks to run
-        :type num_chunks: int
-        :param chunk_ini: the experiment will start by the given chunk
-        :type chunk_ini: int
-        :param parameters: experiment parameters
-        :type parameters: dict
-        :param date_format: option to format dates
-        :type date_format: str
-        :param default_retrials: default retrials for ech job
-        :type default_retrials: int
-        :param new: is it a new generation?
-        :type new: bool \n
-        :param wrapper_type: Type of wrapper defined by the user in ``autosubmit_.yml`` [wrapper] section. \n
-        :param wrapper_jobs: Job types defined in ``autosubmit_.yml`` [wrapper sections] to be wrapped. \n
-        :type wrapper_jobs: String \n
+        Creates all jobs needed for the current workflow.
+        :param as_conf: AutosubmitConfig
+        :param date_list: list
+        :param member_list: list
+        :param num_chunks: int
+        :param chunk_ini: int
+        :param parameters: dict
+        :param date_format: str
+        :param default_retrials: int
+        :param default_job_type: str
+        :param wrapper_jobs: dict
+        :param new: bool
+        :param run_only_members: list
+        :param show_log: bool
+        :param monitor: bool
         """
-
         self._parameters = parameters
         self._date_list = date_list
         self._member_list = member_list
         chunk_list = list(range(chunk_ini, num_chunks + 1))
         self._chunk_list = chunk_list
-        self._dic_jobs = DicJobs(date_list, member_list, chunk_list, date_format, default_retrials, as_conf)
-        if not new:
-            try:
-                self.graph = self.load()
-                if type(self.graph) is not DiGraph:
-                    self.graph = nx.DiGraph()
-            except:
+        try:
+            self.graph = self.load()
+            if type(self.graph) is not DiGraph:
                 self.graph = nx.DiGraph()
+        except:
+            self.graph = nx.DiGraph()
+        self._dic_jobs = DicJobs(date_list, member_list, chunk_list, date_format, default_retrials, as_conf)
+        self._dic_jobs.graph = self.graph
         if show_log:
             Log.info("Creating jobs...")
-        if not new:
-            if len(self.graph.nodes) > 0:
+        if len(self.graph.nodes) > 0:
+            if show_log:
+                Log.info("Load finished")
+            if monitor:
+                as_conf.experiment_data = as_conf.last_experiment_data
+                as_conf.data_changed = False
+            if as_conf.data_changed:
+                self._dic_jobs.compare_experiment_section()
                 # fast-look if graph existed, skips some steps
+            if not as_conf.data_changed or (as_conf.data_changed and not new):
                 self._dic_jobs._job_list = {job["job"].name: job["job"] for _, job in self.graph.nodes.data() if
-                                 job.get("job", None) }
-                if show_log:
-                    Log.info("Load finished")
-                if as_conf.data_changed:
-                    self._dic_jobs.compare_experiment_section()
-                self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
-            else:
-                # Remove the previous pkl, if it exists.
-                if not new:
-                    Log.info("Removing previous pkl file due to empty graph, likely due using an Autosubmit 4.0.XXX version")
-                with suppress(FileNotFoundError):
-                    os.remove(os.path.join(self._persistence_path, self._persistence_file + ".pkl"))
-                with suppress(FileNotFoundError):
-                    os.remove(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl"))
-                new = True
+                                            job.get("job", None)}
+            # Force to use the last known job_list when autosubmit monitor is running.
+
+            self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
+        else:
+            # Remove the previous pkl, if it exists.
+            if not new:
+                Log.info("Removing previous pkl file due to empty graph, likely due using an Autosubmit 4.0.XXX version")
+            with suppress(FileNotFoundError):
+                os.remove(os.path.join(self._persistence_path, self._persistence_file + ".pkl"))
+            with suppress(FileNotFoundError):
+                os.remove(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl"))
+            new = True
         # This generates the job object and also finds if dic_jobs has modified from previous iteration in order to expand the workflow
         self._create_jobs(self._dic_jobs, 0, default_job_type)
-        # not needed anymore
+        # not needed anymore all data is inside their correspondent sections in dic_jobs
+        # This dic_job is key to the dependencies management as they're ordered by date[member[chunk]]
         del self._dic_jobs._job_list
         if show_log:
             Log.info("Adding dependencies to the graph..")
         # del all nodes that are only in the current graph
-        #import numpy as np
         if len(self.graph.nodes) > 0:
-            #gen = ( name for name in np.setxor1d(self.graph.nodes, self._dic_jobs.workflow_jobs,True).tolist() )
             gen = (name for name in set(self.graph.nodes).symmetric_difference(set(self._dic_jobs.workflow_jobs)))
             for name in gen:
                 if name in self.graph.nodes:
@@ -268,10 +257,10 @@ class JobList(object):
                 job.parameters = parameters
                 if not job.has_parents():
                     job.status = Status.READY
-        else:
-            jobs_in_graph = ( job["job"] for _,job in self.graph.nodes.data() if job.get("job",None) and job["job"].status > 0 and job in self._job_list)
-            for job in jobs_in_graph:
-                self._job_list[self._job_list.index(job)].status = job.status
+        # else:
+        #     jobs_in_graph = ( job["job"] for _,job in self.graph.nodes.data() if job.get("job",None) and job["job"].status > 0 and job in self._job_list)
+        #     for job in jobs_in_graph:
+        #         self._job_list[self._job_list.index(job)].status = job.status
 
         for wrapper_section in wrapper_jobs:
             try:
@@ -290,6 +279,9 @@ class JobList(object):
         jobs_data = dic_jobs.experiment_data.get("JOBS",{})
         sections_gen = (section for section in jobs_data.keys())
         for job_section in sections_gen:
+            # No changes, no need to recalculate dependencies
+            if len(self.graph.out_edges) > 0 and not dic_jobs.changes.get(job_section, None) and not dic_jobs.changes.get("EXPERIMENT", None) and not dic_jobs.changes.get("NEWJOBS", False):
+                 continue
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
             # If it does not have dependencies, just append it to job_list and continue
             dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
@@ -297,19 +289,15 @@ class JobList(object):
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section) if dependencies_keys else {}
             jobs_gen = (job for job in dic_jobs.get_jobs(job_section))
             for job in jobs_gen:
+                self.graph.remove_edges_from(self.graph.nodes(job.name))
                 if job.name not in self.graph.nodes:
                     self.graph.add_node(job.name,job=job)
-                elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job",None) is None:
+                elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job",None) is None: # Old versions of autosubmit needs re-adding the job to the graph
                     self.graph.nodes.get(job.name)["job"] = job
                 if dependencies:
                     job = self.graph.nodes.get(job.name)['job']
-                    num_jobs = 1
-                    if isinstance(job, list):
-                        num_jobs = len(job)
-                    for i in range(num_jobs):
-                        _job = job[i] if num_jobs > 1 else job
-                        self._manage_job_dependencies(dic_jobs, _job, date_list, member_list, chunk_list, dependencies_keys,
-                                                         dependencies, self.graph)
+                    self._manage_job_dependencies(dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys,
+                                                     dependencies, self.graph)
 
     @staticmethod
     def _manage_dependencies(dependencies_keys, dic_jobs, job_section):
@@ -933,6 +921,9 @@ class JobList(object):
                         self.depends_on_previous_chunk[job.section] = job.chunk
             # or dependencies_keys[dependency_key] means that it has an special relationship so it must be calculated separately
             if "-" in dependency_key or "+" in dependency_key:
+                continue
+            # monitoring if run/create has not ran and workflow has changed
+            if not dic_jobs.as_conf.jobs_data.get(dependency_key, None):
                 continue
             dependencies_of_that_section = dic_jobs.as_conf.jobs_data[dependency_key].get("DEPENDENCIES",{})
             for key in dependencies_keys_aux:
@@ -2062,14 +2053,15 @@ class JobList(object):
             Log.status_failed("\n{0:<35}{1:<15}{2:<15}{3:<20}{4:<15}", "Job Name",
                               "Job Id", "Job Status", "Job Platform", "Job Queue")
         for job in job_list:
-            if len(job.queue) > 0 and str(job.platform.queue).lower() != "none":
+            if job.platform and len(job.queue) > 0 and str(job.platform.queue).lower() != "none":
                 queue = job.queue
-            elif len(job.platform.queue) > 0 and str(job.platform.queue).lower() != "none":
+            elif job.platform and len(job.platform.queue) > 0 and str(job.platform.queue).lower() != "none":
                 queue = job.platform.queue
             else:
                 queue = job.queue
+            platform_name = job.platform.name if job.platform else "no-platform"
             Log.status("{0:<35}{1:<15}{2:<15}{3:<20}{4:<15}", job.name, job.id, Status(
-            ).VALUE_TO_KEY[job.status], job.platform.name, queue)
+            ).VALUE_TO_KEY[job.status], platform_name, queue)
         for job in failed_job_list:
             if len(job.queue) < 1:
                 queue = "no-scheduler"

@@ -69,15 +69,13 @@ class JobListPersistencePkl(JobListPersistence):
         if os.path.exists(path):
             with open(path, 'rb') as fd:
                 graph = pickle.load(fd)
-            # add again the children as it is deleted when saving the graph ( otherwise it raises a segvfault during pickle)
-            resetted_nodes = []
-            for u in ( node for node in graph):
-                # Get JOB node atributte of all neighbors of current node
-                # and add it to current node as job_children
-                #debug
+            for u in ( node for node in graph ):
+                # Set after the dependencies are set
                 graph.nodes[u]["job"].children = set()
                 graph.nodes[u]["job"].parents = set()
-                graph.nodes[u]["job"].add_children([graph.nodes[v]["job"] for v in set(graph[u])])
+                # Set in recovery/run
+                graph.nodes[u]["job"]._platform = None
+                graph.nodes[u]["job"]._serial_platform = None
             return graph
         else:
             Log.printlog('File {0} does not exist'.format(path),Log.WARNING)

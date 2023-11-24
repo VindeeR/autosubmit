@@ -80,8 +80,7 @@ class DicJobs:
         Compare the experiment structure metadata with the last run one to see if it has changed
         :return:
         """
-
-        self.changes = self.as_conf.detailed_deep_diff(self.experiment_data.get("EXPERIMENT",{}),self.as_conf.last_experiment_data.get("EXPERIMENT",{}))
+        self.changes["EXPERIMENT"] = self.as_conf.detailed_deep_diff(self.experiment_data.get("EXPERIMENT",{}),self.as_conf.last_experiment_data.get("EXPERIMENT",{}))
 
     def read_section(self, section, priority, default_job_type):
         """
@@ -488,7 +487,7 @@ class DicJobs:
         if split > 0:
             name += "_{0}".format(split)
         name += "_" + section
-        if self.changes.get(section,None) or not self._job_list.get(name,None):
+        if not self._job_list.get(name,None):
             job = Job(name, 0, Status.WAITING, priority)
             job.type = default_job_type
             job.section = section
@@ -499,8 +498,8 @@ class DicJobs:
             job.split = split
             job.update_dict_parameters(self.as_conf)
             section_data.append(job)
+            self.changes["NEWJOBS"] = True
         else:
-            self._job_list[name].update_dict_parameters(self.as_conf)
             self._job_list[name].status = Status.WAITING if self._job_list[name].status in [Status.DELAYED,Status.PREPARED,Status.READY] else self._job_list[name].status
             section_data.append(self._job_list[name])
         self.workflow_jobs.append(name)

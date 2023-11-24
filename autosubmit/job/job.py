@@ -25,7 +25,6 @@ from collections import OrderedDict
 from contextlib import suppress
 import copy
 import datetime
-import funcy
 import json
 import locale
 import os
@@ -526,7 +525,6 @@ class Job(object):
 
     def __getstate__(self):
         return {k: v for k, v in self.__dict__.items() if k not in ["_platform", "_children"]}
-        #return funcy.omit(self.__dict__, ["_platform","_children"])
 
 
     def read_header_tailer_script(self, script_path: str, as_conf: AutosubmitConfig, is_header: bool):

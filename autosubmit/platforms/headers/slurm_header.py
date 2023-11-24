@@ -54,6 +54,24 @@ class SlurmHeader(object):
             return "SBATCH -A {0}".format(job.parameters['CURRENT_PROJ'])
         return ""
 
+    def get_numproc_directive(self, job):
+        """
+        Returns numproc directive for the specified job
+
+        :param job: job to create numproc directive for
+        :type job: Job
+        :return: numproc directive
+        :rtype: str
+        """
+        # There is no numproc, so directive is empty
+        nodes = job.parameters.get('NODES', 0)
+        procs = job.parameters.get('NUMPROC', 1)
+        if nodes and procs and int(procs) <= 1:
+            return ""
+        else:
+            return "SBATCH -n {0}".format(job.parameters['NUMPROC'])
+
+
     def get_nodes_directive(self, job):
         """
         Returns nodes directive for the specified job
@@ -130,7 +148,7 @@ class SlurmHeader(object):
         :rtype: str
         """
         if job.parameters['TASKS_PER_NODE'] != '' and job.parameters['TASKS_PER_NODE'] != '0':
-            return "SBATCH --tasks-per-node={0}".format(job.parameters['TASKS'])
+            return "SBATCH --ntasks-per-node={0}".format(job.parameters['TASKS'])
         return ""
 
     SERIAL = textwrap.dedent("""\
@@ -144,7 +162,7 @@ class SlurmHeader(object):
 #%THREADS_PER_TASK_DIRECTIVE%
 #%TASKS_PER_NODE_DIRECTIVE%
 #%NODES_DIRECTIVE%
-#SBATCH -n %NUMPROC%
+#%NUMPROC_DIRECTIVE%
 #SBATCH -t %WALLCLOCK%:00
 #SBATCH -J %JOBNAME%
 #SBATCH --output=%CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%EXPID%/LOG_%EXPID%/%OUT_LOG_DIRECTIVE%
@@ -166,7 +184,7 @@ class SlurmHeader(object):
 #%MEMORY_PER_TASK_DIRECTIVE%
 #%THREADS_PER_TASK_DIRECTIVE%
 #%NODES_DIRECTIVE%
-#SBATCH -n %NUMPROC%
+#%NUMPROC_DIRECTIVE%
 #%TASKS_PER_NODE_DIRECTIVE%
 #SBATCH -t %WALLCLOCK%:00
 #SBATCH -J %JOBNAME%

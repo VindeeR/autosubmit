@@ -1151,6 +1151,9 @@ class ParamikoPlatform(Platform):
         if hasattr(self.header, 'get_nodes_directive'):
             header = header.replace(
                 '%NODES_DIRECTIVE%', self.header.get_nodes_directive(job))
+        if hasattr(self.header, 'get_numproc_directive'):
+            header = header.replace(
+                '%NUMPROC_DIRECTIVE%', self.header.get_numproc_directive(job))
         if hasattr(self.header, 'get_memory_directive'):
             header = header.replace(
                 '%MEMORY_DIRECTIVE%', self.header.get_memory_directive(job))

@@ -179,20 +179,25 @@ class TestJobPackage(TestCase):
     def test_job_package_platform_getter(self):
         self.assertEqual(self.platform, self.job_package.platform)
 
-    def test_job_package_submission(self):
+    @patch('multiprocessing.cpu_count')
+    def test_job_package_submission(self, mocked_cpu_count):
         jobs = self.jobs[:]
+        # N.B.: AS only calls ``_create_scripts`` if you have less jobs than threads.
+        #       So we simply set threads to be equals to the amount of jobs.
+        mocked_cpu_count.return_value = len(jobs)
         for job in jobs:
             job._tmp_path = MagicMock()
             job._get_paramiko_template = MagicMock("false", "empty")
+            job.update_parameters = MagicMock()
+            job.check = ''
 
         job_package = JobPackageSimple(jobs)
         job_package._create_scripts = MagicMock()
         job_package._send_files = MagicMock()
         job_package._do_submission = MagicMock()
-        for job in jobs:
-            job.update_parameters = MagicMock()
+
         # act
-        job_package.submit('fake-config', 'fake-params')
+        job_package.submit('fake-config', 'fake-params', only_generate=False)
         # assert
         for job in jobs:
             job.update_parameters.assert_called_once_with('fake-config', 'fake-params')

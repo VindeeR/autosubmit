@@ -240,8 +240,7 @@ class DicJobs:
 
         if len(jobs) > 0:
             if type(jobs) == list:
-                for job in jobs:
-                    final_jobs_list = jobs
+                final_jobs_list.extend(jobs)
                 jobs = {}
             else:
                 if filters_to.get('DATES_TO', None):
@@ -290,8 +289,7 @@ class DicJobs:
                 jobs = jobs_aux
         if len(jobs) > 0:
             if type(jobs) == list:
-                for job in jobs:
-                    final_jobs_list.extend(jobs)
+                final_jobs_list.extend(jobs)
                 jobs = {}
             else:
                 # pass keys to uppercase to normalize the member name as it can be whatever the user wants
@@ -343,8 +341,7 @@ class DicJobs:
                 jobs = jobs_aux
         if len(jobs) > 0:
             if type(jobs) == list:
-                for job in jobs:
-                    final_jobs_list.extend(jobs)
+                final_jobs_list.extend(jobs)
             else:
                 jobs_aux = {}
                 if filters_to.get('CHUNKS_TO', None):

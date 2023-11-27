@@ -2542,7 +2542,6 @@ class Autosubmit:
                 os.chmod(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl", "job_packages_" + expid + ".db"), 0o644)
                 # Database modification
                 packages_persistence.reset_table(True)
-                # referenced_jobs_to_remove = set()
                 job_list_wrappers = copy.deepcopy(job_list)
                 jobs_wr_aux = copy.deepcopy(jobs)
                 jobs_wr = []

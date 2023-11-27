@@ -955,7 +955,7 @@ class JobList(object):
 
             special_conditions["STATUS"] = filters_to_apply.pop("STATUS", None)
             special_conditions["FROM_STEP"] = filters_to_apply.pop("FROM_STEP", None)
-            # # Get dates_to, members_to, chunks_to of the deepest level of the relationship.
+            # Get dates_to, members_to, chunks_to of the deepest level of the relationship.
             all_none = True
             for filter_value in filters_to_apply.values():
                 if str(filter_value).lower() != "none":

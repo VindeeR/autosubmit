@@ -288,7 +288,7 @@ class DicJobs:
                         jobs_aux = {}
                 jobs = jobs_aux
         if len(jobs) > 0:
-            if type(jobs) == list: # TODO check the other todo, maybe this is not neccesary
+            if type(jobs) == list: # TODO check the other todo, maybe this is not neccesary, https://earth.bsc.es/gitlab/es/autosubmit/-/merge_requests/387#note_243751
                 final_jobs_list.extend(jobs)
                 jobs = {}
             else:

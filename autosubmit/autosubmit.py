@@ -3304,7 +3304,7 @@ class Autosubmit:
                 if job.platform_name is None:
                     job.platform_name = hpc_architecture
                 job.platform = submitter.platforms[job.platform_name]
-                #job.update_parameters(as_conf, job_list.parameters)
+
         except AutosubmitError:
             raise
         except BaseException as e:

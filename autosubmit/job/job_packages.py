@@ -112,9 +112,6 @@ class JobPackageBase(object):
                     Log.warning("On submission script has  some empty variables")
                 else:
                     Log.result("Script {0} OK", job.name)
-            # lock.acquire()
-            # job.update_parameters(configuration, parameters)
-            # lock.release()
             # looking for directives on jobs
             self._custom_directives = self._custom_directives | set(job.custom_directives)
     @threaded

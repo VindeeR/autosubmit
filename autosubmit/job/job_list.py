@@ -296,7 +296,7 @@ class JobList(object):
             # If it does not have dependencies, just append it to job_list and continue
             dependencies_keys = jobs_data.get(job_section,{}).get(option,None)
             # call function if dependencies_key is not None
-            dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs, job_section) if dependencies_keys else {}
+            dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs) if dependencies_keys else {}
             jobs_gen = (job for job in dic_jobs.get_jobs(job_section))
             for job in jobs_gen:
                 self.graph.remove_edges_from(self.graph.nodes(job.name))
@@ -310,7 +310,7 @@ class JobList(object):
                                                      dependencies, self.graph)
 
     @staticmethod
-    def _manage_dependencies(dependencies_keys, dic_jobs, job_section):
+    def _manage_dependencies(dependencies_keys, dic_jobs):
         parameters = dic_jobs.experiment_data["JOBS"]
         dependencies = dict()
         keys_to_erase = []
@@ -2572,7 +2572,7 @@ class JobList(object):
                     dependencies_keys = dependencies_keys.upper().split()
                 if dependencies_keys is None:
                     dependencies_keys = []
-                dependencies = JobList._manage_dependencies(dependencies_keys, self._dic_jobs, job_section)
+                dependencies = JobList._manage_dependencies(dependencies_keys, self._dic_jobs)
                 for job in self.get_jobs_by_section(job_section):
                     for key in dependencies_keys:
                         dependency = dependencies[key]

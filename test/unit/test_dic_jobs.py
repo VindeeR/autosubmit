@@ -387,7 +387,6 @@ class TestDicJobs(TestCase):
         job_list_mock = Mock()
         job_list_mock.append = Mock()
 
-        #    def build_job(self, section, priority, date, member, chunk, default_job_type,section_data, split=-1):
         # act
         section_data = []
         self.dictionary.build_job(section, priority, date, member, chunk, 'bash', section_data )
@@ -407,29 +406,6 @@ class TestDicJobs(TestCase):
         self.assertTrue(created_job.check)
         self.assertEqual(0, created_job.retrials)
 
-        # TODO should be moved dict class now only generates the paramaters relevant to the structure
-        # # Test retrials
-        # self.dictionary.experiment_data["CONFIG"]["RETRIALS"] = 2
-        # section_data = []
-        # self.dictionary.build_job(section, priority, date, member, chunk, 'bash',section_data)
-        # self.assertEqual(2, created_job.retrials)
-        # options['RETRIALS'] = 23
-        # # act
-        # section_data = []
-        # self.dictionary.build_job(section, priority, date, member, chunk, 'bash',section_data)
-        # self.assertEqual(options['RETRIALS'], created_job.retrials)
-        # self.dictionary.experiment_data["CONFIG"] = {}
-        # self.dictionary.experiment_data["CONFIG"]["RETRIALS"] = 2
-        # section_data = []
-        # self.dictionary.build_job(section, priority, date, member, chunk, 'bash',section_data)
-        # self.assertEqual(options["RETRIALS"], created_job.retrials)
-        # self.dictionary.experiment_data["WRAPPERS"] = dict()
-        # self.dictionary.experiment_data["WRAPPERS"]["TEST"] = dict()
-        # self.dictionary.experiment_data["WRAPPERS"]["TEST"]["RETRIALS"] = 3
-        # self.dictionary.experiment_data["WRAPPERS"]["TEST"]["JOBS_IN_WRAPPER"] = section
-        # section_data = []
-        # self.dictionary.build_job(section, priority, date, member, chunk, 'bash',section_data)
-        # self.assertEqual(self.dictionary.experiment_data["WRAPPERS"]["TEST"]["RETRIALS"], created_job.retrials)
     def test_get_member_returns_the_jobs_if_no_member(self):
         # arrange
         jobs = 'fake-jobs'

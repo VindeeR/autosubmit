@@ -2752,6 +2752,8 @@ class Autosubmit:
                         "Experiment can't be recovered due being {0} active jobs in your experiment, If you want to recover the experiment, please use the flag -f and all active jobs will be cancelled".format(
                             len(current_active_jobs)), 7000)
             Log.debug("Job list restored from {0} files", pkl_dir)
+        except AutosubmitCritical as e:
+            raise
         except BaseException as e:
             raise AutosubmitCritical("Couldn't restore the job_list or packages, check if the filesystem is having issues",7040,e.message)
         Log.info('Recovering experiment {0}'.format(expid))

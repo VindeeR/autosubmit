@@ -2532,18 +2532,6 @@ class Autosubmit:
             if profile:
                 profiler.stop()
 
-        # referenced_jobs_to_remove = set()
-        # for job in jobs:
-        #     for child in job.children:
-        #         if child not in jobs:
-        #             referenced_jobs_to_remove.add(child)
-        #     for parent in job.parents:
-        #         if parent not in jobs:
-        #             referenced_jobs_to_remove.add(parent)
-        # if len(referenced_jobs_to_remove) > 0:
-        #     for job in jobs:
-        #         job.children = job.children - referenced_jobs_to_remove
-        #         job.parents = job.parents - referenced_jobs_to_remove
         # WRAPPERS
         try:
             if as_conf.get_wrapper_type() != 'none' and check_wrapper:

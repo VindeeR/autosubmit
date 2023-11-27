@@ -161,20 +161,34 @@ class JobList(object):
                  default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[], show_log=True, monitor=False):
         """
         Creates all jobs needed for the current workflow.
-        :param as_conf: AutosubmitConfig
-        :param date_list: list
-        :param member_list: list
-        :param num_chunks: int
-        :param chunk_ini: int
-        :param parameters: dict
-        :param date_format: str
-        :param default_retrials: int
-        :param default_job_type: str
-        :param wrapper_jobs: dict
-        :param new: bool
-        :param run_only_members: list
-        :param show_log: bool
-        :param monitor: bool
+        :param as_conf: AutosubmitConfig object
+        :type as_conf: AutosubmitConfig
+        :param date_list: list of dates
+        :type date_list: list
+        :param member_list: list of members
+        :type member_list: list
+        :param num_chunks: number of chunks
+        :type num_chunks: int
+        :param chunk_ini: initial chunk
+        :type chunk_ini: int
+        :param parameters: parameters
+        :type parameters: dict
+        :param date_format: date format ( D/M/Y )
+        :type date_format: str
+        :param default_retrials: default number of retrials
+        :type default_retrials: int
+        :param default_job_type: default job type
+        :type default_job_type: str
+        :param wrapper_jobs: wrapper jobs
+        :type wrapper_jobs: dict
+        :param new: new
+        :type new: bool
+        :param run_only_members: run only members
+        :type run_only_members: list
+        :param show_log: show log
+        :type show_log: bool
+        :param monitor: monitor
+        :type monitor: bool
         """
         self._parameters = parameters
         self._date_list = date_list

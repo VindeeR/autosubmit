@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import inspect
 import tempfile
-from mock import MagicMock
+from mock import MagicMock, ANY
 from mock import patch
 
 from autosubmit.job.job import Job
@@ -179,7 +179,6 @@ class TestJobPackage(TestCase):
     def test_job_package_platform_getter(self):
         self.assertEqual(self.platform, self.job_package.platform)
 
-    @patch("builtins.open", MagicMock())
     def test_job_package_submission(self):
         jobs = self.jobs[:]
         for job in jobs:
@@ -197,9 +196,9 @@ class TestJobPackage(TestCase):
         # assert
         for job in jobs:
             job.update_parameters.assert_called_once_with('fake-config', 'fake-params')
-        job_package._create_scripts.is_called_once_with()
+        job_package._create_scripts.is_called_once_with(ANY)
         job_package._send_files.is_called_once_with()
-        job_package._do_submission.is_called_once_with()
+        job_package._do_submission.is_called_once_with(ANY, ANY)
 
     def test_wrapper_parameters(self):
         pass

@@ -200,8 +200,8 @@ class TestJobPackage(TestCase):
         # AssertionError: Expected 'mock' to be called once. Called 2 times.
         # Calls: [call('fake-config', 'fake-params'), call('fake-config', {})].
         # But when running it in local works @bruno, any idea why this happens?
-        # for job in self.jobs:
-        #     job.update_parameters.assert_called_once_with('fake-config', 'fake-params')
+        for job in self.jobs:
+            job.update_parameters.assert_called_once_with('fake-config', 'fake-params')
         self.job_package._create_scripts.is_called_once_with()
         self.job_package._send_files.is_called_once_with()
         self.job_package._do_submission.is_called_once_with()

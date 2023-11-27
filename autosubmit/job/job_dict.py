@@ -269,18 +269,18 @@ class DicJobs:
                 else:
                     if job.running == "once":
                         for key in jobs.keys():
-                            if type(jobs.get(key, None)) == list:
+                            if type(jobs.get(key, None)) == list: # TODO
                                 for aux_job in jobs[key]:
                                     final_jobs_list.append(aux_job)
-                            elif type(jobs.get(key, None)) == Job:
+                            elif type(jobs.get(key, None)) == Job: # TODO
                                 final_jobs_list.append(jobs[key])
                             elif type(jobs.get(key, None)) == dict:
                                 jobs_aux.update(jobs[key])
                     elif jobs.get(job.date, None):
-                        if type(jobs.get(natural_date, None)) == list:
+                        if type(jobs.get(natural_date, None)) == list: # TODO
                             for aux_job in jobs[natural_date]:
                                 final_jobs_list.append(aux_job)
-                        elif type(jobs.get(natural_date, None)) == Job:
+                        elif type(jobs.get(natural_date, None)) == Job: # TODO
                             final_jobs_list.append(jobs[natural_date])
                         elif type(jobs.get(natural_date, None)) == dict:
                             jobs_aux.update(jobs[natural_date])
@@ -288,7 +288,7 @@ class DicJobs:
                         jobs_aux = {}
                 jobs = jobs_aux
         if len(jobs) > 0:
-            if type(jobs) == list:
+            if type(jobs) == list: # TODO check the other todo, maybe this is not neccesary
                 final_jobs_list.extend(jobs)
                 jobs = {}
             else:

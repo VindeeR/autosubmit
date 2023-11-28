@@ -1600,6 +1600,8 @@ class Autosubmit:
             # for job in job_list.get_uncompleted_and_not_waiting():
             #    job.status = Status.COMPLETED
             job_list.update_list(as_conf, False)
+        for job in job_list.get_job_list():
+            job.status = Status.WAITING
 
     @staticmethod
     def terminate(all_threads):
@@ -2542,12 +2544,8 @@ class Autosubmit:
                 os.chmod(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl", "job_packages_" + expid + ".db"), 0o644)
                 # Database modification
                 packages_persistence.reset_table(True)
-                job_list_wrappers = copy.deepcopy(job_list)
-                jobs_wr_aux = copy.deepcopy(jobs)
-                jobs_wr = []
-                [jobs_wr.append(job) for job in jobs_wr_aux]
 
-                Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list_wrappers, jobs_wr,
+                Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list, job_list.get_job_list(),
                                                            packages_persistence, True)
 
                 packages = packages_persistence.load(True)
@@ -4736,10 +4734,8 @@ class Autosubmit:
                             packages_persistence = JobPackagePersistence(
                                 os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"), "job_packages_" + expid)
                             packages_persistence.reset_table(True)
-                            job_list_wrappers = copy.deepcopy(job_list)
-                            jobs_wr = job_list_wrappers.get_job_list()
                             Autosubmit.generate_scripts_andor_wrappers(
-                                as_conf, job_list_wrappers, jobs_wr, packages_persistence, True)
+                                as_conf, job_list, job_list.get_job_list(), packages_persistence, True)
 
                             packages = packages_persistence.load(True)
                         else:
@@ -5518,22 +5514,10 @@ class Autosubmit:
                                               expid, "pkl", "job_packages_" + expid + ".db"), 0o775)
                         packages_persistence.reset_table(True)
                         referenced_jobs_to_remove = set()
-                        job_list_wrappers = copy.deepcopy(job_list)
-                        jobs_wr = copy.deepcopy(job_list.get_job_list())
+                        jobs_wr = job_list.get_job_list()
                         [job for job in jobs_wr if (
                                 job.status != Status.COMPLETED)]
-                        # for job in jobs_wr:
-                        #     for child in job.children:
-                        #         if child not in jobs_wr:
-                        #             referenced_jobs_to_remove.add(child)
-                        #     for parent in job.parents:
-                        #         if parent not in jobs_wr:
-                        #             referenced_jobs_to_remove.add(parent)
-
-                        # for job in jobs_wr:
-                        #     job.children = job.children - referenced_jobs_to_remove
-                        #     job.parents = job.parents - referenced_jobs_to_remove
-                        Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list_wrappers, jobs_wr,
+                        Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list, jobs_wr,
                                                                    packages_persistence, True)
 
                         packages = packages_persistence.load(True)

@@ -319,7 +319,7 @@ class DicJobs:
                                 elif type(jobs.get(member.upper(), None)) == dict:
                                     jobs_aux.update(jobs[member.upper()])
                 else:
-                    if job.running == "once":
+                    if job.running == "once" or not job.member:
                         for key in jobs.keys():
                             if type(jobs.get(key, None)) == list:
                                 for aux_job in jobs[key.upper()]:
@@ -367,7 +367,7 @@ class DicJobs:
                             elif type(jobs.get(chunk, None)) == dict:
                                 jobs_aux.update(jobs[chunk])
                 else:
-                    if job.running == "once":
+                    if job.running == "once" or not job.chunk:
                         for chunk in jobs.keys():
                             if type(jobs.get(chunk, None)) == list:
                                 for aux_job in jobs[chunk]:

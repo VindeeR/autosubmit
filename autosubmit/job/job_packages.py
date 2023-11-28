@@ -746,13 +746,14 @@ class JobPackageVertical(JobPackageThread):
         return timedelta(**time_params),format_
     def _common_script_content(self):
         if self.jobs[0].wrapper_type == "vertical":
-            #wallclock = datetime.datetime.strptime(self._wallclock, '%H:%M')
             wallclock,format_ = self.parse_time()
+            original_wallclock_to_seconds = wallclock.days * 86400.0 + wallclock.seconds
+
             if format_ == "hour":
                 total = wallclock.days * 24 + wallclock.seconds / 60 / 60
             else:
                 total = wallclock.days * 24 + wallclock.seconds / 60
-            total = total * 1.15
+
             if format_ == "hour":
                 hour = int(total )
                 minute = int((total - int(total)) * 60.0)
@@ -766,14 +767,11 @@ class JobPackageVertical(JobPackageThread):
             wallclock_seconds = wallclock_delta.days * 24 * 60 * 60 + wallclock_delta.seconds
             wallclock_by_level = wallclock_seconds/(self.jobs[-1].level+1)
             if self.extensible_wallclock > 0:
-                original_wallclock_to_seconds = wallclock.days * 86400.0 + wallclock.seconds
                 wallclock_seconds = int(original_wallclock_to_seconds + wallclock_by_level * self.extensible_wallclock)
                 wallclock_delta = datetime.timedelta(hours=0, minutes=0, seconds=wallclock_seconds)
-                total = wallclock.days * 24 + wallclock.seconds / 60 / 60
+                total = wallclock_delta.days * 24 + wallclock_delta.seconds / 60 / 60
                 hh = int(total)
                 mm = int((total - int(total)) * 60.0)
-                ss = int(((total - int(total)) * 60 -
-                              int((total - int(total)) * 60.0)) * 60.0)
                 if hh < 10:
                     hh_str='0'+str(hh)
                 else:

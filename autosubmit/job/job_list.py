@@ -159,7 +159,7 @@ class JobList(object):
 
 
     def generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format, default_retrials,
-                 default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[], show_log=True, monitor=False):
+                 default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[], show_log=True, monitor=False, force=False):
         """
         Creates all jobs needed for the current workflow.
         :param as_conf: AutosubmitConfig object
@@ -191,6 +191,11 @@ class JobList(object):
         :param monitor: monitor
         :type monitor: bool
         """
+        if force:
+            if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + ".pkl")):
+                os.remove(os.path.join(self._persistence_path, self._persistence_file + ".pkl"))
+            if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl")):
+                os.remove(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl"))
         self._parameters = parameters
         self._date_list = date_list
         self._member_list = member_list
@@ -206,6 +211,7 @@ class JobList(object):
         self._dic_jobs.graph = self.graph
         if show_log:
             Log.info("Creating jobs...")
+
         if len(self.graph.nodes) > 0:
             if show_log:
                 Log.info("Load finished")

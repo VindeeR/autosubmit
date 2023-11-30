@@ -442,6 +442,8 @@ class Autosubmit:
                                    default=False, help='Update experiment version')
             subparser.add_argument('-p', '--profile', action='store_true', default=False, required=False,
                                    help='Prints performance parameters of the execution of this command.')
+            subparser.add_argument(
+                '-f', '--force', action='store_true', default=False, help='force regenerate job_list')
             # Configure
             subparser = subparsers.add_parser('configure', description="configure database and path for autosubmit. It "
                                                                        "can be done at machine, user or local level."
@@ -697,7 +699,7 @@ class Autosubmit:
             return Autosubmit.migrate(args.expid, args.offer, args.pickup, args.onlyremote)
         elif args.command == 'create':
             return Autosubmit.create(args.expid, args.noplot, args.hide, args.output, args.group_by, args.expand,
-                                     args.expand_status, args.notransitive, args.check_wrapper, args.detail, args.profile)
+                                     args.expand_status, args.notransitive, args.check_wrapper, args.detail, args.profile, args.force)
         elif args.command == 'configure':
             if not args.advanced or (args.advanced and dialog is None):
                 return Autosubmit.configure(args.advanced, args.databasepath, args.databasefilename,
@@ -4565,7 +4567,7 @@ class Autosubmit:
 
     @staticmethod
     def create(expid, noplot, hide, output='pdf', group_by=None, expand=list(), expand_status=list(),
-               notransitive=False, check_wrappers=False, detail=False, profile=False):
+               notransitive=False, check_wrappers=False, detail=False, profile=False, force=False):
         """
         Creates job list for given experiment. Configuration files must be valid before executing this process.
 
@@ -4679,7 +4681,7 @@ class Autosubmit:
                     job_list.generate(as_conf,date_list, member_list, num_chunks, chunk_ini, parameters, date_format,
                                       as_conf.get_retrials(),
                                       as_conf.get_default_job_type(),
-                                      wrapper_jobs, run_only_members=run_only_members)
+                                      wrapper_jobs, run_only_members=run_only_members, force=force)
 
                     if str(rerun).lower() == "true":
                         job_list.rerun(as_conf.get_rerun_jobs(),as_conf)

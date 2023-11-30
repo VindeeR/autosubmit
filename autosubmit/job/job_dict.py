@@ -268,7 +268,7 @@ class DicJobs:
                                 elif type(jobs.get(date, None)) == Job:
                                     final_jobs_list.append(jobs[date])
                                 elif type(jobs.get(date, None)) == dict:
-                                    final_jobs_list = final_jobs_list.extend(self.get_all_filter_jobs(jobs[date]))
+                                    final_jobs_list = self.get_all_filter_jobs(jobs[date])
                     else:
                         for date in filters_to.get('DATES_TO',"").split(","):
                             if jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None):

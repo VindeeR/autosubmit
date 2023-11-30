@@ -70,7 +70,7 @@ class DicJobs:
         :type current_section: str
         :rtype: bool
         """
-        self.changes[current_section] = self.as_conf.detailed_deep_diff(self.as_conf.experiment_data["JOBS"].get(current_section,{}),self.as_conf.last_experiment_data.get("JOBS",{}).get(current_section,{}))
+        self.changes[current_section] = self.as_conf.detailed_diff(self.as_conf.experiment_data["JOBS"].get(current_section,{}),self.as_conf.last_experiment_data.get("JOBS",{}).get(current_section,{}))
         # Only dependencies is relevant at this step, the rest is lookup by job name and if it inside the stored list
         if "DEPENDENCIES" not in self.changes[current_section]:
             del self.changes[current_section]
@@ -231,6 +231,19 @@ class DicJobs:
                 self.build_job(section, priority, date, member, chunk, default_job_type, section_data,current_split)
                 current_split += 1
 
+
+    def get_all_filter_jobs(self,jobs, final_jobs_list = []):
+        for key in jobs.keys():
+            value = jobs[key]
+            if isinstance(value, dict):
+                self.get_all_filter_jobs(value, final_jobs_list)
+            elif isinstance(value, list):
+                for job in value:
+                    final_jobs_list.append(job)
+            else:
+                final_jobs_list.append(value)
+        return final_jobs_list
+
     def get_jobs_filtered(self,section , job, filters_to, natural_date, natural_member ,natural_chunk ):
         #  datetime.strptime("20020201", "%Y%m%d")
         jobs = self._dic.get(section, {})
@@ -239,7 +252,7 @@ class DicJobs:
         jobs_aux = {}
 
         if len(jobs) > 0:
-            if type(jobs) == list:
+            if type(jobs) is list:
                 final_jobs_list.extend(jobs)
                 jobs = {}
             else:
@@ -255,7 +268,7 @@ class DicJobs:
                                 elif type(jobs.get(date, None)) == Job:
                                     final_jobs_list.append(jobs[date])
                                 elif type(jobs.get(date, None)) == dict:
-                                    jobs_aux.update(jobs[date])
+                                    final_jobs_list = final_jobs_list.extend(self.get_all_filter_jobs(jobs[date]))
                     else:
                         for date in filters_to.get('DATES_TO',"").split(","):
                             if jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None):
@@ -307,7 +320,8 @@ class DicJobs:
                                 elif type(jobs.get(member.upper(), None)) == Job:
                                     final_jobs_list.append(jobs[member.upper()])
                                 elif type(jobs.get(member.upper(), None)) == dict:
-                                    jobs_aux.update(jobs[member.upper()])
+                                    final_jobs_list.extend(self.get_all_filter_jobs(jobs[member.upper()]))
+
                     else:
                         for member in filters_to.get('MEMBERS_TO',"").split(","):
                             if jobs.get(member.upper(), None):
@@ -354,8 +368,6 @@ class DicJobs:
                                     final_jobs_list.append(aux_job)
                             elif type(jobs.get(chunk, None)) == Job:
                                 final_jobs_list.append(jobs[chunk])
-                            elif type(jobs.get(chunk, None)) == dict:
-                                jobs_aux.update(jobs[chunk])
                     else:
                         for chunk in filters_to.get('CHUNKS_TO', "").split(","):
                             chunk = int(chunk)
@@ -394,7 +406,7 @@ class DicJobs:
                     final_jobs_list = final_jobs_list
                 else:
                     final_jobs_list = [f_job for f_job in final_jobs_list if (f_job.split is None or f_job.split == -1 or f_job.split == 0 or str(f_job.split) in filters_to['SPLITS_TO'].split(',')) and f_job.name != job.name]
-        return final_jobs_list
+        return list(set(final_jobs_list))
 
     def get_jobs(self, section, date=None, member=None, chunk=None):
         """

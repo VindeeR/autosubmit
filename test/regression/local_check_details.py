@@ -50,4 +50,6 @@ for experiment in os.listdir("/home/dbeltran/new_autosubmit"):
     if experiment.startswith("a") or experiment.startswith("t") and len(experiment) == 4:
         if experiment not in excluded:
             expids.append(experiment)
+# Force
+expids = ["a001"]
 perform_test(expids)

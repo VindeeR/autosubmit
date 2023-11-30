@@ -964,20 +964,20 @@ class JobList(object):
                     if job.chunk > self.depends_on_previous_chunk.get(aux_key, -1):
                         self.depends_on_previous_chunk[aux_key] = job.chunk
 
-            dependencies_of_that_section = dic_jobs.as_conf.jobs_data[aux_key].get("DEPENDENCIES",{})
-            for key in dependencies_keys_aux:
-                if key == dependencies_of_that_section.keys():
-                    if not dependencies_keys[dependency_key]:
-                        dependencies_to_del.add(key)
-                    else:
-                        dependencies_non_natural_to_del.add(key)
+            # dependencies_of_that_section = dic_jobs.as_conf.jobs_data[aux_key].get("DEPENDENCIES",{})
+            # for key in dependencies_keys_aux:
+            #     if key in dependencies_of_that_section.keys():
+            #         if not dependencies_keys[dependency_key]:
+            #             dependencies_to_del.add(key)
+            #         else:
+            #             dependencies_non_natural_to_del.add(key)
             # # or dependencies_keys[dependency_key] means that it has an special relationship so it must be calculated separately
             # if "-" in dependency_key or "+" in dependency_key:
             #     continue
             # # monitoring if run/create has not ran and workflow has changed
             # if not dic_jobs.as_conf.jobs_data.get(dependency_key, None):
             #     continue
-        dependencies_keys_aux = [key for key in dependencies_keys_aux if key not in dependencies_to_del]
+        #dependencies_keys_aux = [key for key in dependencies_keys_aux if key not in dependencies_to_del]
         # parse self first
         if job.section in dependencies_keys_aux:
             dependencies_keys_aux.remove(job.section)
@@ -1004,9 +1004,9 @@ class JobList(object):
                         continue
                     if parent.section != job.section:
                         if job.section in self.depends_on_previous_special_section:
-                            skip = self.depends_on_previous_special_section[job.section].get(job.name, False)
-                        if skip:
-                            continue
+                            if job.running != parent.running or ( job.running == parent.running and ( not job.chunk or job.chunk > 1) ):
+                                if self.depends_on_previous_special_section[job.section].get(job.name, False):
+                                    continue
                     if not actual_job_depends_on_previous_chunk:
                         if job.running == "chunk" or parent.chunk == self.depends_on_previous_chunk.get(parent.section, parent.chunk):
                             graph.add_edge(parent.name, job.name)
@@ -1031,7 +1031,7 @@ class JobList(object):
                     if str(filter_value).lower() != "none":
                         all_none = False
                         break
-                if (all_none or len(filters_to_apply) == 0) and key in dependencies_non_natural_to_del:
+                if all_none:
                     continue
                 any_all_filter = False
                 for filter_value in filters_to_apply.values():

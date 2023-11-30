@@ -6,7 +6,7 @@ Works under local_computer TODO introduce in CI
 import os
 import subprocess
 BIN_PATH = '../../bin'
-VERSION = test
+VERSION = "test"
 
 def check_cmd(command, path=BIN_PATH):
     try:

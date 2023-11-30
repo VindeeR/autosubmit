@@ -964,20 +964,22 @@ class JobList(object):
                     if job.chunk > self.depends_on_previous_chunk.get(aux_key, -1):
                         self.depends_on_previous_chunk[aux_key] = job.chunk
 
-            # dependencies_of_that_section = dic_jobs.as_conf.jobs_data[aux_key].get("DEPENDENCIES",{})
-            # for key in dependencies_keys_aux:
-            #     if key in dependencies_of_that_section.keys():
-            #         if not dependencies_keys[dependency_key]:
-            #             dependencies_to_del.add(key)
-            #         else:
-            #             dependencies_non_natural_to_del.add(key)
-            # # or dependencies_keys[dependency_key] means that it has an special relationship so it must be calculated separately
-            # if "-" in dependency_key or "+" in dependency_key:
-            #     continue
-            # # monitoring if run/create has not ran and workflow has changed
-            # if not dic_jobs.as_conf.jobs_data.get(dependency_key, None):
-            #     continue
-        #dependencies_keys_aux = [key for key in dependencies_keys_aux if key not in dependencies_to_del]
+            dependencies_of_that_section = dic_jobs.as_conf.jobs_data[aux_key].get("DEPENDENCIES",{})
+            if job.section not in dependencies_keys_without_special_chars:
+                stripped_dependencies_of_that_section = dict()
+                for key in dependencies_of_that_section.keys():
+                    if "-" in key:
+                        stripped_key = key.split("-")[0]
+                    elif "+" in key:
+                        stripped_key = key.split("+")[0]
+                    else:
+                        stripped_key = key
+                    if stripped_key in dependencies_keys_without_special_chars:
+                        if not dependencies_keys[dependency_key]:
+                            dependencies_to_del.add(key)
+
+        pass
+        dependencies_keys_aux = [key for key in dependencies_keys_aux if key not in dependencies_to_del]
         # parse self first
         if job.section in dependencies_keys_aux:
             dependencies_keys_aux.remove(job.section)

@@ -236,7 +236,7 @@ class DicJobs:
         for key in jobs.keys():
             value = jobs[key]
             if isinstance(value, dict):
-                self.get_all_filter_jobs(value, final_jobs_list)
+                final_jobs_list+=self.get_all_filter_jobs(value, final_jobs_list)
             elif isinstance(value, list):
                 for job in value:
                     final_jobs_list.append(job)
@@ -244,13 +244,28 @@ class DicJobs:
                 final_jobs_list.append(value)
         return final_jobs_list
 
+    def update_jobs_filtered(self,current_jobs,next_level_jobs):
+        if type(next_level_jobs) == dict:
+            for key in next_level_jobs.keys():
+                if key not in current_jobs:
+                    current_jobs[key] = next_level_jobs[key]
+                else:
+                    current_jobs[key] = self.update_jobs_filtered(current_jobs[key],next_level_jobs[key])
+        elif type(next_level_jobs) == list:
+            current_jobs.extend(next_level_jobs)
+        else:
+            current_jobs.append(next_level_jobs)
+        return current_jobs
+
+
+
+
     def get_jobs_filtered(self,section , job, filters_to, natural_date, natural_member ,natural_chunk ):
         #  datetime.strptime("20020201", "%Y%m%d")
         jobs = self._dic.get(section, {})
         final_jobs_list = []
         # values replace original dict
         jobs_aux = {}
-
         if len(jobs) > 0:
             if type(jobs) is list:
                 final_jobs_list.extend(jobs)
@@ -268,7 +283,7 @@ class DicJobs:
                                 elif type(jobs.get(date, None)) == Job:
                                     final_jobs_list.append(jobs[date])
                                 elif type(jobs.get(date, None)) == dict:
-                                    final_jobs_list = self.get_all_filter_jobs(jobs[date])
+                                    jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[date])
                     else:
                         for date in filters_to.get('DATES_TO',"").split(","):
                             if jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None):
@@ -278,7 +293,7 @@ class DicJobs:
                                 elif type(jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None)) == Job:
                                     final_jobs_list.append(jobs[datetime.datetime.strptime(date, "%Y%m%d")])
                                 elif type(jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None)) == dict:
-                                    jobs_aux.update(jobs[datetime.datetime.strptime(date, "%Y%m%d")])
+                                    jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[datetime.datetime.strptime(date, "%Y%m%d")])
                 else:
                     if job.running == "once":
                         for key in jobs.keys():
@@ -288,7 +303,7 @@ class DicJobs:
                             elif type(jobs.get(key, None)) == Job: # TODO
                                 final_jobs_list.append(jobs[key])
                             elif type(jobs.get(key, None)) == dict:
-                                jobs_aux.update(jobs[key])
+                                jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[key])
                     elif jobs.get(job.date, None):
                         if type(jobs.get(natural_date, None)) == list: # TODO
                             for aux_job in jobs[natural_date]:
@@ -296,7 +311,7 @@ class DicJobs:
                         elif type(jobs.get(natural_date, None)) == Job: # TODO
                             final_jobs_list.append(jobs[natural_date])
                         elif type(jobs.get(natural_date, None)) == dict:
-                            jobs_aux.update(jobs[natural_date])
+                            jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[natural_date])
                     else:
                         jobs_aux = {}
                 jobs = jobs_aux
@@ -320,7 +335,7 @@ class DicJobs:
                                 elif type(jobs.get(member.upper(), None)) == Job:
                                     final_jobs_list.append(jobs[member.upper()])
                                 elif type(jobs.get(member.upper(), None)) == dict:
-                                    final_jobs_list.extend(self.get_all_filter_jobs(jobs[member.upper()]))
+                                    jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[member.upper()])
 
                     else:
                         for member in filters_to.get('MEMBERS_TO',"").split(","):
@@ -331,7 +346,7 @@ class DicJobs:
                                 elif type(jobs.get(member.upper(), None)) == Job:
                                     final_jobs_list.append(jobs[member.upper()])
                                 elif type(jobs.get(member.upper(), None)) == dict:
-                                    jobs_aux.update(jobs[member.upper()])
+                                    jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[member.upper()])
                 else:
                     if job.running == "once" or not job.member:
                         for key in jobs.keys():
@@ -341,7 +356,8 @@ class DicJobs:
                             elif type(jobs.get(key.upper(), None)) == Job:
                                 final_jobs_list.append(jobs[key])
                             elif type(jobs.get(key.upper(), None)) == dict:
-                                jobs_aux.update(jobs[key.upper()])
+                                jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[key.upper()])
+
                     elif jobs.get(job.member.upper(), None):
                         if type(jobs.get(natural_member.upper(), None)) == list:
                             for aux_job in jobs[natural_member.upper()]:
@@ -349,7 +365,7 @@ class DicJobs:
                         elif type(jobs.get(natural_member.upper(), None)) == Job:
                             final_jobs_list.append(jobs[natural_member.upper()])
                         elif type(jobs.get(natural_member.upper(), None)) == dict:
-                            jobs_aux.update(jobs[natural_member.upper()])
+                            jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[natural_member.upper()])
                     else:
                         jobs_aux = {}
                 jobs = jobs_aux
@@ -357,10 +373,9 @@ class DicJobs:
             if type(jobs) == list:
                 final_jobs_list.extend(jobs)
             else:
-                jobs_aux = {}
                 if filters_to.get('CHUNKS_TO', None):
                     if "none" in filters_to['CHUNKS_TO'].lower():
-                        jobs_aux = {}
+                        pass
                     elif "all" in filters_to['CHUNKS_TO'].lower():
                         for chunk in jobs.keys():
                             if type(jobs.get(chunk, None)) == list:
@@ -376,8 +391,6 @@ class DicJobs:
                                     final_jobs_list.append(aux_job)
                             elif type(jobs.get(chunk, None)) == Job:
                                 final_jobs_list.append(jobs[chunk])
-                            elif type(jobs.get(chunk, None)) == dict:
-                                jobs_aux.update(jobs[chunk])
                 else:
                     if job.running == "once" or not job.chunk:
                         for chunk in jobs.keys():
@@ -386,8 +399,6 @@ class DicJobs:
                                     final_jobs_list.append(aux_job)
                             elif type(jobs.get(chunk, None)) == Job:
                                 final_jobs_list.append(jobs[chunk])
-                            elif type(jobs.get(chunk, None)) == dict:
-                                jobs_aux.update(jobs[chunk])
                     elif jobs.get(job.chunk, None):
                         if type(jobs.get(natural_chunk, None)) == list:
                             for aux_job in jobs[natural_chunk]:
@@ -406,7 +417,7 @@ class DicJobs:
                     final_jobs_list = final_jobs_list
                 else:
                     final_jobs_list = [f_job for f_job in final_jobs_list if (f_job.split is None or f_job.split == -1 or f_job.split == 0 or str(f_job.split) in filters_to['SPLITS_TO'].split(',')) and f_job.name != job.name]
-        return list(set(final_jobs_list))
+        return final_jobs_list
 
     def get_jobs(self, section, date=None, member=None, chunk=None):
         """

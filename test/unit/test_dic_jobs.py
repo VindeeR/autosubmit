@@ -571,7 +571,8 @@ class TestDicJobs(TestCase):
         self.dictionary._dic = {'fake-section': 'fake-job'}
         self.dictionary.changes = dict()
         self.dictionary.changes[section] = dict()
-        self.as_conf.detailed_deep_diff = Mock(return_value={})
+        self.dictionary.as_conf.detailed_diff = Mock()
+        self.dictionary.as_conf.detailed_diff.return_value = {}
 
         self.dictionary._create_jobs_once = Mock()
         self.dictionary._create_jobs_startdate = Mock()

@@ -599,6 +599,7 @@ class TestJobList(unittest.TestCase):
             "CHUNKS_TO": "all",
             "SPLITS_TO": "all"
         }
+
         parent.section = "fake-section-date"
         possible_parents = jobs_dic.get_jobs_filtered(parent.section, self.mock_job, filters_to, self.mock_job.date,
                                                       self.mock_job.member, self.mock_job.chunk)

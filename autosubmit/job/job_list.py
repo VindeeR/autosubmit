@@ -977,6 +977,8 @@ class JobList(object):
                     if stripped_key in dependencies_keys_without_special_chars:
                         if not dependencies_keys[dependency_key]:
                             dependencies_to_del.add(key)
+                        else:
+                            dependencies_non_natural_to_del.add(key)
 
         pass
         dependencies_keys_aux = [key for key in dependencies_keys_aux if key not in dependencies_to_del]
@@ -999,6 +1001,8 @@ class JobList(object):
             # Get dates_to, members_to, chunks_to of the deepest level of the relationship.
 
             if len(filters_to_apply) == 0:
+                if key in dependencies_non_natural_to_del:
+                    continue
                 natural_parents = dic_jobs.get_jobs(dependency.section, date, member, chunk)
                 # Natural jobs, no filters to apply we can safely add the edge
                 for parent in natural_parents:

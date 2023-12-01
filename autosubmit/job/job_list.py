@@ -218,12 +218,15 @@ class JobList(object):
             if monitor:
                 as_conf.experiment_data = as_conf.last_experiment_data
                 as_conf.data_changed = False
-            if as_conf.data_changed:
-                self._dic_jobs.compare_experiment_section()
-                # fast-look if graph existed, skips some steps
-            if not as_conf.data_changed or (as_conf.data_changed and not new):
+            if not as_conf.data_changed:
                 self._dic_jobs._job_list = {job["job"].name: job["job"] for _, job in self.graph.nodes.data() if
                                             job.get("job", None)}
+            else:
+                self._dic_jobs.compare_experiment_section()
+                # fast-look if graph existed, skips some steps
+                if not new and not self._dic_jobs.changes.get("EXPERIMENT",{}):
+                    self._dic_jobs._job_list = {job["job"].name: job["job"] for _, job in self.graph.nodes.data() if
+                                                job.get("job", None)}
             # Force to use the last known job_list when autosubmit monitor is running.
 
             self._dic_jobs.last_experiment_data = as_conf.last_experiment_data

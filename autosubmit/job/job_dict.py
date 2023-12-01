@@ -81,6 +81,14 @@ class DicJobs:
         :return:
         """
         self.changes["EXPERIMENT"] = self.as_conf.detailed_deep_diff(self.experiment_data.get("EXPERIMENT",{}),self.as_conf.last_experiment_data.get("EXPERIMENT",{}))
+        self.compare_jobs_section()
+
+    def compare_jobs_section(self):
+        """
+        Compare the jobs structure metadata with the last run one to see if it has changed
+        :return:
+        """
+        self.changes["JOBS"] = self.as_conf.detailed_deep_diff(self.experiment_data.get("JOBS",{}),self.as_conf.last_experiment_data.get("JOBS",{}))
 
     def read_section(self, section, priority, default_job_type):
         """

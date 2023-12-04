@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import inspect
 import tempfile
-from mock import MagicMock
+from mock import MagicMock, ANY
 from mock import patch
 
 from autosubmit.job.job import Job
@@ -179,32 +179,26 @@ class TestJobPackage(TestCase):
     def test_job_package_platform_getter(self):
         self.assertEqual(self.platform, self.job_package.platform)
 
-    @patch("builtins.open",MagicMock())
-    def test_job_package_submission(self):
-        # arrange
-        MagicMock().write = MagicMock()
-
+    @patch('multiprocessing.cpu_count')
+    def test_job_package_submission(self, mocked_cpu_count):
+        # N.B.: AS only calls ``_create_scripts`` if you have less jobs than threads.
+        # So we simply set threads to be greater than the amount of jobs.
+        mocked_cpu_count.return_value = len(self.jobs) + 1
         for job in self.jobs:
             job._tmp_path = MagicMock()
-            job._get_paramiko_template = MagicMock("false","empty")
+            job._get_paramiko_template = MagicMock("false", "empty")
+            job.update_parameters = MagicMock()
 
         self.job_package._create_scripts = MagicMock()
         self.job_package._send_files = MagicMock()
         self.job_package._do_submission = MagicMock()
-        for job in self.jobs:
-            job.update_parameters = MagicMock()
+
         # act
         self.job_package.submit('fake-config', 'fake-params')
         # assert
-        # Crashes in pipeline
-        # AssertionError: Expected 'mock' to be called once. Called 2 times.
-        # Calls: [call('fake-config', 'fake-params'), call('fake-config', {})].
-        # But when running it in local works @bruno, any idea why this happens?
-        # for job in self.jobs:
-        #     job.update_parameters.assert_called_once_with('fake-config', 'fake-params')
+        for job in self.jobs:
+            job.update_parameters.assert_called_once_with('fake-config', 'fake-params')
+
         self.job_package._create_scripts.is_called_once_with()
         self.job_package._send_files.is_called_once_with()
         self.job_package._do_submission.is_called_once_with()
-
-    def test_wrapper_parameters(self):
-        pass

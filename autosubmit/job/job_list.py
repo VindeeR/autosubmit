@@ -396,6 +396,10 @@ class JobList(object):
         :param level_to_check: Can be dates,members, chunks, splits.
         :return:
         """
+        # temporal
+        if filter_value == "previous" and parent.section == child.section:
+            if int(parent.split) == int(child.split) - 1:
+                return True
         if "NONE".casefold() in str(parent_value).casefold():
             return True
         if parent and child and level_to_check.casefold() == "splits".casefold():

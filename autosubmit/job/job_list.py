@@ -384,7 +384,7 @@ class JobList(object):
         :return:
         """
         # temporal
-        if filter_value == "previous" and parent.section == child.section:
+        if filter_value.lower() == "previous" and parent.section.lower() == child.section.lower():
             if int(parent.split) == int(child.split) - 1:
                 return True
         lesser_group = None

@@ -383,6 +383,10 @@ class JobList(object):
         :param filter_type: dates, members, chunks, splits .
         :return:
         """
+        # temporal
+        if filter_value == "previous" and parent.section == child.section:
+            if int(parent.split) == int(child.split) - 1:
+                return True
         lesser_group = None
         lesser_value = "parent"
         greater = "-1"

@@ -1732,7 +1732,7 @@ class Job(object):
         type_ = str(as_conf.jobs_data.get(self.section,{}).get("TYPE", "bash")).lower()
         if type_ == "bash":
             self.type = Type.BASH
-        elif type_ == "python":
+        elif self.type == Type.PYTHON3 or self.type == Type.PYTHON:
             self.type = Type.PYTHON
         elif type_ == "r":
             self.type = Type.R

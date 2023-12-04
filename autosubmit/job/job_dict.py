@@ -24,6 +24,8 @@ from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
 import datetime
 
+import re
+
 
 class DicJobs:
     """
@@ -56,12 +58,14 @@ class DicJobs:
         self.changes = {}
         self._job_list = {}
         self.workflow_jobs = []
+
     @property
     def job_list(self):
         return self._job_list
+
     @job_list.setter
     def job_list(self, job_list):
-        self._job_list = { job.name: job for job in job_list }
+        self._job_list = {job.name: job for job in job_list}
 
     def compare_section(self, current_section):
         """
@@ -70,25 +74,62 @@ class DicJobs:
         :type current_section: str
         :rtype: bool
         """
-        self.changes[current_section] = self.as_conf.detailed_diff(self.as_conf.experiment_data["JOBS"].get(current_section,{}),self.as_conf.last_experiment_data.get("JOBS",{}).get(current_section,{}))
+        self.changes[current_section] = self.as_conf.detailed_deep_diff(
+            self.as_conf.experiment_data["JOBS"].get(current_section, {}),
+            self.as_conf.last_experiment_data.get("JOBS", {}).get(current_section, {}))
         # Only dependencies is relevant at this step, the rest is lookup by job name and if it inside the stored list
         if "DEPENDENCIES" not in self.changes[current_section]:
             del self.changes[current_section]
+
+    def compare_backbone_sections(self):
+        """
+        Compare the backbone sections metadata with the last run one to see if it has changed
+        """
+        self.compare_experiment_section()
+        self.compare_jobs_section()
+        self.compare_config()
+        self.compare_default()
 
     def compare_experiment_section(self):
         """
         Compare the experiment structure metadata with the last run one to see if it has changed
         :return:
         """
-        self.changes["EXPERIMENT"] = self.as_conf.detailed_deep_diff(self.experiment_data.get("EXPERIMENT",{}),self.as_conf.last_experiment_data.get("EXPERIMENT",{}))
-        self.compare_jobs_section()
+        self.changes["EXPERIMENT"] = self.as_conf.detailed_deep_diff(self.experiment_data.get("EXPERIMENT", {}),
+                                                                     self.as_conf.last_experiment_data.get("EXPERIMENT",
+                                                                                                           {}))
+        if not self.changes["EXPERIMENT"]:
+            del self.changes["EXPERIMENT"]
+
+    def compare_default(self):
+        """
+        Compare the default structure metadata with the last run one to see if it has changed
+        :return:
+        """
+        self.changes["DEFAULT"] = self.as_conf.detailed_deep_diff(self.experiment_data.get("DEFAULT", {}),
+                                                                  self.as_conf.last_experiment_data.get("DEFAULT", {}))
+        if "HPCARCH" not in self.changes["DEFAULT"]:
+            del self.changes["DEFAULT"]
+
+    def compare_config(self):
+        """
+        Compare the config structure metadata with the last run one to see if it has changed
+        :return:
+        """
+        self.changes["CONFIG"] = self.as_conf.detailed_deep_diff(self.experiment_data.get("CONFIG", {}),
+                                                                 self.as_conf.last_experiment_data.get("CONFIG", {}))
+        if "VERSION" not in self.changes["CONFIG"]:
+            del self.changes["CONFIG"]
 
     def compare_jobs_section(self):
         """
         Compare the jobs structure metadata with the last run one to see if it has changed
         :return:
         """
-        self.changes["JOBS"] = self.as_conf.detailed_deep_diff(self.experiment_data.get("JOBS",{}),self.as_conf.last_experiment_data.get("JOBS",{}))
+        self.changes["JOBS"] = self.as_conf.detailed_deep_diff(self.experiment_data.get("JOBS", {}),
+                                                               self.as_conf.last_experiment_data.get("JOBS", {}))
+        if not self.changes["JOBS"]:
+            del self.changes["JOBS"]
 
     def read_section(self, section, priority, default_job_type):
         """
@@ -135,8 +176,8 @@ class DicJobs:
             count += 1
             if count % frequency == 0 or count == len(self._date_list):
                 self._dic[section][date] = []
-                self._create_jobs_split(splits, section, date, None, None, priority,default_job_type, self._dic[section][date])
-
+                self._create_jobs_split(splits, section, date, None, None, priority, default_job_type,
+                                        self._dic[section][date])
 
     def _create_jobs_member(self, section, priority, frequency, default_job_type, splits=-1):
         """
@@ -161,7 +202,8 @@ class DicJobs:
                 count += 1
                 if count % frequency == 0 or count == len(self._member_list):
                     self._dic[section][date][member] = []
-                    self._create_jobs_split(splits, section, date, member, None, priority,default_job_type, self._dic[section][date][member])
+                    self._create_jobs_split(splits, section, date, member, None, priority, default_job_type,
+                                            self._dic[section][date][member])
 
     def _create_jobs_once(self, section, priority, default_job_type, splits=0):
         """
@@ -230,21 +272,21 @@ class DicJobs:
                                 self._create_jobs_split(splits, section, date, member, chunk, priority,
                                                         default_job_type,
                                                         self._dic[section][date][member][chunk])
+
     def _create_jobs_split(self, splits, section, date, member, chunk, priority, default_job_type, section_data):
         if splits <= 0:
             self.build_job(section, priority, date, member, chunk, default_job_type, section_data, -1)
         else:
             current_split = 1
             while current_split <= splits:
-                self.build_job(section, priority, date, member, chunk, default_job_type, section_data,current_split)
+                self.build_job(section, priority, date, member, chunk, default_job_type, section_data, current_split)
                 current_split += 1
 
-
-    def get_all_filter_jobs(self,jobs, final_jobs_list = []):
+    def get_all_filter_jobs(self, jobs, final_jobs_list=[]):
         for key in jobs.keys():
             value = jobs[key]
             if isinstance(value, dict):
-                final_jobs_list+=self.get_all_filter_jobs(value, final_jobs_list)
+                final_jobs_list += self.get_all_filter_jobs(value, final_jobs_list)
             elif isinstance(value, list):
                 for job in value:
                     final_jobs_list.append(job)
@@ -252,23 +294,21 @@ class DicJobs:
                 final_jobs_list.append(value)
         return final_jobs_list
 
-    def update_jobs_filtered(self,current_jobs,next_level_jobs):
+    def update_jobs_filtered(self, current_jobs, next_level_jobs):
         if type(next_level_jobs) == dict:
             for key in next_level_jobs.keys():
                 if key not in current_jobs:
                     current_jobs[key] = next_level_jobs[key]
                 else:
-                    current_jobs[key] = self.update_jobs_filtered(current_jobs[key],next_level_jobs[key])
+                    current_jobs[key] = self.update_jobs_filtered(current_jobs[key], next_level_jobs[key])
         elif type(next_level_jobs) == list:
             current_jobs.extend(next_level_jobs)
         else:
             current_jobs.append(next_level_jobs)
         return current_jobs
 
-
-
-
-    def get_jobs_filtered(self,section , job, filters_to, natural_date, natural_member ,natural_chunk ):
+    def get_jobs_filtered(self, section, job, filters_to, natural_date, natural_member, natural_chunk,
+                          filters_to_of_parent):
         #  datetime.strptime("20020201", "%Y%m%d")
         jobs = self._dic.get(section, {})
         final_jobs_list = []
@@ -293,7 +333,7 @@ class DicJobs:
                                 elif type(jobs.get(date, None)) == dict:
                                     jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[date])
                     else:
-                        for date in filters_to.get('DATES_TO',"").split(","):
+                        for date in filters_to.get('DATES_TO', "").split(","):
                             if jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None):
                                 if type(jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None)) == list:
                                     for aux_job in jobs[datetime.datetime.strptime(date, "%Y%m%d")]:
@@ -301,22 +341,23 @@ class DicJobs:
                                 elif type(jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None)) == Job:
                                     final_jobs_list.append(jobs[datetime.datetime.strptime(date, "%Y%m%d")])
                                 elif type(jobs.get(datetime.datetime.strptime(date, "%Y%m%d"), None)) == dict:
-                                    jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[datetime.datetime.strptime(date, "%Y%m%d")])
+                                    jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[
+                                        datetime.datetime.strptime(date, "%Y%m%d")])
                 else:
                     if job.running == "once":
                         for key in jobs.keys():
-                            if type(jobs.get(key, None)) == list: # TODO
+                            if type(jobs.get(key, None)) == list:  # TODO
                                 for aux_job in jobs[key]:
                                     final_jobs_list.append(aux_job)
-                            elif type(jobs.get(key, None)) == Job: # TODO
+                            elif type(jobs.get(key, None)) == Job:  # TODO
                                 final_jobs_list.append(jobs[key])
                             elif type(jobs.get(key, None)) == dict:
                                 jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[key])
                     elif jobs.get(job.date, None):
-                        if type(jobs.get(natural_date, None)) == list: # TODO
+                        if type(jobs.get(natural_date, None)) == list:  # TODO
                             for aux_job in jobs[natural_date]:
                                 final_jobs_list.append(aux_job)
-                        elif type(jobs.get(natural_date, None)) == Job: # TODO
+                        elif type(jobs.get(natural_date, None)) == Job:  # TODO
                             final_jobs_list.append(jobs[natural_date])
                         elif type(jobs.get(natural_date, None)) == dict:
                             jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[natural_date])
@@ -324,7 +365,7 @@ class DicJobs:
                         jobs_aux = {}
                 jobs = jobs_aux
         if len(jobs) > 0:
-            if type(jobs) == list: # TODO check the other todo, maybe this is not neccesary, https://earth.bsc.es/gitlab/es/autosubmit/-/merge_requests/387#note_243751
+            if type(jobs) == list:  # TODO check the other todo, maybe this is not neccesary, https://earth.bsc.es/gitlab/es/autosubmit/-/merge_requests/387#note_243751
                 final_jobs_list.extend(jobs)
                 jobs = {}
             else:
@@ -346,7 +387,7 @@ class DicJobs:
                                     jobs_aux = self.update_jobs_filtered(jobs_aux, jobs[member.upper()])
 
                     else:
-                        for member in filters_to.get('MEMBERS_TO',"").split(","):
+                        for member in filters_to.get('MEMBERS_TO', "").split(","):
                             if jobs.get(member.upper(), None):
                                 if type(jobs.get(member.upper(), None)) == list:
                                     for aux_job in jobs[member.upper()]:
@@ -403,28 +444,76 @@ class DicJobs:
                     if job.running == "once" or not job.chunk:
                         for chunk in jobs.keys():
                             if type(jobs.get(chunk, None)) == list:
-                                for aux_job in jobs[chunk]:
-                                    final_jobs_list.append(aux_job)
+                                final_jobs_list += [aux_job for aux_job in jobs[chunk]]
                             elif type(jobs.get(chunk, None)) == Job:
                                 final_jobs_list.append(jobs[chunk])
                     elif jobs.get(job.chunk, None):
                         if type(jobs.get(natural_chunk, None)) == list:
-                            for aux_job in jobs[natural_chunk]:
-                                final_jobs_list.append(aux_job)
+                            final_jobs_list += [aux_job for aux_job in jobs[natural_chunk]]
                         elif type(jobs.get(natural_chunk, None)) == Job:
                             final_jobs_list.append(jobs[natural_chunk])
 
         if len(final_jobs_list) > 0:
             if filters_to.get("SPLITS_TO", None):
                 if "none" in filters_to['SPLITS_TO'].lower():
-                    final_jobs_list = [f_job for f_job in final_jobs_list if (f_job.split is None or f_job.split == -1 or f_job.split == 0) and f_job.name != job.name]
+                    final_jobs_list = [f_job for f_job in final_jobs_list if (
+                            f_job.split is None or f_job.split == -1 or f_job.split == 0) and f_job.name != job.name]
                 elif "all" in filters_to['SPLITS_TO'].lower():
                     final_jobs_list = final_jobs_list
                 elif "*" in filters_to['SPLITS_TO'].lower():
                     # to  calculate in apply_filters
-                    final_jobs_list = final_jobs_list
+                    easier_to_filter = "," + filters_to['SPLITS_TO'].lower() + ","
+                    matches = re.findall(rf"\\[0-9]*", easier_to_filter)
+                    if len(matches) > 0:  # get *\\
+                        split_slice = int(matches[0].split("\\")[1])
+                        if job.splits <= final_jobs_list[0].splits:  # get  N-1 ( child - parent )
+                            # (parent) -> (child)
+                            # 1 -> 1,2
+                            # 2 -> 3,4
+                            # 3 -> 5 # but 5 is not enough to make another group, so it must be included in the previous one ( did in part two )
+                            matches = re.findall(rf",{(job.split - 1) * split_slice + 1}\*\\?[0-9]*,", easier_to_filter)
+                        else:  # get 1-N ( child - parent )
+                            # (parent) -> (child)
+                            # 1,2 -> 1
+                            # 3,4 -> 2
+                            # 5 -> 3 # but 5 is not enough to make another group, so it must be included in the previous one
+                            group = (job.split - 1) // split_slice + 1
+                            matches = re.findall(rf",{group}\*\\?[0-9]*,", easier_to_filter)
+                            if len(matches) == 0:
+                                matches = re.findall(rf",{group - 1}\*\\?[0-9]*,", easier_to_filter)
+                    else:  # get * (1-1)
+                        split_slice = 1
+                        # get current index 1-1
+                        matches = re.findall(rf",{job.split}\*\\?[0-9]*,", easier_to_filter)
+
+                    if len(matches) > 0:
+                        if job.splits <= final_jobs_list[0].splits:  # get 1-1,N-1 (part 1)
+                            my_complete_slice = matches[0].strip(",").split("*")
+                            split_index = int(my_complete_slice[0]) - 1
+                            end = split_index + split_slice
+                            if split_slice > 1:
+                                if len(final_jobs_list) < end + split_slice:
+                                    end = len(final_jobs_list)
+                            final_jobs_list = final_jobs_list[split_index:end]
+                            if filters_to_of_parent.get("SPLITS_TO", None) == "previous":
+                                final_jobs_list = [final_jobs_list[-1]]
+                        else:  # get 1-N (part 2)
+                            my_complete_slice = matches[0].strip(",").split("*")
+                            split_index = int(my_complete_slice[0]) - 1
+                            final_jobs_list = final_jobs_list[split_index]
+                            if filters_to_of_parent.get("SPLITS_TO", None) == "previous":
+                                final_jobs_list = [final_jobs_list[-1]]
+                    else:
+                        final_jobs_list = []
+                elif "previous" in filters_to['SPLITS_TO'].lower():
+                    final_jobs_list = [f_job for f_job in final_jobs_list if (
+                            f_job.split is None or job.split is None or f_job.split == job.split - 1) and f_job.name != job.name]
                 else:
-                    final_jobs_list = [f_job for f_job in final_jobs_list if (f_job.split is None or f_job.split == -1 or f_job.split == 0 or str(f_job.split) in filters_to['SPLITS_TO'].split(',')) and f_job.name != job.name]
+                    final_jobs_list = [f_job for f_job in final_jobs_list if (
+                            f_job.split is None or f_job.split == -1 or f_job.split == 0 or str(f_job.split) in
+                            filters_to['SPLITS_TO'].split(',')) and f_job.name != job.name]
+        if type(final_jobs_list) is not list:
+            return [final_jobs_list]
         return final_jobs_list
 
     def get_jobs(self, section, date=None, member=None, chunk=None):
@@ -515,7 +604,7 @@ class DicJobs:
         if split > 0:
             name += "_{0}".format(split)
         name += "_" + section
-        if not self._job_list.get(name,None):
+        if not self._job_list.get(name, None):
             job = Job(name, 0, Status.WAITING, priority)
             job.type = default_job_type
             job.section = section
@@ -528,6 +617,9 @@ class DicJobs:
             section_data.append(job)
             self.changes["NEWJOBS"] = True
         else:
-            self._job_list[name].status = Status.WAITING if self._job_list[name].status in [Status.DELAYED,Status.PREPARED,Status.READY] else self._job_list[name].status
+            self._job_list[name].status = Status.WAITING if self._job_list[name].status in [Status.DELAYED,
+                                                                                            Status.PREPARED,
+                                                                                            Status.READY] else \
+                self._job_list[name].status
             section_data.append(self._job_list[name])
         self.workflow_jobs.append(name)

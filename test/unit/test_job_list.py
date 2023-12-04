@@ -430,7 +430,7 @@ class TestJobList(TestCase):
                          f'{self.experiment_id}/conf', f'{self.experiment_id}/pkl']:
                 Path(temp_dir, path).mkdir()
             job_list.changes = Mock(return_value=['random_section', 'random_section'])
-            as_conf.detailed_diff = Mock(return_value={})
+            as_conf.detailed_deep_diff = Mock(return_value={})
             #as_conf.get_member_list = Mock(return_value=member_list)
 
             # act

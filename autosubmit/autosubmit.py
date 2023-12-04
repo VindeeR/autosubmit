@@ -2769,7 +2769,7 @@ class Autosubmit:
             Log.info('Recovering experiment {0}'.format(expid))
             pkl_dir = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, 'pkl')
             job_list = Autosubmit.load_job_list(
-                expid, as_conf, notransitive=notransitive, monitor=True)
+                expid, as_conf, notransitive=notransitive, new=False, monitor=True)
 
             current_active_jobs = job_list.get_in_queue()
 
@@ -5334,7 +5334,7 @@ class Autosubmit:
                 output_type = as_conf.get_output_type()
                 # Getting db connections
                 # To be added in a function that checks which platforms must be connected to
-                job_list = Autosubmit.load_job_list(expid, as_conf, notransitive=notransitive)
+                job_list = Autosubmit.load_job_list(expid, as_conf, notransitive=notransitive, monitor=True, new=False)
                 submitter = Autosubmit._get_submitter(as_conf)
                 submitter.load_platforms(as_conf)
                 hpcarch = as_conf.get_platform()

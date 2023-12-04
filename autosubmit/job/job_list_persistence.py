@@ -76,6 +76,7 @@ class JobListPersistencePkl(JobListPersistence):
                 # Set in recovery/run
                 graph.nodes[u]["job"]._platform = None
                 graph.nodes[u]["job"]._serial_platform = None
+                graph.nodes[u]["job"].submitter = None
             return graph
         else:
             Log.printlog('File {0} does not exist'.format(path),Log.WARNING)

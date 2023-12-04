@@ -1023,11 +1023,17 @@ class JobList(object):
                     if not actual_job_depends_on_previous_chunk:
                         if job.running == "chunk" or parent.chunk == self.depends_on_previous_chunk.get(parent.section, parent.chunk):
                             graph.add_edge(parent.name, job.name)
+                            self.add_special_conditions(job, special_conditions, False, filters_to_apply,
+                                                        parent)
+
                     else:
                         if parent.section == job.section:
                             depends_on_previous_non_current_section = self._calculate_special_dependencies(job,dependencies_keys_without_special_chars)
                             if not depends_on_previous_non_current_section:
                                 graph.add_edge(parent.name, job.name)
+                                self.add_special_conditions(job, special_conditions, False,
+                                                            filters_to_apply, parent)
+
                             else:
                                 for a_parent_section in depends_on_previous_non_current_section:
                                     if parent.chunk == a_parent_section[1]:
@@ -1035,6 +1041,9 @@ class JobList(object):
                                         break
                         elif (job.running == "chunk" and parent.running == "chunk"):
                             graph.add_edge(parent.name, job.name)
+                            self.add_special_conditions(job, special_conditions, False, filters_to_apply,
+                                                        parent)
+
                 JobList.handle_frequency_interval_dependencies(chunk, chunk_list, date, date_list, dic_jobs, job,
                                                                member,
                                                                member_list, dependency.section, natural_parents)

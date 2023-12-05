@@ -24,6 +24,8 @@ from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
 import datetime
 
+import re
+
 
 class DicJobs:
     """
@@ -268,7 +270,7 @@ class DicJobs:
 
 
 
-    def get_jobs_filtered(self,section , job, filters_to, natural_date, natural_member ,natural_chunk ):
+    def get_jobs_filtered(self,section , job, filters_to, natural_date, natural_member , natural_chunk, filters_to_of_parent ):
         #  datetime.strptime("20020201", "%Y%m%d")
         jobs = self._dic.get(section, {})
         final_jobs_list = []
@@ -414,6 +416,7 @@ class DicJobs:
                             final_jobs_list.append(jobs[natural_chunk])
 
         if len(final_jobs_list) > 0:
+
             if filters_to.get("SPLITS_TO", None):
                 if "none" in filters_to['SPLITS_TO'].lower():
                     final_jobs_list = [f_job for f_job in final_jobs_list if (f_job.split is None or f_job.split == -1 or f_job.split == 0) and f_job.name != job.name]
@@ -421,7 +424,23 @@ class DicJobs:
                     final_jobs_list = final_jobs_list
                 elif "*" in filters_to['SPLITS_TO'].lower():
                     # to  calculate in apply_filters
-                    final_jobs_list = final_jobs_list
+                    # Find "{job.split}*\\?\\?d+  in the filter_to['SPLITS_TO'] and put the value in a variable called my_slice
+                    easier_to_filter = "," + filters_to['SPLITS_TO'].lower() + ","
+                    matches = re.findall(rf",{job.split}\*\\?[0-9]*,",easier_to_filter)
+                    if len(matches) > 0:
+                        my_complete_slice = matches[0].strip(",").split("*")
+                        split_index = int(my_complete_slice[0]) - 1
+                        if len(my_complete_slice) == 2:
+                            split_slice = int(my_complete_slice[1].split("\\")[1])
+                        else:
+                            split_slice = 1
+
+                        final_jobs_list = final_jobs_list[split_index:(split_index + split_slice)]
+                        if filters_to_of_parent.get("SPLITS_TO", None) == "previous":
+                            final_jobs_list = [final_jobs_list[-1]]
+                        pass
+                    else:
+                        final_jobs_list = []
                 elif "previous" in filters_to['SPLITS_TO'].lower():
                     final_jobs_list = [f_job for f_job in final_jobs_list if (f_job.split is None or job.split is None or f_job.split == job.split-1 ) and f_job.name != job.name]
                 else:

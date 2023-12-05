@@ -1063,7 +1063,10 @@ class JobList(object):
                 if any_all_filter:
                     if actual_job_depends_on_previous_chunk:
                         continue
-                possible_parents =  dic_jobs.get_jobs_filtered(dependency.section,job,filters_to_apply,date,member,chunk)
+                filters_to_apply_of_parent = self._filter_current_job(job, copy.deepcopy(dependencies_of_that_section.get(dependency.section)))
+
+                possible_parents =  dic_jobs.get_jobs_filtered(dependency.section,job,filters_to_apply,date,member,chunk, filters_to_apply_of_parent)
+                # check if any possible_parent has a dependency on itself
                 if "?" in filters_to_apply.get("SPLITS_TO", "") or "?" in filters_to_apply.get("DATES_TO",
                                                                                                "") or "?" in filters_to_apply.get(
                         "MEMBERS_TO", "") or "?" in filters_to_apply.get("CHUNKS_TO", ""):

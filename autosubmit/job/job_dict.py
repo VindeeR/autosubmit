@@ -409,8 +409,7 @@ class DicJobs:
                                 final_jobs_list.append(jobs[chunk])
                     elif jobs.get(job.chunk, None):
                         if type(jobs.get(natural_chunk, None)) == list:
-                            for aux_job in jobs[natural_chunk]:
-                                final_jobs_list.append(aux_job)
+                            final_jobs_list += [ aux_job for aux_job in jobs[natural_chunk] ]
                         elif type(jobs.get(natural_chunk, None)) == Job:
                             final_jobs_list.append(jobs[natural_chunk])
 
@@ -423,6 +422,8 @@ class DicJobs:
                 elif "*" in filters_to['SPLITS_TO'].lower():
                     # to  calculate in apply_filters
                     final_jobs_list = final_jobs_list
+                elif "previous" in filters_to['SPLITS_TO'].lower():
+                    final_jobs_list = [f_job for f_job in final_jobs_list if (f_job.split is None or job.split is None or f_job.split == job.split-1 ) and f_job.name != job.name]
                 else:
                     final_jobs_list = [f_job for f_job in final_jobs_list if (f_job.split is None or f_job.split == -1 or f_job.split == 0 or str(f_job.split) in filters_to['SPLITS_TO'].split(',')) and f_job.name != job.name]
         return final_jobs_list

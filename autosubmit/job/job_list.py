@@ -1081,15 +1081,16 @@ class JobList(object):
                             continue
                         elif parent.section != job.section :
                             depends_on_previous_non_current_section = self._calculate_special_dependencies(job,dependencies_keys_without_special_chars)
-                            skip = True
-                            if job.section in self.depends_on_previous_special_section:
-                                skip = self.depends_on_previous_special_section[job.section].get(job.name,False)
-                            else:
-                                for a_parent_section in depends_on_previous_non_current_section:
-                                    if parent.chunk == a_parent_section[1]:
-                                        skip = False
-                            if skip:
-                                continue
+                            if depends_on_previous_non_current_section:
+                                skip = True
+                                if job.section in self.depends_on_previous_special_section:
+                                    skip = self.depends_on_previous_special_section[job.section].get(job.name,False)
+                                else:
+                                    for a_parent_section in depends_on_previous_non_current_section:
+                                        if parent.chunk == a_parent_section[1]:
+                                            skip = False
+                                if skip:
+                                    continue
 
                     # splits_to = filters_to_apply.get("SPLITS_TO", None)
                     # if splits_to:

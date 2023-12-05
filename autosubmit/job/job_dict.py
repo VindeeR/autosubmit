@@ -423,15 +423,16 @@ class DicJobs:
                     final_jobs_list = final_jobs_list
                 elif "*" in filters_to['SPLITS_TO'].lower():
                     # to  calculate in apply_filters
-                    # Find "{job.split}*\\?\\?d+  in the filter_to['SPLITS_TO'] and put the value in a variable called my_slice
                     easier_to_filter = "," + filters_to['SPLITS_TO'].lower() + ","
-                    # get \\ value
+                    # get \\N value
                     matches = re.findall(rf"\\[0-9]*",easier_to_filter)
                     if len(matches) > 0:
                         split_slice = int(matches[0].split("\\")[1])
+                        # get current index n-1
                         matches = re.findall(rf",{(job.split-1)*split_slice+1}\*\\?[0-9]*,",easier_to_filter)
                     else:
                         split_slice = 1
+                        # get current index 1-1
                         matches = re.findall(rf",{job.split}\*\\?[0-9]*,",easier_to_filter)
 
                     if len(matches) > 0:

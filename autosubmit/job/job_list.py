@@ -375,110 +375,6 @@ class JobList(object):
                     splits.append(int(str_split))
         return splits
 
-
-    @staticmethod
-    def _apply_filter_1_to_1_splits(parent_value, filter_value, associative_list, child=None, parent=None):
-        """
-        Check if the current_job_value is included in the filter_value
-        :param parent_value:
-        :param filter_value: filter
-        :param associative_list: dates, members, chunks, splits.
-        :param filter_type: dates, members, chunks, splits .
-        :return:
-        """
-        # temporal
-        if filter_value.lower() == "previous" and parent.section.lower() == child.section.lower():
-            if int(parent.split) == int(child.split) - 1:
-                return True
-        lesser_group = None
-        lesser_value = "parent"
-        greater = "-1"
-        if "NONE".casefold() in str(parent_value).casefold():
-            return False
-        if parent and child:
-            if not parent.splits:
-                parent_splits = -1
-            else:
-                parent_splits = int(parent.splits)
-            if not child.splits:
-                child_splits = -1
-            else:
-                child_splits = int(child.splits)
-            if parent_splits == child_splits:
-                greater = str(child_splits)
-            else:
-                if parent_splits > child_splits:
-                    lesser = str(child_splits)
-                    greater = str(parent_splits)
-                    lesser_value = "child"
-                else:
-                    lesser = str(parent_splits)
-                    greater = str(child_splits)
-                to_look_at_lesser = [associative_list[i:i + 1] for i in range(0, int(lesser), 1)]
-                for lesser_group in range(len(to_look_at_lesser)):
-                    if lesser_value == "parent":
-                        if str(parent_value) in to_look_at_lesser[lesser_group]:
-                            break
-                    else:
-                        if str(child.split) in to_look_at_lesser[lesser_group]:
-                            break
-        if "?" in filter_value:
-            # replace all ? for ""
-            filter_value = filter_value.replace("?", "")
-        if "*" in filter_value:
-            aux_filter = filter_value
-            filter_value = ""
-            for filter_ in aux_filter.split(","):
-                if "*" in filter_:
-                    filter_, split_info = filter_.split("*")
-                    # If parent and children has the same amount of splits \\ doesn't make sense so it is disabled
-                    if "\\" in split_info:
-                        split_info = int(split_info.split("\\")[-1])
-                    else:
-                        split_info = 1
-                    # split_info: if a value is 1, it means that the filter is 1-to-1, if it is 2, it means that the filter is 1-to-2, etc.
-                    if child and parent:
-                        if split_info == 1 :
-                            if child.split == parent_value:
-                                return True
-                        elif split_info > 1:
-                            # 1-to-X filter
-                            to_look_at_greater = [associative_list[i:i + split_info] for i in
-                                                  range(0, int(greater), split_info)]
-                            if not lesser_group:
-                                if str(child.split) in associative_list:
-                                    return True
-                            else:
-                                if lesser_value == "parent":
-                                    if child.split in to_look_at_greater[lesser_group]:
-                                        return True
-                                else:
-                                    if parent_value in to_look_at_greater[lesser_group]:
-                                        return True
-                    else:
-                        filter_value += filter_ + ","
-                else:
-                    filter_value += filter_ + ","
-            filter_value = filter_value[:-1]
-        to_filter = JobList._parse_filters_to_check(filter_value, associative_list, "splits")
-        if to_filter is None:
-            return False
-        elif not to_filter or len(to_filter) == 0 or ( len(to_filter) == 1 and not to_filter[0] ):
-            return False
-        elif "ALL".casefold() == str(to_filter[0]).casefold():
-            return True
-        elif "NATURAL".casefold() == str(to_filter[0]).casefold():
-            if parent_value is None or parent_value in associative_list:
-                return True
-        elif "NONE".casefold() == str(to_filter[0]).casefold():
-            return False
-        elif len([filter_ for filter_ in to_filter if
-                  str(parent_value).strip(" ").casefold() == str(filter_).strip(" ").casefold()]) > 0:
-            return True
-        else:
-            return False
-
-
     @staticmethod
     def _parse_filters_to_check(list_of_values_to_check,value_list=[],level_to_check="DATES_FROM"):
         final_values = []
@@ -1094,20 +990,6 @@ class JobList(object):
                                             skip = False
                                 if skip:
                                     continue
-
-                    # splits_to = filters_to_apply.get("SPLITS_TO", None)
-                    # if splits_to:
-                    #     if not parent.splits:
-                    #         parent_splits = 0
-                    #     else:
-                    #         parent_splits = int(parent.splits)
-                    #     splits = max(child_splits, parent_splits)
-                    #     if splits > 0:
-                    #         associative_list_splits = [str(split) for split in range(1, splits + 1)]
-                    #     else:
-                    #         associative_list_splits = None
-                    #     if not self._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, job, parent):
-                    #         continue # if the parent is not in the filter_to, skip it
                     graph.add_edge(parent.name, job.name)
                     # Do parse checkpoint
                     self.add_special_conditions(job,special_conditions,only_marked_status,filters_to_apply,parent)

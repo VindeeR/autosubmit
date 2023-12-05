@@ -222,9 +222,10 @@ class JobList(object):
                 self._dic_jobs._job_list = {job["job"].name: job["job"] for _, job in self.graph.nodes.data() if
                                             job.get("job", None)}
             else:
-                self._dic_jobs.compare_experiment_section()
+                self._dic_jobs.compare_backbone_sections()
                 # fast-look if graph existed, skips some steps
-                if not new and not self._dic_jobs.changes.get("EXPERIMENT",{}):
+                # If VERSION in CONFIG or HPCARCH in DEFAULT it will exist, if not it won't.
+                if not new and not self._dic_jobs.changes.get("EXPERIMENT",{}) and not self._dic_jobs.changes.get("CONFIG",{}) and not self._dic_jobs.changes.get("DEFAULT",{}):
                     self._dic_jobs._job_list = {job["job"].name: job["job"] for _, job in self.graph.nodes.data() if
                                                 job.get("job", None)}
             # Force to use the last known job_list when autosubmit monitor is running.

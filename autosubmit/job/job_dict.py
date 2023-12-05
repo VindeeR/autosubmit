@@ -405,8 +405,7 @@ class DicJobs:
                     if job.running == "once" or not job.chunk:
                         for chunk in jobs.keys():
                             if type(jobs.get(chunk, None)) == list:
-                                for aux_job in jobs[chunk]:
-                                    final_jobs_list.append(aux_job)
+                                final_jobs_list += [ aux_job for aux_job in jobs[chunk] ]
                             elif type(jobs.get(chunk, None)) == Job:
                                 final_jobs_list.append(jobs[chunk])
                     elif jobs.get(job.chunk, None):
@@ -426,19 +425,25 @@ class DicJobs:
                     # to  calculate in apply_filters
                     # Find "{job.split}*\\?\\?d+  in the filter_to['SPLITS_TO'] and put the value in a variable called my_slice
                     easier_to_filter = "," + filters_to['SPLITS_TO'].lower() + ","
-                    matches = re.findall(rf",{job.split}\*\\?[0-9]*,",easier_to_filter)
+                    # get \\ value
+                    matches = re.findall(rf"\\[0-9]*",easier_to_filter)
+                    if len(matches) > 0:
+                        split_slice = int(matches[0].split("\\")[1])
+                        matches = re.findall(rf",{(job.split-1)*split_slice+1}\*\\?[0-9]*,",easier_to_filter)
+                    else:
+                        split_slice = 1
+                        matches = re.findall(rf",{job.split}\*\\?[0-9]*,",easier_to_filter)
+
                     if len(matches) > 0:
                         my_complete_slice = matches[0].strip(",").split("*")
                         split_index = int(my_complete_slice[0]) - 1
-                        if len(my_complete_slice) == 2:
-                            split_slice = int(my_complete_slice[1].split("\\")[1])
-                        else:
-                            split_slice = 1
-
-                        final_jobs_list = final_jobs_list[split_index:(split_index + split_slice)]
+                        end = split_index + split_slice
+                        if split_slice > 1:
+                            if len(final_jobs_list) < end+split_slice:
+                                end = len(final_jobs_list)
+                        final_jobs_list = final_jobs_list[split_index:end]
                         if filters_to_of_parent.get("SPLITS_TO", None) == "previous":
                             final_jobs_list = [final_jobs_list[-1]]
-                        pass
                     else:
                         final_jobs_list = []
                 elif "previous" in filters_to['SPLITS_TO'].lower():

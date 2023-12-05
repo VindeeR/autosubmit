@@ -1091,19 +1091,19 @@ class JobList(object):
                             if skip:
                                 continue
 
-                    splits_to = filters_to_apply.get("SPLITS_TO", None)
-                    if splits_to:
-                        if not parent.splits:
-                            parent_splits = 0
-                        else:
-                            parent_splits = int(parent.splits)
-                        splits = max(child_splits, parent_splits)
-                        if splits > 0:
-                            associative_list_splits = [str(split) for split in range(1, splits + 1)]
-                        else:
-                            associative_list_splits = None
-                        if not self._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, job, parent):
-                            continue # if the parent is not in the filter_to, skip it
+                    # splits_to = filters_to_apply.get("SPLITS_TO", None)
+                    # if splits_to:
+                    #     if not parent.splits:
+                    #         parent_splits = 0
+                    #     else:
+                    #         parent_splits = int(parent.splits)
+                    #     splits = max(child_splits, parent_splits)
+                    #     if splits > 0:
+                    #         associative_list_splits = [str(split) for split in range(1, splits + 1)]
+                    #     else:
+                    #         associative_list_splits = None
+                    #     if not self._apply_filter_1_to_1_splits(parent.split, splits_to, associative_list_splits, job, parent):
+                    #         continue # if the parent is not in the filter_to, skip it
                     graph.add_edge(parent.name, job.name)
                     # Do parse checkpoint
                     self.add_special_conditions(job,special_conditions,only_marked_status,filters_to_apply,parent)

@@ -530,7 +530,7 @@ class Job(object):
         self._splits = value
 
     def __getstate__(self):
-        return {k: v for k, v in self.__dict__.items() if k not in ["_platform", "_children"]}
+        return {k: v for k, v in self.__dict__.items() if k not in ["_platform", "_children", "_parents", "submitter"]}
 
 
     def read_header_tailer_script(self, script_path: str, as_conf: AutosubmitConfig, is_header: bool):

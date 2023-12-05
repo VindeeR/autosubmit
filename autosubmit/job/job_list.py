@@ -282,6 +282,8 @@ class JobList(object):
                 job.parameters = parameters
                 if not job.has_parents():
                     job.status = Status.READY
+                else:
+                    job.status = Status.WAITING
 
         for wrapper_section in wrapper_jobs:
             try:

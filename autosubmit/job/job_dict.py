@@ -459,10 +459,10 @@ class DicJobs:
                     if len(matches) > 0:
                         split_slice = int(matches[0].split("\\")[1])
                         # get current index n-1
-                        if job.splits <= final_jobs_list[0].splits: # get 1-N
+                        if job.splits <= final_jobs_list[0].splits: # get 1-1,1-N
                             # 1 -> 1,2
                             # 2 -> 3,4
-                            # 3 -> 5 # but 5 is not enough to make another group, so it must be included in the previous one
+                            # 3 -> 5 # but 5 is not enough to make another group, so it must be included in the previous one ( did in part two )
                             matches = re.findall(rf",{(job.split-1)*split_slice+1}\*\\?[0-9]*,",easier_to_filter)
                         else: # get N-1
                             #    1,2 -> 1
@@ -478,7 +478,7 @@ class DicJobs:
                         matches = re.findall(rf",{job.split}\*\\?[0-9]*,",easier_to_filter)
 
                     if len(matches) > 0:
-                        if job.splits <= final_jobs_list[0].splits:
+                        if job.splits <= final_jobs_list[0].splits: # get 1-1,1-N (part 1)
                             my_complete_slice = matches[0].strip(",").split("*")
                             split_index = int(my_complete_slice[0]) - 1
                             end = split_index + split_slice
@@ -488,7 +488,7 @@ class DicJobs:
                             final_jobs_list = final_jobs_list[split_index:end]
                             if filters_to_of_parent.get("SPLITS_TO", None) == "previous":
                                 final_jobs_list = [final_jobs_list[-1]]
-                        else:
+                        else: # get N-1 (part 2)
                             my_complete_slice = matches[0].strip(",").split("*")
                             split_index = int(my_complete_slice[0]) - 1
                             final_jobs_list = final_jobs_list[split_index]

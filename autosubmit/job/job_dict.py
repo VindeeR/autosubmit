@@ -454,7 +454,6 @@ class DicJobs:
                             final_jobs_list.append(jobs[natural_chunk])
 
         if len(final_jobs_list) > 0:
-
             if filters_to.get("SPLITS_TO", None):
                 if "none" in filters_to['SPLITS_TO'].lower():
                     final_jobs_list = [f_job for f_job in final_jobs_list if (
@@ -467,15 +466,17 @@ class DicJobs:
                     matches = re.findall(rf"\\[0-9]*", easier_to_filter)
                     if len(matches) > 0:  # get *\\
                         split_slice = int(matches[0].split("\\")[1])
-                        if job.splits <= final_jobs_list[0].splits:  # get 1-N
+                        if job.splits <= final_jobs_list[0].splits:  # get  N-1 ( child - parent )
+                            # (parent) -> (child)
                             # 1 -> 1,2
                             # 2 -> 3,4
                             # 3 -> 5 # but 5 is not enough to make another group, so it must be included in the previous one ( did in part two )
                             matches = re.findall(rf",{(job.split - 1) * split_slice + 1}\*\\?[0-9]*,", easier_to_filter)
-                        else:  # get N-1
-                            #    1,2 -> 1
-                            #    3,4 -> 2
-                            #    5 -> 3 # but 5 is not enough to make another group, so it must be included in the previous one
+                        else:  # get 1-N ( child - parent )
+                            # (parent) -> (child)
+                            # 1,2 -> 1
+                            # 3,4 -> 2
+                            # 5 -> 3 # but 5 is not enough to make another group, so it must be included in the previous one
                             group = (job.split - 1) // split_slice + 1
                             matches = re.findall(rf",{group}\*\\?[0-9]*,", easier_to_filter)
                             if len(matches) == 0:
@@ -486,7 +487,7 @@ class DicJobs:
                         matches = re.findall(rf",{job.split}\*\\?[0-9]*,", easier_to_filter)
 
                     if len(matches) > 0:
-                        if job.splits <= final_jobs_list[0].splits:  # get 1-1,1-N (part 1)
+                        if job.splits <= final_jobs_list[0].splits:  # get 1-1,N-1 (part 1)
                             my_complete_slice = matches[0].strip(",").split("*")
                             split_index = int(my_complete_slice[0]) - 1
                             end = split_index + split_slice
@@ -496,7 +497,7 @@ class DicJobs:
                             final_jobs_list = final_jobs_list[split_index:end]
                             if filters_to_of_parent.get("SPLITS_TO", None) == "previous":
                                 final_jobs_list = [final_jobs_list[-1]]
-                        else:  # get N-1 (part 2)
+                        else:  # get 1-N (part 2)
                             my_complete_slice = matches[0].strip(",").split("*")
                             split_index = int(my_complete_slice[0]) - 1
                             final_jobs_list = final_jobs_list[split_index]

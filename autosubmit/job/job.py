@@ -1721,6 +1721,10 @@ class Job(object):
                 as_conf.get_extensible_wallclock(as_conf.experiment_data["WRAPPERS"].get(wrapper_section)))
         return parameters
 
+    def calculate_date_splits(self,as_conf,parameters):
+
+        return parameters
+
     def update_dict_parameters(self,as_conf):
         self.retrials = as_conf.jobs_data.get(self.section,{}).get("RETRIALS", as_conf.experiment_data.get("CONFIG",{}).get("RETRIALS", 0))
         self.splits = as_conf.jobs_data.get(self.section,{}).get("SPLITS", None)
@@ -1826,6 +1830,7 @@ class Job(object):
             else:
                 parameters['CHUNK_LAST'] = 'FALSE'
         parameters['NUMMEMBERS'] = len(as_conf.get_member_list())
+        parameters = self.calculate_date_splits(as_conf,parameters)
         self.dependencies = as_conf.jobs_data[self.section].get("DEPENDENCIES", "")
         self.dependencies  = str(self.dependencies)
 

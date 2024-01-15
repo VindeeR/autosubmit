@@ -480,8 +480,9 @@ class DicJobs:
                 final_jobs_list_special = []
                 if "*" in one_to_one_splits and not skip_one_to_one:
                     easier_to_filter = "," + one_to_one_splits + ","
-                    matches = re.findall(rf"\\[0-9]*", easier_to_filter)
+                    matches = re.findall(rf"\\[0-9]+", easier_to_filter)
                     if len(matches) > 0:  # get *\\
+
                         split_slice = int(matches[0].split("\\")[1])
                         if int(job.splits) <= int(final_jobs_list[0].splits):  # get  N-1 ( child - parent )
                             # (parent) -> (child)
@@ -528,9 +529,9 @@ class DicJobs:
                 final_jobs_list = list(set(final_jobs_list_normal + final_jobs_list_special))
         if type(final_jobs_list) is not list:
             return [final_jobs_list]
-        return final_jobs_list
+        return list(set(final_jobs_list))
 
-    def get_jobs(self, section, date=None, member=None, chunk=None):
+    def get_jobs(self, section, date=None, member=None, chunk=None, sort_string=False):
         """
         Return all the jobs matching section, date, member and chunk provided. If any parameter is none, returns all
         the jobs without checking that parameter value. If a job has one parameter to None, is returned if all the
@@ -570,6 +571,16 @@ class DicJobs:
                 jobs = jobs_flattened
             except TypeError as e:
                 pass
+        if sort_string:
+            # I want to have first chunks then member then date to easily filter later on
+            if len(jobs) > 0:
+                if jobs[0].chunk is not None:
+                    jobs = sorted(jobs, key=lambda x: x.chunk)
+                elif jobs[0].member is not None:
+                    jobs = sorted(jobs, key=lambda x: x.member)
+                elif jobs[0].date is not None:
+                    jobs = sorted(jobs, key=lambda x: x.date)
+
         return jobs
 
     def _get_date(self, jobs, dic, date, member, chunk):

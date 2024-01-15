@@ -355,8 +355,6 @@ class TestJobList(unittest.TestCase):
         }
         self.assertEqual(result, expected_output)
 
-
-
     def test_check_relationship(self):
         relationships = {'MEMBERS_FROM': {
             'TestMember,   TestMember2,TestMember3   ': {'CHUNKS_TO': 'None', 'DATES_TO': 'None', 'FROM_STEP': None,
@@ -412,7 +410,7 @@ class TestJobList(unittest.TestCase):
         job.status = Status.READY
         job_list = Mock(wraps=self.JobList)
         job_list._job_list = [job, parent]
-        job_list.add_special_conditions(job, special_conditions, only_marked_status, filters_to_apply, parent)
+        job_list.add_special_conditions(job, special_conditions, filters_to_apply, parent)
         # self.JobList.jobs_edges
         # job.edges = self.JobList.jobs_edges[job.name]
         # assert
@@ -429,13 +427,12 @@ class TestJobList(unittest.TestCase):
         parent2.member = "fc0"
         parent2.chunk = 1
 
-        job_list.add_special_conditions(job, special_conditions, only_marked_status, filters_to_apply, parent2)
+        job_list.add_special_conditions(job, special_conditions, filters_to_apply, parent2)
         value = job.edge_info.get("RUNNING", "").get("parent2", ())
         self.assertEqual(len(job.edge_info.get("RUNNING", "")), 2)
         self.assertEqual((value[0].name, value[1]), (parent2.name, "2"))
         self.assertEqual(str(job_list.jobs_edges.get("RUNNING", ())), str({job}))
-        only_marked_status = False
-        job_list.add_special_conditions(job, special_conditions, only_marked_status, filters_to_apply, parent2)
+        job_list.add_special_conditions(job, special_conditions, filters_to_apply, parent2)
         self.assertEqual(len(job.edge_info.get("RUNNING", "")), 2)
 
 if __name__ == '__main__':

@@ -600,14 +600,26 @@ class ParamikoPlatform(Platform):
         try:
             self.send_command(cmd)
         except AutosubmitError as e:
-            e_msg = e.trace+" "+e.message
+            try:
+                if e.trace:
+                    e_msg = e.trace + " " + e.message
+                else:
+                    e_msg = e.message
+            except:
+                pass
             slurm_error = True
         if not slurm_error:
             while not self._check_jobid_in_queue(self.get_ssh_output(), job_list_cmd) and retries > 0:
                 try:
                     self.send_command(cmd)
                 except AutosubmitError as e:
-                    e_msg = e.trace + " " + e.message
+                    try:
+                        if e.trace:
+                            e_msg = e.trace + " " + e.message
+                        else:
+                            e_msg = e.message
+                    except:
+                        pass
                     slurm_error = True
                     break
                 Log.debug('Retrying check job command: {0}', cmd)

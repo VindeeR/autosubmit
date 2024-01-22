@@ -51,7 +51,7 @@ expids = []
 #excluded = ['a026', 'a01y', 'a00j', 'a020', 'a01t', 'a00q', 'a00f', 'a01h', 'a00o', 'a01c', 'a00z', 't008', 'a00y', 'a00r', 't009', 'a000', 'a01e', 'a01i', 'a002', 'a008', 'a010', 'a003', 't007', 'a01d', 'autosubmit.db', 'a021', 'a00h', 'as_times.db', 'a04d', 'a02v']
 excluded = []
 for experiment in os.listdir(f"{EXPERIMENTS_PATH}"):
-    if experiment.startswith("a") or experiment.startswith("t") and len(experiment) == 4:
+    if ( experiment.startswith("a") or experiment.startswith("t") ) and len(experiment) == 4:
         if experiment not in excluded:
             expids.append(experiment)
 # Force

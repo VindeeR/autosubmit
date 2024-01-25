@@ -33,12 +33,15 @@ class JobStat(object):
         elif str(processors_per_node).isdigit() and int(processors) > int(processors_per_node):
             return math.ceil(int(processors) / int(processors_per_node))
         else:
-            return processors
+            return None
 
     def _calculate_processing_elements(self,nodes,processors,tasks,processors_per_node) -> int:
         if str(processors_per_node).isdigit():
             estimated_nodes = self._estimate_requested_nodes(nodes,processors,tasks,processors_per_node)
-            return estimated_nodes * int(processors_per_node)
+            if not estimated_nodes:
+                return processors
+            else:
+                return estimated_nodes * int(processors_per_node)
         elif (str(tasks).isdigit() or str(nodes).isdigit()):
             Log.warning(f'Missing PROCESSORS_PER_NODE. Should be set if TASKS or NODES are defined. The PROCESSORS will used instead.')
         return processors

@@ -109,32 +109,23 @@ class ExperimentStats(object):
         return FixedSizeList(self._fail_run, 0.0)
 
     def _estimate_requested_nodes(self,nodes,processors,tasks,processors_per_node) -> int:
-        if nodes:
+        if str(nodes).isdigit():
             return nodes
-        elif tasks:
-            return math.ceil(processors / tasks)
-        elif processors_per_node and processors > processors_per_node:
-            return math.ceil(processors / processors_per_node)
+        elif str(tasks).isdigit():
+            return math.ceil(int(processors) / int(tasks))
+        elif str(processors_per_node).isdigit() and int(processors) > int(processors_per_node):
+            return math.ceil(int(processors) / int(processors_per_node))
         else:
             return 1
 
     def _calculate_processing_elements(self,nodes,processors,tasks,processors_per_node) -> int:
-        if processors_per_node:
+        if str(processors_per_node).isdigit():
             estimated_nodes = self._estimate_requested_nodes(nodes,processors,tasks,processors_per_node)
             return estimated_nodes * int(processors_per_node)
-        elif not processors_per_node and (tasks or nodes):
+        elif (str(tasks).isdigit() or str(nodes).isdigit()):
             Log.warning(f'Missing PROCESSORS_PER_NODE. Should be set if TASKS or NODES are defined. The PROCESSORS will used instead.')
         return processors
 
-    def _estimate_requested_nodes(self,nodes,processors,tasks,processors_per_node) -> int:
-        if nodes:
-            return int(nodes)
-        elif tasks:
-            return math.ceil(int(processors) / int(tasks))
-        elif processors_per_node and int(processors) > int(processors_per_node):
-            return math.ceil(int(processors) / int(processors_per_node))
-        else:
-            return 1
 
     def _calculate_stats(self):
         """

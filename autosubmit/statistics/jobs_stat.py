@@ -27,7 +27,7 @@ class JobStat(object):
 
     def _estimate_requested_nodes(self,nodes,processors,tasks,processors_per_node) -> int:
         if str(nodes).isdigit():
-            return nodes
+            return int(nodes)
         elif str(tasks).isdigit():
             return math.ceil(int(processors) / int(tasks))
         elif str(processors_per_node).isdigit() and int(processors) > int(processors_per_node):

@@ -2975,7 +2975,7 @@ class JobList(object):
 
             # Using standard procedure
             if status_code in [Status.RUNNING, Status.SUBMITTED, Status.QUEUING,
-                               Status.FAILED] or make_exception is True:
+                               Status.FAILED]    or make_exception is True:
                 # COMPLETED adds too much overhead so these values are now stored in a database and retrieved separately
                 submit_time, start_time, finish_time, status = JobList._job_running_check(
                     status_code, name, tmp_path)

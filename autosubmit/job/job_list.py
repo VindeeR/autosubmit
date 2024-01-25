@@ -2979,13 +2979,13 @@ class JobList(object):
                 # COMPLETED adds too much overhead so these values are now stored in a database and retrieved separately
                 submit_time, start_time, finish_time, status = JobList._job_running_check(
                     status_code, name, tmp_path)
-                if status_code in [Status.RUNNING, Status.FAILED]:
+                if status_code in [Status.RUNNING, Status.FAILED, Status.COMPLETED]:
                     running_for_min = (finish_time - start_time)
                     queuing_for_min = (start_time - submit_time)
                     submit_time = mktime(submit_time.timetuple())
                     start_time = mktime(start_time.timetuple())
                     finish_time = mktime(finish_time.timetuple()) if status_code in [
-                        Status.FAILED] else 0
+                        Status.FAILED, Status.COMPLETED] else 0
                 else:
                     queuing_for_min = (
                             datetime.datetime.now() - submit_time)

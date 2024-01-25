@@ -2687,7 +2687,7 @@ class Autosubmit:
                 current_table_structure = get_structure(expid, BasicConfig.STRUCTURES_DIR)
                 subjobs = []
                 for job in job_list.get_job_list():
-                    job_info = JobList.retrieve_times(job.status, job.name, job._tmp_path, make_exception=False,
+                    job_info = JobList.retrieve_times(job.status, job.name, job._tmp_path, make_exception=True,
                                                       job_times=None, seconds=True, job_data_collection=None)
                     time_total = (job_info.queue_time + job_info.run_time) if job_info else 0
                     subjobs.append(

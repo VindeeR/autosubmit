@@ -108,7 +108,7 @@ class ExperimentStats(object):
     def fail_run(self):
         return FixedSizeList(self._fail_run, 0.0)
 
-    def _estimate_requested_nodes(self,nodes,processors,tasks,processors_per_node,exclusive) -> int:
+    def _estimate_requested_nodes(self,nodes,processors,tasks,processors_per_node) -> int:
         if str(nodes).isdigit():
             return int(nodes)
         elif str(tasks).isdigit():
@@ -116,21 +116,21 @@ class ExperimentStats(object):
         elif str(processors_per_node).isdigit() and int(processors) > int(processors_per_node):
             return math.ceil(int(processors) / int(processors_per_node))
         else:
-            if exclusive:
-                return 1
-            else:
-                return None
+            return 1
 
     def _calculate_processing_elements(self,nodes,processors,tasks,processors_per_node,exclusive) -> int:
         if str(processors_per_node).isdigit():
-            estimated_nodes = self._estimate_requested_nodes(nodes,processors,tasks,processors_per_node,exclusive)
-            if not estimated_nodes:
-                return processors
+            if str(nodes).isdigit():
+                return int(nodes) * int(processors_per_node)
             else:
-                return estimated_nodes * int(processors_per_node)
+                estimated_nodes = self._estimate_requested_nodes(nodes,processors,tasks,processors_per_node)
+                if not exclusive and estimated_nodes <= 1 and int(processors) <= int(processors_per_node):
+                    return int(processors)
+                else:
+                    return estimated_nodes * int(processors_per_node)
         elif (str(tasks).isdigit() or str(nodes).isdigit()):
             Log.warning(f'Missing PROCESSORS_PER_NODE. Should be set if TASKS or NODES are defined. The PROCESSORS will used instead.')
-        return processors
+        return int(processors)
 
 
     def _calculate_stats(self):

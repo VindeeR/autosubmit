@@ -5,10 +5,10 @@ from log.log import Log
 import math
 
 class JobStat(object):
-    def __init__(self, name, processors, wallclock, section, date, member, chunk, processors_per_node,tasks,nodes ):
-        # type: (str, int, float, str, str, str, str, str, str , str) -> None
+    def __init__(self, name, processors, wallclock, section, date, member, chunk, processors_per_node, tasks, nodes, exclusive ):
+        # type: (str, int, float, str, str, str, str, str, str , str, str) -> None
         self._name = name
-        self._processors = self._calculate_processing_elements(nodes, processors, tasks, processors_per_node)
+        self._processors = self._calculate_processing_elements(nodes, processors, tasks, processors_per_node, exclusive)
         self._wallclock = wallclock
         self.submit_time = None # type: datetime
         self.start_time = None # type: datetime
@@ -25,7 +25,7 @@ class JobStat(object):
         self.member = member
         self.chunk = chunk
 
-    def _estimate_requested_nodes(self,nodes,processors,tasks,processors_per_node) -> int:
+    def _estimate_requested_nodes(self,nodes,processors,tasks,processors_per_node,exclusive) -> int:
         if str(nodes).isdigit():
             return int(nodes)
         elif str(tasks).isdigit():
@@ -33,11 +33,14 @@ class JobStat(object):
         elif str(processors_per_node).isdigit() and int(processors) > int(processors_per_node):
             return math.ceil(int(processors) / int(processors_per_node))
         else:
-            return None
+            if exclusive:
+                return 1
+            else:
+                return None
 
-    def _calculate_processing_elements(self,nodes,processors,tasks,processors_per_node) -> int:
+    def _calculate_processing_elements(self,nodes,processors,tasks,processors_per_node,exclusive) -> int:
         if str(processors_per_node).isdigit():
-            estimated_nodes = self._estimate_requested_nodes(nodes,processors,tasks,processors_per_node)
+            estimated_nodes = self._estimate_requested_nodes(nodes,processors,tasks,processors_per_node,exclusive)
             if not estimated_nodes:
                 return processors
             else:

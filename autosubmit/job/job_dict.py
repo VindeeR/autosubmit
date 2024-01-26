@@ -403,7 +403,7 @@ class DicJobs:
         job.nodes = str(parameters[section].get("NODES",self.experiment_data.get("PLATFORMS",{}).get(job.platform_name,{}).get("NODES","")))
         job.threads = str(parameters[section].get("THREADS",self.experiment_data.get("PLATFORMS",{}).get(job.platform_name,{}).get("THREADS","")))
         job.tasks = str(parameters[section].get("TASKS",self.experiment_data.get("PLATFORMS",{}).get(job.platform_name,{}).get("TASKS","")))
-
+        job.exclusive = parameters[section].get("EXCLUSIVE",self.experiment_data.get("PLATFORMS",{}).get(job.platform_name,{}).get("EXCLUSIVE",False))
         job.memory = str(parameters[section].get("MEMORY", ""))
         job.memory_per_task = str(parameters[section].get("MEMORY_PER_TASK", ""))
         remote_max_wallclock = self.experiment_data["PLATFORMS"].get(job.platform_name,{})

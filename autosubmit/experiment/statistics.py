@@ -108,7 +108,7 @@ class ExperimentStats(object):
     def fail_run(self):
         return FixedSizeList(self._fail_run, 0.0)
 
-    def _estimate_requested_nodes(self,nodes,processors,tasks,processors_per_node) -> int:
+    def _estimate_requested_nodes(self,nodes,processors,tasks,processors_per_node,exclusive) -> int:
         if str(nodes).isdigit():
             return int(nodes)
         elif str(tasks).isdigit():
@@ -116,11 +116,14 @@ class ExperimentStats(object):
         elif str(processors_per_node).isdigit() and int(processors) > int(processors_per_node):
             return math.ceil(int(processors) / int(processors_per_node))
         else:
-            return None
+            if exclusive:
+                return 1
+            else:
+                return None
 
-    def _calculate_processing_elements(self,nodes,processors,tasks,processors_per_node) -> int:
+    def _calculate_processing_elements(self,nodes,processors,tasks,processors_per_node,exclusive) -> int:
         if str(processors_per_node).isdigit():
-            estimated_nodes = self._estimate_requested_nodes(nodes,processors,tasks,processors_per_node)
+            estimated_nodes = self._estimate_requested_nodes(nodes,processors,tasks,processors_per_node,exclusive)
             if not estimated_nodes:
                 return processors
             else:
@@ -142,7 +145,7 @@ class ExperimentStats(object):
             nodes = job.nodes
             tasks = job.tasks
             processors_per_node = job.processors_per_node
-            processors = self._calculate_processing_elements(nodes, processors, tasks, processors_per_node)
+            processors = self._calculate_processing_elements(nodes, processors, tasks, processors_per_node, job.exclusive)
             for retrial in last_retrials:
                 if Job.is_a_completed_retrial(retrial):
                     # The retrial has all necessary values and is status COMPLETED

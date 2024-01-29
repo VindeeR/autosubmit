@@ -163,6 +163,7 @@ class Job(object):
                               'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
         self._threads = '1'
         self._processors = '1'
+        self._processors_per_node = None
         self._memory = ''
         self._memory_per_task = ''
         self._chunk = None
@@ -775,6 +776,17 @@ class Job(object):
     @processors.setter
     def processors(self, value):
         self._processors = value
+
+    @property
+    @autosubmit_parameter(name=['processors_per_node'])
+    def processors_per_node(self):
+        """Number of processors per node that the job can use."""
+        return self._processors_per_node
+
+    @processors_per_node.setter
+    def processors_per_node(self, value):
+        """Number of processors per node that the job can use."""
+        self._processors_per_node = value
 
     def inc_fail_count(self):
         """
@@ -1600,6 +1612,7 @@ class Job(object):
         self.total_jobs = as_conf.jobs_data[self.section].get("TOTALJOBS", job_platform.total_jobs)
         self.max_waiting_jobs = as_conf.jobs_data[self.section].get("MAXWAITINGJOBS", job_platform.max_waiting_jobs)
         self.processors = as_conf.jobs_data[self.section].get("PROCESSORS",as_conf.platforms_data.get(job_platform.name,{}).get("PROCESSORS","1"))
+        self.processors_per_node = as_conf.jobs_data[self.section].get("PROCESSORS_PER_NODE",as_conf.platforms_data.get(job_platform.name,{}).get("PROCESSORS_PER_NODE","1"))
         self.nodes = as_conf.jobs_data[self.section].get("NODES",as_conf.platforms_data.get(job_platform.name,{}).get("NODES",""))
         self.exclusive = as_conf.jobs_data[self.section].get("EXCLUSIVE",as_conf.platforms_data.get(job_platform.name,{}).get("EXCLUSIVE",False))
         self.threads = as_conf.jobs_data[self.section].get("THREADS",as_conf.platforms_data.get(job_platform.name,{}).get("THREADS","1"))

@@ -4078,7 +4078,7 @@ class Autosubmit:
             # write_it
             # Deletes unused keys from confs
             if template_path.name.lower().find("autosubmit") > -1:
-                template_content = re.sub('(?m)^( )*(EXPID:)( )*[a-zA-Z0-9.-_]*(\n)*', "", template_content, flags=re.I)
+                template_content = re.sub('(?m)^( )*(EXPID:)( )*[a-zA-Z0-9._-]*(\n)*', "", template_content, flags=re.I)
             # Write final result
             open(template_path, "w").write(template_content)
 

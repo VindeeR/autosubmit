@@ -763,7 +763,7 @@ class JobList(object):
                     if element == "":
                         continue
                     # Get only the first alphanumeric part and [:] chars
-                    parsed_element = re.findall(r"([\[:\]a-zA-Z0-9-._]+)", element)[0].lower()
+                    parsed_element = re.findall(r"([\[:\]a-zA-Z0-9._-]+)", element)[0].lower()
                     extra_data = element[len(parsed_element):]
                     parsed_element = JobList._parse_filter_to_check(parsed_element, value_list = value_list, level_to_check = filter_type)
                     # convert list to str

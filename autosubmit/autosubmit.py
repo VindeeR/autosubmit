@@ -4052,7 +4052,7 @@ class Autosubmit:
                 shutil.copyfile(template_path, backup_path)
             template_content = open(template_path, 'r', encoding=locale.getlocale()[1]).read()
             # Look for %_%
-            variables = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', template_content,flags=re.IGNORECASE)
+            variables = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', template_content,flags=re.IGNORECASE)
             variables = [variable[1:-1].upper() for variable in variables]
             results = {}
             # Change format
@@ -4078,7 +4078,7 @@ class Autosubmit:
             # write_it
             # Deletes unused keys from confs
             if template_path.name.lower().find("autosubmit") > -1:
-                template_content = re.sub('(?m)^( )*(EXPID:)( )*[a-zA-Z0-9]*(\n)*', "", template_content, flags=re.I)
+                template_content = re.sub('(?m)^( )*(EXPID:)( )*[a-zA-Z0-9.-_]*(\n)*', "", template_content, flags=re.I)
             # Write final result
             open(template_path, "w").write(template_content)
 

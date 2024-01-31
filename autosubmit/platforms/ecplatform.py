@@ -95,8 +95,6 @@ class EcPlatform(ParamikoPlatform):
         self._checkjob_cmd = "ecaccess-job-list "
         self._checkhost_cmd = "ecaccess-certificate-list"
         self._checkvalidcert_cmd = "ecaccess-gateway-connected"
-        self._submit_cmd = ("ecaccess-job-submit -distant -queueName " + self.ec_queue + " " + self.host + ":" +
-                            self.remote_log_dir + "/")
         self._submit_command_name = "ecaccess-job-submit"
         self.put_cmd = "ecaccess-file-put"
         self.get_cmd = "ecaccess-file-get"
@@ -115,7 +113,8 @@ class EcPlatform(ParamikoPlatform):
 
     def get_mkdir_cmd(self):
         return self.mkdir_cmd
-    def set_submit_cmd(self,ec_queue="hpc"):
+
+    def set_submit_cmd(self,ec_queue):
         self._submit_cmd = ("ecaccess-job-submit -distant -queueName " + ec_queue + " " + self.host + ":" +
                             self.remote_log_dir + "/")
 

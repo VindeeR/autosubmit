@@ -227,14 +227,21 @@ class EcPlatform(ParamikoPlatform):
             lang = locale.getdefaultlocale()[1]
             if lang is None:
                 lang = 'UTF-8'
-        try:
-            output = subprocess.check_output(command, shell=True).decode(lang)
-        except subprocess.CalledProcessError as e:
-            if command.find("ecaccess-job-submit") != -1:
-                raise AutosubmitError("bad parameters. Error submitting job.")
-            if not ignore_log:
-                raise AutosubmitError('Could not execute command {0} on {1}'.format(e.cmd, self.host),7500,str(e))
-            return False
+        retries = 3
+        success = False
+        err_message = ""
+        output = ""
+        while not success and retries > 0:
+            try:
+                output = subprocess.check_output(command, shell=True).decode(lang)
+                success = True
+            except Exception as e:
+                err_message = str(e)
+                success = False
+                retries = retries - 1
+                sleep(1)
+        if not success:
+            raise AutosubmitError(f'Could not execute command {command} on {self.host}',7500, str(err_message))
         self._ssh_output = output
         return True
 

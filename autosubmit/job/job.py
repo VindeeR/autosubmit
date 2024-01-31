@@ -1948,7 +1948,7 @@ class Job(object):
         #TODO regresion test
         for additional_file, additional_template_content in zip(self.additional_files, additional_templates):
             # append to a list all names don't matter the location, inside additional_template_content that  starts with % and ends with %
-            placeholders_inside_additional_template = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', additional_template_content,flags=re.IGNORECASE)
+            placeholders_inside_additional_template = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', additional_template_content,flags=re.IGNORECASE)
             for placeholder in placeholders_inside_additional_template:
                 placeholder = placeholder[1:-1]
                 value = str(parameters.get(placeholder.upper(),""))
@@ -2023,11 +2023,11 @@ class Job(object):
         parameters = self.update_parameters(as_conf, parameters)
         template_content,additional_templates = self.update_content(as_conf)
         if template_content is not False:
-            variables = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', template_content,flags=re.IGNORECASE)
+            variables = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', template_content,flags=re.IGNORECASE)
             variables = [variable[1:-1] for variable in variables]
             variables = [variable for variable in variables if variable not in self.default_parameters]
             for template in additional_templates:
-                variables_tmp = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', template,flags=re.IGNORECASE)
+                variables_tmp = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', template,flags=re.IGNORECASE)
                 variables_tmp = [variable[1:-1] for variable in variables_tmp]
                 variables_tmp = [variable for variable in variables_tmp if variable not in self.default_parameters]
                 variables.extend(variables_tmp)

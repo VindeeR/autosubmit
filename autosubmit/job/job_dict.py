@@ -391,8 +391,8 @@ class DicJobs:
         job.queue = str(parameters[section].get( "QUEUE", ""))
 
         job.ec_queue = str(parameters[section].get("EC_QUEUE", ""))
-        if job.ec_queue == "" and job.platform_name != "LOCAL":
-            job.ec_queue = str(self.experiment_data["PLATFORMS"][job.platform_name].get("EC_QUEUE","hpc"))
+        if job.ec_queue == "":
+            job.ec_queue = str(self.experiment_data["PLATFORMS"].get(job.platform_name,{}).get("EC_QUEUE","hpc"))
 
         job.partition = str(parameters[section].get( "PARTITION", ""))
         job.check = str(parameters[section].get( "CHECK", "true")).lower()

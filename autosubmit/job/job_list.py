@@ -396,6 +396,8 @@ class JobList(object):
                         problematic_dependencies = self._manage_job_dependencies(dic_jobs, job, date_list, member_list, chunk_list,
                                                       dependencies_keys,
                                                       dependencies, self.graph)
+                    else:
+                        problematic_dependencies = []
                     if len(problematic_dependencies) > 1:
                         if job_section not in problematic_jobs.keys():
                             problematic_jobs[job_section] = {}

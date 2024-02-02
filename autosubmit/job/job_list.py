@@ -233,11 +233,7 @@ class JobList(object):
                         "CONFIG", {}) and not self._dic_jobs.changes.get("DEFAULT", {}):
                     self._dic_jobs._job_list = {job["job"].name: job["job"] for _, job in self.graph.nodes.data() if
                                                 job.get("job", None)}
-                else:
-                    if not monitor:
-                        # Hard reset if changes are detected, TODO 4.1
-                        self.graph = nx.DiGraph()
-                        self._dic_jobs.graph = self.graph
+
             # Force to use the last known job_list when autosubmit monitor is running.
             self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
         else:
@@ -361,6 +357,23 @@ class JobList(object):
                                                                        strip_keys=False)
             self.dependency_map_with_distances[section].remove(section)
 
+        changes = False
+        if len(self.graph.out_edges) > 0:
+            sections_gen = (section for section in jobs_data.keys())
+            for job_section in sections_gen: # Room for improvement: Do changes only to jobs affected by the yaml changes
+                if dic_jobs.changes.get(job_section, None) or dic_jobs.changes.get("EXPERIMENT", None) or dic_jobs.changes.get("NEWJOBS", False):
+                    changes = True
+                    break
+            Log.debug("Looking if there are changes in the workflow")
+            if changes:
+                Log.debug("Changes detected, removing all dependencies")
+                self.graph.clear_edges() # reset edges of all jobs as they need to be recalculated
+                Log.debug("Dependencies deleted, recalculating dependencies")
+            else:
+                Log.debug("No changes detected, keeping edges")
+        else:
+            changes = True
+            Log.debug("No dependencies detected, calculating dependencies")
         sections_gen = (section for section in jobs_data.keys())
         for job_section in sections_gen:
             # Changes when all jobs of a section are added
@@ -371,39 +384,28 @@ class JobList(object):
             self.actual_job_depends_on_previous_member = False
             self.actual_job_depends_on_special_chunk = False
             # No changes, no need to recalculate dependencies
-            changes = True
-            if len(self.graph.out_edges) > 0 and not dic_jobs.changes.get(job_section,
-                                                                          None) and not dic_jobs.changes.get(
-                    "EXPERIMENT", None) and not dic_jobs.changes.get("NEWJOBS", False):
-                changes = False
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
             # If it does not have dependencies, just append it to job_list and continue
             dependencies_keys = jobs_data.get(job_section, {}).get(option, None)
             # call function if dependencies_key is not None
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs) if dependencies_keys else {}
-
             jobs_gen = (job for job in dic_jobs.get_jobs(job_section,sort_string=True))
             for job in jobs_gen:
-                self.graph.remove_edges_from(self.graph.nodes(job.name))
                 if job.name not in self.graph.nodes:
                     self.graph.add_node(job.name, job=job)
-                elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job",
-                                                                                         None) is None:  # Old versions of autosubmit needs re-adding the job to the graph
+                elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job", None) is None:  # Old versions of autosubmit needs re-adding the job to the graph
                     self.graph.nodes.get(job.name)["job"] = job
-                if dependencies:
+                if dependencies and changes:
                     job = self.graph.nodes.get(job.name)['job']
-                    if changes:
-                        problematic_dependencies = self._manage_job_dependencies(dic_jobs, job, date_list, member_list, chunk_list,
-                                                      dependencies_keys,
-                                                      dependencies, self.graph)
-                    else:
-                        problematic_dependencies = []
+                    problematic_dependencies = self._manage_job_dependencies(dic_jobs, job, date_list, member_list, chunk_list,
+                                                  dependencies_keys,
+                                                  dependencies, self.graph)
                     if len(problematic_dependencies) > 1:
                         if job_section not in problematic_jobs.keys():
                             problematic_jobs[job_section] = {}
                         problematic_jobs[job_section].update({job.name: problematic_dependencies})
-
-        self.find_and_delete_redundant_relations(problematic_jobs)
+        if changes:
+            self.find_and_delete_redundant_relations(problematic_jobs)
         self._add_all_jobs_edge_info(dic_jobs, option)
 
     def find_and_delete_redundant_relations(self, problematic_jobs):
@@ -993,12 +995,28 @@ class JobList(object):
         :param problematic_dependencies: Problematic dependencies
         :return:
         """
-        natural_parents = [natural_parent for natural_parent in dic_jobs.get_jobs(dependency.section, date, member, chunk) if natural_parent.name != job.name]
+        if key != job.section and not date and not member and not chunk:
+            if key in dependencies_of_that_section and str(dic_jobs.as_conf.jobs_data[key].get("RUNNING","once")) == "chunk":
+                natural_parents = [natural_parent for natural_parent in
+                                   dic_jobs.get_jobs(dependency.section, date, member, chunk_list[-1]) if
+                                   natural_parent.name != job.name]
+
+            elif key in dependencies_of_that_section and str(dic_jobs.as_conf.jobs_data[key].get("RUNNING","once")) == "member":
+                natural_parents = [natural_parent for natural_parent in
+                                   dic_jobs.get_jobs(dependency.section, date, member_list[-1], chunk) if
+                                   natural_parent.name != job.name]
+            else:
+                natural_parents = [natural_parent for natural_parent in
+                                   dic_jobs.get_jobs(dependency.section, date, member, chunk) if
+                                   natural_parent.name != job.name]
+
+        else:
+            natural_parents = [natural_parent for natural_parent in dic_jobs.get_jobs(dependency.section, date, member, chunk) if natural_parent.name != job.name]
         # Natural jobs, no filters to apply we can safely add the edge
         for parent in natural_parents:
             if parent.name in special_dependencies:
                 continue
-            if dependency.relationships: # If this section has been filtered selects..
+            if dependency.relationships: # If this section has filter, selects..
                 found = [ aux for aux in dic_jobs.as_conf.jobs_data[parent.section].get("DEPENDENCIES",{}).keys() if job.section == aux ]
                 if found:
                     continue
@@ -1013,6 +1031,7 @@ class JobList(object):
                             if parent.running == job.running:
                                 graph.add_edge(parent.name, job.name)
                     elif not self.actual_job_depends_on_previous_chunk:
+
                         graph.add_edge(parent.name, job.name)
                     elif not self.actual_job_depends_on_special_chunk and self.actual_job_depends_on_previous_chunk:
                         if job.running == "chunk" and job.chunk == 1:
@@ -1305,8 +1324,8 @@ class JobList(object):
                     key_aux_stripped = key_aux_stripped.split("-")[0]
                 elif "+" in key_aux_stripped:
                     key_aux_stripped = key_aux_stripped.split("+")[0]
-                if key_aux_stripped != dependency.section:
-                    dependencies_of_that_section.append(key_aux_stripped)
+
+                dependencies_of_that_section.append(key_aux_stripped)
 
             problematic_dependencies = self._calculate_natural_dependencies(dic_jobs, job, dependency, date,
                                                member, chunk, graph,

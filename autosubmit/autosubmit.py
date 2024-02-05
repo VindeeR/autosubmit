@@ -1582,8 +1582,11 @@ class Autosubmit:
             job.platform = submitter.platforms[job.platform_name]
             if job.platform is not None and job.platform != "":
                 platforms_to_test.add(job.platform)
-
-        job_list.check_scripts(as_conf)
+        if not only_wrappers:
+            job_list.check_scripts(as_conf) # added only in inspect
+        else:  # no longer check_Scripts if -cw is added to monitor or create, just update the parameters
+            for job in ( job for job in job_list.get_job_list() ):
+                job.update_parameters(as_conf,parameters)
         job_list.update_list(as_conf, False)
         # Loading parameters again
         Autosubmit._load_parameters(as_conf, job_list, submitter.platforms)

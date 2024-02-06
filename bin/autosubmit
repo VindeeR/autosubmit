@@ -69,7 +69,7 @@ def main():
         else:
             exception_stream = StringIO()
             traceback.print_exc(file=exception_stream)
-            Log.critical("{1}{0}\nUnhandled error: If you see this message, please report it in Autosubmit's GitLab project".format(str(e),exception_stream.getvalue()), 7000)
+            raise AutosubmitCritical("Unhandled error: If you see this message, please report it in Autosubmit's GitLab project", 7000, str(e))
         os._exit(1)
 
 

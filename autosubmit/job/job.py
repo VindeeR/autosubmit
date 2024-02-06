@@ -137,35 +137,45 @@ class Job(object):
 
     CHECK_ON_SUBMISSION = 'on_submission'
 
+    # TODO
+    # This is crashing the code
+    # I added it for the assertions of unit testing... since job obj != job obj when it was saved & load
+    # since it points to another section of the memory.
+    # Unfortunatelly, this is crashing the code everywhere else
+
+    # def __eq__(self, other):
+    #     return self.name == other.name and self.id == other.id
+
     def __str__(self):
+        return "{0} STATUS: {1}".format(self.name, self.status)
+
+    def __repr__(self):
         return "{0} STATUS: {1}".format(self.name, self.status)
 
     def __init__(self, name, job_id, status, priority):
         self.splits = None
+        self.rerun_only = False
         self.script_name_wrapper = None
-        self.delay_end = datetime.datetime.now()
-        self._delay_retrials = "0"
+        self.retrials = None
+        self.delay_end = None
+        self.delay_retrials = None
         self.wrapper_type = None
         self._wrapper_queue = None
         self._platform = None
         self._queue = None
         self._partition = None
-
-        self.retry_delay = "0"
-        self.platform_name = None # type: str
+        self.retry_delay = None
         #: (str): Type of the job, as given on job configuration file. (job: TASKTYPE)
         self._section = None # type: str
         self._wallclock = None # type: str
         self.wchunkinc = None
-        self._tasks = '1'
-        self._nodes = ""
-        self.default_parameters = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
-                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
-        self._threads = '1'
-        self._processors = '1'
-        self._processors_per_node = None
-        self._memory = ''
-        self._memory_per_task = ''
+        self._tasks = None
+        self._nodes = None
+        self.default_parameters = None
+        self._threads = None
+        self._processors = None
+        self._memory = None
+        self._memory_per_task = None
         self._chunk = None
         self._member = None
         self.date = None
@@ -180,9 +190,9 @@ class Job(object):
         self.long_name = name
         self.date_format = ''
         self.type = Type.BASH
-        self._hyperthreading = "none"
-        self._scratch_free_space = None
-        self._custom_directives = []
+        self.hyperthreading = None
+        self.scratch_free_space = None
+        self.custom_directives = []
         self.undefined_variables = set()
         self.log_retries = 5
         self.id = job_id
@@ -203,7 +213,7 @@ class Job(object):
         #: (int) Number of failed attempts to run this job. (FAIL_COUNT)
         self._fail_count = 0
         self.expid = name.split('_')[0] # type: str
-        self.parameters = dict()
+        self.parameters = None
         self._tmp_path = os.path.join(
             BasicConfig.LOCAL_ROOT_DIR, self.expid, BasicConfig.LOCAL_TMP_DIR)
         self.write_start = False
@@ -216,25 +226,47 @@ class Job(object):
         self.level = 0
         self._export = "none"
         self._dependencies = []
-        self.running = "once"
+        self.running = None
         self.start_time = None
-        self.ext_header_path = ''
-        self.ext_tailer_path = ''
+        self.ext_header_path = None
+        self.ext_tailer_path = None
         self.edge_info = dict()
         self.total_jobs = None
         self.max_waiting_jobs = None
         self.exclusive = ""
         self._retrials = 0
-
         # internal
         self.current_checkpoint_step = 0
         self.max_checkpoint_step = 0
-        self.reservation= ""
+        self.reservation = ""
+        self.delete_when_edgeless = False
         # hetjobs
-        self.het = dict()
-        self.het['HETSIZE'] = 0
+        self.het = None
 
+    def _init_runtime_parameters(self):
+        # hetjobs
+        self.het = {'HETSIZE': 0}
+        self.parameters = dict()
+        self._tasks = '1'
+        self._nodes = ""
+        self.default_parameters = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
+                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
+        self._threads = '1'
+        self._processors = '1'
+        self._memory = ''
+        self._memory_per_task = ''
 
+    def _clean_runtime_parameters(self):
+        # hetjobs
+        self.het = None
+        self.parameters = None
+        self._tasks = None
+        self._nodes = None
+        self.default_parameters = None
+        self._threads = None
+        self._processors = None
+        self._memory = None
+        self._memory_per_task = None
     @property
     @autosubmit_parameter(name='tasktype')
     def section(self):
@@ -273,7 +305,8 @@ class Job(object):
 
     @retrials.setter
     def retrials(self, value):
-        self._retrials = int(value)
+        if value is not None:
+            self._retrials = int(value)
 
     @property
     @autosubmit_parameter(name='checkpoint')
@@ -497,11 +530,8 @@ class Job(object):
         self._splits = value
 
     def __getstate__(self):
-        odict = self.__dict__
-        if '_platform' in odict:
-            odict = odict.copy()  # copy the dict since we change it
-            del odict['_platform']  # remove filehandle entry
-        return odict
+        return {k: v for k, v in self.__dict__.items() if k not in ["_platform", "_children", "_parents", "submitter"]}
+
 
     def read_header_tailer_script(self, script_path: str, as_conf: AutosubmitConfig, is_header: bool):
         """
@@ -513,13 +543,15 @@ class Job(object):
         :param as_conf: Autosubmit configuration file
         :param is_header: boolean indicating if it is header extended script
         """
-
+        if not script_path:
+            return ''
         found_hashbang = False
         script_name = script_path.rsplit("/")[-1]  # pick the name of the script for a more verbose error
-        script = ''
         # the value might be None string if the key has been set, but with no value
-        if script_path == '' or script_path == "None":
-            return script
+        if not script_name:
+            return ''
+        script = ''
+
 
         # adjusts the error message to the type of the script
         if is_header:
@@ -624,7 +656,7 @@ class Job(object):
         :return HPCPlatform object for the job to use
         :rtype: HPCPlatform
         """
-        if self.is_serial:
+        if self.is_serial and self._platform:
             return self._platform.serial_platform
         else:
             return self._platform
@@ -754,7 +786,7 @@ class Job(object):
         if ':' in str(self.processors):
             return reduce(lambda x, y: int(x) + int(y), self.processors.split(':'))
         elif self.processors == "" or self.processors == "1":
-            if int(self.nodes) <= 1:
+            if not self.nodes or int(self.nodes) <= 1:
                 return 1
             else:
                 return ""
@@ -811,6 +843,16 @@ class Job(object):
                 self._parents.add(new_parent)
                 new_parent.__add_child(self)
 
+    def add_children(self, children):
+        """
+        Add children for the job. It also adds current job as a parent for all the new children
+
+        :param children: job's children to add
+        :type children: list of Job objects
+        """
+        for child in (child for child in children if child.name != self.name):
+            self.__add_child(child)
+            child._parents.add(self)
     def __add_child(self, new_child):
         """
         Adds a new child to the job
@@ -820,19 +862,19 @@ class Job(object):
         """
         self.children.add(new_child)
 
-    def add_edge_info(self, parent, special_variables):
+    def add_edge_info(self, parent, special_conditions):
         """
         Adds edge information to the job
 
         :param parent: parent job
         :type parent: Job
-        :param special_variables: special variables
-        :type special_variables: dict
+        :param special_conditions: special variables
+        :type special_conditions: dict
         """
-        if special_variables["STATUS"] not in self.edge_info:
-            self.edge_info[special_variables["STATUS"]] = {}
+        if special_conditions["STATUS"] not in self.edge_info:
+            self.edge_info[special_conditions["STATUS"]] = {}
 
-        self.edge_info[special_variables["STATUS"]][parent.name] = (parent,special_variables.get("FROM_STEP", 0))
+        self.edge_info[special_conditions["STATUS"]][parent.name] = (parent,special_conditions.get("FROM_STEP", 0))
 
     def delete_parent(self, parent):
         """
@@ -1597,34 +1639,35 @@ class Job(object):
         # Ignore the heterogeneous parameters if the cores or nodes are no specefied as a list
         if self.het['HETSIZE'] == 1:
             self.het = dict()
-        if self.wallclock is None and job_platform.type not in ['ps', "local", "PS", "LOCAL"]:
-            self.wallclock = "01:59"
-        elif self.wallclock is None and job_platform.type in ['ps', 'local', "PS", "LOCAL"]:
-            self.wallclock = "00:00"
+        if not self.wallclock:
+            if job_platform.type.lower() not in ['ps', "local"]:
+                self.wallclock = "01:59"
+            elif job_platform.type.lower() in ['ps', 'local']:
+                self.wallclock = "00:00"
         # Increasing according to chunk
         self.wallclock = increase_wallclock_by_chunk(
             self.wallclock, self.wchunkinc, chunk)
 
     def update_platform_associated_parameters(self,as_conf, parameters, job_platform, chunk):
-        self.ec_queue = str(as_conf.jobs_data[self.section].get("EC_QUEUE", as_conf.platforms_data.get(job_platform.name,{}).get("EC_QUEUE","")))
-
-        self.executable = as_conf.jobs_data[self.section].get("EXECUTABLE", as_conf.platforms_data.get(job_platform.name,{}).get("EXECUTABLE",""))
+        platform_data = as_conf.platforms_data.get(job_platform.name,{})
+        self.ec_queue = str(as_conf.jobs_data[self.section].get("EC_QUEUE", platform_data.get("EC_QUEUE","")))
+        self.executable = as_conf.jobs_data[self.section].get("EXECUTABLE", platform_data.get("EXECUTABLE",""))
         self.total_jobs = as_conf.jobs_data[self.section].get("TOTALJOBS", job_platform.total_jobs)
         self.max_waiting_jobs = as_conf.jobs_data[self.section].get("MAXWAITINGJOBS", job_platform.max_waiting_jobs)
-        self.processors = as_conf.jobs_data[self.section].get("PROCESSORS",as_conf.platforms_data.get(job_platform.name,{}).get("PROCESSORS","1"))
+        self.processors = as_conf.jobs_data[self.section].get("PROCESSORS",platform_data.get("PROCESSORS","1"))
         self.processors_per_node = as_conf.jobs_data[self.section].get("PROCESSORS_PER_NODE",as_conf.platforms_data.get(job_platform.name,{}).get("PROCESSORS_PER_NODE","1"))
-        self.nodes = as_conf.jobs_data[self.section].get("NODES",as_conf.platforms_data.get(job_platform.name,{}).get("NODES",""))
-        self.exclusive = as_conf.jobs_data[self.section].get("EXCLUSIVE",as_conf.platforms_data.get(job_platform.name,{}).get("EXCLUSIVE",False))
-        self.threads = as_conf.jobs_data[self.section].get("THREADS",as_conf.platforms_data.get(job_platform.name,{}).get("THREADS","1"))
-        self.tasks = as_conf.jobs_data[self.section].get("TASKS",as_conf.platforms_data.get(job_platform.name,{}).get("TASKS","1"))
+        self.nodes = as_conf.jobs_data[self.section].get("NODES",platform_data.get("NODES",""))
+        self.exclusive = as_conf.jobs_data[self.section].get("EXCLUSIVE",platform_data.get("EXCLUSIVE",False))
+        self.threads = as_conf.jobs_data[self.section].get("THREADS",platform_data.get("THREADS","1"))
+        self.tasks = as_conf.jobs_data[self.section].get("TASKS",platform_data.get("TASKS","1"))
         self.reservation = as_conf.jobs_data[self.section].get("RESERVATION",as_conf.platforms_data.get(job_platform.name, {}).get("RESERVATION", ""))
-        self.hyperthreading = as_conf.jobs_data[self.section].get("HYPERTHREADING",as_conf.platforms_data.get(job_platform.name,{}).get("HYPERTHREADING","none"))
-        self.queue = self.queue
-        self.partition = self.partition
-        self.scratch_free_space = int(as_conf.jobs_data[self.section].get("SCRATCH_FREE_SPACE",as_conf.platforms_data.get(job_platform.name,{}).get("SCRATCH_FREE_SPACE",0)))
+        self.hyperthreading = as_conf.jobs_data[self.section].get("HYPERTHREADING",platform_data.get("HYPERTHREADING","none"))
+        self.queue = as_conf.jobs_data[self.section].get("QUEUE",platform_data.get("QUEUE",""))
+        self.partition = as_conf.jobs_data[self.section].get("PARTITION",platform_data.get("PARTITION",""))
+        self.scratch_free_space = int(as_conf.jobs_data[self.section].get("SCRATCH_FREE_SPACE",platform_data.get("SCRATCH_FREE_SPACE",0)))
 
-        self.memory = as_conf.jobs_data[self.section].get("MEMORY",as_conf.platforms_data.get(job_platform.name,{}).get("MEMORY",""))
-        self.memory_per_task = as_conf.jobs_data[self.section].get("MEMORY_PER_TASK",as_conf.platforms_data.get(job_platform.name,{}).get("MEMORY_PER_TASK",""))
+        self.memory = as_conf.jobs_data[self.section].get("MEMORY",platform_data.get("MEMORY",""))
+        self.memory_per_task = as_conf.jobs_data[self.section].get("MEMORY_PER_TASK",platform_data.get("MEMORY_PER_TASK",""))
         self.wallclock = as_conf.jobs_data[self.section].get("WALLCLOCK",
                                                              as_conf.platforms_data.get(self.platform_name, {}).get(
                                                                  "MAX_WALLCLOCK", None))
@@ -1638,7 +1681,12 @@ class Job(object):
                         if indx == 0:
                             parameters[name.upper()] = component
                         parameters[f'{name.upper()}_{indx}'] = component
-
+        parameters['TOTALJOBS'] = self.total_jobs
+        parameters['MAXWAITINGJOBS'] = self.max_waiting_jobs
+        parameters['PROCESSORS_PER_NODE'] = self.processors_per_node
+        parameters['EXECUTABLE'] = self.executable
+        parameters['EXCLUSIVE'] = self.exclusive
+        parameters['EC_QUEUE'] = self.ec_queue
         parameters['NUMPROC'] = self.processors
         parameters['PROCESSORS'] = self.processors
         parameters['MEMORY'] = self.memory
@@ -1663,6 +1711,8 @@ class Job(object):
         parameters['CURRENT_QUEUE'] = self.queue
         parameters['RESERVATION'] = self.reservation
         parameters['CURRENT_EC_QUEUE'] = self.ec_queue
+        parameters['PARTITION'] = self.partition
+
 
         return parameters
 
@@ -1690,8 +1740,35 @@ class Job(object):
                 as_conf.get_extensible_wallclock(as_conf.experiment_data["WRAPPERS"].get(wrapper_section)))
         return parameters
 
-    def update_job_parameters(self,as_conf, parameters):
+    def update_dict_parameters(self,as_conf):
+        self.retrials = as_conf.jobs_data.get(self.section,{}).get("RETRIALS", as_conf.experiment_data.get("CONFIG",{}).get("RETRIALS", 0))
+        self.splits = as_conf.jobs_data.get(self.section,{}).get("SPLITS", None)
+        self.delete_when_edgeless = as_conf.jobs_data.get(self.section,{}).get("DELETE_WHEN_EDGELESS", True)
+        self.dependencies = str(as_conf.jobs_data.get(self.section,{}).get("DEPENDENCIES",""))
+        self.running = as_conf.jobs_data.get(self.section,{}).get("RUNNING", "once")
+        self.platform_name = as_conf.jobs_data.get(self.section,{}).get("PLATFORM", as_conf.experiment_data.get("DEFAULT",{}).get("HPCARCH", None))
+        self.file = as_conf.jobs_data.get(self.section,{}).get("FILE", None)
+        self.additional_files = as_conf.jobs_data.get(self.section,{}).get("ADDITIONAL_FILES", [])
 
+        type_ = str(as_conf.jobs_data.get(self.section,{}).get("TYPE", "bash")).lower()
+        if type_ == "bash":
+            self.type = Type.BASH
+        elif type_ == "python" or type_ == "python3":
+            self.type = Type.PYTHON
+        elif type_ == "r":
+            self.type = Type.R
+        elif type_ == "python2":
+            self.type = Type.PYTHON2
+        else:
+            self.type = Type.BASH
+        self.ext_header_path = as_conf.jobs_data.get(self.section,{}).get('EXTENDED_HEADER_PATH', None)
+        self.ext_tailer_path = as_conf.jobs_data.get(self.section,{}).get('EXTENDED_TAILER_PATH', None)
+        if self.platform_name:
+            self.platform_name = self.platform_name.upper()
+
+    def update_job_parameters(self,as_conf, parameters):
+        self.splits = as_conf.jobs_data[self.section].get("SPLITS", None)
+        self.delete_when_edgeless = as_conf.jobs_data[self.section].get("DELETE_WHEN_EDGELESS", True)
         if self.checkpoint: # To activate placeholder sustitution per <empty> in the template
             parameters["AS_CHECKPOINT"] = self.checkpoint
         parameters['JOBNAME'] = self.name
@@ -1705,10 +1782,11 @@ class Job(object):
         parameters['SYNCHRONIZE'] = self.synchronize
         parameters['PACKED'] = self.packed
         parameters['CHUNK'] = 1
-        if hasattr(self, 'RETRIALS'):
-            parameters['RETRIALS'] = self.retrials
-        if hasattr(self, 'delay_retrials'):
-            parameters['DELAY_RETRIALS'] = self.delay_retrials
+        parameters['RETRIALS'] = self.retrials
+        parameters['DELAY_RETRIALS'] = self.delay_retrials
+        parameters['DELETE_WHEN_EDGELESS'] = self.delete_when_edgeless
+
+
         if self.date is not None and len(str(self.date)) > 0:
             if self.chunk is None and len(str(self.chunk)) > 0:
                 chunk = 1
@@ -1718,7 +1796,7 @@ class Job(object):
             parameters['CHUNK'] = chunk
             total_chunk = int(parameters.get('EXPERIMENT.NUMCHUNKS', 1))
             chunk_length = int(parameters.get('EXPERIMENT.CHUNKSIZE', 1))
-            chunk_unit = str(parameters.get('EXPERIMENT.CHUNKSIZEUNIT', "")).lower()
+            chunk_unit = str(parameters.get('EXPERIMENT.CHUNKSIZEUNIT', "day")).lower()
             cal = str(parameters.get('EXPERIMENT.CALENDAR', "")).lower()
             chunk_start = chunk_start_date(
                 self.date, chunk, chunk_length, chunk_unit, cal)
@@ -1770,14 +1848,46 @@ class Job(object):
             else:
                 parameters['CHUNK_LAST'] = 'FALSE'
         parameters['NUMMEMBERS'] = len(as_conf.get_member_list())
-        parameters['DEPENDENCIES'] = str(as_conf.jobs_data[self.section].get("DEPENDENCIES",""))
-        self.dependencies = parameters['DEPENDENCIES']
+        self.dependencies = as_conf.jobs_data[self.section].get("DEPENDENCIES", "")
+        self.dependencies  = str(self.dependencies)
+        parameters['JOB_DEPENDENCIES'] = self.dependencies
         parameters['EXPORT'] = self.export
         parameters['PROJECT_TYPE'] = as_conf.get_project_type()
         self.wchunkinc = as_conf.get_wchunkinc(self.section)
         for key,value in as_conf.jobs_data[self.section].items():
             parameters["CURRENT_"+key.upper()] = value
         return parameters
+
+
+
+    def update_job_variables_final_values(self,parameters):
+        """ Jobs variables final values based on parameters dict instead of as_conf
+            This function is called to handle %CURRENT_% placeholders as they are filled up dynamically for each job
+        """
+        self.splits = parameters["SPLITS"]
+        self.delete_when_edgeless = parameters["DELETE_WHEN_EDGELESS"]
+        self.dependencies = parameters["JOB_DEPENDENCIES"]
+        self.ec_queue = parameters["EC_QUEUE"]
+        self.executable = parameters["EXECUTABLE"]
+        self.total_jobs = parameters["TOTALJOBS"]
+        self.max_waiting_jobs = parameters["MAXWAITINGJOBS"]
+        self.processors = parameters["PROCESSORS"]
+        self.processors_per_node = parameters["PROCESSORS_PER_NODE"]
+        self.nodes = parameters["NODES"]
+        self.exclusive = parameters["EXCLUSIVE"]
+        self.threads = parameters["THREADS"]
+        self.tasks = parameters["TASKS"]
+        self.reservation = parameters["RESERVATION"]
+        self.hyperthreading = parameters["HYPERTHREADING"]
+        self.queue = parameters["CURRENT_QUEUE"]
+        self.partition = parameters["PARTITION"]
+        self.scratch_free_space = parameters["SCRATCH_FREE_SPACE"]
+        self.memory = parameters["MEMORY"]
+        self.memory_per_task = parameters["MEMORY_PER_TASK"]
+        self.wallclock = parameters["WALLCLOCK"]
+        self.custom_directives = parameters["CUSTOM_DIRECTIVES"]
+        self.retrials = parameters["RETRIALS"]
+        self.reservation = parameters["RESERVATION"]
 
     def update_parameters(self, as_conf, parameters,
                           default_parameters={'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
@@ -1793,6 +1903,9 @@ class Job(object):
         :type parameters: dict
         """
         as_conf.reload()
+        self._init_runtime_parameters()
+        # Parameters that affect to all the rest of parameters
+        self.update_dict_parameters(as_conf)
         parameters = parameters.copy()
         parameters.update(as_conf.parameters)
         parameters.update(default_parameters)
@@ -1800,14 +1913,16 @@ class Job(object):
         parameters['ROOTDIR'] = os.path.join(
             BasicConfig.LOCAL_ROOT_DIR, self.expid)
         parameters['PROJDIR'] = as_conf.get_project_dir()
+        # Set parameters dictionary
+        # Set final value
         parameters = self.update_job_parameters(as_conf,parameters)
         parameters = self.update_platform_parameters(as_conf, parameters, self._platform)
         parameters = self.update_platform_associated_parameters(as_conf, parameters, self._platform, parameters['CHUNK'])
         parameters = self.update_wrapper_parameters(as_conf, parameters)
         parameters = as_conf.normalize_parameters_keys(parameters,default_parameters)
-
         parameters = as_conf.substitute_dynamic_variables(parameters,80)
         parameters = as_conf.normalize_parameters_keys(parameters,default_parameters)
+        self.update_job_variables_final_values(parameters)
         # For some reason, there is return but the assignee is also necessary
         self.parameters = parameters
         # This return is only being used by the mock , to change the mock
@@ -1832,7 +1947,7 @@ class Job(object):
         :return: script code
         :rtype: str
         """
-        parameters = self.parameters
+        self.update_parameters(as_conf, self.parameters)
         try:
             if as_conf.get_project_type().lower() != "none" and len(as_conf.get_project_type()) > 0:
                 template_file = open(os.path.join(as_conf.get_project_dir(), self.file), 'r')
@@ -1948,7 +2063,7 @@ class Job(object):
         #TODO regresion test
         for additional_file, additional_template_content in zip(self.additional_files, additional_templates):
             # append to a list all names don't matter the location, inside additional_template_content that  starts with % and ends with %
-            placeholders_inside_additional_template = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', additional_template_content,flags=re.IGNORECASE)
+            placeholders_inside_additional_template = re.findall('%(?<!%%)[a-zA-Z0-9_.]+%(?!%%)', additional_template_content,flags=re.IGNORECASE)
             for placeholder in placeholders_inside_additional_template:
                 placeholder = placeholder[1:-1]
                 value = str(parameters.get(placeholder.upper(),""))
@@ -2100,6 +2215,10 @@ class Job(object):
         :return: True if successful, False otherwise
         :rtype: bool
         """
+        timestamp = date2str(datetime.datetime.now(), 'S')
+
+        self.local_logs = (f"{self.name}.{timestamp}.out", f"{self.name}.{timestamp}.err")
+
         if self.wrapper_type != "vertical" or enabled:
             if self._platform.get_stat_file(self.name, retries=5): #fastlook
                 start_time = self.check_start_time()

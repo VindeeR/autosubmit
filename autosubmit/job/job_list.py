@@ -2180,7 +2180,7 @@ class JobList(object):
                     continue
                 if status in ["RUNNING", "FAILED"]:
                     # check checkpoint if any
-                    if job.platform.connected:  # This will be true only when used under setstatus/run
+                    if job.platform and job.platform.connected:  # This will be true only when used under setstatus/run
                         job.get_checkpoint_files()
                 non_completed_parents_current = 0
                 completed_parents = len([parent for parent in job.parents if parent.status == Status.COMPLETED])

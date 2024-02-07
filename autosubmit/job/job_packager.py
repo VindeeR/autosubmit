@@ -215,6 +215,243 @@ class JobPackager(object):
                 special_variables[job.section]["TOTAL_JOBS"] = job
                 self.special_variables.update(special_variables)
 
+    def check_jobs_to_run_first(self, package):
+        """
+        Check if the jobs to run first are in the package
+        :param package:
+        :return:
+        """
+        run_first = False
+        for job in package.jobs[:]:
+            job.wrapper_type = package.wrapper_type
+            if job in self._jobs_list.jobs_to_run_first:
+                job.packed = False
+                run_first = True
+            else:
+                job.packed = False
+                package.jobs.remove(job)
+                if self.wrapper_type[self.current_wrapper_section] not in ["horizontal", "vertical", "vertical-mixed"]:
+                    for seq in range(0, len(package.jobs_lists)):
+                        try:
+                            package.jobs_lists[seq].remove(job)
+                        except ValueError:
+                            pass
+        return package,run_first
+
+    def check_real_package_wrapper_limits(self,package,max_jobs_to_submit,packages_to_submit):
+        balanced = True
+        if self.wrapper_type[self.current_wrapper_section] == 'vertical-horizontal':
+            min_h = len(package.jobs_lists)
+            min_v = len(package.jobs_lists[0])
+            for list_of_jobs in package.jobs_lists[1:-1]:
+                min_v = min(min_v, len(list_of_jobs))
+        elif self.wrapper_type[self.current_wrapper_section] == 'horizontal-vertical':
+            min_v = len(package.jobs_lists)
+            min_h = len(package.jobs_lists[0])
+            i = 0
+            for list_of_jobs in package.jobs_lists[1:-1]:
+                min_h = min(min_h, len(list_of_jobs))
+            for list_of_jobs in package.jobs_lists[:]:
+                i = i + 1
+                if min_h != len(list_of_jobs) and i < len(package.jobs_lists):
+                    balanced = False
+                elif min_h != len(list_of_jobs) and i == len(package.jobs_lists):
+                    if balanced:
+                        for job in list_of_jobs:
+                            if max_jobs_to_submit == 0:
+                                break
+                            job.packed = False
+                            package.jobs.remove(job)
+                            package = JobPackageSimple([job])
+                            packages_to_submit.append(package)
+                            max_jobs_to_submit = max_jobs_to_submit - 1
+                        package.jobs_lists = package.jobs_lists[:-1]
+        elif self.wrapper_type[self.current_wrapper_section] == 'horizontal':
+            min_h = len(package.jobs)
+            min_v = 1
+        elif self.wrapper_type[self.current_wrapper_section] == 'vertical':
+            min_v = len(package.jobs)
+            min_h = 1
+        else:
+            min_v = len(package.jobs)
+            min_h = len(package.jobs)
+        return min_v, min_h, balanced, packages_to_submit, max_jobs_to_submit
+
+    def check_packages_respect_wrapper_policy(self,built_packages_tmp,packages_to_submit,max_jobs_to_submit,wrapper_limits):
+        """
+        Check if the packages respect the wrapper policy and act in base of it ( submit wrapper, submit sequential, wait for more jobs to form a wrapper)
+        :param built_packages_tmp: List of packages to be submitted
+        :param packages_to_submit: List of packages to be submitted
+        :param max_jobs_to_submit: Maximum number of jobs to submit
+        :param wrapper_limits: Dictionary with keys: min, max, min_v, max_v, min_h, max_h, max_by_section
+        :return: packages_to_submit, max_jobs_to_submit
+        :rtype: List of packages to be submitted, int
+        :return: packages_to_submit, max_jobs_to_submit
+        """
+        for p in built_packages_tmp:
+            if max_jobs_to_submit == 0:
+                break
+            infinite_deadlock = False  # This will raise an autosubmit critical if true, infinite deadlock is when there are no more non-wrapped jobs in waiting or ready status
+            failed_innerjobs = False
+            # Check if the user is using the option to run first some jobs. if so, remove non-first jobs from the package and submit them sequentially following a flexible policy
+            if len(self._jobs_list.jobs_to_run_first) > 0:
+                p,run_first = self.check_jobs_to_run_first(p)
+                if run_first:
+                    for job in p.jobs:
+                        if max_jobs_to_submit == 0:
+                            break
+                        job.packed = False
+                        if job.status == Status.READY:
+                            if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
+                                package = JobPackageSimpleWrapped([job])
+                            else:
+                                package = JobPackageSimple([job])
+                            packages_to_submit.append(package)
+                            max_jobs_to_submit = max_jobs_to_submit - 1
+                continue
+            for job in p.jobs:
+                if job.fail_count > 0:
+                    failed_innerjobs = True
+                    break
+            min_v, min_h, balanced, packages_to_submit, max_jobs_to_submit = self.check_real_package_wrapper_limits(p,max_jobs_to_submit,packages_to_submit)
+            # if the quantity is enough, make the wrapper
+            if len(p.jobs) >= wrapper_limits["min"] and min_v >= wrapper_limits["min_v"] and min_h >= wrapper_limits["min_h"] and not failed_innerjobs or self.wrapper_policy[self.current_wrapper_section] not in ["mixed","strict"]:
+                for job in p.jobs:
+                    job.packed = True
+                packages_to_submit.append(p)
+                max_jobs_to_submit = max_jobs_to_submit - 1
+            else: # Check if there is a deadlock or an infinite deadlock. Once checked, act in base of the wrapper policy.
+                deadlock = True
+                if deadlock:  # Remaining jobs if chunk is the last one
+                    for job in p.jobs:
+                        if (job.running == "chunk" and job.chunk == int(
+                                job.parameters["EXPERIMENT.NUMCHUNKS"])) and balanced:
+                            deadlock = False
+                            break
+                if not deadlock:  # Submit package if deadlock has been liberated
+                    for job in p.jobs:
+                        job.packed = True
+                    packages_to_submit.append(p)
+                    max_jobs_to_submit = max_jobs_to_submit - 1
+                else:
+                    wallclock_sum = p.jobs[0].wallclock
+                    for seq in range(1, min_v):
+                        wallclock_sum = sum_str_hours(wallclock_sum, p.jobs[0].wallclock)
+                    next_wrappable_jobs = self._jobs_list.get_jobs_by_section(
+                        self.jobs_in_wrapper[self.current_wrapper_section])
+                    next_wrappable_jobs = [job for job in next_wrappable_jobs if
+                                           job.status == Status.WAITING and job not in p.jobs]  # Get only waiting jobs
+                    active_jobs = list()
+                    aux_active_jobs = list()
+                    for job in next_wrappable_jobs:  # Prone tree by looking only the closest children
+                        direct_children = False
+                        for related in job.parents:
+                            if related in p.jobs:
+                                direct_children = True
+                                break
+                        if direct_children:  # Get parent of direct children that aren't in wrapper
+                            aux_active_jobs += [aux_parent for aux_parent in job.parents if (
+                                        aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED) and (
+                                                            aux_parent.section not in self.jobs_in_wrapper[
+                                                        self.current_wrapper_section] or (
+                                                                        aux_parent.section in self.jobs_in_wrapper[
+                                                                    self.current_wrapper_section] and aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED and aux_parent.status != Status.WAITING and aux_parent.status != Status.READY))]
+                    aux_active_jobs = list(set(aux_active_jobs))
+                    track = []  # Tracker to prone tree for avoid the checking of the same parent from different nodes.
+                    active_jobs_names = [job.name for job in
+                                         p.jobs]  # We want to search if the actual wrapped jobs needs to run for add more jobs to this wrapper
+                    hard_deadlock = False
+                    for job in aux_active_jobs:
+                        parents_to_check = []
+                        if job.status == Status.WAITING:  # We only want to check uncompleted parents
+                            aux_job = job
+                            for parent in aux_job.parents:  # First case
+                                if parent.name in active_jobs_names:
+                                    hard_deadlock = True
+                                    infinite_deadlock = True
+                                    break
+                                if (parent.status == Status.WAITING) and parent.name != aux_job.name:
+                                    parents_to_check.append(parent)
+                            track.extend(parents_to_check)
+                            while len(
+                                    parents_to_check) > 0 and not infinite_deadlock:  # We want to look deeper on the tree until all jobs are completed, or we find an unresolvable deadlock.
+                                aux_job = parents_to_check.pop(0)
+                                for parent in aux_job.parents:
+                                    if parent.name in active_jobs_names:
+                                        hard_deadlock = True
+                                        infinite_deadlock = True
+                                        break
+                                    if (
+                                            parent.status == Status.WAITING) and parent.name != aux_job.name and parent not in track:
+                                        parents_to_check.append(parent)
+                                track.extend(parents_to_check)
+                        if not infinite_deadlock:
+                            active_jobs.append(job)  # List of jobs that can continue to run without run this wrapper
+
+                    # Act in base of active_jobs and Policies
+                    if self.wrapper_policy[self.current_wrapper_section] == "strict":
+                        for job in p.jobs:
+                            job.packed = False
+                        if len(active_jobs) > 0:
+                            Log.printlog(f'Wrapper policy is set to STRICT and there are not enough jobs to form a wrapper.[wrappable:{wrapper_limits["min"]} <= defined_min:{wrapper_limits["min"]}] [wrappeable_h:{min_h} <= defined_min_h:{wrapper_limits["min_h"]}]|[wrappeable_v:{min_v} <= defined_min_v:{wrapper_limits["min_v"]}] waiting until the wrapper can be formed.\nIf all values are <=, some innerjob has failed under strict policy', 6013)
+                        else:
+                            if len(self._jobs_list.get_in_queue()) == 0:
+                                raise AutosubmitCritical(self.error_message_policy(min_h, min_v, wrapper_limits, hard_deadlock, wallclock_sum, balanced), 7014)
+                    elif self.wrapper_policy[self.current_wrapper_section] == "mixed":
+                        error = True
+                        show_log = True
+                        for job in p.jobs:
+                            if max_jobs_to_submit == 0:
+                                break
+                            if job.fail_count > 0 and job.status == Status.READY:
+                                job.packed = False
+                                Log.printlog(
+                                    "Wrapper policy is set to mixed, there is a failed job that will be sent sequential")
+                                error = False
+                                show_log = False
+                                if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
+                                    package = JobPackageSimpleWrapped(
+                                        [job])
+                                else:
+                                    package = JobPackageSimple([job])
+                                packages_to_submit.append(package)
+                                max_jobs_to_submit = max_jobs_to_submit - 1
+                        if error:
+                            if len(active_jobs) > 0:
+                                if show_log:
+                                    Log.printlog(f'Wrapper policy is set to MIXED and there are not enough jobs to form a wrapper.[wrappable:{wrapper_limits["min"]} < defined_min:{wrapper_limits["min"]}] [wrappable_h:{min_h} < defined_min_h:{wrapper_limits["min_h"]}]|[wrappeable_v:{min_v} < defined_min_v:{wrapper_limits["min_v"]}] waiting until the wrapper can be formed.', 6013)
+                            else:
+                                if len(self._jobs_list.get_in_queue()) == 0:  # When there are not more possible jobs, autosubmit will stop the execution
+                                    raise AutosubmitCritical(self.error_message_policy(min_h, min_v, wrapper_limits, hard_deadlock, wallclock_sum, balanced), 7014)
+                    else:
+                        Log.info(
+                            "Wrapper policy is set to flexible and there is a deadlock, Autosubmit will submit the jobs sequentially")
+                        for job in p.jobs:
+                            if max_jobs_to_submit == 0:
+                                break
+                            job.packed = False
+                            if job.status == Status.READY:
+                                if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
+                                    package = JobPackageSimpleWrapped(
+                                        [job])
+                                else:
+                                    package = JobPackageSimple([job])
+                                packages_to_submit.append(package)
+                                max_jobs_to_submit = max_jobs_to_submit - 1
+        return packages_to_submit, max_jobs_to_submit
+
+    def error_message_policy(self,min_h,min_v,wrapper_limits,hard_deadlock,wallclock_sum,balanced):
+        message = f"Wrapper couldn't be formed under {self.wrapper_policy[self.current_wrapper_section]} POLICY due minimum limit not being reached: [wrappable:{wrapper_limits['min']} < defined_min:{wrapper_limits['min']}] [wrappable_h:{min_h} < defined_min_h:{wrapper_limits['min_h']}]|[wrappeable_v:{min_v} < defined_min_v:{wrapper_limits['min_v']}] "
+        if hard_deadlock:
+            message += "\nCheck your configuration: The next wrappable job can't be wrapped until some of inner jobs of current packages finishes which is impossible"
+        if min_v > 1:
+            message += f"\nCheck your configuration: Check if current {wallclock_sum} vertical wallclock has reached the max defined on platforms.conf."
+        else:
+            message += "\nCheck your configuration: Only jobs_in_wrappers are active, check your jobs_in_wrapper dependencies."
+        if not balanced:
+            message += "\nPackages are not well balanced! (This is not the main cause of the Critical error)"
+        return message
+
     def build_packages(self):
         # type: () -> List[JobPackageBase]
         """
@@ -290,7 +527,6 @@ class JobPackager(object):
         # available_sorted = sorted(
         #     jobs_ready, key=lambda k: k.long_name.split('_')[1][:6])
         # Sort by Priority, the highest first
-
         jobs_to_submit = sorted(
             jobs_ready, key=lambda k: k.priority, reverse=True)
         # Take the first num_jobs_to_submit from the list of available
@@ -342,259 +578,14 @@ class JobPackager(object):
             else:
                 built_packages_tmp = self._build_vertical_packages(jobs, wrapper_limits)
 
-            for p in built_packages_tmp:
-                infinite_deadlock = False  # This will raise an autosubmit critical if true
-                failed_innerjobs = False
-                job_has_to_run_first = False
-                aux_jobs = []
-                # Check failed jobs first
-                for job in p.jobs:
-                    job.wrapper_type = p.wrapper_type
-                    if len(self._jobs_list.jobs_to_run_first) > 0:
-                        if job not in self._jobs_list.jobs_to_run_first:
-                            job.packed = False
-                            aux_jobs.append(job)
-                    if job.fail_count > 0:
-                        failed_innerjobs = True
-                if len(self._jobs_list.jobs_to_run_first) > 0:
-                    job_has_to_run_first = True
-                    for job in aux_jobs:
-                        job.packed = False
-                        p.jobs.remove(job)
-                        if self.wrapper_type[self.current_wrapper_section] != "horizontal" and self.wrapper_type[self.current_wrapper_section] != "vertical" and self.wrapper_type[self.current_wrapper_section] != "vertical-mixed":
-                            for seq in range(0,len(p.jobs_lists)):
-                                try:
-                                    p.jobs_lists[seq].remove(job)
-                                except Exception as e:
-                                    pass
-                    if self.wrapper_type[self.current_wrapper_section] != "horizontal" and self.wrapper_type[self.current_wrapper_section] != "vertical" and self.wrapper_type[self.current_wrapper_section] != "vertical-mixed":
-                        aux = p.jobs_lists
-                        p.jobs_lists = []
-                        for seq in range(0,len(aux)):
-                            if len(aux[seq]) > 0:
-                                p.jobs_lists.append(aux[seq])
-
-                if len(p.jobs) > 0:
-                    balanced = True
-                    if self.wrapper_type[self.current_wrapper_section] == 'vertical-horizontal':
-                        min_h = len(p.jobs_lists)
-                        min_v = len(p.jobs_lists[0])
-                        for list_of_jobs in p.jobs_lists[1:-1]:
-                            min_v = min(min_v, len(list_of_jobs))
-
-                    elif self.wrapper_type[self.current_wrapper_section] == 'horizontal-vertical':
-                        min_v = len(p.jobs_lists)
-                        min_h = len(p.jobs_lists[0])
-                        i = 0
-                        for list_of_jobs in p.jobs_lists[1:-1]:
-                            min_h = min(min_h, len(list_of_jobs))
-                        for list_of_jobs in p.jobs_lists[:]:
-                            i = i+1
-                            if min_h != len(list_of_jobs) and i < len(p.jobs_lists):
-                                balanced = False
-                            elif min_h != len(list_of_jobs) and i == len(p.jobs_lists):
-                                if balanced:
-                                    for job in list_of_jobs:
-                                        if max_jobs_to_submit == 0:
-                                            break
-                                        job.packed = False
-                                        p.jobs.remove(job)
-                                        package = JobPackageSimple([job])
-                                        packages_to_submit.append(package)
-                                        max_jobs_to_submit = max_jobs_to_submit - 1
-
-                                    p.jobs_lists = p.jobs_lists[:-1]
-
-
-
-                    elif self.wrapper_type[self.current_wrapper_section] == 'horizontal':
-                        min_h = len(p.jobs)
-                        min_v = 1
-                    elif self.wrapper_type[self.current_wrapper_section] == 'vertical':
-                        min_v = len(p.jobs)
-                        min_h = 1
-                    else:
-                        min_v = len(p.jobs)
-                        min_h = len(p.jobs)
-                    # if the quantity is enough, make the wrapper
-
-                    if (len(p.jobs) >= wrapper_limits["min"] and min_v >= wrapper_limits["min_v"] and min_h >= wrapper_limits["min_h"] and (not failed_innerjobs or self.wrapper_policy[self.current_wrapper_section] not in ["mixed","strict"] ) ) or job_has_to_run_first:
-                        for job in p.jobs:
-                            job.packed = True
-                        packages_to_submit.append(p)
-                        max_jobs_to_submit = max_jobs_to_submit - 1
-
-                    else:
-                        deadlock = True
-                        if deadlock: # Remaining jobs if chunk is the last one
-                            for job in p.jobs:
-                                if ( job.running == "chunk" and job.chunk == int(job.parameters["EXPERIMENT.NUMCHUNKS"]) ) and  balanced:
-                                    deadlock = False
-                                    break
-                        if not deadlock: # Submit package if deadlock has been liberated
-                            for job in p.jobs:
-                                job.packed = True
-                            packages_to_submit.append(p)
-                            max_jobs_to_submit = max_jobs_to_submit - 1
-
-                        else:
-                            wallclock_sum = p.jobs[0].wallclock
-                            for seq in range(1, min_v):
-                                wallclock_sum = sum_str_hours(wallclock_sum, p.jobs[0].wallclock)
-                            next_wrappable_jobs = self._jobs_list.get_jobs_by_section(self.jobs_in_wrapper[self.current_wrapper_section])
-                            next_wrappable_jobs = [job for job in next_wrappable_jobs if job.status == Status.WAITING and job not in p.jobs ] # Get only waiting jobs
-                            active_jobs = list()
-                            aux_active_jobs = list()
-                            for job in next_wrappable_jobs: # Prone tree by looking only the closest children
-                                direct_children = False
-                                for related in job.parents:
-                                    if related in p.jobs:
-                                        direct_children = True
-                                        break
-                                if direct_children: # Get parent of direct children that aren't in wrapper
-                                    aux_active_jobs += [aux_parent for aux_parent in job.parents if (  aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED) and ( aux_parent.section not in self.jobs_in_wrapper[self.current_wrapper_section] or ( aux_parent.section in self.jobs_in_wrapper[self.current_wrapper_section] and aux_parent.status != Status.COMPLETED and aux_parent.status != Status.FAILED and aux_parent.status != Status.WAITING and aux_parent.status != Status.READY ) ) ]
-                            aux_active_jobs = list(set(aux_active_jobs))
-                            track = [] # Tracker to prone tree for avoid the checking of the same parent from different nodes.
-                            active_jobs_names = [ job.name for job in p.jobs ] # We want to search if the actual wrapped jobs needs to run for add more jobs to this wrapper
-                            hard_deadlock = False
-                            for job in aux_active_jobs:
-                                parents_to_check = []
-                                if job.status == Status.WAITING: # We only want to check uncompleted parents
-                                    aux_job = job
-                                    for parent in aux_job.parents: # First case
-                                        if parent.name in active_jobs_names:
-                                            hard_deadlock = True
-                                            infinite_deadlock = True
-                                            break
-                                        if (parent.status == Status.WAITING ) and parent.name != aux_job.name:
-                                            parents_to_check.append(parent)
-                                    track.extend(parents_to_check)
-                                    while len(parents_to_check) > 0 and not infinite_deadlock: # We want to look deeper on the tree until all jobs are completed, or we find an unresolvable deadlock.
-                                        aux_job = parents_to_check.pop(0)
-                                        for parent in aux_job.parents:
-                                            if parent.name in active_jobs_names:
-                                                hard_deadlock = True
-                                                infinite_deadlock = True
-                                                break
-                                            if (parent.status == Status.WAITING ) and parent.name != aux_job.name and parent not in track:
-                                                parents_to_check.append(parent)
-                                        track.extend(parents_to_check)
-                                if not infinite_deadlock:
-                                    active_jobs.append(job)  # List of jobs that can continue to run without run this wrapper
-                            # Act in base of active_jobs and Policies
-                            if self.wrapper_policy[self.current_wrapper_section] == "strict":
-                                error = True
-                                for job in p.jobs:
-                                    if max_jobs_to_submit == 0:
-                                        break
-                                    job.packed = False
-                                    if job in self._jobs_list.jobs_to_run_first:
-                                        error = False
-                                        if job.status == Status.READY:
-                                            if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
-                                                package = JobPackageSimpleWrapped(
-                                                    [job])
-                                            else:
-                                                package = JobPackageSimple([job])
-                                            packages_to_submit.append(package)
-                                            max_jobs_to_submit = max_jobs_to_submit - 1
-
-                                if error:
-                                    if len(active_jobs) > 0:
-                                        Log.printlog(
-                                            "Wrapper policy is set to MIXED and there are not enough jobs to form a wrapper.[wrappable:{4} <= defined_min:{5}] [wrappeable_h:{0} <= defined_min_h:{1}]|[wrappeable_v:{2} <= defined_min_v:{3}] waiting until the wrapper can be formed.\nIf all values are <=, some innerjob has failed under strict policy".format(
-                                                min_h, wrapper_limits["min_h"], min_v,
-                                                wrapper_limits["min_v"], wrapper_limits["min"], len(active_jobs)),
-                                            6013)
-                                    else:
-                                        message = "Wrapper couldn't be formed under {0} POLICY due minimum limit not being reached: [wrappable:{4} < defined_min:{5}] [wrappable_h:{1} < defined_min_h:{2}]|[wrappeable_v:{3} < defined_min_v:{4}] ".format(
-                                            self.wrapper_policy[self.current_wrapper_section], min_h,
-                                            wrapper_limits["min_h"], min_v, wrapper_limits["min_v"],
-                                            wrapper_limits["min"], len(active_jobs))
-                                        if hard_deadlock:
-                                            message += "\nCheck your configuration: The next wrappable job can't be wrapped until some of inner jobs of current packages finishes which is imposible"
-                                        if min_v > 1:
-                                            message += "\nCheck your configuration: Check if current {0} vertical wallclock has reached the max defined on platforms.conf.".format(wallclock_sum)
-                                        else:
-                                            message += "\nCheck your configuration: Only jobs_in_wrappers are active, check their dependencies."
-                                        if not balanced:
-                                            message += "\nPackages are not well balanced: Check your dependencies(This is not the main cause of the Critical error)"
-                                        if len(self._jobs_list.get_in_queue()) == 0:
-                                            raise AutosubmitCritical(message, 7014)
-                            elif self.wrapper_policy[self.current_wrapper_section] == "mixed":
-                                error = True
-                                show_log = True
-                                for job in p.jobs:
-                                    if max_jobs_to_submit == 0:
-                                        break
-                                    if job in self._jobs_list.jobs_to_run_first:
-                                        job.packed = False
-                                        error = False
-                                        if job.status == Status.READY:
-                                            if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
-                                                package = JobPackageSimpleWrapped(
-                                                    [job])
-                                            else:
-                                                package = JobPackageSimple([job])
-                                            packages_to_submit.append(package)
-                                            max_jobs_to_submit = max_jobs_to_submit - 1
-
-                                    if job.fail_count > 0 and job.status == Status.READY:
-                                        job.packed = False
-                                        Log.printlog(
-                                            "Wrapper policy is set to mixed, there is a failed job that will be sent sequential")
-                                        error = False
-                                        show_log = False
-                                        if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
-                                            package = JobPackageSimpleWrapped(
-                                                [job])
-                                        else:
-                                            package = JobPackageSimple([job])
-                                        packages_to_submit.append(package)
-                                        max_jobs_to_submit = max_jobs_to_submit - 1
-
-                                    if error:
-                                        if len(active_jobs) > 0:
-                                            if show_log:
-                                                Log.printlog(
-                                                    "Wrapper policy is set to MIXED and there are not enough jobs to form a wrapper.[wrappable:{4} < defined_min:{5}] [wrappable_h:{0} < defined_min_h:{1}]|[wrappeable_v:{2} < defined_min_v:{3}] waiting until the wrapper can be formed.".format(
-                                                        min_h, wrapper_limits["min_h"], min_v,
-                                                        wrapper_limits["min_v"],wrapper_limits["min"],len(active_jobs)), 6013)
-                                        else:
-                                            message = "Wrapper couldn't be formed under {0} POLICY due minimum limit not being reached: [wrappable:{4} < defined_min:{5}] [wrappable_h:{1} < defined_min_h:{2}]|[wrappeable_v:{3} < defined_min_v:{4}] ".format(
-                                                    self.wrapper_policy[self.current_wrapper_section], min_h,
-                                                    wrapper_limits["min_h"], min_v, wrapper_limits["min_v"],wrapper_limits["min"],len(active_jobs))
-                                            if hard_deadlock:
-                                                message += "\nCheck your configuration: The next wrappable job can't be wrapped until some of inner jobs of current packages finishes which is impossible"
-                                            if min_v > 1:
-                                                message += "\nCheck your configuration: Check if current {0} vertical wallclock has reached the max defined on platforms.conf.".format(
-                                                    wallclock_sum)
-                                            else:
-                                                message += "\nCheck your configuration: Only jobs_in_wrappers are active, check your jobs_in_wrapper dependencies."
-                                            if not balanced:
-                                                message += "\nPackages are not well balanced! (This is not the main cause of the Critical error)"
-
-                                            if len(self._jobs_list.get_in_queue()) == 0: # When there are not more possible jobs, autosubmit will stop the execution
-                                                raise AutosubmitCritical(message, 7014)
-                                else:
-                                    Log.info("Wrapper policy is set to flexible and there is a deadlock, Autosubmit will submit the jobs sequentially")
-                                    for job in p.jobs:
-                                        if max_jobs_to_submit == 0:
-                                            break
-                                        job.packed = False
-                                        if job.status == Status.READY:
-                                            if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
-                                                package = JobPackageSimpleWrapped(
-                                                    [job])
-                                            else:
-                                                package = JobPackageSimple([job])
-                                            packages_to_submit.append(package)
-                                            max_jobs_to_submit = max_jobs_to_submit - 1
-
+            packages_to_submit,max_jobs_to_submit = self.check_packages_respect_wrapper_policy(built_packages_tmp,packages_to_submit,max_jobs_to_submit,wrapper_limits)
         # Now do simple jobs
         for job in non_wrapped_jobs:
             if max_jobs_to_submit == 0:
                 break
+            if len(self._jobs_list.jobs_to_run_first) > 0: # if user wants to run first some jobs, submit them first
+                if job not in self._jobs_list.jobs_to_run_first:
+                    continue
             job.packed = False
             if job.type == Type.PYTHON and not self._platform.allow_python_jobs:
                 package = JobPackageSimpleWrapped([job])

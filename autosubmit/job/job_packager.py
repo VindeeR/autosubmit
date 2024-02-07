@@ -186,21 +186,22 @@ class JobPackager(object):
         :return:
         """
         run_first = False
-        for job in package.jobs[:]:
-            job.wrapper_type = package.wrapper_type
-            if job in self._jobs_list.jobs_to_run_first:
-                job.packed = False
-                run_first = True
-            else:
-                job.packed = False
-                package.jobs.remove(job)
-                if self.wrapper_type[self.current_wrapper_section] not in ["horizontal", "vertical", "vertical-mixed"]:
-                    for seq in range(0, len(package.jobs_lists)):
-                        try:
-                            package.jobs_lists[seq].remove(job)
-                        except ValueError:
-                            pass
-        return package,run_first
+        if len(self._jobs_list.jobs_to_run_first) > 0:
+            for job in package.jobs[:]:
+                job.wrapper_type = package.wrapper_type
+                if job in self._jobs_list.jobs_to_run_first:
+                    job.packed = False
+                    run_first = True
+                else:
+                    job.packed = False
+                    package.jobs.remove(job)
+                    if self.wrapper_type[self.current_wrapper_section] not in ["horizontal", "vertical", "vertical-mixed"]:
+                        for seq in range(0, len(package.jobs_lists)):
+                            try:
+                                package.jobs_lists[seq].remove(job)
+                            except ValueError:
+                                pass
+        return package, run_first
 
     def check_real_package_wrapper_limits(self,package):
         balanced = True

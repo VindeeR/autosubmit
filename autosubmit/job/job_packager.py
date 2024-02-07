@@ -452,16 +452,11 @@ class JobPackager(object):
             message += "\nPackages are not well balanced! (This is not the main cause of the Critical error)"
         return message
 
-    def build_packages(self):
-        # type: () -> List[JobPackageBase]
+    def check_if_packages_are_ready_to_build(self):
         """
-        Returns the list of the built packages to be submitted
-
-        :return: List of packages depending on type of package, JobPackageVertical Object for 'vertical'.
-        :rtype: List() of JobPackageVertical
+        Check if the packages are ready to be built
+        :return: List of jobs ready to be built, boolean indicating if packages can't be built for other reasons ( max_total_jobs...)
         """
-        packages_to_submit = list()
-        # only_wrappers = False when coming from Autosubmit.submit_ready_jobs, jobs_filtered empty
         jobs_ready = list()
         if len(self._jobs_list.jobs_to_run_first) > 0:
             jobs_ready = [job for job in self._jobs_list.jobs_to_run_first if
@@ -500,7 +495,7 @@ class JobPackager(object):
                 pass
         if len(jobs_ready) == 0:
             # If there are no jobs ready, result is tuple of empty
-            return packages_to_submit
+            return jobs_ready,False
         #check if there are jobs listed on calculate_job_limits
         for job in jobs_ready:
             self._special_variables(job)
@@ -512,7 +507,7 @@ class JobPackager(object):
                     # If there is no more space in platform, result is tuple of empty
                     Log.debug("No more space in platform {0} for jobs {1}".format(self._platform.name,
                                                                                   [job.name for job in jobs_ready]))
-                    return packages_to_submit
+                    return jobs_ready,False
                 self.calculate_job_limits(self._platform)
 
         else:
@@ -520,32 +515,31 @@ class JobPackager(object):
             if not (self._max_wait_jobs_to_submit > 0 and self._max_jobs_to_submit > 0):
                 # If there is no more space in platform, result is tuple of empty
                 Log.debug("No more space in platform {0} for jobs {1}".format(self._platform.name, [job.name for job in jobs_ready]))
-                return packages_to_submit
+                return jobs_ready,False
+        return jobs_ready,True
 
+    def build_packages(self):
+        # type: () -> List[JobPackageBase]
+        """
+        Returns the list of the built packages to be submitted
 
-        # Sort by 6 first digits of date
-        # available_sorted = sorted(
-        #     jobs_ready, key=lambda k: k.long_name.split('_')[1][:6])
-        # Sort by Priority, the highest first
+        :return: List of packages depending on type of package, JobPackageVertical Object for 'vertical'.
+        :rtype: List() of JobPackageVertical
+        """
+        packages_to_submit = list()
+        jobs_ready,ready = self.check_if_packages_are_ready_to_build()
+        if not ready:
+            return []
+        max_jobs_to_submit = min(self._max_wait_jobs_to_submit, self._max_jobs_to_submit)
         jobs_to_submit = sorted(
             jobs_ready, key=lambda k: k.priority, reverse=True)
-        # Take the first num_jobs_to_submit from the list of available
         for job in [failed_job for failed_job in jobs_to_submit if failed_job.fail_count > 0]:
             job.packed = False
-        jobs_to_submit_by_section = self._divide_list_by_section(jobs_to_submit)
-        simple_jobs = 0
-        wrapper_jobs = 0
-        for section, section_jobs in jobs_to_submit_by_section.items():
-            if section == "SIMPLE":
-                simple_jobs += len(section_jobs)
-            else:
-                if len(section_jobs) > 0:
-                    wrapper_jobs += 1
-        max_jobs_to_submit = min(self._max_wait_jobs_to_submit, self._max_jobs_to_submit)
-        non_wrapped_jobs = jobs_to_submit_by_section.pop("SIMPLE",[])
-        # create wrapped package jobs Wrapper building starts here
-        # First do wrappers jobs
-        for wrapper_name, jobs in jobs_to_submit_by_section.items():
+        jobs_to_wrap = self._divide_list_by_section(jobs_to_submit)
+        non_wrapped_jobs = jobs_to_wrap.pop("SIMPLE",[])
+
+        # Prepare packages for wrapped jobs
+        for wrapper_name, jobs in jobs_to_wrap.items():
             if max_jobs_to_submit == 0:
                 break
             self.current_wrapper_section = wrapper_name
@@ -579,7 +573,7 @@ class JobPackager(object):
                 built_packages_tmp = self._build_vertical_packages(jobs, wrapper_limits)
 
             packages_to_submit,max_jobs_to_submit = self.check_packages_respect_wrapper_policy(built_packages_tmp,packages_to_submit,max_jobs_to_submit,wrapper_limits)
-        # Now do simple jobs
+        # Now, prepare the packages for non-wrapper jobs
         for job in non_wrapped_jobs:
             if max_jobs_to_submit == 0:
                 break

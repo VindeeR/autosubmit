@@ -202,13 +202,18 @@ class JobPackager(object):
                             pass
         return package,run_first
 
-    def check_real_package_wrapper_limits(self,package,max_jobs_to_submit,packages_to_submit):
+    def check_real_package_wrapper_limits(self,package):
         balanced = True
         if self.wrapper_type[self.current_wrapper_section] == 'vertical-horizontal':
+            i = 0
             min_h = len(package.jobs_lists)
             min_v = len(package.jobs_lists[0])
             for list_of_jobs in package.jobs_lists[1:-1]:
                 min_v = min(min_v, len(list_of_jobs))
+            for list_of_jobs in package.jobs_lists[:]:
+                i = i + 1
+                if min_v != len(list_of_jobs) and i < len(package.jobs_lists):
+                    balanced = False
         elif self.wrapper_type[self.current_wrapper_section] == 'horizontal-vertical':
             min_v = len(package.jobs_lists)
             min_h = len(package.jobs_lists[0])
@@ -219,17 +224,6 @@ class JobPackager(object):
                 i = i + 1
                 if min_h != len(list_of_jobs) and i < len(package.jobs_lists):
                     balanced = False
-                elif min_h != len(list_of_jobs) and i == len(package.jobs_lists):
-                    if balanced:
-                        for job in list_of_jobs:
-                            if max_jobs_to_submit == 0:
-                                break
-                            job.packed = False
-                            package.jobs.remove(job)
-                            package = JobPackageSimple([job])
-                            packages_to_submit.append(package)
-                            max_jobs_to_submit = max_jobs_to_submit - 1
-                        package.jobs_lists = package.jobs_lists[:-1]
         elif self.wrapper_type[self.current_wrapper_section] == 'horizontal':
             min_h = len(package.jobs)
             min_v = 1
@@ -239,7 +233,7 @@ class JobPackager(object):
         else:
             min_v = len(package.jobs)
             min_h = len(package.jobs)
-        return min_v, min_h, balanced, packages_to_submit, max_jobs_to_submit
+        return min_v, min_h, balanced
 
     def check_packages_respect_wrapper_policy(self,built_packages_tmp,packages_to_submit,max_jobs_to_submit,wrapper_limits):
         """
@@ -277,7 +271,7 @@ class JobPackager(object):
                 if job.fail_count > 0:
                     failed_innerjobs = True
                     break
-            min_v, min_h, balanced, packages_to_submit, max_jobs_to_submit = self.check_real_package_wrapper_limits(p,max_jobs_to_submit,packages_to_submit)
+            min_v, min_h, balanced = self.check_real_package_wrapper_limits(p)
             # if the quantity is enough, make the wrapper
             if len(p.jobs) >= wrapper_limits["min"] and min_v >= wrapper_limits["min_v"] and min_h >= wrapper_limits["min_h"] and not failed_innerjobs or self.wrapper_policy[self.current_wrapper_section] not in ["mixed","strict"]:
                 for job in p.jobs:

@@ -6,8 +6,10 @@ import tempfile
 
 from unittest import TestCase
 from mock import MagicMock
+
+import log.log
 from autosubmit.job.job_packager import JobPackager
-from autosubmit.job.job_packages import JobPackageVertical, JobPackageHorizontal, JobPackageHorizontalVertical , JobPackageVerticalHorizontal
+from autosubmit.job.job_packages import JobPackageVertical, JobPackageHorizontal, JobPackageHorizontalVertical , JobPackageVerticalHorizontal, JobPackageSimple
 from autosubmit.job.job import Job
 from autosubmit.job.job_list import JobList
 from autosubmit.job.job_dict import DicJobs
@@ -1715,9 +1717,118 @@ class TestWrappers(TestCase):
 
     def test_check_packages_respect_wrapper_policy(self):
         # want to test self.job_packager.check_packages_respect_wrapper_policy(built_packages_tmp,packages_to_submit,max_jobs_to_submit,wrapper_limits)
+        date_list = ["d1"]
+        member_list = ["m1", "m2"]
+        chunk_list = [1, 2, 3, 4]
+        for section, s_value in self.workflows['basic']['sections'].items():
+            self.as_conf.jobs_data[section] = s_value
+        self._createDummyJobs(
+            self.workflows['basic'], date_list, member_list, chunk_list)
 
+        self.job_list.get_job_by_name(
+            'expid_d1_m1_s1').status = Status.COMPLETED
+        self.job_list.get_job_by_name(
+            'expid_d1_m2_s1').status = Status.COMPLETED
+
+        self.job_list.get_job_by_name('expid_d1_m1_1_s2').status = Status.READY
+        self.job_list.get_job_by_name('expid_d1_m2_1_s2').status = Status.READY
+
+        wrapper_expression = "s2 s3"
+        d1_m1_1_s2 = self.job_list.get_job_by_name('expid_d1_m1_1_s2')
+        d1_m1_2_s2 = self.job_list.get_job_by_name('expid_d1_m1_2_s2')
+        d1_m1_3_s2 = self.job_list.get_job_by_name('expid_d1_m1_3_s2')
+        d1_m1_4_s2 = self.job_list.get_job_by_name('expid_d1_m1_4_s2')
+        d1_m2_1_s2 = self.job_list.get_job_by_name('expid_d1_m2_1_s2')
+        d1_m2_2_s2 = self.job_list.get_job_by_name('expid_d1_m2_2_s2')
+        d1_m2_3_s2 = self.job_list.get_job_by_name('expid_d1_m2_3_s2')
+        d1_m2_4_s2 = self.job_list.get_job_by_name('expid_d1_m2_4_s2')
+
+        d1_m1_1_s3 = self.job_list.get_job_by_name('expid_d1_m1_1_s3')
+        d1_m1_2_s3 = self.job_list.get_job_by_name('expid_d1_m1_2_s3')
+        d1_m1_3_s3 = self.job_list.get_job_by_name('expid_d1_m1_3_s3')
+        d1_m1_4_s3 = self.job_list.get_job_by_name('expid_d1_m1_4_s3')
+        d1_m2_1_s3 = self.job_list.get_job_by_name('expid_d1_m2_1_s3')
+        d1_m2_2_s3 = self.job_list.get_job_by_name('expid_d1_m2_2_s3')
+        d1_m2_3_s3 = self.job_list.get_job_by_name('expid_d1_m2_3_s3')
+        d1_m2_4_s3 = self.job_list.get_job_by_name('expid_d1_m2_4_s3')
+
+        self.job_list._ordered_jobs_by_date_member["WRAPPERS"]["d1"] = dict()
+        self.job_list._ordered_jobs_by_date_member["WRAPPERS"]["d1"]["m1"] = [d1_m1_1_s2, d1_m1_1_s3, d1_m1_2_s2,
+                                                                              d1_m1_2_s3,
+                                                                              d1_m1_3_s2, d1_m1_3_s3, d1_m1_4_s2,
+                                                                              d1_m1_4_s3]
+
+        self.job_list._ordered_jobs_by_date_member["WRAPPERS"]["d1"]["m2"] = [d1_m2_1_s2, d1_m2_1_s3, d1_m2_2_s2,
+                                                                              d1_m2_2_s3,
+                                                                              d1_m2_3_s2, d1_m2_3_s3, d1_m2_4_s2,
+                                                                              d1_m2_4_s3]
+
+        self.job_packager.jobs_in_wrapper = wrapper_expression
+
+        self.job_packager.retrials = 0
+        # test vertical-wrapper
+        self.job_packager.wrapper_type["WRAPPER_V"] = 'vertical'
+        self.job_packager.current_wrapper_section = "WRAPPER_V"
+        self.as_conf.experiment_data["WRAPPERS"][self.job_packager.current_wrapper_section] = {}
+        self.as_conf.experiment_data["WRAPPERS"][self.job_packager.current_wrapper_section]["TYPE"] = "horizontal"
+        self.as_conf.experiment_data["WRAPPERS"][self.job_packager.current_wrapper_section]["JOBS_IN_WRAPPER"] = "S2 S3"
+        packages_to_submit = []
+        max_jobs_to_submit = 2
+        wrapper_limits = {'max': 9999999,
+                            'max_by_section': {'S2': 9999999, 'S3': 9999999},
+                            'max_h': 9999999,
+                            'max_v': 9999999,
+                            'min': 2,
+                            'min_h': 1,
+                            'min_v': 2
+                         }
+        package = [d1_m1_1_s2, d1_m1_1_s2, d1_m1_1_s2, d1_m1_1_s2, d1_m1_1_s2]
+        packages_h = [JobPackageHorizontal(
+            package, configuration=self.as_conf)]
+
+        self.job_packager.wrapper_policy = {}
+        self.job_packager.wrapper_policy["WRAPPER_V"] = "flexible"
+        packages_to_submit2, max_jobs_to_submit2 = self.job_packager.check_packages_respect_wrapper_policy(packages_h, packages_to_submit,
+                                                                max_jobs_to_submit, wrapper_limits)
+        self.assertEqual(max_jobs_to_submit2, max_jobs_to_submit-1)
+        self.assertEqual(packages_to_submit2, packages_h)
+
+        wrapper_limits = {'max': 2,
+                            'max_by_section': {'S2': 2, 'S3': 2},
+                            'max_h': 2,
+                            'max_v': 2,
+                            'min': 2,
+                            'min_h': 2,
+                            'min_v': 2
+                         }
+        self.job_packager.jobs_in_wrapper = {self.job_packager.current_wrapper_section: {'S2': 2, 'S3': 2}}
+        packages_to_submit = []
+        packages_to_submit2, max_jobs_to_submit2 = self.job_packager.check_packages_respect_wrapper_policy(packages_h, packages_to_submit,
+                                                                max_jobs_to_submit, wrapper_limits)
+        self.assertEqual(max_jobs_to_submit2, 0)
+        self.assertEqual(len(packages_to_submit2),2)
+        for p in packages_to_submit2:
+            self.assertEqual(type(p), JobPackageSimple)
+
+        self.job_packager.wrapper_policy["WRAPPER_V"] = "mixed"
+        packages_to_submit = []
+        try:
+            packages_to_submit2, max_jobs_to_submit2 = self.job_packager.check_packages_respect_wrapper_policy(packages_h, packages_to_submit,
+                                                                    max_jobs_to_submit, wrapper_limits)
+            self.assertTrue(False)
+        except log.log.AutosubmitCritical as e:
+            self.assertTrue(True)
+        self.job_packager.wrapper_policy["WRAPPER_V"] = "strict"
+        packages_to_submit = []
+        try:
+            packages_to_submit2, max_jobs_to_submit2 = self.job_packager.check_packages_respect_wrapper_policy(packages_h, packages_to_submit,
+                                                                    max_jobs_to_submit, wrapper_limits)
+            self.assertTrue(False)
+        except log.log.AutosubmitCritical as e:
+            self.assertTrue(True)
     #def test_build_packages(self):
         # want to test self.job_packager.build_packages()
+        # TODO: implement this test in the future
 
     def _createDummyJobs(self, sections_dict, date_list, member_list, chunk_list):
         for section, section_dict in sections_dict.get('sections').items():

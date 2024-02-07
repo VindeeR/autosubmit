@@ -274,7 +274,7 @@ class JobPackager(object):
                     break
             min_v, min_h, balanced = self.check_real_package_wrapper_limits(p)
             # if the quantity is enough, make the wrapper
-            if len(p.jobs) >= wrapper_limits["min"] and min_v >= wrapper_limits["min_v"] and min_h >= wrapper_limits["min_h"] and not failed_innerjobs or self.wrapper_policy[self.current_wrapper_section] not in ["mixed","strict"]:
+            if len(p.jobs) >= wrapper_limits["min"] and min_v >= wrapper_limits["min_v"] and min_h >= wrapper_limits["min_h"] and not failed_innerjobs:
                 for job in p.jobs:
                     job.packed = True
                 packages_to_submit.append(p)
@@ -296,8 +296,7 @@ class JobPackager(object):
                     wallclock_sum = p.jobs[0].wallclock
                     for seq in range(1, min_v):
                         wallclock_sum = sum_str_hours(wallclock_sum, p.jobs[0].wallclock)
-                    next_wrappable_jobs = self._jobs_list.get_jobs_by_section(
-                        self.jobs_in_wrapper[self.current_wrapper_section])
+                    next_wrappable_jobs = self._jobs_list.get_jobs_by_section(self.jobs_in_wrapper[self.current_wrapper_section])
                     next_wrappable_jobs = [job for job in next_wrappable_jobs if
                                            job.status == Status.WAITING and job not in p.jobs]  # Get only waiting jobs
                     active_jobs = list()

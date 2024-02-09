@@ -26,7 +26,7 @@ from operator import attrgetter
 from math import ceil
 import operator
 from typing import List
-
+from contextlib import suppress
 
 
 class JobPackager(object):
@@ -196,10 +196,8 @@ class JobPackager(object):
                     package.jobs.remove(job)
                     if self.wrapper_type[self.current_wrapper_section] not in ["horizontal", "vertical", "vertical-mixed"]:
                         for seq in range(0, len(package.jobs_lists)):
-                            try:
+                            with suppress(ValueError):
                                 package.jobs_lists[seq].remove(job)
-                            except ValueError:
-                                pass
         return package, run_first
 
     def check_real_package_wrapper_limits(self,package):

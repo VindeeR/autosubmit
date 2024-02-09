@@ -1812,20 +1812,14 @@ class TestWrappers(TestCase):
 
         self.job_packager.wrapper_policy["WRAPPER_V"] = "mixed"
         packages_to_submit = []
-        try:
-            packages_to_submit2, max_jobs_to_submit2 = self.job_packager.check_packages_respect_wrapper_policy(packages_h, packages_to_submit,
-                                                                    max_jobs_to_submit, wrapper_limits)
-            self.assertTrue(False)
-        except log.log.AutosubmitCritical as e:
-            self.assertTrue(True)
+        with self.assertRaises(log.log.AutosubmitCritical):
+            self.job_packager.check_packages_respect_wrapper_policy(packages_h, packages_to_submit, max_jobs_to_submit, wrapper_limits)
+
         self.job_packager.wrapper_policy["WRAPPER_V"] = "strict"
         packages_to_submit = []
-        try:
-            packages_to_submit2, max_jobs_to_submit2 = self.job_packager.check_packages_respect_wrapper_policy(packages_h, packages_to_submit,
-                                                                    max_jobs_to_submit, wrapper_limits)
-            self.assertTrue(False)
-        except log.log.AutosubmitCritical as e:
-            self.assertTrue(True)
+        with self.assertRaises(log.log.AutosubmitCritical):
+            self.job_packager.check_packages_respect_wrapper_policy(packages_h, packages_to_submit, max_jobs_to_submit, wrapper_limits)
+
     #def test_build_packages(self):
         # want to test self.job_packager.build_packages()
         # TODO: implement this test in the future

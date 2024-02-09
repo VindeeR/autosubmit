@@ -26,7 +26,6 @@ from operator import attrgetter
 from math import ceil
 import operator
 from typing import List
-import copy
 
 
 

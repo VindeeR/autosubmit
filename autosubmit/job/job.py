@@ -754,7 +754,7 @@ class Job(object):
         if ':' in str(self.processors):
             return reduce(lambda x, y: int(x) + int(y), self.processors.split(':'))
         elif self.processors == "" or self.processors == "1":
-            if self.nodes and int(self.nodes) <= 1:
+            if self.nodes != "" and int(self.nodes) <= 1:
                 return 1
             else:
                 return ""

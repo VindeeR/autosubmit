@@ -410,9 +410,10 @@ class DicJobs:
         remote_max_wallclock = remote_max_wallclock.get("MAX_WALLCLOCK",None)
         job.wallclock = parameters[section].get("WALLCLOCK", remote_max_wallclock)
         for wrapper_section in self.experiment_data.get("WRAPPERS",{}).values():
-            if job.section in wrapper_section.get("JOBS_IN_WRAPPER",""):
-                job.retrials = int(wrapper_section.get("RETRIALS", wrapper_section.get("INNER_RETRIALS",parameters[section].get('RETRIALS',self.experiment_data["CONFIG"].get("RETRIALS", 0)))))
-                break
+            if type(wrapper_section) is dict:
+                if job.section in wrapper_section.get("JOBS_IN_WRAPPER",""):
+                    job.retrials = int(wrapper_section.get("RETRIALS", wrapper_section.get("INNER_RETRIALS",parameters[section].get('RETRIALS',self.experiment_data["CONFIG"].get("RETRIALS", 0)))))
+                    break
         else:
             job.retrials = int(parameters[section].get('RETRIALS', self.experiment_data["CONFIG"].get("RETRIALS", 0)))
         job.delay_retrials = int(parameters[section].get( 'DELAY_RETRY_TIME', "-1"))

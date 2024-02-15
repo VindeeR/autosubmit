@@ -5495,8 +5495,8 @@ class Autosubmit:
                         Autosubmit.change_status(
                             final, final_status, job, save)
                 # If changes have been performed
-                if len(list(performed_changes.keys())) > 0:
-                    if detail is True:
+                if performed_changes:
+                    if detail:
                         current_length = len(job_list.get_job_list())
                         if current_length > 1000:
                             Log.warning(

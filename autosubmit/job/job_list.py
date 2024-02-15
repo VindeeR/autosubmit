@@ -907,13 +907,10 @@ class JobList(object):
         # prune first
         job.edge_info = {}
         # get dependency that has special conditions set
-        any_special_condition = False
         filters_to_apply_by_section = dict()
         for key, dependency in dependencies.items():
-            special_conditions = dict()
             filters_to_apply = self._filter_current_job(job, copy.deepcopy(dependency.relationships))
             if "STATUS" in filters_to_apply:
-                any_special_condition = True
                 if "-" in key:
                     key = key.split("-")[0]
                 elif "+" in key:
@@ -950,19 +947,17 @@ class JobList(object):
                     stripped_key = key.split("+")[0]
                 else:
                     stripped_key = key
-                if distance == 0:
-                    if stripped_key not in visited_section:
-                        distance = max(self.find_current_section(job_section, stripped_key, dic_jobs, distance,
-                                                                 visited_section + [stripped_key]), distance)
+                if stripped_key not in visited_section:
+                    distance = max(self.find_current_section(job_section, stripped_key, dic_jobs, distance,
+                                                             visited_section + [stripped_key]), distance)
         else:
             for key in [dependency_keys for dependency_keys in sections if job_section in dependency_keys]:
                 if "-" in key:
                     distance = int(key.split("-")[1])
                 elif "+" in key:
                     distance = int(key.split("+")[1])
-                else:
-                    stripped_key = key
-                return distance
+                if distance > 0:
+                    return distance
         return distance
 
     def _calculate_natural_dependencies(self, dic_jobs, job, dependency, date, member, chunk, graph,

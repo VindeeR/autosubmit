@@ -433,7 +433,6 @@ class JobList(object):
     def _manage_dependencies(dependencies_keys, dic_jobs):
         parameters = dic_jobs.experiment_data["JOBS"]
         dependencies = dict()
-        keys_to_erase = []
         for key in list(dependencies_keys):
             distance = None
             splits = None

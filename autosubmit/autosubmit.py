@@ -5039,7 +5039,7 @@ class Autosubmit:
         selected_sections = filter_chunks.split(",")[1:]
         selected_formula = filter_chunks.split(",")[0]
         current_sections = as_conf.jobs_data
-        fc_deserializedJson = object()
+        fc_deserialized_json = object()
         # Starting Validation
         if len(str(selected_sections).strip()) == 0:
             fc_filter_is_correct = False
@@ -5072,13 +5072,13 @@ class Autosubmit:
             current_members = as_conf.get_member_list()
             # Parse json
             try:
-                fc_deserializedJson = json.loads(
+                fc_deserialized_json = json.loads(
                     Autosubmit._create_json(selected_formula))
             except Exception as e:
                 fc_filter_is_correct = False
                 fc_validation_message += "\n\tProvided chunk formula does not have the right format. Were you trying to use another option?"
             if fc_filter_is_correct is True:
-                for startingDate in fc_deserializedJson['sds']:
+                for startingDate in fc_deserialized_json['sds']:
                     if startingDate['sd'] not in current_dates:
                         fc_filter_is_correct = False
                         fc_validation_message += "\n\tStarting date " + \
@@ -5131,7 +5131,7 @@ class Autosubmit:
         filter_is_correct = True
         selected_sections = filter_type_chunk.split(",")[1:]
         selected_formula = filter_type_chunk.split(",")[0]
-        deserializedJson = object()
+        deserialized_json = object()
         # Starting Validation
         if len(str(selected_sections).strip()) == 0:
             filter_is_correct = False
@@ -5199,7 +5199,7 @@ class Autosubmit:
         selected_formula = filter_type_chunk_split.split(",")[0]
         # Retrieve experiment data
         # Parse json
-        deserializedJson = json.loads(Autosubmit._create_json(selected_formula))
+        deserialized_json = json.loads(Autosubmit._create_json(selected_formula))
         # Get current list
         working_list = job_list.get_job_list()
         for section in selected_sections:
@@ -5207,7 +5207,7 @@ class Autosubmit:
                 # Any section
                 section_selection = working_list
                 # Go through start dates
-                for starting_date in deserializedJson['sds']:
+                for starting_date in deserialized_json['sds']:
                     date = starting_date['sd']
                     date_selection = [j for j in section_selection if date2str(
                         j.date) == date]
@@ -5266,7 +5266,7 @@ class Autosubmit:
                 splits = final_splits
                 jobs_filtered = [j for j in working_list if j.section == section and ( j.split is None or splits[0] == "ANY" or str(j.split) in splits ) ]
                 # Go through start dates
-                for starting_date in deserializedJson['sds']:
+                for starting_date in deserialized_json['sds']:
                     date = starting_date['sd']
                     date_selection = [j for j in jobs_filtered if date2str(
                         j.date) == date]

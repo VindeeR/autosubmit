@@ -222,28 +222,21 @@ class EcPlatform(ParamikoPlatform):
             return False
 
     def send_command(self, command, ignore_log=False, x11 = False):
-        lang = locale.getlocale()[1]
-        if lang is None:
-            lang = locale.getdefaultlocale()[1]
-            if lang is None:
-                lang = 'UTF-8'
-        retries = 3
-        success = False
-        err_message = ""
-        output = ""
-        while not success and retries > 0:
+        lang = locale.getlocale()[1] or locale.getdefaultlocale()[1] or 'UTF-8'
+        err_message = 'command not executed'
+        for _ in range(3):
             try:
-                output = subprocess.check_output(command, shell=True).decode(lang)
-                success = True
+                self._ssh_output = subprocess.check_output(command, shell=True).decode(lang)
             except Exception as e:
                 err_message = str(e)
-                success = False
-                retries = retries - 1
                 sleep(1)
-        if not success:
-            raise AutosubmitError(f'Could not execute command {command} on {self.host}',7500, str(err_message))
-        self._ssh_output = output
+            else:
+                break
+        else:  # if break was not called in the for, all attemps failed!
+            raise AutosubmitError(f'Could not execute command {command} on {self.host}', 7500, str(err_message))
         return True
+
+
 
     def send_file(self, filename, check=True):
         self.check_remote_log_dir()

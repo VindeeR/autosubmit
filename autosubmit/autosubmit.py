@@ -1605,8 +1605,7 @@ class Autosubmit:
             # for job in job_list.get_uncompleted_and_not_waiting():
             #    job.status = Status.COMPLETED
             job_list.update_list(as_conf, False)
-        for job in job_list.get_job_list():
-            job.status = Status.WAITING
+
 
     @staticmethod
     def terminate(all_threads):
@@ -2553,7 +2552,7 @@ class Autosubmit:
 
         # WRAPPERS
         try:
-            if as_conf.get_wrapper_type() != 'none' and check_wrapper:
+            if len(as_conf.experiment_data.get("WRAPPERS", {})) > 0 and check_wrapper:
                 # Class constructor creates table if it does not exist
                 packages_persistence = JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
                                                              "job_packages_" + expid)
@@ -2561,8 +2560,10 @@ class Autosubmit:
                 os.chmod(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl", "job_packages_" + expid + ".db"), 0o644)
                 # Database modification
                 packages_persistence.reset_table(True)
-
-                Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list, job_list.get_job_list(),
+                # Load another job_list to go through that goes through the jobs, but we want to monitor the other one
+                job_list_wr = Autosubmit.load_job_list(
+                    expid, as_conf, notransitive=notransitive, monitor=True, new=False)
+                Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list_wr, job_list_wr.get_job_list(),
                                                            packages_persistence, True)
 
                 packages = packages_persistence.load(True)
@@ -4751,8 +4752,10 @@ class Autosubmit:
                             packages_persistence = JobPackagePersistence(
                                 os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"), "job_packages_" + expid)
                             packages_persistence.reset_table(True)
+                            job_list_wr = Autosubmit.load_job_list(
+                                expid, as_conf, notransitive=notransitive, monitor=True, new=False)
                             Autosubmit.generate_scripts_andor_wrappers(
-                                as_conf, job_list, job_list.get_job_list(), packages_persistence, True)
+                                as_conf, job_list_wr, job_list_wr.get_job_list(), packages_persistence, True)
 
                             packages = packages_persistence.load(True)
                         else:
@@ -5530,7 +5533,8 @@ class Autosubmit:
                         os.chmod(os.path.join(BasicConfig.LOCAL_ROOT_DIR,
                                               expid, "pkl", "job_packages_" + expid + ".db"), 0o775)
                         packages_persistence.reset_table(True)
-                        referenced_jobs_to_remove = set()
+                        job_list_wr = Autosubmit.load_job_list(
+                            expid, as_conf, notransitive=notransitive, monitor=True, new=False)
                         jobs_wr = job_list.get_job_list()
                         [job for job in jobs_wr if (
                                 job.status != Status.COMPLETED)]

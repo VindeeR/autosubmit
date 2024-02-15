@@ -5535,10 +5535,8 @@ class Autosubmit:
                         packages_persistence.reset_table(True)
                         job_list_wr = Autosubmit.load_job_list(
                             expid, as_conf, notransitive=notransitive, monitor=True, new=False)
-                        jobs_wr = job_list.get_job_list()
-                        [job for job in jobs_wr if (
-                                job.status != Status.COMPLETED)]
-                        Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list, jobs_wr,
+
+                        Autosubmit.generate_scripts_andor_wrappers(as_conf, job_list_wr, job_list_wr.get_job_list(),
                                                                    packages_persistence, True)
 
                         packages = packages_persistence.load(True)

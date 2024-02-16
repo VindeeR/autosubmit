@@ -170,13 +170,6 @@ class JobPackager(object):
 
         return wrapper_limits
 
-    def _special_variables(self,job):
-        special_variables = dict()
-        if job.section not in self.special_variables:
-            special_variables[job.section] = dict()
-            if job.total_jobs != self._platform.total_jobs:
-                special_variables[job.section]["TOTAL_JOBS"] = job
-                self.special_variables.update(special_variables)
 
     def check_jobs_to_run_first(self, package):
         """
@@ -452,25 +445,11 @@ class JobPackager(object):
             # If there are no jobs ready, result is tuple of empty
             return jobs_ready,False
         #check if there are jobs listed on calculate_job_limits
-        for job in jobs_ready:
-            self._special_variables(job)
-        if len(self.special_variables) > 0:
-            for section in self.special_variables:
-                if "TOTAL_JOBS" in self.special_variables[section]:
-                    self.calculate_job_limits(self._platform,self.special_variables[section]["TOTAL_JOBS"])
-                if not (self._max_wait_jobs_to_submit > 0 and self._max_jobs_to_submit > 0):
-                    # If there is no more space in platform, result is tuple of empty
-                    Log.debug("No more space in platform {0} for jobs {1}".format(self._platform.name,
-                                                                                  [job.name for job in jobs_ready]))
-                    return jobs_ready,False
-                self.calculate_job_limits(self._platform)
-
-        else:
-            self.calculate_job_limits(self._platform)
-            if not (self._max_wait_jobs_to_submit > 0 and self._max_jobs_to_submit > 0):
-                # If there is no more space in platform, result is tuple of empty
-                Log.debug("No more space in platform {0} for jobs {1}".format(self._platform.name, [job.name for job in jobs_ready]))
-                return jobs_ready,False
+        self.calculate_job_limits(self._platform)
+        if not (self._max_wait_jobs_to_submit > 0 and self._max_jobs_to_submit > 0):
+            # If there is no more space in platform, result is tuple of empty
+            Log.debug('Max jobs to submit reached, waiting for more space in platform {0}'.format(self._platform.name))
+            return jobs_ready,False
         return jobs_ready,True
 
     def calculate_job_limits(self,platform,job=None):

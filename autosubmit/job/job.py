@@ -1649,29 +1649,30 @@ class Job(object):
             self.wallclock, self.wchunkinc, chunk)
 
     def update_platform_associated_parameters(self,as_conf, parameters, job_platform, chunk):
+        job_data = as_conf.jobs_data[self.section]
         platform_data = as_conf.platforms_data.get(job_platform.name,{})
-        self.ec_queue = str(as_conf.jobs_data[self.section].get("EC_QUEUE", platform_data.get("EC_QUEUE","")))
-        self.executable = as_conf.jobs_data[self.section].get("EXECUTABLE", platform_data.get("EXECUTABLE",""))
-        self.total_jobs = as_conf.jobs_data[self.section].get("TOTALJOBS", job_platform.total_jobs)
-        self.max_waiting_jobs = as_conf.jobs_data[self.section].get("MAXWAITINGJOBS", job_platform.max_waiting_jobs)
-        self.processors = as_conf.jobs_data[self.section].get("PROCESSORS",platform_data.get("PROCESSORS","1"))
-        self.processors_per_node = as_conf.jobs_data[self.section].get("PROCESSORS_PER_NODE",as_conf.platforms_data.get(job_platform.name,{}).get("PROCESSORS_PER_NODE","1"))
-        self.nodes = as_conf.jobs_data[self.section].get("NODES",platform_data.get("NODES",""))
-        self.exclusive = as_conf.jobs_data[self.section].get("EXCLUSIVE",platform_data.get("EXCLUSIVE",False))
-        self.threads = as_conf.jobs_data[self.section].get("THREADS",platform_data.get("THREADS","1"))
-        self.tasks = as_conf.jobs_data[self.section].get("TASKS",platform_data.get("TASKS","1"))
-        self.reservation = as_conf.jobs_data[self.section].get("RESERVATION",as_conf.platforms_data.get(job_platform.name, {}).get("RESERVATION", ""))
-        self.hyperthreading = as_conf.jobs_data[self.section].get("HYPERTHREADING",platform_data.get("HYPERTHREADING","none"))
-        self.queue = as_conf.jobs_data[self.section].get("QUEUE",platform_data.get("QUEUE",""))
-        self.partition = as_conf.jobs_data[self.section].get("PARTITION",platform_data.get("PARTITION",""))
-        self.scratch_free_space = int(as_conf.jobs_data[self.section].get("SCRATCH_FREE_SPACE",platform_data.get("SCRATCH_FREE_SPACE",0)))
+        self.ec_queue = str(job_data.get("EC_QUEUE", platform_data.get("EC_QUEUE","")))
+        self.executable = job_data.get("EXECUTABLE", platform_data.get("EXECUTABLE",""))
+        self.total_jobs = job_data.get("TOTALJOBS",job_data.get("TOTAL_JOBS", job_platform.total_jobs))
+        self.max_waiting_jobs = job_data.get("MAXWAITINGJOBS",job_data.get("MAX_WAITING_JOBS", job_platform.max_waiting_jobs))
+        self.processors = job_data.get("PROCESSORS",platform_data.get("PROCESSORS","1"))
+        self.processors_per_node = job_data.get("PROCESSORS_PER_NODE",as_conf.platforms_data.get(job_platform.name,{}).get("PROCESSORS_PER_NODE","1"))
+        self.nodes = job_data.get("NODES",platform_data.get("NODES",""))
+        self.exclusive = job_data.get("EXCLUSIVE",platform_data.get("EXCLUSIVE",False))
+        self.threads = job_data.get("THREADS",platform_data.get("THREADS","1"))
+        self.tasks = job_data.get("TASKS",platform_data.get("TASKS","1"))
+        self.reservation = job_data.get("RESERVATION",as_conf.platforms_data.get(job_platform.name, {}).get("RESERVATION", ""))
+        self.hyperthreading = job_data.get("HYPERTHREADING",platform_data.get("HYPERTHREADING","none"))
+        self.queue = job_data.get("QUEUE",platform_data.get("QUEUE",""))
+        self.partition = job_data.get("PARTITION",platform_data.get("PARTITION",""))
+        self.scratch_free_space = int(job_data.get("SCRATCH_FREE_SPACE",platform_data.get("SCRATCH_FREE_SPACE",0)))
 
-        self.memory = as_conf.jobs_data[self.section].get("MEMORY",platform_data.get("MEMORY",""))
-        self.memory_per_task = as_conf.jobs_data[self.section].get("MEMORY_PER_TASK",platform_data.get("MEMORY_PER_TASK",""))
-        self.wallclock = as_conf.jobs_data[self.section].get("WALLCLOCK",
+        self.memory = job_data.get("MEMORY",platform_data.get("MEMORY",""))
+        self.memory_per_task = job_data.get("MEMORY_PER_TASK",platform_data.get("MEMORY_PER_TASK",""))
+        self.wallclock = job_data.get("WALLCLOCK",
                                                              as_conf.platforms_data.get(self.platform_name, {}).get(
                                                                  "MAX_WALLCLOCK", None))
-        self.custom_directives = as_conf.jobs_data[self.section].get("CUSTOM_DIRECTIVES", "")
+        self.custom_directives = job_data.get("CUSTOM_DIRECTIVES", "")
 
         self.process_scheduler_parameters(as_conf,parameters,job_platform,chunk)
         if self.het.get('HETSIZE',1) > 1:
@@ -1766,9 +1767,20 @@ class Job(object):
         if self.platform_name:
             self.platform_name = self.platform_name.upper()
 
+    def update_check_variables(self,as_conf):
+        job_data = as_conf.jobs_data.get(self.section, {})
+        job_platform_name = job_data.get("PLATFORM", as_conf.experiment_data.get("DEFAULT",{}).get("HPCARCH", None))
+        job_platform = job_data.get("PLATFORMS",{}).get(job_platform_name, {})
+        self.check = job_data.get("CHECK", False)
+        self.check_warnings = job_data.get("CHECK_WARNINGS", False)
+        self.total_jobs = job_data.get("TOTALJOBS",job_data.get("TOTALJOBS", job_platform.get("TOTALJOBS", job_platform.get("TOTAL_JOBS", -1))))
+        self.max_waiting_jobs = job_data.get("MAXWAITINGJOBS",job_data.get("MAXWAITINGJOBS", job_platform.get("MAXWAITINGJOBS", job_platform.get("MAX_WAITING_JOBS", -1))))
+
     def update_job_parameters(self,as_conf, parameters):
         self.splits = as_conf.jobs_data[self.section].get("SPLITS", None)
         self.delete_when_edgeless = as_conf.jobs_data[self.section].get("DELETE_WHEN_EDGELESS", True)
+        self.check = as_conf.jobs_data[self.section].get("CHECK", False)
+        self.check_warnings = as_conf.jobs_data[self.section].get("CHECK_WARNINGS", False)
         if self.checkpoint: # To activate placeholder sustitution per <empty> in the template
             parameters["AS_CHECKPOINT"] = self.checkpoint
         parameters['JOBNAME'] = self.name

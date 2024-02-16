@@ -2810,20 +2810,15 @@ class JobList(object):
         out = True
         # Implementing checking scripts feedback to the users in a minimum of 4 messages
         count = stage = 0
-        for job in self._job_list:
+        for job in (job for job in self._job_list):
+            job.update_check_variables(as_conf)
             count += 1
             if (count >= len(self._job_list) / 4 * (stage + 1)) or count == len(self._job_list):
                 stage += 1
                 Log.info("{} of {} checked".format(count, len(self._job_list)))
 
             show_logs = str(job.check_warnings).lower()
-            if job.check == 'on_submission':
-                Log.info(
-                    'Template {0} will be checked in running time'.format(job.section))
-                continue
-            elif job.check == "false":
-                Log.info(
-                    'Template {0} will not be checked'.format(job.section))
+            if job.check in ['on_submission','false']:
                 continue
             else:
                 if job.section in self.sections_checked:
@@ -2831,6 +2826,7 @@ class JobList(object):
             if not job.check_script(as_conf, self.parameters, show_logs):
                 out = False
             self.sections_checked.add(job.section)
+            Log.debug("Time to check script: {0}".format(end - start))
         if out:
             Log.result("Scripts OK")
         else:

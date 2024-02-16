@@ -581,6 +581,7 @@ class JobPackager(object):
             else:
                 package = JobPackageSimple([job])
             packages_to_submit.append(package)
+            max_jobs_to_submit = max_jobs_to_submit - 1
 
         for package in packages_to_submit:
             self.max_jobs = self.max_jobs - 1

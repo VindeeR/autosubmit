@@ -531,7 +531,7 @@ class JobPackager(object):
             job.packed = False
         jobs_to_wrap = self._divide_list_by_section(jobs_to_submit)
         non_wrapped_jobs = jobs_to_wrap.pop("SIMPLE",[])
-
+        non_wrapped_jobs = non_wrapped_jobs[:max_jobs_to_submit]
         # Prepare packages for wrapped jobs
         for wrapper_name, jobs in jobs_to_wrap.items():
             if max_jobs_to_submit == 0:
@@ -580,6 +580,7 @@ class JobPackager(object):
             else:
                 package = JobPackageSimple([job])
             packages_to_submit.append(package)
+            max_jobs_to_submit = max_jobs_to_submit - 1
 
         for package in packages_to_submit:
             self.max_jobs = self.max_jobs - 1

@@ -503,7 +503,8 @@ class JobPackager(object):
             self._max_wait_jobs_to_submit = int(platform.max_waiting_jobs) - int(waiting_jobs)
         # .total_jobs is defined in each section of platforms_.yml, if not from there, it comes form autosubmit_.yml
         # .total_jobs Maximum number of jobs at the same time
-        if job is not None and job.total_jobs != platform.total_jobs:
+
+        if job and job.total_jobs and job.total_jobs != platform.total_jobs:
             self._max_jobs_to_submit = job.total_jobs - queuing_jobs_len
         else:
             self._max_jobs_to_submit = platform.total_jobs - queuing_jobs_len

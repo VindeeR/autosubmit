@@ -2818,7 +2818,7 @@ class JobList(object):
                 Log.info("{} of {} checked".format(count, len(self._job_list)))
 
             show_logs = str(job.check_warnings).lower()
-            if job.check in ['on_submission','false']:
+            if str(job.check).lower() in ['on_submission','false']:
                 continue
             else:
                 if job.section in self.sections_checked:

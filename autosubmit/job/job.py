@@ -2162,15 +2162,15 @@ class Job(object):
             # Check if the variables in the templates are defined in the configurations
             if not out:
                 self.undefined_variables = set(variables) - set(parameters)
-                if show_logs != "false":
+                if str(show_logs).lower() != "false":
                     Log.printlog("The following set of variables to be substituted in template script is not part of parameters set, and will be replaced by a blank value: {0}".format(
-                        self.undefined_variables), 6013)
+                        self.undefined_variables), 5013)
 
             # Check which variables in the proj.yml are not being used in the templates
-            if show_logs != "false":
+            if str(show_logs).lower() != "false":
                 if not set(variables).issuperset(set(parameters)):
                     Log.printlog("The following set of variables are not being used in the templates: {0}".format(
-                        str(set(parameters) - set(variables))), 6013)
+                        str(set(parameters) - set(variables))), 5013)
         return out
 
     def write_submit_time(self, enabled=False, hold=False):

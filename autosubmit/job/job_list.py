@@ -2826,7 +2826,6 @@ class JobList(object):
             if not job.check_script(as_conf, self.parameters, show_logs):
                 out = False
             self.sections_checked.add(job.section)
-            Log.debug("Time to check script: {0}".format(end - start))
         if out:
             Log.result("Scripts OK")
         else:

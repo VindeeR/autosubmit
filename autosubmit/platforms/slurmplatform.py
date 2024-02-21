@@ -84,6 +84,7 @@ class SlurmPlatform(ParamikoPlatform):
                 package = valid_packages_to_submit[0]
                 try:
                     jobs_id = self.submit_Script(hold=hold)
+                    # TODO Add here a checker for duplicated jobnames
                 except AutosubmitError as e:
                     jobnames = [job.name for job in valid_packages_to_submit[0].jobs]
                     Log.error(f'TRACE:{e.trace}\n{e.message} JOBS:{jobnames}')

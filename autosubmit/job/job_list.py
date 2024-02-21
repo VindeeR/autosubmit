@@ -385,7 +385,10 @@ class JobList(object):
             dependencies_keys = jobs_data.get(job_section, {}).get(option, None)
             # call function if dependencies_key is not None
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs) if dependencies_keys else {}
+            self.job_names = set()
+
             jobs_gen = (job for job in dic_jobs.get_jobs(job_section,sort_string=True))
+            for job in jobs_gen:
                 self.actual_job_depends_on_special_chunk = False
                 if job.name not in self.graph.nodes:
                     self.graph.add_node(job.name, job=job)

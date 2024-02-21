@@ -284,7 +284,7 @@ class JobList(object):
         self._delete_edgeless_jobs()
         if new:
             for job in self._job_list:
-                job.fail_count = 0
+                job._fail_count = 0
                 job.parameters = parameters
                 if not job.has_parents():
                     job.status = Status.READY
@@ -2415,7 +2415,7 @@ class JobList(object):
                 job = self.get_job_by_name(line.split()[0])
                 if job:
                     job.status = self._stat_val.retval(line.split()[1])
-                    job.fail_count = 0
+                    job._fail_count = 0
             now = localtime()
             output_date = strftime("%Y%m%d_%H%M", now)
             if store_change:

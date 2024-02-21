@@ -2864,7 +2864,7 @@ class Autosubmit:
                             pass
                 elif job.status != Status.SUSPENDED:
                     job.status = Status.WAITING
-                    job.fail_count = 0
+                    job._fail_count = 0
                     # Log.info("CHANGED job '{0}' status to WAITING".format(job.name))
                     # Log.status("CHANGED job '{0}' status to WAITING".format(job.name))
 
@@ -4963,7 +4963,7 @@ class Autosubmit:
                 if job.platform_name and job.platform_name.upper() != "LOCAL":
                     job.platform.send_command("scontrol release " + "{0}".format(job.id), ignore_log=True)
         if job.status == Status.FAILED and job.status != final_status:
-            job.fail_count = 0
+            job._fail_count = 0
         job.status = final_status
         Log.info("CHANGED: job: " + job.name + " status to: " + final)
         Log.status("CHANGED: job: " + job.name + " status to: " + final)

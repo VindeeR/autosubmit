@@ -4962,6 +4962,8 @@ class Autosubmit:
             elif final_status in [Status.QUEUING, Status.RUNNING] and (job.status == Status.SUSPENDED):
                 if job.platform_name and job.platform_name.upper() != "LOCAL":
                     job.platform.send_command("scontrol release " + "{0}".format(job.id), ignore_log=True)
+        if job.status == Status.FAILED and job.status != final_status:
+            job.fail_count = 0
         job.status = final_status
         Log.info("CHANGED: job: " + job.name + " status to: " + final)
         Log.status("CHANGED: job: " + job.name + " status to: " + final)

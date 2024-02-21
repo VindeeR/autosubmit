@@ -284,6 +284,7 @@ class JobList(object):
         self._delete_edgeless_jobs()
         if new:
             for job in self._job_list:
+                job.fail_count = 0
                 job.parameters = parameters
                 if not job.has_parents():
                     job.status = Status.READY

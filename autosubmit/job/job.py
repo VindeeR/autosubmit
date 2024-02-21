@@ -1771,7 +1771,7 @@ class Job(object):
         job_data = as_conf.jobs_data.get(self.section, {})
         job_platform_name = job_data.get("PLATFORM", as_conf.experiment_data.get("DEFAULT",{}).get("HPCARCH", None))
         job_platform = job_data.get("PLATFORMS",{}).get(job_platform_name, {})
-        self.check = job_data.get("CHECK", False)
+        self.check = job_data.get("CHECK", True)
         self.check_warnings = job_data.get("CHECK_WARNINGS", False)
         self.total_jobs = job_data.get("TOTALJOBS",job_data.get("TOTALJOBS", job_platform.get("TOTALJOBS", job_platform.get("TOTAL_JOBS", -1))))
         self.max_waiting_jobs = job_data.get("MAXWAITINGJOBS",job_data.get("MAXWAITINGJOBS", job_platform.get("MAXWAITINGJOBS", job_platform.get("MAX_WAITING_JOBS", -1))))

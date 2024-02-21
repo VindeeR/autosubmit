@@ -379,7 +379,6 @@ class JobList(object):
             self.depends_on_previous_special_section = dict()
             self.actual_job_depends_on_previous_chunk = False
             self.actual_job_depends_on_previous_member = False
-            self.actual_job_depends_on_special_chunk = False
             # No changes, no need to recalculate dependencies
             Log.debug("Adding dependencies for {0} jobs".format(job_section))
             # If it does not have dependencies, just append it to job_list and continue
@@ -387,7 +386,7 @@ class JobList(object):
             # call function if dependencies_key is not None
             dependencies = JobList._manage_dependencies(dependencies_keys, dic_jobs) if dependencies_keys else {}
             jobs_gen = (job for job in dic_jobs.get_jobs(job_section,sort_string=True))
-            for job in jobs_gen:
+                self.actual_job_depends_on_special_chunk = False
                 if job.name not in self.graph.nodes:
                     self.graph.add_node(job.name, job=job)
                 elif job.name in self.graph.nodes and self.graph.nodes.get(job.name).get("job", None) is None:  # Old versions of autosubmit needs re-adding the job to the graph
@@ -1022,7 +1021,6 @@ class JobList(object):
                             if parent.running == job.running:
                                 graph.add_edge(parent.name, job.name)
                     elif not self.actual_job_depends_on_previous_chunk:
-
                         graph.add_edge(parent.name, job.name)
                     elif not self.actual_job_depends_on_special_chunk and self.actual_job_depends_on_previous_chunk:
                         if job.running == "chunk" and job.chunk == 1:

@@ -79,14 +79,21 @@ class SlurmPlatform(ParamikoPlatform):
         :return:
         """
         try:
+
             valid_packages_to_submit = [ package for package in valid_packages_to_submit if package.x11 != True]
             if len(valid_packages_to_submit) > 0:
-                package = valid_packages_to_submit[0]
+                duplicated_jobs_already_checked = False
+                platform = valid_packages_to_submit[0].jobs[0].platform
                 try:
                     jobs_id = self.submit_Script(hold=hold)
-                    # TODO Add here a checker for duplicated jobnames
                 except AutosubmitError as e:
-                    jobnames = [job.name for job in valid_packages_to_submit[0].jobs]
+                    jobnames = []
+                    duplicated_jobs_already_checked = True
+                    for package_ in valid_packages_to_submit:
+                        if hasattr(package_,"name"):
+                            jobnames.append(package_.name) # wrapper_name
+                        else:
+                            jobnames.append(package_.jobs[0].name) # job_name
                     Log.error(f'TRACE:{e.trace}\n{e.message} JOBS:{jobnames}')
                     for jobname in jobnames:
                         jobid = self.get_jobid_by_jobname(jobname)
@@ -161,11 +168,19 @@ class SlurmPlatform(ParamikoPlatform):
                         job.id = str(jobs_id[i])
                         job.status = Status.SUBMITTED
                         job.write_submit_time(hold=hold)
+                    # Check if there are duplicated jobnames
+                    if not duplicated_jobs_already_checked:
+                        job_name = package.name if hasattr(package, "name") else package.jobs[0].name
+                        jobid = self.get_jobid_by_jobname(job_name)
+                        if len(jobid) > 1:
+                            for id_ in [ jobid for jobid in jobid if jobid != package.jobs[0].id ]:
+                                self.cancel_job(id_)
+                                Log.debug(f'Job {id_} with the assigned name: {job_name} has been cancelled')
                     i += 1
                 if len(failed_packages) > 0:
                     for job_id in failed_packages:
-                        package.jobs[0].platform.send_command(
-                            package.jobs[0].platform.cancel_cmd + " {0}".format(job_id))
+                        platform.jobs[0].platform.send_command(
+                            platform.jobs[0].platform.cancel_cmd + " {0}".format(job_id))
                     raise AutosubmitError("{0} submission failed, some hold jobs failed to be held".format(self.name), 6015)
             save = True
         except AutosubmitError as e:
@@ -607,7 +622,7 @@ class SlurmPlatform(ParamikoPlatform):
     def allocated_nodes():
         return """os.system("scontrol show hostnames $SLURM_JOB_NODELIST > node_list_{0}".format(node_id))"""
 
-    def check_file_exists(self, filename, wrapper_failed=False, sleeptime=5, max_retries=3):
+    def check_file_exists(self, filename, wrapper_failed=False, sleeptime=0, max_retries=1):
         file_exist = False
         retries = 0
         while not file_exist and retries < max_retries:

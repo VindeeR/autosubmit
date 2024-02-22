@@ -183,8 +183,7 @@ class SlurmPlatform(ParamikoPlatform):
                     i += 1
                 if len(failed_packages) > 0:
                     for job_id in failed_packages:
-                        platform.jobs[0].platform.send_command(
-                            platform.jobs[0].platform.cancel_cmd + " {0}".format(job_id))
+                        platform.send_command(platform.cancel_cmd + " {0}".format(job_id))
                     raise AutosubmitError("{0} submission failed, some hold jobs failed to be held".format(self.name), 6015)
             save = True
         except AutosubmitError as e:

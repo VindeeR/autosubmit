@@ -89,17 +89,20 @@ class SlurmPlatform(ParamikoPlatform):
                 except AutosubmitError as e:
                     jobnames = []
                     duplicated_jobs_already_checked = True
-                    for package_ in valid_packages_to_submit:
-                        if hasattr(package_,"name"):
-                            jobnames.append(package_.name) # wrapper_name
-                        else:
-                            jobnames.append(package_.jobs[0].name) # job_name
-                    Log.error(f'TRACE:{e.trace}\n{e.message} JOBS:{jobnames}')
-                    for jobname in jobnames:
-                        jobid = self.get_jobid_by_jobname(jobname)
-                        #cancel bad submitted job if jobid is encountered
-                        for id_ in jobid:
-                            self.cancel_job(id_)
+                    try:
+                        for package_ in valid_packages_to_submit:
+                            if hasattr(package_,"name"):
+                                jobnames.append(package_.name) # wrapper_name
+                            else:
+                                jobnames.append(package_.jobs[0].name) # job_name
+                        Log.error(f'TRACE:{e.trace}\n{e.message} JOBS:{jobnames}')
+                        for jobname in jobnames:
+                            jobid = self.get_jobid_by_jobname(jobname)
+                            #cancel bad submitted job if jobid is encountered
+                            for id_ in jobid:
+                                self.send_command(self.cancel_job(id_))
+                    except:
+                        pass
                     jobs_id = None
                     self.connected = False
                     if e.trace is not None:
@@ -172,10 +175,11 @@ class SlurmPlatform(ParamikoPlatform):
                     if not duplicated_jobs_already_checked:
                         job_name = package.name if hasattr(package, "name") else package.jobs[0].name
                         jobid = self.get_jobid_by_jobname(job_name)
-                        if len(jobid) > 1:
+                        if len(jobid) > 1: # Cancel each job that is not the associated
                             for id_ in [ jobid for jobid in jobid if jobid != package.jobs[0].id ]:
-                                self.cancel_job(id_)
+                                self.send_command(self.cancel_job(id_)) # This can be faster if we cancel all jobs at once but there is no cancel_all_jobs call right now so todo in future
                                 Log.debug(f'Job {id_} with the assigned name: {job_name} has been cancelled')
+                            Log.debug(f'Job {package.jobs[0].id} with the assigned name: {job_name} has been submitted')
                     i += 1
                 if len(failed_packages) > 0:
                     for job_id in failed_packages:

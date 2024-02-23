@@ -296,7 +296,7 @@ class SlurmPlatform(ParamikoPlatform):
         self.remote_log_dir = os.path.join(self.root_dir, "LOG_" + self.expid)
         self.cancel_cmd = "scancel"
         self._checkhost_cmd = "echo 1"
-        self._submit_cmd = 'sbatch -D {1} {1}/'.format(
+        self._submit_cmd = 'sbatch --no-requeue -D {1} {1}/'.format(
             self.host, self.remote_log_dir)
         self._submit_command_name = "sbatch"
         self._submit_hold_cmd = 'sbatch -H -D {1} {1}/'.format(

@@ -240,7 +240,7 @@ class Platform(object):
         :rtype: bool
         """
         if recovery:
-            if self.get_file('{0}_COMPLETED'.format(job_name), False, ignore_log=recovery, max_tries = 1):
+            if self.get_file('{0}_COMPLETED'.format(job_name), False, ignore_log=recovery, max_tries = 5):
                 return True
             else:
                 return False

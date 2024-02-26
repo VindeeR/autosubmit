@@ -312,7 +312,7 @@ class ParamikoPlatform(Platform):
         return self._ftpChannel.get(self.get_files_path)
 
     # Gets .err and .out
-    def get_file(self, filename, must_exist=True, relative_path='', ignore_log=False, wrapper_failed=False):
+    def get_file(self, filename, must_exist=True, relative_path='', ignore_log=False, wrapper_failed=False, max_tries = 1):
         """
         Copies a file from the current platform to experiment's tmp folder
 

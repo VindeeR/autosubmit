@@ -260,7 +260,7 @@ class EcPlatform(ParamikoPlatform):
         return process_ok
 
 
-    def get_file(self, filename, must_exist=True, relative_path='',ignore_log = False,wrapper_failed=False):
+    def get_file(self, filename, must_exist=True, relative_path='', ignore_log = False, wrapper_failed=False, max_tries = 3):
         local_path = os.path.join(self.tmp_path, relative_path)
         if not os.path.exists(local_path):
             os.makedirs(local_path)
@@ -272,17 +272,18 @@ class EcPlatform(ParamikoPlatform):
         command = '{0} {3}:{2} {1}'.format(self.get_cmd, file_path, os.path.join(self.get_files_path(), filename),self.host)
         try:
             retries = 0
-            sleeptime = 5
+            sleeptime = 3
             process_ok = False
             FNULL = open(os.devnull, 'w')
-            while not process_ok and retries < 5:
+            while not process_ok and retries < max_tries:
                 process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,stderr=FNULL)
                 out, _ = process.communicate()
                 if 'No such file' in out or process.returncode != 0:
                     retries = retries + 1
                     process_ok = False
-                    sleeptime = sleeptime + 5
-                    sleep(sleeptime)
+                    sleeptime = sleeptime + 3
+                    if retries < max_tries:
+                        sleep(sleeptime)
                 else:
                     process_ok = True
         except Exception as e:

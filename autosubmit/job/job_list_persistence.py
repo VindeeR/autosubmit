@@ -102,7 +102,7 @@ class JobListPersistencePkl(JobListPersistence):
         Log.debug("Saving JobList: " + path)
         with open(path, 'wb') as fd:
             pickle.dump(graph, fd, pickle.HIGHEST_PROTOCOL)
-        os.rename(path, path[:-4])
+        os.replace(path, path[:-4])
         Log.debug(f'JobList saved in {path[:-4]}')
 
 

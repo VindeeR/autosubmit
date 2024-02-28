@@ -235,7 +235,7 @@ class JobList(object):
             self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
         else:
             if not create:
-                raise AutosubmitCritical("Autosubmit couldn't load the workflow graph. Please run autosubmit create first. If the pkl file exists, try again.",7013)
+                raise AutosubmitCritical("Autosubmit couldn't load the workflow graph. Please run autosubmit create first. If the pkl file exists and was generated with Autosubmit v4.1+, try again.",7013)
             # Remove the previous pkl, if it exists.
             if not new:
                 Log.info(

@@ -193,6 +193,7 @@ class JobList(object):
         :type monitor: bool
         """
         if force:
+            Log.debug("Resetting the workflow graph to a zero state")
             if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + ".pkl")):
                 os.remove(os.path.join(self._persistence_path, self._persistence_file + ".pkl"))
             if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + "_backup.pkl")):
@@ -233,6 +234,8 @@ class JobList(object):
             # Force to use the last known job_list when autosubmit monitor is running.
             self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
         else:
+            if monitor:
+                raise AutosubmitCritical("The workflow graph was not found. Please run autosubmit create first. If the graph exists, try again.",7013)
             # Remove the previous pkl, if it exists.
             if not new:
                 Log.info(

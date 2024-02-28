@@ -19,7 +19,7 @@
 import os
 import pickle
 from sys import setrecursionlimit
-
+import shutil
 from autosubmit.database.db_manager import DbManager
 from log.log import Log
 
@@ -67,8 +67,12 @@ class JobListPersistencePkl(JobListPersistence):
         """
         path = os.path.join(persistence_path, persistence_file + '.pkl')
         if os.path.exists(path):
-            with open(path, 'rb') as fd:
+            # copy the path to a tmp file randomseed to avoid corruption
+            path_tmp = f'{path}.tmp_{os.urandom(8).hex()}'
+            shutil.copy(path, path_tmp)
+            with open(path_tmp, 'rb') as fd:
                 graph = pickle.load(fd)
+            os.remove(path_tmp)
             for u in ( node for node in graph ):
                 # Set after the dependencies are set
                 graph.nodes[u]["job"].children = set()
@@ -90,12 +94,16 @@ class JobListPersistencePkl(JobListPersistence):
         :param persistence_path: str
 
         """
-        path = os.path.join(persistence_path, persistence_file + '.pkl')
+
+        path = os.path.join(persistence_path, persistence_file + '.pkl' + '.tmp')
+        if os.path.exists(path):
+            os.remove(path)
         setrecursionlimit(500000000)
         Log.debug("Saving JobList: " + path)
         with open(path, 'wb') as fd:
             pickle.dump(graph, fd, pickle.HIGHEST_PROTOCOL)
-        Log.debug('Job list saved')
+        os.rename(path, path[:-4])
+        Log.debug(f'JobList saved in {path[:-4]}')
 
 
 class JobListPersistenceDb(JobListPersistence):

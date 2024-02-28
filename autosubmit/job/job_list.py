@@ -160,7 +160,7 @@ class JobList(object):
     def generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format,
                  default_retrials,
                  default_job_type, wrapper_jobs=dict(), new=True, run_only_members=[], show_log=True, monitor=False,
-                 force=False):
+                 force=False, create = False):
         """
         Creates all jobs needed for the current workflow.
         :param as_conf: AutosubmitConfig object
@@ -234,8 +234,8 @@ class JobList(object):
             # Force to use the last known job_list when autosubmit monitor is running.
             self._dic_jobs.last_experiment_data = as_conf.last_experiment_data
         else:
-            if monitor:
-                raise AutosubmitCritical("The workflow graph was not found. Please run autosubmit create first. If the graph exists, try again.",7013)
+            if not create:
+                raise AutosubmitCritical("Autosubmit couldn't load the workflow graph. Please run autosubmit create first. If the pkl file exists, try again.",7013)
             # Remove the previous pkl, if it exists.
             if not new:
                 Log.info(

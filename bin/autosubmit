@@ -40,7 +40,7 @@ def exit_from_error(e):
             Log.debug("Trace: {0}", e.trace)
         Log.critical("{1} [eCode={0}]", e.code, e.message)
     except:
-        Log.critical("An Unknown error occurred {0}, Please report it to Autosubmit Developers through Git", str(e))
+        Log.critical("An Unknown error occurred {0}.\n Please report it to Autosubmit Developers through Git", str(e))
     Log.info("More info at https://autosubmit.readthedocs.io/en/master/troubleshooting/error-codes.html")
     os._exit(1)
 

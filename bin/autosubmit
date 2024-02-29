@@ -33,7 +33,7 @@ from autosubmit.autosubmit import Autosubmit
 
 
 def exit_from_error(e):
-    with suppress(FileNotFoundError):
+    with suppress(FileNotFoundError, PermissionError):
         os.remove(os.path.join(Log.file_path, "autosubmit.lock"))
     try:
         if e.trace is not None or e.trace == "":

@@ -21,7 +21,7 @@ import pickle
 from sys import setrecursionlimit
 import shutil
 from autosubmit.database.db_manager import DbManager
-from log.log import Log
+from log.log import AutosubmitCritical, Log
 
 
 class JobListPersistence(object):
@@ -66,7 +66,14 @@ class JobListPersistencePkl(JobListPersistence):
 
         """
         path = os.path.join(persistence_path, persistence_file + '.pkl')
-        if os.path.exists(path):
+        try:
+            open(path)
+        except PermissionError:
+            raise AutosubmitCritical(f'Permission denied to read {path}', 7012)
+        except FileNotFoundError:
+            Log.printlog(f'File {path} does not exist. ',Log.WARNING)
+            return list()
+        else:
             # copy the path to a tmp file randomseed to avoid corruption
             path_tmp = f'{path}.tmp_{os.urandom(8).hex()}'
             shutil.copy(path, path_tmp)
@@ -82,9 +89,6 @@ class JobListPersistencePkl(JobListPersistence):
                 graph.nodes[u]["job"]._serial_platform = None
                 graph.nodes[u]["job"].submitter = None
             return graph
-        else:
-            Log.printlog('File {0} does not exist'.format(path),Log.WARNING)
-            return list()
 
     def save(self, persistence_path, persistence_file, job_list, graph):
         """

@@ -4798,7 +4798,7 @@ class Autosubmit:
             raise AutosubmitError(e.message, e.code, e.trace)
         except AutosubmitCritical as e:
             # TODO: == "" or is None?
-            if e.trace == "":
+            if e.trace == "" or not e.trace:
                 e.trace = traceback.format_exc()
             raise AutosubmitCritical(e.message, e.code, e.trace)
         except BaseException as e:

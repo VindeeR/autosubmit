@@ -207,6 +207,8 @@ class JobList(object):
             self.graph = self.load()
             if type(self.graph) is not DiGraph:
                 self.graph = nx.DiGraph()
+        except AutosubmitCritical:
+            raise
         except:
             self.graph = nx.DiGraph()
         self._dic_jobs = DicJobs(date_list, member_list, chunk_list, date_format, default_retrials, as_conf)
@@ -2322,6 +2324,8 @@ class JobList(object):
         Log.info("Loading JobList")
         try:
             return self._persistence.load(self._persistence_path, self._persistence_file)
+        except AutosubmitCritical:
+            raise
         except:
             Log.printlog(
                 "Autosubmit will use a backup for recover the job_list", 6010)

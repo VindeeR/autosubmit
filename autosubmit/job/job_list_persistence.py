@@ -67,7 +67,7 @@ class JobListPersistencePkl(JobListPersistence):
         """
         path = os.path.join(persistence_path, persistence_file + '.pkl')
         try:
-            open(path)
+            open(path).close()
         except PermissionError:
             raise AutosubmitCritical(f'Permission denied to read {path}', 7012)
         except FileNotFoundError:

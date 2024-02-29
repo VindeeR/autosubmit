@@ -36,8 +36,8 @@ def exit_from_error(e):
     with suppress(FileNotFoundError, PermissionError):
         os.remove(os.path.join(Log.file_path, "autosubmit.lock"))
     try:
-        if e.trace is not None or e.trace == "":
-            Log.debug("Trace: {0}", e.trace)
+        if not e.trace:
+            Log.debug("Trace: {0}", str(e.trace))
         Log.critical("{1} [eCode={0}]", e.code, e.message)
     except:
         Log.critical("An Unknown error occurred: {0}.\n Please report it to Autosubmit Developers through Git", str(e))

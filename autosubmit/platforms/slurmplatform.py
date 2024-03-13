@@ -54,7 +54,7 @@ class SlurmPlatform(ParamikoPlatform):
         self._wrapper = SlurmWrapperFactory(self)
         self.job_status = dict()
         self.job_status['COMPLETED'] = ['COMPLETED']
-        self.job_status['RUNNING'] = ['RUNNING']
+        self.job_status['RUNNING'] = ['RUNNING','COMPLETING']
         self.job_status['QUEUING'] = ['PENDING', 'CONFIGURING', 'RESIZING']
         self.job_status['FAILED'] = ['FAILED', 'CANCELLED', 'CANCELLED+', 'NODE_FAIL',
                                      'PREEMPTED', 'SUSPENDED', 'TIMEOUT', 'OUT_OF_MEMORY', 'OUT_OF_ME+', 'OUT_OF_ME']

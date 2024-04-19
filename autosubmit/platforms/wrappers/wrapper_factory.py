@@ -144,8 +144,13 @@ class PJMWrapperFactory(WrapperFactory):
     def processors_directive(self, processors):
         return '#PJM -n {0}'.format(processors)
     def threads_directive(self, threads):
-        return '#PJM
+        return f"export OMP_NUM_THREADS={threads}"
 
+    def queue_directive(self, queue):
+        return '#PJM -L rscgrp={0}'.format(queue)
+
+    def partition_directive(self, partition):
+        return '#PJM -g {0}'.format(partition)
 
 class LSFWrapperFactory(WrapperFactory):
 
@@ -185,10 +190,6 @@ class EcWrapperFactory(WrapperFactory):
     def dependency_directive(self, dependency):
         return '#PBS -v depend=afterok:{0}'.format(dependency)
 
-class PJMWrapperFactory(WrapperFactory):
-
-    def vertical_wrapper(self, **kwargs):
-        return PythonVerticalWrapperBuilder(**kwargs)
 
     def horizontal_wrapper(self, **kwargs):
 

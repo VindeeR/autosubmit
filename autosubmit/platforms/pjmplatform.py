@@ -28,6 +28,7 @@ from autosubmit.platforms.headers.pjm_header import PJMHeader
 from autosubmit.platforms.wrappers.wrapper_factory import PJMWrapperFactory
 from log.log import AutosubmitCritical, AutosubmitError, Log
 
+import textwrap
 class PJMPlatform(ParamikoPlatform):
     """
     Class to manage jobs to host using PJM scheduler
@@ -286,7 +287,7 @@ class PJMPlatform(ParamikoPlatform):
         return self.remote_log_dir
 
     def parse_job_output(self, output):
-        return output.strip().split()[0].strip()
+        return output.strip().split()[1].strip().strip("\n")
 
     def parse_job_finish_data(self, output, packed):
         return 0, 0, 0, 0, 0, 0, dict(), False
@@ -397,6 +398,10 @@ class PJMPlatform(ParamikoPlatform):
         # -H == sacct
         return self.get_checkAlljobs_cmd(self, jobs_id)
 
+    def get_checkjob_cmd(self, job_id):
+        return f"pjstat -H -v --choose st --filter \"jid={job_id}\" > as_checkjob.txt ; pjstat -v --choose st --filter \"jid={job_id}\" >> as_checkjob.txt ; cat as_checkjob.txt ; rm as_checkjob.txt"
+
+        #return 'pjstat -v --choose jid,st,ermsg --filter \"jid={0}\"'.format(job_id)
     def get_queue_status_cmd(self, job_id):
         return self.get_checkAlljobs_cmd(job_id)
 
@@ -404,6 +409,7 @@ class PJMPlatform(ParamikoPlatform):
         if job_name[-1] == ",":
             job_name = job_name[:-1]
         return 'pjstat -v --choose jid,st,ermsg --filter \"jnam={0}\"'.format(job_name)
+
 
 
     def cancel_job(self, job_id):

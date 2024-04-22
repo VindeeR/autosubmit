@@ -138,7 +138,7 @@ class PJMWrapperFactory(WrapperFactory):
     def exclusive_directive(self, exclusive):
         return '#PJM --exclusive'
     def tasks_directive(self, tasks):
-        return '#PJM --ntasks-per-node={0}'.format(tasks)
+        return "#PJM --mpi max-proc-per-node={0}".format(tasks) # searchhint
     def nodes_directive(self, nodes):
         return '#PJM -N {0}'.format(nodes)
     def processors_directive(self, processors):

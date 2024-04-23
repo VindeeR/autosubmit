@@ -148,7 +148,7 @@ class PJMHeader(object):
         # There is no threads per task, so directive is empty
         if het > -1 and len(job.het['NUMTHREADS']) > 0:
             if job.het['NUMTHREADS'][het] != '':
-                return f"export OMP_NUM_THREADS={job.het['NUMTHREADS'][het]}"
+                return "export OMP_NUM_THREADS={0}.format(job.het['NUMTHREADS'][het])"
         else:
             if job.parameters['NUMTHREADS'] != '':
                 return "export OMP_NUM_THREADS={0}".format(job.parameters['NUMTHREADS'])

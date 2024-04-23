@@ -1946,7 +1946,7 @@ class WrapperJob(Job):
             self._platform.send_command(
                 self._platform.cancel_cmd + " " + str(self.id))
         except:
-            Log.info(f'Job with {self.id} was finished before canceling it')
+            Log.info('Job was finished before canceling it')
 
         for job in self.job_list:
             if job.status not in [Status.COMPLETED, Status.FAILED]:

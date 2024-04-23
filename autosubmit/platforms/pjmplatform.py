@@ -399,7 +399,7 @@ class PJMPlatform(ParamikoPlatform):
         return self.get_checkAlljobs_cmd(self, jobs_id)
 
     def get_checkjob_cmd(self, job_id):
-        return f"pjstat -H -v --choose st --filter \"jid={job_id}\" > as_checkjob.txt ; pjstat -v --choose st --filter \"jid={job_id}\" >> as_checkjob.txt ; cat as_checkjob.txt ; rm as_checkjob.txt"
+        return "pjstat -H -v --choose st --filter \"jid={job_id}\" > as_checkjob.txt ; pjstat -v --choose st --filter \"jid={job_id}\" >> as_checkjob.txt ; cat as_checkjob.txt ; rm as_checkjob.txt".format(job_id=job_id)
 
         #return 'pjstat -v --choose jid,st,ermsg --filter \"jid={0}\"'.format(job_id)
     def get_queue_status_cmd(self, job_id):

@@ -144,7 +144,7 @@ class PJMWrapperFactory(WrapperFactory):
     def processors_directive(self, processors):
         return '#PJM -n {0}'.format(processors)
     def threads_directive(self, threads):
-        return f"export OMP_NUM_THREADS={threads}"
+        return "export OMP_NUM_THREADS={threads}".format(threads=threads)
 
     def queue_directive(self, queue):
         return '#PJM -L rscgrp={0}'.format(queue)

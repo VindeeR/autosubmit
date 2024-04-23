@@ -405,7 +405,7 @@ class PJMPlatform(ParamikoPlatform):
     def get_queue_status_cmd(self, job_id):
         return self.get_checkAlljobs_cmd(job_id)
 
-    def get_jobid_by_jobname_cmd(self, job_name):
+    def get_jobid_by_jobname_cmd(self, job_name, minutes=""):
         if job_name[-1] == ",":
             job_name = job_name[:-1]
         return 'pjstat -v --choose jid,st,ermsg --filter \"jnam={0}\"'.format(job_name)
@@ -429,8 +429,8 @@ class PJMPlatform(ParamikoPlatform):
         return reason
 
     @staticmethod
-    def wrapper_header(filename, queue, project, wallclock, num_procs, dependency, directives, threads, method="asthreads", partition=""):
-        if method == 'srun':
+    def wrapper_header(kwargs):
+        if kwargs['method'] == 'srun':
             language = "#!/bin/bash"
             return \
                 language + """
@@ -440,22 +440,24 @@ class PJMPlatform(ParamikoPlatform):
 #
 #PJM -N {0}
 {1}
-{8}
 #PJM -g {2}
 #PJM -o {0}.out
 #PJM -e {0}.err
-#PJM -elapse {3}:00
-#PJM --mpi "proc=%NUMPROC%"
+#PJM -elapse={3}:00
+#PJM --mpi "proc={4}"
 #PJM --mpi "max-proc-per-node={7}"
 {5}
 {6}
 
 #
 ###############################################################################
-                """.format(filename, queue, project, wallclock, num_procs, dependency,
-                           '\n'.ljust(13).join(str(s) for s in directives), threads,partition)
+                """.format(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'], kwargs['num_processors'], kwargs['dependency'],
+                       '\n'.ljust(13).join(str(s) for s in kwargs['directives']), kwargs['threads'])
         else:
-            language = "#!/usr/bin/env python3"
+            if kwargs['method'] == 'python3':
+                language = "#!/usr/bin/env python3"
+            else:
+                language = "#!/usr/bin/env python2"
             return \
                 language + """
 ###############################################################################
@@ -464,19 +466,18 @@ class PJMPlatform(ParamikoPlatform):
 #
 #PJM -N {0}
 {1}
-{8}
 #PJM -g {2}
 #PJM -o {0}.out
 #PJM -e {0}.err
-#PJM -elapse {3}:00
-#PJM --mpi "proc=%NUMPROC%"
+#PJM -elapse={3}:00
+#PJM --mpi "proc={4}"
 #PJM --mpi "max-proc-per-node={7}"
 {5}
 {6}
 #
 ###############################################################################
-            """.format(filename, queue, project, wallclock, num_procs, dependency,
-                       '\n'.ljust(13).join(str(s) for s in directives), threads,partition)
+            """.format(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'], kwargs['num_processors'], kwargs['dependency'],
+                       '\n'.ljust(13).join(str(s) for s in kwargs['directives']), kwargs['threads'])
 
     @staticmethod
     def allocated_nodes():

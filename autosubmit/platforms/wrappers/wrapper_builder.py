@@ -962,3 +962,59 @@ class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
         nodelist = self.build_nodes_list()
         srun_launcher = self.build_srun_launcher("scripts_list")
         return nodelist, srun_launcher
+
+
+'''TODO the final script should've python3 compatible with this, due mn5 has only python2
+import os
+import sys
+from threading import Thread
+from subprocess import getstatusoutput
+from datetime import datetime
+import time
+from math import ceil
+from collections import OrderedDict
+import copy
+
+class Unbuffered(object):
+    def __init__(self, stream):
+        self.stream = stream
+    def write(self, data):
+        self.stream.write(data)
+        self.stream.flush()
+    def writelines(self, datas):
+        self.stream.writelines(datas)
+        self.stream.flush()
+    def __getattr__(self, attr):
+        return getattr(self.stream, attr)
+
+sys.stdout = Unbuffered(sys.stdout)
+wrapper_id = "7kX3kn51Z3_FAILED"
+node_id = "node_list_7kX3kn51Z3"
+scripts= ['a03u_20000101_fc0_1_TEST.cmd', 'a03u_20000101_fc0_2_TEST.cmd']
+
+class JobThread(Thread):
+    def __init__ (self, template, id_run):
+        Thread.__init__(self)
+        self.template = template
+        self.id_run = id_run
+        self.fail_count = 0
+
+    def run(self):
+        jobname = self.template.replace('.cmd', '')
+        out = str(self.template) + ".out." + str(self.fail_count)
+        err = str(self.template) + ".err." + str(self.fail_count)
+        print(out+"\n")
+        command = "./" + str(self.template) + " " + str(self.id_run) + " " + os.getcwd()
+        (self.status) = getstatusoutput(command + " > " + out + " 2> " + err)
+
+os.system("scontrol show hostnames $SLURM_JOB_NODELIST > {0}".format(node_id))
+os.system("mkdir -p machinefiles")
+
+with open('{0}'.format(node_id), 'r') as file:
+    all_nodes = file.read()
+
+all_nodes = all_nodes.split("\n")
+
+total_cores = 2
+
+'''

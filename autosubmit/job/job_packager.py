@@ -557,7 +557,7 @@ class JobPackager(object):
         horizontal_packager = JobPackagerHorizontal(section_list, self._platform.max_processors, wrapper_limits,
                                                     wrapper_limits["max"], self._platform.processors_per_node, self.wrapper_method[self.current_wrapper_section])
 
-        package_jobs = horizontal_packager.build_horizontal_package(wrapper_info=wrapper_info)
+        package_jobs = horizontal_packager.build_horizontal_package()
 
         jobs_resources = dict()
 

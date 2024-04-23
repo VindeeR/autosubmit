@@ -125,7 +125,7 @@ class PJMWrapperFactory(WrapperFactory):
             return PythonVerticalHorizontalWrapperBuilder(**kwargs)
 
     def header_directives(self, **kwargs):
-        return self.platform.wrapper_header(**kwargs)
+        return self.platform.wrapper_header(kwargs)
 
     def allocated_nodes(self):
         return self.platform.allocated_nodes()

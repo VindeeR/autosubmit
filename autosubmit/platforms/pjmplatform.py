@@ -474,10 +474,11 @@ class PJMPlatform(ParamikoPlatform):
 #PJM --mpi "max-proc-per-node={7}"
 {5}
 {6}
+{7}
 #
 ###############################################################################
             """.format(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'], kwargs['num_processors'], kwargs['dependency'],
-                       '\n'.ljust(13).join(str(s) for s in kwargs['directives']), kwargs['threads'])
+                       '\n'.ljust(13).join(str(s) for s in kwargs['directives']), kwargs['threads'],kwargs['shape'])
 
     @staticmethod
     def allocated_nodes():

@@ -1169,6 +1169,9 @@ class ParamikoPlatform(Platform):
         if hasattr(self.header, 'get_memory_directive'):
             header = header.replace(
                 '%MEMORY_DIRECTIVE%', self.header.get_memory_directive(job))
+        if hasattr(self.header, 'get_shape_directive'):
+            header = header.replace(
+                '%SHAPE_DIRECTIVE%', self.header.get_shape_directive(job))
         if hasattr(self.header, 'get_memory_per_task_directive'):
             header = header.replace(
                 '%MEMORY_PER_TASK_DIRECTIVE%', self.header.get_memory_per_task_directive(job))

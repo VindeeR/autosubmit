@@ -1499,6 +1499,15 @@ class AutosubmitConfig(object):
         :rtype: str
         """
         return self._platforms_parser.get_option(section, 'DISABLE_RECOVERY_THREADS', 'FALSE').lower()
+
+    def get_shape(self, section):
+        """
+        Returns shape
+
+        :rtype: str
+        """
+        return str(self._platforms_parser.get_option(section, 'SHAPE', '')).lower()
+
     def get_disable_recovery_logs(self, section):
         """
         Returns FALSE/TRUE
@@ -1747,6 +1756,14 @@ class AutosubmitConfig(object):
          """
         return self._conf_parser.get_option(wrapper_section_name, 'METHOD', 'ASThread')
 
+    def get_wrapper_language(self,wrapper_section_name="wrapper"):
+        """
+         Returns the method of make the wrapper
+
+         :return: method
+         :rtype: string
+         """
+        return self._conf_parser.get_option(wrapper_section_name, 'LANGUAGE', 'python2')
     def get_wrapper_check_time(self,wrapper_section_name="wrapper"):
         """
          Returns time to check the status of jobs in the wrapper
@@ -1773,7 +1790,13 @@ class AutosubmitConfig(object):
         :rtype: str
         """
         return self._jobs_parser.get_option(section, 'EXPORT', "none")
+    def get_job_shape(self, section):
+        """
+        Returns shape
 
+        :rtype: str
+        """
+        return str(self._jobs_parser.get_option(section, 'SHAPE', '')).lower()
     def get_jobs_sections(self):
         """
         Returns the list of sections defined in the jobs config file

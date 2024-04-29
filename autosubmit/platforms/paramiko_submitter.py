@@ -157,7 +157,7 @@ class ParamikoSubmitter(Submitter):
                 host = parser.get_option(section, 'HOST', None)
 
             remote_platform.host = host
-            remote_platform.shape = platform_data[section].get('SHAPE', "")
+            remote_platform.shape = parser.get_option(section,'SHAPE','')
             # Retrieve more configurations settings and save them in the object
             remote_platform.max_wallclock = parser.get_option(section, 'MAX_WALLCLOCK',
                                                               asconf.get_max_wallclock())

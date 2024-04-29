@@ -454,7 +454,7 @@ class PJMPlatform(ParamikoPlatform):
                 """.format(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'], kwargs['num_processors'], kwargs['dependency'],
                        '\n'.ljust(13).join(str(s) for s in kwargs['directives']), kwargs['threads'])
         else:
-            if kwargs['method'] == 'python3':
+            if kwargs['language'] == 'python3':
                 language = "#!/usr/bin/env python3"
             else:
                 language = "#!/usr/bin/env python2"
@@ -474,11 +474,10 @@ class PJMPlatform(ParamikoPlatform):
 #PJM --mpi "max-proc-per-node={7}"
 {5}
 {6}
-{7}
 #
 ###############################################################################
             """.format(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'], kwargs['num_processors'], kwargs['dependency'],
-                       '\n'.ljust(13).join(str(s) for s in kwargs['directives']), kwargs['threads'],kwargs['shape'])
+                       '\n'.ljust(13).join(str(s) for s in kwargs['directives']), kwargs['threads'])
 
     @staticmethod
     def allocated_nodes():

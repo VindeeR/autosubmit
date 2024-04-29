@@ -443,7 +443,7 @@ class PJMPlatform(ParamikoPlatform):
 #PJM -g {2}
 #PJM -o {0}.out
 #PJM -e {0}.err
-#PJM -elapse={3}:00
+#PJM -L elapse={3}:00
 #PJM --mpi "proc={4}"
 #PJM --mpi "max-proc-per-node={7}"
 {5}
@@ -454,7 +454,7 @@ class PJMPlatform(ParamikoPlatform):
                 """.format(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'], kwargs['num_processors'], kwargs['dependency'],
                        '\n'.ljust(13).join(str(s) for s in kwargs['directives']), kwargs['threads'])
         else:
-            if kwargs['language'] == 'python3':
+            if kwargs['language'].upper() == 'PYTHON3':
                 language = "#!/usr/bin/env python3"
             else:
                 language = "#!/usr/bin/env python2"
@@ -469,7 +469,7 @@ class PJMPlatform(ParamikoPlatform):
 #PJM -g {2}
 #PJM -o {0}.out
 #PJM -e {0}.err
-#PJM -elapse={3}:00
+#PJM -L elapse={3}:00
 #PJM --mpi "proc={4}"
 #PJM --mpi "max-proc-per-node={7}"
 {5}

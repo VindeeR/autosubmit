@@ -1763,7 +1763,7 @@ class AutosubmitConfig(object):
          :return: method
          :rtype: string
          """
-        return self._conf_parser.get_option(wrapper_section_name, 'LANGUAGE', 'python2')
+        return self._conf_parser.get_option(wrapper_section_name, 'LANGUAGE', 'python3')
     def get_wrapper_check_time(self,wrapper_section_name="wrapper"):
         """
          Returns time to check the status of jobs in the wrapper

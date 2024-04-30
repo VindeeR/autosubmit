@@ -185,13 +185,17 @@ class PythonWrapperBuilder(WrapperBuilder):
     def get_nodes(self):
         return textwrap.dedent("""
         # Getting the list of allocated nodes
-        {0}
-        os.system("mkdir -p machinefiles")
+        try:
+            {0}
+        
+            os.system("mkdir -p machinefiles")
 
-        with open('{{0}}'.format(node_id), 'r') as file:
-             all_nodes = file.read()
+            with open('{{0}}'.format(node_id), 'r') as file:
+                all_nodes = file.read()
 
-        all_nodes = all_nodes.split("_NEWLINE_")
+            all_nodes = all_nodes.split("_NEWLINE_")
+        except:
+            all_nodes = ""
         """).format(self.allocated_nodes, '\n'.ljust(13))
 
     def build_cores_list(self):
@@ -1015,7 +1019,10 @@ class JobThread(Thread):
         command = "./" + str(self.template) + " " + str(self.id_run) + " " + os.getcwd()
         (self.status) = getstatusoutput(command + " > " + out + " 2> " + err)
 
-os.system("scontrol show hostnames $SLURM_JOB_NODELIST > {0}".format(node_id))
+try:
+    os.system("scontrol show hostnames $SLURM_JOB_NODELIST > {0}".format(node_id))
+except:
+    node_id = ""
 os.system("mkdir -p machinefiles")
 
 with open('{0}'.format(node_id), 'r') as file:

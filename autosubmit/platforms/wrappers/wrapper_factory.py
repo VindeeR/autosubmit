@@ -29,12 +29,14 @@ class WrapperFactory(object):
         self.platform = platform
         self.wrapper_director = WrapperDirector()
         self.exception = "This type of wrapper is not supported for this platform"
-
+        self.configuration = None
     def get_wrapper(self, wrapper_builder, **kwargs):
         kwargs['allocated_nodes'] = self.allocated_nodes()
         kwargs['dependency'] = self.dependency(kwargs['dependency'])
         kwargs['queue'] = self.queue(kwargs['queue'])
         kwargs['header_directive'] = self.header_directives(**kwargs)
+        kwargs['configuration'] = self.configuration
+        kwargs['language'] = self.configuration.get_wrapper_language()
         builder = wrapper_builder(**kwargs)
         return self.wrapper_director.construct(builder)
 
@@ -72,9 +74,11 @@ class WrapperFactory(object):
 class SlurmWrapperFactory(WrapperFactory):
 
     def vertical_wrapper(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
         return PythonVerticalWrapperBuilder(**kwargs)
 
     def horizontal_wrapper(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
 
         if kwargs["method"] == 'srun':
             return SrunHorizontalWrapperBuilder(**kwargs)
@@ -82,17 +86,22 @@ class SlurmWrapperFactory(WrapperFactory):
             return PythonHorizontalWrapperBuilder(**kwargs)
 
     def hybrid_wrapper_horizontal_vertical(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
         return PythonHorizontalVerticalWrapperBuilder(**kwargs)
 
     def hybrid_wrapper_vertical_horizontal(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
         if kwargs["method"] == 'srun':
             return SrunVerticalHorizontalWrapperBuilder(**kwargs)
         else:
             return PythonVerticalHorizontalWrapperBuilder(**kwargs)
 
     def header_directives(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
         return self.platform.wrapper_header(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'],
-                                            kwargs['num_processors'], kwargs['dependency'], kwargs['directives'],kwargs['threads'],kwargs['method'])
+                                            kwargs['num_processors'], kwargs['dependency'], kwargs['directives'],kwargs['threads'],kwargs['method'],kwargs['language'])
 
     def allocated_nodes(self):
         return self.platform.allocated_nodes()
@@ -103,18 +112,80 @@ class SlurmWrapperFactory(WrapperFactory):
     def queue_directive(self, queue):
         return '#SBATCH --qos={0}'.format(queue)
 
+class PJMWrapperFactory(WrapperFactory):
+
+    def vertical_wrapper(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+        return PythonVerticalWrapperBuilder(**kwargs)
+
+    def horizontal_wrapper(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
+        if kwargs["method"] == 'srun':
+            return SrunHorizontalWrapperBuilder(**kwargs)
+        else:
+            return PythonHorizontalWrapperBuilder(**kwargs)
+
+    def hybrid_wrapper_horizontal_vertical(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
+        return PythonHorizontalVerticalWrapperBuilder(**kwargs)
+
+    def hybrid_wrapper_vertical_horizontal(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
+        if kwargs["method"] == 'srun':
+            return SrunVerticalHorizontalWrapperBuilder(**kwargs)
+        else:
+            return PythonVerticalHorizontalWrapperBuilder(**kwargs)
+
+    def header_directives(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
+        return self.platform.wrapper_header(kwargs)
+
+    def allocated_nodes(self):
+        return self.platform.allocated_nodes()
+
+
+    def queue_directive(self, queue):
+        return '#PJM --qos={0}'.format(queue)
+    def partition_directive(self, partition):
+        return '#PJM --partition={0}'.format(partition)
+    def exclusive_directive(self, exclusive):
+        return '#PJM --exclusive'
+    def tasks_directive(self, tasks):
+        return "#PJM --mpi max-proc-per-node={0}".format(tasks) # searchhint
+    def nodes_directive(self, nodes):
+        return '#PJM -N {0}'.format(nodes)
+    def processors_directive(self, processors):
+        return '#PJM -n {0}'.format(processors)
+    def threads_directive(self, threads):
+        return "export OMP_NUM_THREADS={threads}".format(threads=threads)
+
+    def queue_directive(self, queue):
+        return '#PJM -L rscgrp={0}'.format(queue)
+
+    def partition_directive(self, partition):
+        return '#PJM -g {0}'.format(partition)
 
 class LSFWrapperFactory(WrapperFactory):
 
     def vertical_wrapper(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
         return PythonVerticalWrapperBuilder(**kwargs)
 
     def horizontal_wrapper(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
         return PythonHorizontalWrapperBuilder(**kwargs)
 
     def header_directives(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
         return self.platform.wrapper_header(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'],
-                                            kwargs['num_processors'], kwargs['dependency'], kwargs['directives'],kwargs['threads'])
+                                            kwargs['num_processors'], kwargs['dependency'], kwargs['directives'],kwargs['threads'],kwargs['language'])
 
     def queue_directive(self, queue):
         return queue
@@ -126,12 +197,18 @@ class LSFWrapperFactory(WrapperFactory):
 class EcWrapperFactory(WrapperFactory):
 
     def vertical_wrapper(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
         return BashVerticalWrapperBuilder(**kwargs)
 
     def horizontal_wrapper(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
         return BashHorizontalWrapperBuilder(**kwargs)
 
     def header_directives(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
         return self.platform.wrapper_header(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'],
                                             kwargs['num_processors'], kwargs['expid'], kwargs['dependency'],
                                             kwargs['rootdir'], kwargs['directives'],kwargs['threads'])
@@ -142,12 +219,9 @@ class EcWrapperFactory(WrapperFactory):
     def dependency_directive(self, dependency):
         return '#PBS -v depend=afterok:{0}'.format(dependency)
 
-class PJMWrapperFactory(WrapperFactory):
-
-    def vertical_wrapper(self, **kwargs):
-        return PythonVerticalWrapperBuilder(**kwargs)
 
     def horizontal_wrapper(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
 
         if kwargs["method"] == 'srun':
             return SrunHorizontalWrapperBuilder(**kwargs)
@@ -155,9 +229,13 @@ class PJMWrapperFactory(WrapperFactory):
             return PythonHorizontalWrapperBuilder(**kwargs)
 
     def hybrid_wrapper_horizontal_vertical(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
         return PythonHorizontalVerticalWrapperBuilder(**kwargs)
 
     def hybrid_wrapper_vertical_horizontal(self, **kwargs):
+        kwargs['language'] = self.configuration.get_wrapper_language()
+
         if kwargs["method"] == 'srun':
             return SrunVerticalHorizontalWrapperBuilder(**kwargs)
         else:
@@ -165,7 +243,7 @@ class PJMWrapperFactory(WrapperFactory):
 
     def header_directives(self, **kwargs):
         return self.platform.wrapper_header(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'],
-                                            kwargs['num_processors'], kwargs['dependency'], kwargs['directives'],kwargs['threads'],kwargs['method'],kwargs['partition'])
+                                            kwargs['num_processors'], kwargs['dependency'], kwargs['directives'],kwargs['threads'],kwargs['method'],kwargs['partition'],self.configuration.get_wrapper_language())
 
     def allocated_nodes(self):
         return self.platform.allocated_nodes()

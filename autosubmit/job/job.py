@@ -151,6 +151,7 @@ class Job(object):
         self.start_time = None
         self.ext_header_path = ''
         self.ext_tailer_path = ''
+        self.shape = ""
 
     def __getstate__(self):
         odict = self.__dict__
@@ -258,6 +259,26 @@ class Job(object):
         :type value: HPCPlatform
         """
         self._queue = value
+
+    @property
+    def shape(self):
+        """
+        Returns the shape of the job. Chooses between serial and parallel platforms
+
+        :return HPCPlatform object for the job to use
+        :rtype: HPCPlatform
+        """
+        return self._shape
+
+    @shape.setter
+    def shape(self, value):
+        """
+        Sets the shape to be used by the job.
+
+        :param value: shape to set
+        :type value: HPCPlatform
+        """
+        self._shape = value
 
     @property
     def children(self):
@@ -1119,7 +1140,9 @@ class Job(object):
             self.custom_directives = json.loads(job_platform.custom_directives)
         elif self.custom_directives == '':
             self.custom_directives = []
+        self.shape = as_conf.get_job_shape(self.section)
 
+        parameters['SHAPE'] = self.shape
         parameters['NUMPROC'] = self.processors
         parameters['PROCESSORS'] = self.processors
         parameters['MEMORY'] = self.memory
@@ -1942,8 +1965,12 @@ class WrapperJob(Job):
 
     def cancel_failed_wrapper_job(self):
         Log.printlog("Cancelling job with id {0}".format(self.id), 6009)
-        self._platform.send_command(
-            self._platform.cancel_cmd + " " + str(self.id))
+        try:
+            self._platform.send_command(
+                self._platform.cancel_cmd + " " + str(self.id))
+        except:
+            Log.info('Job was finished before canceling it')
+
         for job in self.job_list:
             if job.status not in [Status.COMPLETED, Status.FAILED]:
                 job.packed = False

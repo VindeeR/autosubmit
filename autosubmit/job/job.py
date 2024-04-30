@@ -149,48 +149,9 @@ class Job(object):
         self.export = "none"
         self.dependencies = []
         self.start_time = None
-        self.ext_header_path = None
-        self.ext_tailer_path = None
-        self.edge_info = dict()
-        self.total_jobs = None
-        self.max_waiting_jobs = None
-        self.exclusive = ""
-        self._retrials = 0
-        # internal
-        self.current_checkpoint_step = 0
-        self.max_checkpoint_step = 0
-        self.reservation = ""
-        self.delete_when_edgeless = False
+        self.ext_header_path = ''
+        self.ext_tailer_path = ''
         self.shape = ""
-        # hetjobs
-        self.het = None
-        self.updated_log = False
-        self.ready_start_date = None
-        self.log_retrieved = False
-        self.start_time_written = False
-        self.submit_time_timestamp = None # for wrappers, all jobs inside a wrapper are submitted at the same time
-        self.finish_time_timestamp = None # for wrappers, with inner_retrials, the submission time should be the last finish_time of the previous retrial
-    def _init_runtime_parameters(self):
-        # hetjobs
-        self.het = {'HETSIZE': 0}
-        self.parameters = dict()
-        self._tasks = '1'
-        self._nodes = ""
-        self.default_parameters = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
-                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
-        self._threads = '1'
-        self._processors = '1'
-        self._memory = ''
-        self._memory_per_task = ''
-        self.log_retrieved = False
-        self.start_time_placeholder = ""
-
-
-    def get_checkpoint_files(self):
-        """
-        Check if there is a file on the remote host that contains the checkpoint
-        """
-        return self.platform.get_checkpoint_files(self)
 
     def __getstate__(self):
         odict = self.__dict__

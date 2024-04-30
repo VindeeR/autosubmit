@@ -62,8 +62,10 @@ class WrapperBuilder(object):
         self.machinefiles_name = ''
         self.machinefiles_indent = 0
         self.exit_thread = ''
-        self.language = kwargs['configuration'].get_wrapper_language()
-
+        try:
+            self.language = kwargs['configuration'].get_wrapper_language()
+        except:
+            self.language = "PYTHON3"
         if "wallclock_by_level" in kwargs.keys():
             self.wallclock_by_level = kwargs['wallclock_by_level']
     def build_header(self):

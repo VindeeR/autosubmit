@@ -454,10 +454,10 @@ class PJMPlatform(ParamikoPlatform):
                 """.format(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'], kwargs['num_processors'], kwargs['dependency'],
                        '\n'.ljust(13).join(str(s) for s in kwargs['directives']), kwargs['threads'])
         else:
-            if kwargs['language'].upper() == 'PYTHON3':
-                language = "#!/usr/bin/env python3"
-            else:
+            if kwargs['language'].upper() == 'PYTHON2' or kwargs['language'].upper() == 'PYTHON':
                 language = "#!/usr/bin/env python2"
+            else:
+                language = "#!/usr/bin/env python3"
             return \
                 language + """
 ###############################################################################

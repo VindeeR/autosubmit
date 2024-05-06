@@ -23,7 +23,6 @@ import random
 import os
 from shutil import copy2
 from autosubmit.history.database_managers.experiment_history_db_manager import ExperimentHistoryDbManager
-from autosubmit.history.database_managers.experiment_status_db_manager import ExperimentStatusDbManager
 from autosubmit.history.data_classes.experiment_run import ExperimentRun
 from autosubmit.history.data_classes.job_data import JobData
 from autosubmitconfigparser.config.basicconfig import BasicConfig
@@ -37,7 +36,7 @@ JOBDATA_DIR = BasicConfig.JOBDATA_DIR
 LOCAL_ROOT_DIR = BasicConfig.LOCAL_ROOT_DIR
 
 @pytest.mark.skip()
-@unittest.skip('TODO: looks like another test that used actual experiments data')
+@unittest.skip('REMOVED: ExperimentStatusDbManager removed. TODO: looks like another test that used actual experiments data.')
 class TestExperimentStatusDatabaseManager(unittest.TestCase):
   """ Covers Experiment Status Database Manager """
   def setUp(self):

@@ -21,16 +21,47 @@
 Module containing functions to manage autosubmit's database.
 """
 import os
-import sqlite3
 import multiprocessing
+import traceback
+from typing import List, Tuple
 from log.log import Log, AutosubmitCritical
-Log.get_logger("Autosubmit")
 from autosubmitconfigparser.config.basicconfig import BasicConfig
+from sqlalchemy import delete, select, text, Connection, insert, update, func
+from sqlalchemy.schema import CreateTable
+from autosubmit.database.session import create_sqlite_engine
+from autosubmit.database import tables, session
+
+Log.get_logger("Autosubmit")
 
 CURRENT_DATABASE_VERSION = 1
 TIMEOUT = 10
 
-def create_db(qry):
+
+def create_db_pg():
+    try:
+        conn = open_conn(False)
+    except Exception as exc:
+        Log.error(traceback.format_exc())
+        raise AutosubmitCritical(
+            "Could not establish a connection to database", 7001, str(exc)
+        )
+
+    try:
+        conn.execute(CreateTable(tables.ExperimentTable.__table__, if_not_exists=True))
+        conn.execute(CreateTable(tables.DBVersionTable.__table__, if_not_exists=True))
+        conn.execute(delete(tables.DBVersionTable.__table__))
+        conn.execute(insert(tables.DBVersionTable.__table__).values({"version": 1}))
+    except Exception as exc:
+        conn.rollback()
+        close_conn(conn)
+        raise AutosubmitCritical("Database can not be created", 7004, str(exc))
+
+    close_conn(conn)
+
+    return True
+
+
+def create_db(qry: str) -> bool:
     """
     Creates a new database for autosubmit
 
@@ -38,37 +69,39 @@ def create_db(qry):
     :type qry: str    """
 
     try:
-        (conn, cursor) = open_conn(False)
-    except DbException as e:
+        conn = open_conn(False)
+    except DbException as exc:
         raise AutosubmitCritical(
-            "Could not establish a connection to database", 7001, str(e))
+            "Could not establish a connection to database", 7001, str(exc)
+        )
 
     try:
-        cursor.executescript(qry)
-    except sqlite3.Error as e:
-        close_conn(conn, cursor)
-        raise AutosubmitCritical(
-            'Database can not be created', 7004, str(e))
+        for stmnt in qry.split(";"):
+            if len(stmnt) > 0:
+                conn.execute(text(stmnt))
+    except Exception as exc:
+        close_conn(conn)
+        raise AutosubmitCritical("Database can not be created", 7004, str(exc))
 
     conn.commit()
-    close_conn(conn, cursor)
+    close_conn(conn)
     return True
 
 
-def check_db():
+def check_db() -> bool:
     """
     Checks if database file exist
 
     :return: None if exists, terminates program if not
     """
-
-    if not os.path.exists(BasicConfig.DB_PATH):
+    BasicConfig.read()
+    if BasicConfig.DATABASE_BACKEND == "sqlite" and not os.path.exists(BasicConfig.DB_PATH):
         raise AutosubmitCritical(
             'DB path does not exists: {0}'.format(BasicConfig.DB_PATH), 7003)
     return True
 
 
-def open_conn(check_version=True):
+def open_conn(check_version=True) -> Connection:
     """
     Opens a connection to database
 
@@ -77,31 +110,31 @@ def open_conn(check_version=True):
     :return: connection object, cursor object
     :rtype: sqlite3.Connection, sqlite3.Cursor
     """
-    conn = sqlite3.connect(BasicConfig.DB_PATH)
-    cursor = conn.cursor()
+    BasicConfig.read()
+    if BasicConfig.DATABASE_BACKEND == "postgres":
+        conn = session.Session().bind.connect()
+    else:
+        conn = create_sqlite_engine(BasicConfig.DB_PATH).connect()
 
     # Getting database version
-    if check_version:
+    if check_version and BasicConfig.DATABASE_BACKEND == "sqlite":
         try:
-            cursor.execute('SELECT version '
-                           'FROM db_version;')
-            row = cursor.fetchone()
-            version = row[0]
-        except sqlite3.OperationalError:
+            row = conn.execute(select(tables.DBVersionTable)).one()
+            version = row.version
+        except Exception:
             # If this exception is thrown it's because db_version does not exist.
             # Database is from 2.x or 3.0 beta releases
             try:
-                cursor.execute('SELECT type '
-                               'FROM experiment;')
+                conn.execute(text('SELECT type FROM experiment;'))
                 # If type field exists, it's from 2.x
                 version = -1
-            except sqlite3.Error:
+            except Exception:
                 # If raises and error , it's from 3.0 beta releases
                 version = 0
 
         # If database version is not the expected, update database....
         if version < CURRENT_DATABASE_VERSION:
-            if not _update_database(version, cursor):
+            if not _update_database(version, conn):
                 raise AutosubmitCritical(
                     'Database version does not match', 7001)
 
@@ -109,10 +142,10 @@ def open_conn(check_version=True):
         elif version > CURRENT_DATABASE_VERSION:
             raise AutosubmitCritical('Database version is not compatible with this autosubmit version. Please execute pip install '
                                      'autosubmit --upgrade', 7002)
-    return conn, cursor
+    return conn
 
 
-def close_conn(conn, cursor):
+def close_conn(conn: Connection):
     """
     Commits changes and close connection to database
 
@@ -122,9 +155,7 @@ def close_conn(conn, cursor):
     :type cursor: sqlite3.Cursor
     """
     conn.commit()
-    cursor.close()
     conn.close()
-    return
 
 def fn_wrapper(database_fn, queue, *args):
     # TODO: We can also implement the anti-lock mechanism as function decorators in a next iteration.
@@ -274,7 +305,7 @@ def delete_experiment(experiment_id):
         proc.terminate()
     return result
 
-def _save_experiment(name, description, version):
+def _save_experiment(name: str, description: str, version: str) -> bool:
     """
     Stores experiment in database
 
@@ -288,25 +319,31 @@ def _save_experiment(name, description, version):
     if not check_db():
         return False
     try:
-        (conn, cursor) = open_conn()
-    except DbException as e:
+        conn = open_conn()
+    except DbException as exc:
         raise AutosubmitCritical(
-            "Could not establish a connection to database", 7001, str(e))
+            "Could not establish a connection to database", 7001, str(exc))
     try:
-        cursor.execute('INSERT INTO experiment (name, description, autosubmit_version) VALUES (:name, :description, '
-                       ':version)',
-                       {'name': name, 'description': description, 'version': version})
-    except sqlite3.IntegrityError as e:
-        close_conn(conn, cursor)
+        conn.execute(
+            insert(tables.ExperimentTable).values(
+                {
+                    "name": name,
+                    "description": description,
+                    "autosubmit_version": version,
+                }
+            )
+        )
+    except Exception as exc:
+        close_conn(conn)
         raise AutosubmitCritical(
-            'Could not register experiment', 7005, str(e))
+            'Could not register experiment', 7005, str(exc))
 
     conn.commit()
-    close_conn(conn, cursor)
+    close_conn(conn)
     return True
 
 
-def _check_experiment_exists(name, error_on_inexistence=True):
+def _check_experiment_exists(name: str, error_on_inexistence: bool = True) -> bool:
     """
     Checks if exist an experiment with the given name.
 
@@ -321,19 +358,15 @@ def _check_experiment_exists(name, error_on_inexistence=True):
     if not check_db():
         return False
     try:
-        (conn, cursor) = open_conn()
+        conn = open_conn()
     except DbException as e:
         raise AutosubmitCritical(
             "Could not establish a connection to database", 7001, str(e))
-    conn.isolation_level = None
 
-    # SQLite always return a unicode object, but we can change this
-    # behaviour with the next sentence
-    conn.text_factory = str
-    cursor.execute(
-        'select name from experiment where name=:name', {'name': name})
-    row = cursor.fetchone()
-    close_conn(conn, cursor)
+    stmnt = select(tables.ExperimentTable).where(tables.ExperimentTable.name == name)
+    row = conn.execute(stmnt).one_or_none()
+    close_conn(conn)
+
     if row is None:
         if error_on_inexistence:
             raise AutosubmitCritical(
@@ -347,69 +380,71 @@ def _check_experiment_exists(name, error_on_inexistence=True):
         return False
     return True
 
-def get_experiment_descrip(expid):
+
+def get_experiment_descrip(expid: str) -> List[Tuple[str]]:
     if not check_db():
         return False
     try:
-        (conn, cursor) = open_conn()
+        conn = open_conn()
     except DbException as e:
         raise AutosubmitCritical(
             "Could not establish a connection to the database.", 7001, str(e))
-    conn.isolation_level = None
 
-    # Changing default unicode
-    conn.text_factory = str
-    # get values
-    cursor.execute("select description from experiment where name='{0}'".format(expid))
-    return [row for row in cursor]
+    stmnt = select(tables.ExperimentTable).where(tables.ExperimentTable.name == expid)
+    row = conn.execute(stmnt).one_or_none()
+    close_conn(conn)
+
+    if row:
+        return [[row.description]]
+    return []
 
 
-def _update_experiment_descrip_version(name, description=None, version=None):
+def _update_experiment_descrip_version(
+    name: str, description: str = None, version: str = None
+) -> bool:
     """
     Updates the experiment's description and/or version
 
-    :param name: experiment name (expid)  
-    :rtype name: str  
-    :param description: experiment new description  
-    :rtype description: str  
-    :param version: experiment autosubmit version  
-    :rtype version: str  
-    :return: If description has been update, True; otherwise, False.  
+    :param name: experiment name (expid)
+    :rtype name: str
+    :param description: experiment new description
+    :rtype description: str
+    :param version: experiment autosubmit version
+    :rtype version: str
+    :return: If description has been update, True; otherwise, False.
     :rtype: bool
     """
+    # Conditional update statement
+    if description is None and version is None:
+        raise AutosubmitCritical("Not enough data to update {}.".format(name), 7005)
+
+    stmnt = update(tables.ExperimentTable).where(tables.ExperimentTable.name == name)
+    vals = {}
+    if isinstance(description, str):
+        vals["description"] = description
+    if isinstance(version, str):
+        vals["autosubmit_version"] = version
+    stmnt = stmnt.values(vals)
+
     if not check_db():
         return False
+
     try:
-        (conn, cursor) = open_conn()
+        conn = open_conn()
     except DbException as e:
         raise AutosubmitCritical(
-            "Could not establish a connection to the database.", 7001, str(e))
-    conn.isolation_level = None
+            "Could not establish a connection to the database.", 7001, str(e)
+        )
 
-    # Changing default unicode
-    conn.text_factory = str
-    # Conditional update
-    if description is not None and version is not None:
-        cursor.execute('update experiment set description=:description, autosubmit_version=:version where name=:name', {
-            'description': description, 'version': version, 'name': name})
-    elif description is not None and version is None:
-        cursor.execute('update experiment set description=:description where name=:name', {
-            'description': description, 'name': name})
-    elif version is not None and description is None:
-        cursor.execute('update experiment set autosubmit_version=:version where name=:name', {
-            'version': version, 'name': name})
-    else:
-        raise AutosubmitCritical(
-            "Not enough data to update {}.".format(name), 7005)
-    row = cursor.rowcount
-    close_conn(conn, cursor)
-    if row == 0:
-        raise AutosubmitCritical(
-            "Update on experiment {} failed.".format(name), 7005)
+    result = conn.execute(stmnt)
+    close_conn(conn)
+
+    if result.rowcount == 0:
+        raise AutosubmitCritical("Update on experiment {} failed.".format(name), 7005)
     return True
 
 
-def _get_autosubmit_version(expid):
+def _get_autosubmit_version(expid: str) -> str:
     """
     Get the minimum autosubmit version needed for the experiment
 
@@ -422,34 +457,22 @@ def _get_autosubmit_version(expid):
         return False
 
     try:
-        (conn, cursor) = open_conn()
+        conn = open_conn()
     except DbException as e:
         raise AutosubmitCritical(
             "Could not establish a connection to database", 7001, str(e))
-    conn.isolation_level = None
 
-    # SQLite always return a unicode object, but we can change this
-    # behaviour with the next sentence
-    conn.text_factory = str
-    cursor.execute('SELECT autosubmit_version FROM experiment WHERE name=:expid', {
-                   'expid': expid})
-    row = cursor.fetchone()
-    close_conn(conn, cursor)
+    stmnt = select(tables.ExperimentTable).where(tables.ExperimentTable.name == expid)
+    row = conn.execute(stmnt).one_or_none()
+    close_conn(conn)
+
     if row is None:
         raise AutosubmitCritical(
             'The experiment "{0}" does not exist'.format(expid), 7005)
-    return row[0]
+    return row.autosubmit_version
 
 
-
-
-
-
-
-
-
-
-def _last_name_used(test=False, operational=False):
+def _last_name_used(test: bool = False, operational: bool = False) -> str:
     """
     Gets last experiment identifier used
 
@@ -459,49 +482,52 @@ def _last_name_used(test=False, operational=False):
     :type test: bool
     :return: last experiment identifier used, 'empty' if there is none
     :rtype: str
-    """    
+    """
     if not check_db():
-        return ''
+        return ""
+
+    if test:
+        condition = tables.ExperimentTable.name.like("t%")
+    elif operational:
+        condition = tables.ExperimentTable.name.like("o%")
+    else:
+        condition = tables.ExperimentTable.name.not_like(
+            "t%"
+        ) & tables.ExperimentTable.name.not_like("o%")
+
+    sub_stmnt = select(func.max(tables.ExperimentTable.id).label("id")).where(
+        condition
+        & tables.ExperimentTable.autosubmit_version.is_not(None)
+        & tables.ExperimentTable.autosubmit_version.not_like("%3.0.0b%")
+    ).scalar_subquery()
+    stmnt = select(tables.ExperimentTable.name).where(
+        tables.ExperimentTable.id == sub_stmnt
+    )
+
     try:
-        (conn, cursor) = open_conn()
+        conn = open_conn()
     except DbException as e:
         raise AutosubmitCritical(
-            "Could not establish a connection to database", 7001, str(e))
-    conn.text_factory = str
-    if test:
-        cursor.execute('SELECT name '
-                       'FROM experiment '
-                       'WHERE rowid=(SELECT max(rowid) FROM experiment WHERE name LIKE "t%" AND '
-                       'autosubmit_version IS NOT NULL AND '
-                       'NOT (autosubmit_version LIKE "%3.0.0b%"))')
-    elif operational:
-        cursor.execute('SELECT name '
-                       'FROM experiment '
-                       'WHERE rowid=(SELECT max(rowid) FROM experiment WHERE name LIKE "o%" AND '
-                       'autosubmit_version IS NOT NULL AND '
-                       'NOT (autosubmit_version LIKE "%3.0.0b%"))')
-    else:
-        cursor.execute('SELECT name '
-                       'FROM experiment '
-                       'WHERE rowid=(SELECT max(rowid) FROM experiment WHERE name NOT LIKE "t%" AND '
-                       'name NOT LIKE "o%" AND autosubmit_version IS NOT NULL AND '
-                       'NOT (autosubmit_version LIKE "%3.0.0b%"))')
-    row = cursor.fetchone()
-    close_conn(conn, cursor)
+            "Could not establish a connection to database", 7001, str(e)
+        )
+
+    row = conn.execute(stmnt).one_or_none()
+    close_conn(conn)
+
     if row is None:
-        return 'empty'
+        return "empty"
 
     # If starts by number (during 3.0 beta some jobs starting with numbers where created), returns empty.
     try:
-        if row[0][0].isnumeric():
-            return 'empty'
+        if row.name.isnumeric():
+            return "empty"
         else:
-            return row[0]
+            return row.name
     except ValueError:
-        return row[0]
+        return row.name
 
 
-def _delete_experiment(experiment_id):
+def _delete_experiment(experiment_id: str) -> bool:
     """
     Removes experiment from database
 
@@ -515,47 +541,73 @@ def _delete_experiment(experiment_id):
     if not _check_experiment_exists(experiment_id, False): # Reference the no anti-lock version.
         return True
     try:
-        (conn, cursor) = open_conn()
+        conn = open_conn()
     except DbException as e:
         raise AutosubmitCritical(
             "Could not establish a connection to database", 7001, str(e))
-    cursor.execute('DELETE FROM experiment '
-                   'WHERE name=:name', {'name': experiment_id})
-    row = cursor.fetchone()
-    if row is None:
-        Log.debug('The experiment {0} has been deleted!!!', experiment_id)
-    close_conn(conn, cursor)
+
+    stmnt = delete(tables.ExperimentTable).where(
+        tables.ExperimentTable.name == experiment_id
+    )
+    result = conn.execute(stmnt)
+    close_conn(conn)
+
+    if result.rowcount > 0:
+        Log.debug("The experiment {0} has been deleted!!!", experiment_id)
     return True
 
 
-def _update_database(version, cursor):
+def _update_database(version: int, conn: Connection):
     Log.info("Autosubmit's database version is {0}. Current version is {1}. Updating...",
              version, CURRENT_DATABASE_VERSION)
     try:
         # For databases from Autosubmit 2
         if version <= -1:
-            cursor.executescript('CREATE TABLE experiment_backup(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, '
-                                 'name VARCHAR NOT NULL, type VARCHAR, autosubmit_version VARCHAR, '
-                                 'description VARCHAR NOT NULL, model_branch VARCHAR, template_name VARCHAR, '
-                                 'template_branch VARCHAR, ocean_diagnostics_branch VARCHAR);'
-                                 'INSERT INTO experiment_backup (name,type,description,model_branch,template_name,'
-                                 'template_branch,ocean_diagnostics_branch) SELECT name,type,description,model_branch,'
-                                 'template_name,template_branch,ocean_diagnostics_branch FROM experiment;'
-                                 'UPDATE experiment_backup SET autosubmit_version = "2";'
-                                 'DROP TABLE experiment;'
-                                 'ALTER TABLE experiment_backup RENAME TO experiment;')
+            conn.execute(
+                text(
+                    "CREATE TABLE experiment_backup(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "
+                    "name VARCHAR NOT NULL, type VARCHAR, autosubmit_version VARCHAR, "
+                    "description VARCHAR NOT NULL, model_branch VARCHAR, template_name VARCHAR, "
+                    "template_branch VARCHAR, ocean_diagnostics_branch VARCHAR);"
+                )
+            )
+            conn.execute(
+                text(
+                    "INSERT INTO experiment_backup (name,type,description,model_branch,template_name,"
+                    "template_branch,ocean_diagnostics_branch) SELECT name,type,description,model_branch,"
+                    "template_name,template_branch,ocean_diagnostics_branch FROM experiment;"
+                )
+            )
+            conn.execute(
+                text('UPDATE experiment_backup SET autosubmit_version = "2";')
+            )
+            conn.execute(text("DROP TABLE experiment;"))
+            conn.execute(
+                text("ALTER TABLE experiment_backup RENAME TO experiment;")
+            )
+
         if version <= 0:
             # Autosubmit beta version. Create db_version table
-            cursor.executescript('CREATE TABLE db_version(version INTEGER NOT NULL);'
-                                 'INSERT INTO db_version (version) VALUES (1);'
-                                 'ALTER TABLE experiment ADD COLUMN autosubmit_version VARCHAR;'
-                                 'UPDATE experiment SET autosubmit_version = "3.0.0b" '
-                                 'WHERE autosubmit_version NOT NULL;')
-        cursor.execute('UPDATE db_version SET version={0};'.format(
-            CURRENT_DATABASE_VERSION))
-    except sqlite3.Error as e:
+            conn.execute(CreateTable(tables.DBVersionTable.__table__, if_not_exists=True))
+            conn.execute(text("INSERT INTO db_version (version) VALUES (1);"))
+            conn.execute(
+                text(
+                    "ALTER TABLE experiment ADD COLUMN autosubmit_version VARCHAR;"
+                )
+            )
+            conn.execute(
+                text(
+                    'UPDATE experiment SET autosubmit_version = "3.0.0b" '
+                    "WHERE autosubmit_version NOT NULL;"
+                )
+            )
+
+        conn.execute(
+            text("UPDATE db_version SET version={0};".format(CURRENT_DATABASE_VERSION))
+        )
+    except Exception as exc:
         raise AutosubmitCritical(
-            'unable to update database version', 7001, str(e))
+            'unable to update database version', 7001, str(exc))
     Log.info("Update completed")
     return True
 

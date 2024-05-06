@@ -20,8 +20,11 @@ import os
 import pickle
 from sys import setrecursionlimit
 import shutil
-from autosubmit.database.db_manager import DbManager
-from log.log import AutosubmitCritical, Log
+from autosubmit.database import tables
+from autosubmit.database.session import create_sqlite_engine
+from sqlalchemy.schema import CreateTable, DropTable
+from sqlalchemy import select, insert
+from log.log import Log
 from contextlib import suppress
 
 
@@ -118,7 +121,7 @@ class JobListPersistencePkl(JobListPersistence):
 
 class JobListPersistenceDb(JobListPersistence):
     """
-    Class to manage the database persistence of the job lists
+    Class to manage the SQLite database persistence of the job lists
 
     """
 
@@ -141,17 +144,24 @@ class JobListPersistenceDb(JobListPersistence):
         "wrapper_type",
     ]
 
-    def __init__(self, persistence_path, persistence_file):
-        self.db_manager = DbManager(persistence_path, persistence_file, self.VERSION)
+    def __init__(self, persistence_path: str, persistence_file: str):
+        self.engine = create_sqlite_engine(
+            os.path.join(persistence_file, persistence_path) + ".db"
+        )
+        with self.engine.connect() as conn:
+            conn.execute(CreateTable(tables.JobListTable.__table__, if_not_exists=True))
+            conn.commit()
 
     def load(self, persistence_path, persistence_file):
         """
         Loads a job list from a database
         :param persistence_file: str
         :param persistence_path: str
-
         """
-        return self.db_manager.select_all(self.JOB_LIST_TABLE)
+        # TODO return DiGraph
+        with self.engine.connect() as conn:
+            rows = conn.execute(select(tables.JobListTable)).all()
+        return [r.tuple() for r in rows]
 
     def save(self, persistence_path, persistence_file, job_list, graph):
         """
@@ -159,20 +169,37 @@ class JobListPersistenceDb(JobListPersistence):
         :param job_list: JobList
         :param persistence_file: str
         :param persistence_path: str
-
         """
         self._reset_table()
-        jobs_data = [(job.name, job.id, job.status,
-                      job.priority, job.section, job.date,
-                      job.member, job.chunk, job.split,
-                      job.local_logs[0], job.local_logs[1],
-                      job.remote_logs[0], job.remote_logs[1],job.wrapper_type) for job in job_list]
-        self.db_manager.insertMany(self.JOB_LIST_TABLE, jobs_data)
+        jobs_data = [
+            {
+                "name": job.name,
+                "id": job.id,
+                "status": job.status,
+                "priority": job.priority,
+                "section": job.section,
+                "date": job.date,
+                "member": job.member,
+                "chunk": job.chunk,
+                "split": job.split,
+                "local_out": job.local_logs[0],
+                "local_err": job.local_logs[1],
+                "remote_out": job.remote_logs[0],
+                "remote_err": job.remote_logs[1],
+                "wrapper_type": job.wrapper_type,
+            }
+            for job in job_list
+        ]
+
+        with self.engine.connect() as conn:
+            conn.execute(insert(tables.JobListTable), jobs_data)
+            conn.commit()
 
     def _reset_table(self):
         """
         Drops and recreates the database
-
         """
-        self.db_manager.drop_table(self.JOB_LIST_TABLE)
-        self.db_manager.create_table(self.JOB_LIST_TABLE, self.TABLE_FIELDS)
+        with self.engine.connect() as conn:
+            conn.execute(DropTable(tables.JobListTable.__table__, if_exists=True))
+            conn.execute(CreateTable(tables.JobListTable.__table__, if_not_exists=True))
+            conn.commit()

@@ -18,160 +18,91 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-
-import textwrap
 import traceback
-import sqlite3
-
 from typing import Dict, List
+from networkx import DiGraph
+from autosubmit.database import tables
+from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmit.database.db_manager import create_db_table_manager
 from log.log import Log
 
 
-def get_structure(exp_id, structures_path):
-    # type: (str, str) -> Dict[str, List[str]]
+def get_structure(expid: str, structures_path: str) -> Dict[str, List[str]]:
     """
     Creates file of database and table of experiment structure if it does not exist. Returns current structure.
 
-    :return: Map from experiment name source to name destination  
-    :rtype: Dictionary Key: String, Value: List(of String)
+    :return: Map from experiment name source to name destination
     """
-    try:        
-        if os.path.exists(structures_path):
+    try:
+        db_structure_path = ""
+        if BasicConfig.DATABASE_BACKEND == "sqlite":
+            if not os.path.exists(structures_path):
+                raise Exception("Structures folder not found " + str(structures_path))
+
             db_structure_path = os.path.join(
-                structures_path, "structure_" + exp_id + ".db")
+                structures_path, "structure_" + expid + ".db"
+            )
             if not os.path.exists(db_structure_path):
-                open(db_structure_path, "w")
-            # print(db_structure_path)
-            conn = create_connection(db_structure_path)
-            create_table_query = textwrap.dedent(
-                '''CREATE TABLE
-            IF NOT EXISTS experiment_structure (
-            e_from text NOT NULL,
-            e_to text NOT NULL,
-            UNIQUE(e_from,e_to)
-            );''')
-            create_table(conn, create_table_query)
-            current_table = _get_exp_structure(db_structure_path)            
-            current_table_structure = dict()
-            for item in current_table:
-                _from, _to = item
-                current_table_structure.setdefault(_from, []).append(_to)
-                current_table_structure.setdefault(_to, [])
-            return current_table_structure            
-        else:            
-            raise Exception("Structures folder not found " +
-                            str(structures_path))
-    except Exception as exp:
-        Log.printlog("Get structure error: {0}".format(str(exp)), 6014)
+                with open(db_structure_path, "w"):
+                    pass
+
+        structure_manager = create_db_table_manager(
+            tables.ExperimentStructureTable, db_filepath=db_structure_path, schema=expid
+        )
+        with structure_manager.get_connection() as conn:
+            structure_manager.create_table(conn)
+            rows = structure_manager.select_all(conn)
+            current_table = [(r.e_from, r.e_to) for r in rows]
+            conn.commit()
+
+        current_table_structure: Dict[str, List[str]] = dict()
+        for item in current_table:
+            _from, _to = item
+            current_table_structure.setdefault(_from, []).append(_to)
+            current_table_structure.setdefault(_to, [])
+        return current_table_structure
+
+    except Exception as exc:
+        Log.printlog("Get structure error: {0}".format(str(exc)), 6014)
         Log.debug(traceback.format_exc())
-        
+        return {}
 
 
-def create_connection(db_file):
-    """ 
-    Create a database connection to the SQLite database specified by db_file.  
-    :param db_file: database file name  
-    :return: Connection object or None
-    """
-    try:
-        conn = sqlite3.connect(db_file)
-        return conn
-    except Exception as e:
-        return None
-
-
-def create_table(conn, create_table_sql):
-    """ create a table from the create_table_sql statement
-    :param conn: Connection object
-    :param create_table_sql: a CREATE TABLE statement
-    :return:
-    """
-    try:
-        c = conn.cursor()
-        c.execute(create_table_sql)
-    except Exception as e:
-        Log.printlog("Create table error {0}".format(str(e)), 5000)
-
-
-def _get_exp_structure(path):
-    """
-    Get all registers from experiment_status.\n
-    :return: row content: exp_id, name, status, seconds_diff  
-    :rtype: 4-tuple (int, str, str, int)
-    """
-    try:
-        conn = create_connection(path)
-        conn.text_factory = str
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT e_from, e_to FROM experiment_structure")
-        rows = cur.fetchall()
-        return rows
-    except Exception as exp:
-        Log.debug(
-            "Get structure error {0}, couldn't load from storage ".format(str(exp)))
-        Log.debug(traceback.format_exc())
-        return dict()
-
-
-def save_structure(graph, exp_id, structures_path):
+def save_structure(graph: DiGraph, expid: str, structures_path: str):
     """
     Saves structure if path is valid
     """
-    conn = None
-    # Path to structures folder exists
-    if os.path.exists(structures_path):
-        # Path to structure file
-        db_structure_path = os.path.join(
-            structures_path, "structure_" + exp_id + ".db")
-        # Path to structure file exists -> delete
-        if os.path.exists(db_structure_path):
-            conn = create_connection(db_structure_path)
-            _delete_table_content(conn)
-        else:
-            # Path to structure file does not exist -> Initialize structure
-            get_structure(exp_id, structures_path)
-            conn = create_connection(db_structure_path)
-        if conn:
-            # Save structure
-            nodes_edges = {u for u, v in graph.edges()}
-            nodes_edges.update({v for u, v in graph.edges()})
-            independent_nodes = {
-                u for u in graph.nodes() if u not in nodes_edges}
-            data = {(u, v) for u, v in graph.edges()}
-            data.update({(u, u) for u in independent_nodes})
-            # save
-            _create_edge(conn, data)
+    try:
+        # Prepare data
+        nodes_edges = {u for u, v in graph.edges()}
+        nodes_edges.update({v for u, v in graph.edges()})
+        independent_nodes = {u for u in graph.nodes() if u not in nodes_edges}
+        data = {(u, v) for u, v in graph.edges()}
+        data.update({(u, u) for u in independent_nodes})
+
+        # Ensure db file exists for SQLite
+        db_structure_path = ""
+        if BasicConfig.DATABASE_BACKEND == "sqlite":
+            if not os.path.exists(structures_path):
+                raise Exception("Structures folder not found " + str(structures_path))
+
+            db_structure_path = os.path.join(
+                structures_path, "structure_" + expid + ".db"
+            )
+            if not os.path.exists(db_structure_path):
+                with open(db_structure_path, "w"):
+                    pass
+
+        structure_manager = create_db_table_manager(
+            tables.ExperimentStructureTable, db_filepath=db_structure_path, schema=expid
+        )
+        with structure_manager.get_connection() as conn:
+            structure_manager.create_table(conn)
+            structure_manager.delete_all(conn)
+            edges = [{"e_from": e[0], "e_to": e[1]} for e in data]
+            structure_manager.insert_many(conn, edges)
             conn.commit()
-    else:
-        # Structure Folder not found
-        raise Exception(
-            "Structures folder not found {0}".format(structures_path))
 
-
-def _create_edge(conn, data):
-    """
-    Create edge
-    """
-    try:
-        sql = ''' INSERT INTO experiment_structure(e_from, e_to) VALUES(?,?) '''
-        cur = conn.cursor()
-        cur.executemany(sql, data)
-        # return cur.lastmod
-    except sqlite3.Error as e:
+    except Exception as exc:
+        Log.printlog("Save structure error: {0}".format(str(exc)), 6014)
         Log.debug(traceback.format_exc())
-        Log.warning("Error on Insert : {0}".format(str(type(e).__name__)))
-
-
-def _delete_table_content(conn):
-    """
-    Deletes table content
-    """
-    try:
-        sql = ''' DELETE FROM experiment_structure '''
-        cur = conn.cursor()
-        cur.execute(sql)
-        conn.commit()
-    except sqlite3.Error as e:
-        Log.debug(traceback.format_exc())
-        Log.warning("Error on Delete : {0}".format(str(type(e).__name__)))

@@ -35,7 +35,7 @@ from autosubmitconfigparser.config.basicconfig import BasicConfig
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 from log.log import Log, AutosubmitError, AutosubmitCritical
-from .database.db_common import create_db
+from .database.db_common import create_db, create_db_pg
 from .database.db_common import delete_experiment, get_experiment_descrip
 from .database.db_common import get_autosubmit_version, check_experiment_exists
 from .database.db_structure import get_structure
@@ -1495,8 +1495,7 @@ class Autosubmit:
             safetysleeptime = as_conf.get_safetysleeptime()
             Log.debug("The Experiment name is: {0}", expid)
             Log.debug("Sleep: {0}", safetysleeptime)
-            packages_persistence = JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
-                                                         "job_packages_" + expid)
+            packages_persistence = JobPackagePersistence(expid)
             os.chmod(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid,
                                   "pkl", "job_packages_" + expid + ".db"), 0o644)
 
@@ -2041,8 +2040,7 @@ class Autosubmit:
         Log.debug("Loading job packages")
         # Packages == wrappers and jobs inside wrappers. Name is also missleading.
         try:
-            packages_persistence = JobPackagePersistence(os.path.join(
-                BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"), "job_packages_" + expid)
+            packages_persistence = JobPackagePersistence(expid)
         except IOError as e:
             raise AutosubmitError(
                 "job_packages not found", 6016, str(e))
@@ -2707,8 +2705,7 @@ class Autosubmit:
         try:
             if len(as_conf.experiment_data.get("WRAPPERS", {})) > 0 and check_wrapper:
                 # Class constructor creates table if it does not exist
-                packages_persistence = JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
-                                                             "job_packages_" + expid)
+                packages_persistence = JobPackagePersistence(expid)
                 # Permissions
                 os.chmod(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl", "job_packages_" + expid + ".db"), 0o644)
                 # Database modification
@@ -2720,11 +2717,9 @@ class Autosubmit:
                                                            packages_persistence, True)
 
                 packages = packages_persistence.load(True)
-                packages += JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
-                                                  "job_packages_" + expid).load()
+                packages += JobPackagePersistence(expid).load()
             else:
-                packages = JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
-                                                 "job_packages_" + expid).load()
+                packages = JobPackagePersistence(expid).load()
         except BaseException as e:
             if profile:
                 profiler.stop()
@@ -3041,8 +3036,7 @@ class Autosubmit:
             raise AutosubmitCritical("Couldn't restore the experiment workflow", 7040, str(e))
 
         try:
-            packages = JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
-                                             "job_packages_" + expid).load()
+            packages = JobPackagePersistence(expid).load()
 
             groups_dict = dict()
             if group_by:
@@ -3789,15 +3783,20 @@ class Autosubmit:
         Creates a new database instance for autosubmit at the configured path
 
         """
-        if not os.path.exists(BasicConfig.DB_PATH):
-            Log.info("Creating autosubmit database...")
-            qry = resource_string('autosubmit.database', 'data/autosubmit.sql').decode(locale.getlocale()[1])
-            #qry = importlib.resources.read_text('autosubmit.database', 'data/autosubmit.sql').decode(locale.getlocale()[1])
-            if not create_db(qry):
+        if BasicConfig.DATABASE_BACKEND == "postgres":
+            Log.info("Creating autosubmit Postgres database...")
+            if not create_db_pg():
                 raise AutosubmitCritical("Can not write database file", 7004)
-            Log.result("Autosubmit database created successfully")
         else:
-            raise AutosubmitCritical("Database already exists.", 7004)
+            if not os.path.exists(BasicConfig.DB_PATH):
+                Log.info("Creating autosubmit SQLite database...")
+                qry = resource_string('autosubmit.database', 'data/autosubmit.sql').decode(locale.getlocale()[1])
+                #qry = importlib.resources.read_text('autosubmit.database', 'data/autosubmit.sql').decode(locale.getlocale()[1])
+                if not create_db(qry):
+                    raise AutosubmitCritical("Can not write database file", 7004)
+                Log.result("Autosubmit database created successfully")
+            else:
+                raise AutosubmitCritical("Database already exists.", 7004)
         return True
 
     @staticmethod
@@ -4557,8 +4556,7 @@ class Autosubmit:
                     job_list.save()
                     as_conf.save()
                     try:
-                        packages_persistence = JobPackagePersistence(
-                            os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"), "job_packages_" + expid)
+                        packages_persistence = JobPackagePersistence(expid)
                         packages_persistence.reset_table()
                         packages_persistence.reset_table(True)
                     except:
@@ -4606,6 +4604,7 @@ class Autosubmit:
                             Autosubmit.generate_scripts_andor_wrappers(
                                 as_conf, job_list_wr, job_list_wr.get_job_list(), packages_persistence, True)
                             packages = packages_persistence.load(True)
+
                         else:
                             packages = None
 
@@ -5375,9 +5374,7 @@ class Autosubmit:
                 #Visualization stuff that should be in a function common to monitor , create, -cw flag, inspect and so on
                 if not noplot:
                     if as_conf.get_wrapper_type() != 'none' and check_wrapper:
-                        packages_persistence = JobPackagePersistence(
-                            os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
-                            "job_packages_" + expid)
+                        packages_persistence = JobPackagePersistence(expid)
                         os.chmod(os.path.join(BasicConfig.LOCAL_ROOT_DIR,
                                               expid, "pkl", "job_packages_" + expid + ".db"), 0o775)
                         packages_persistence.reset_table(True)
@@ -5389,8 +5386,7 @@ class Autosubmit:
 
                         packages = packages_persistence.load(True)
                     else:
-                        packages = JobPackagePersistence(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
-                                                         "job_packages_" + expid).load()
+                        packages = JobPackagePersistence(expid).load()
                     groups_dict = dict()
                     if group_by:
                         status = list()

@@ -1113,8 +1113,10 @@ class Job(object):
         if self.hyperthreading is 'none':
             self.hyperthreading = str(job_platform.hyperthreading).lower()
 
-        if self.tasks == '0' and job_platform.processors_per_node:
+        if int(self.tasks) <= 1 < int(job_platform.processors_per_node) and int(
+                self.processors) > int(job_platform.processors_per_node):
             self.tasks = job_platform.processors_per_node
+        self.tasks = str(self.tasks)
         self.memory = as_conf.get_memory(self.section)
         self.memory_per_task = as_conf.get_memory_per_task(self.section)
         self.wallclock = as_conf.get_wallclock(self.section)

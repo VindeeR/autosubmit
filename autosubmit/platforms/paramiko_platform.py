@@ -946,11 +946,9 @@ class ParamikoPlatform(Platform):
                     self._ssh_output += s
             for errorLineCase in stderr_readlines:
                 self._ssh_output_err += errorLineCase
-            # if self._bashrc_output matchs the start of self.ssh_output, then strip it from self.ssh_output
-            if self._ssh_output.startswith(self.bashrc_output):
-                self._ssh_output = self._ssh_output[len(self.bashrc_output):]
-            if self._ssh_output_err.startswith(self.bashrc_err):
-                self._ssh_output_err = self._ssh_output_err[len(self.bashrc_err):]
+            self._ssh_output = self._ssh_output.replace(self.bashrc_output, "")
+            self._ssh_output_err = self._ssh_output_err.replace(self.bashrc_err, "")
+
             if "not active" in self._ssh_output_err:
                 raise AutosubmitError(
                     'SSH Session not active, will restart the platforms', 6005)

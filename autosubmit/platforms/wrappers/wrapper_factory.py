@@ -34,9 +34,9 @@ class WrapperFactory(object):
         kwargs['allocated_nodes'] = self.allocated_nodes()
         kwargs['dependency'] = self.dependency(kwargs['dependency'])
         kwargs['queue'] = self.queue(kwargs['queue'])
+        kwargs['language'] = self.configuration.get_wrapper_language()
         kwargs['header_directive'] = self.header_directives(**kwargs)
         kwargs['configuration'] = self.configuration
-        kwargs['language'] = self.configuration.get_wrapper_language()
         builder = wrapper_builder(**kwargs)
         return self.wrapper_director.construct(builder)
 

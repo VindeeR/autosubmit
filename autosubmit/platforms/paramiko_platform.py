@@ -1037,8 +1037,11 @@ class ParamikoPlatform(Platform):
                 stdin.close()
                 channel.shutdown_write()
                 stdout_chunks.append(stdout.channel.recv(len(stdout.channel.in_buffer)))
+
+            aux_stderr = []
             i = 0
             x11_exit = False
+
             while (not channel.closed or channel.recv_ready() or channel.recv_stderr_ready() ) and not x11_exit:
                 # stop if channel was closed prematurely, and there is no data in the buffers.
                 got_chunk = False
@@ -1055,11 +1058,19 @@ class ParamikoPlatform(Platform):
                         got_chunk = True
                 if x11 == "true":
                     if len(stderr_readlines) > 0:
-                        job_id = re.findall(r'\d+', str(stderr_readlines[0]))[0]
-                        stdout_chunks.append(job_id.encode(lang))
-                        stderr_readlines = []
+                        aux_stderr.extend(stderr_readlines)
+                        for stderr_line in stderr_readlines:
+                            stderr_line = stderr_line.decode(lang)
+                            job_id = re.findall(r'\d+', stderr_line)
+                            if job_id:
+                                stdout_chunks.append(job_id[0].encode(lang))
+                                #x11_exit = True
+                    else:
                         x11_exit = True
-                        break
+                    if not x11_exit:
+                        stderr_readlines = []
+                    else:
+                        stderr_readlines = aux_stderr
                 if not got_chunk and stdout.channel.exit_status_ready() and not stderr.channel.recv_stderr_ready() and not stdout.channel.recv_ready():
                     # indicate that we're not going to read from this channel anymore
                     stdout.channel.shutdown_read()
@@ -1111,8 +1122,10 @@ class ParamikoPlatform(Platform):
         except IOError as e:
             raise AutosubmitError(str(e),6016)
         except BaseException as e:
+            if type(stderr_readlines) is str:
+                stderr_readlines = '\n'.join(stderr_readlines)
             raise AutosubmitError('Command {0} in {1} warning: {2}'.format(
-                command, self.host, '\n'.join(stderr_readlines)), 6005, str(e))
+                command, self.host, stderr_readlines), 6005, str(e))
 
     def parse_job_output(self, output):
         """

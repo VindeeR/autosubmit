@@ -1861,6 +1861,7 @@ class Job(object):
         self.check = as_conf.jobs_data[self.section].get("CHECK", False)
         self.check_warnings = as_conf.jobs_data[self.section].get("CHECK_WARNINGS", False)
         self.shape = as_conf.jobs_data[self.section].get("SHAPE", "")
+        self.x11 = str(as_conf.jobs_data[self.section].get("X11", False)).lower()
         if self.checkpoint: # To activate placeholder sustitution per <empty> in the template
             parameters["AS_CHECKPOINT"] = self.checkpoint
         parameters['JOBNAME'] = self.name
@@ -1886,6 +1887,7 @@ class Job(object):
         parameters['JOB_DEPENDENCIES'] = self.dependencies
         parameters['EXPORT'] = self.export
         parameters['PROJECT_TYPE'] = as_conf.get_project_type()
+        parameters['X11'] = self.x11
         self.wchunkinc = as_conf.get_wchunkinc(self.section)
         for key,value in as_conf.jobs_data[self.section].items():
             parameters["CURRENT_"+key.upper()] = value

@@ -202,7 +202,8 @@ class Job(object):
         self.file = None
         self.additional_files = []
         self.executable = None
-        self.x11 = False
+        self.x11 = None
+        self.x11_options = None
         self._local_logs = ('', '')
         self._remote_logs = ('', '')
         self.script_name = self.name + ".cmd"
@@ -252,6 +253,7 @@ class Job(object):
         self.start_time_written = False
         self.submit_time_timestamp = None # for wrappers, all jobs inside a wrapper are submitted at the same time
         self.finish_time_timestamp = None # for wrappers, with inner_retrials, the submission time should be the last finish_time of the previous retrial
+
     def _init_runtime_parameters(self):
         # hetjobs
         self.het = {'HETSIZE': 0}
@@ -267,6 +269,25 @@ class Job(object):
         self.log_retrieved = False
         self.start_time_placeholder = ""
         self.processors_per_node = ""
+
+
+    @property
+    @autosubmit_parameter(name='x11')
+    def x11(self):
+        """Whether to use X11 forwarding"""
+        return self._x11
+    @x11.setter
+    def x11(self, value):
+        self._x11 = value
+
+    @property
+    @autosubmit_parameter(name='x11_options')
+    def x11_options(self):
+        """Allows to set salloc parameters for x11"""
+        return self._x11_options
+    @x11_options.setter
+    def x11_options(self, value):
+        self._x11_options = value
 
     @property
     @autosubmit_parameter(name='tasktype')
@@ -1564,6 +1585,8 @@ class Job(object):
     def update_platform_associated_parameters(self,as_conf, parameters, job_platform, chunk):
         job_data = as_conf.jobs_data[self.section]
         platform_data = as_conf.platforms_data.get(job_platform.name,{})
+        self.x11_options = str(as_conf.jobs_data[self.section].get("X11_OPTIONS", as_conf.platforms_data.get(job_platform.name,{}).get("X11_OPTIONS","")))
+
         self.ec_queue = str(job_data.get("EC_QUEUE", platform_data.get("EC_QUEUE","")))
         self.executable = job_data.get("EXECUTABLE", platform_data.get("EXECUTABLE",""))
         self.total_jobs = job_data.get("TOTALJOBS",job_data.get("TOTAL_JOBS", job_platform.total_jobs))
@@ -1977,7 +2000,7 @@ class Job(object):
                 template_file.close()
             else:
                 if self.type == Type.BASH:
-                    template = 'sleep 5'
+                    template = 'xclock'
                 elif self.type == Type.PYTHON2:
                     template = 'time.sleep(5)' + "\n"
                 elif self.type == Type.PYTHON3 or self.type == Type.PYTHON:

@@ -895,25 +895,27 @@ class ParamikoPlatform(Platform):
 
     def flush_out(self,session):
         while session.recv_ready():
-            sys.stdout.write(session.recv(4096))
+            sys.stdout.write(session.recv(4096).decode(locale.getlocale()[1]))
         while session.recv_stderr_ready():
-            sys.stderr.write(session.recv_stderr(4096))
+            sys.stderr.write(session.recv_stderr(4096).decode(locale.getlocale()[1]))
 
     @threaded
     def x11_status_checker(self, session, session_fileno):
+        poller = None
         self.transport.accept()
         while not session.exit_status_ready():
             try:
-                if sys.platform != "linux":
-                    self.poller = self.poller.kqueue()
-                else:
-                    self.poller = self.poller.poll()
+                if type(self.poller) is not list:
+                    if sys.platform != "linux":
+                        poller = self.poller.kqueue()
+                    else:
+                        poller = self.poller.poll()
                 # accept subsequent x11 connections if any
                 if len(self.transport.server_accepts) > 0:
                     self.transport.accept()
-                if not self.poller:  # this should not happen, as we don't have a timeout.
+                if not poller:  # this should not happen, as we don't have a timeout.
                     break
-                for fd, event in self.poller:
+                for fd, event in poller:
                     if fd == session_fileno:
                         self.flush_out(session)
                     # data either on local/remote x11 socket
@@ -961,12 +963,22 @@ class ParamikoPlatform(Platform):
                     if display is None or not display:
                         display = "localhost:0"
                     self.local_x11_display = xlib_connect.get_display(display)
-                    chan.request_x11(handler=self.x11_handler)
+                    chan = self.transport.open_session()
+                    chan.request_x11(single_connection=False,handler=self.x11_handler)
                 else:
-                    chan.settimeout(timeout)
+                    chan = self.transport.open_session()
                 if x11 == "true":
-                    command = command + " ; sleep infinity"
-                    chan.exec_command(command)
+                    if "timeout" in command:
+                        timeout_command = command.split("timeout ")[1].split(" ")[0]
+                        if timeout_command == 0:
+                            timeout_command = "infinity"
+                        command = f'{command} ; sleep {timeout_command} 2>/dev/null'
+                    #command = f'export display {command}'
+                    Log.info(command)
+                    try:
+                        chan.exec_command(command)
+                    except BaseException as e:
+                        raise AutosubmitCritical("Failed to execute command: %s" % e)
                     chan_fileno = chan.fileno()
                     self.poller.register(chan_fileno, select.POLLIN)
                     self.x11_status_checker(chan, chan_fileno)
@@ -1024,8 +1036,10 @@ class ParamikoPlatform(Platform):
                 channel.settimeout(timeout)
                 stdin.close()
                 channel.shutdown_write()
-            stdout_chunks.append(stdout.channel.recv(len(stdout.channel.in_buffer)))
-            while not channel.closed or channel.recv_ready() or channel.recv_stderr_ready():
+                stdout_chunks.append(stdout.channel.recv(len(stdout.channel.in_buffer)))
+            i = 0
+            x11_exit = False
+            while (not channel.closed or channel.recv_ready() or channel.recv_stderr_ready() ) and not x11_exit:
                 # stop if channel was closed prematurely, and there is no data in the buffers.
                 got_chunk = False
                 readq, _, _ = select.select([stdout.channel], [], [], 2)
@@ -1033,17 +1047,19 @@ class ParamikoPlatform(Platform):
                     if c.recv_ready():
                         stdout_chunks.append(
                             stdout.channel.recv(len(c.in_buffer)))
-                        #stdout_chunks.append(" ")
                         got_chunk = True
                     if c.recv_stderr_ready():
                         # make sure to read stderr to prevent stall
                         stderr_readlines.append(
                             stderr.channel.recv_stderr(len(c.in_stderr_buffer)))
-                        #stdout_chunks.append(" ")
                         got_chunk = True
                 if x11 == "true":
-                    got_chunk = True
-                    break
+                    if len(stderr_readlines) > 0:
+                        job_id = re.findall(r'\d+', str(stderr_readlines[0]))[0]
+                        stdout_chunks.append(job_id.encode(lang))
+                        stderr_readlines = []
+                        x11_exit = True
+                        break
                 if not got_chunk and stdout.channel.exit_status_ready() and not stderr.channel.recv_stderr_ready() and not stdout.channel.recv_ready():
                     # indicate that we're not going to read from this channel anymore
                     stdout.channel.shutdown_read()

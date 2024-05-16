@@ -49,6 +49,8 @@ class SlurmPlatform(ParamikoPlatform):
         self._submit_hold_cmd = None
         self._submit_command_name = None
         self._submit_cmd = None
+        self.x11_options = None
+        self._submit_cmd_x11 = f'-D {self.remote_log_dir} {self.remote_log_dir}'
         self._checkhost_cmd = None
         self.cancel_cmd = None
         self._header = SlurmHeader()
@@ -71,6 +73,13 @@ class SlurmPlatform(ParamikoPlatform):
         self._submit_script_base_name = os.path.join(
             tmp_path, self.config.get("LOCAL_ASLOG_DIR"), "submit_")
         self._submit_script_file = open(self._submit_script_path, 'wb').close()
+
+
+    def get_submit_cmd_x11(self, args, script_name):
+        """
+        Returns the submit command for the platform
+        """
+        return f'salloc {args} {self._submit_cmd_x11}/{script_name}'
 
     def generate_new_name_submit_script_file(self):
         self._submit_script_path = self._submit_script_base_name + os.urandom(16).hex() + ".sh"
@@ -530,12 +539,12 @@ class SlurmPlatform(ParamikoPlatform):
             if outputlines.find("failed") != -1:
                 raise AutosubmitCritical(
                     "Submission failed. Command Failed", 7014)
-            jobs_id = []
-            for output in outputlines.splitlines():
-                jobs_id.append(int(output.split(' ')[3]))
             if x11 == "true":
-                return jobs_id[0]
+                return int(outputlines.splitlines()[0])
             else:
+                jobs_id = []
+                for output in outputlines.splitlines():
+                    jobs_id.append(int(output.split(' ')[3]))
                 return jobs_id
         except IndexError:
             raise AutosubmitCritical(
@@ -557,10 +566,7 @@ class SlurmPlatform(ParamikoPlatform):
             x11 = job.x11
 
         if x11 == "true":
-            if not hold:
-                return export + self._submit_cmd + job_script
-            else:
-                return export + self._submit_hold_cmd + job_script
+            return export + self.get_submit_cmd_x11(job.x11_options.strip(""), job_script.strip(""))
         else:
             try:
                 lang = locale.getlocale()[1]

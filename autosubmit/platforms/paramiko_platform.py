@@ -1065,7 +1065,7 @@ class ParamikoPlatform(Platform):
                                 job_id = re.findall(r'\d+', stderr_line)
                                 if job_id:
                                     stdout_chunks.append(job_id[0].encode(lang))
-                                    #x11_exit = True
+                                    x11_exit = True
                     else:
                         x11_exit = True
                     if not x11_exit:

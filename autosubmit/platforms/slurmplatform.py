@@ -50,7 +50,7 @@ class SlurmPlatform(ParamikoPlatform):
         self._submit_command_name = None
         self._submit_cmd = None
         self.x11_options = None
-        self._submit_cmd_x11 = f'-D {self.remote_log_dir} {self.remote_log_dir}'
+        self._submit_cmd_x11 = f'{self.remote_log_dir}'
         self._checkhost_cmd = None
         self.cancel_cmd = None
         self._header = SlurmHeader()
@@ -330,6 +330,8 @@ class SlurmPlatform(ParamikoPlatform):
         self.put_cmd = "scp"
         self.get_cmd = "scp"
         self.mkdir_cmd = "mkdir -p " + self.remote_log_dir
+        self._submit_cmd_x11 = f'{self.remote_log_dir}'
+
 
     def hold_job(self, job):
         try:

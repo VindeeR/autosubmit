@@ -1061,10 +1061,11 @@ class ParamikoPlatform(Platform):
                         aux_stderr.extend(stderr_readlines)
                         for stderr_line in stderr_readlines:
                             stderr_line = stderr_line.decode(lang)
-                            job_id = re.findall(r'\d+', stderr_line)
-                            if job_id:
-                                stdout_chunks.append(job_id[0].encode(lang))
-                                #x11_exit = True
+                            if "salloc" in stderr_line: # salloc is the command to allocate resources in slurm, for pjm it is different
+                                job_id = re.findall(r'\d+', stderr_line)
+                                if job_id:
+                                    stdout_chunks.append(job_id[0].encode(lang))
+                                    #x11_exit = True
                     else:
                         x11_exit = True
                     if not x11_exit:

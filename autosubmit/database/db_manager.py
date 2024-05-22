@@ -17,126 +17,424 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
+import sqlite3
+import os
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Type, Union
-from sqlalchemy import Connection, Engine, Table, delete, insert, select
-from autosubmit.database import tables, session
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from autosubmit.database.session import create_sqlite_engine
-from sqlalchemy.schema import CreateTable, CreateSchema, DropTable
-from sqlalchemy.orm import DeclarativeBase
+from typing import Optional, Protocol, Union, cast
+from sqlalchemy import Connection, Engine, delete, insert, select
+from autosubmit.database import session
+from autosubmit.database.tables import get_table_from_name
+from sqlalchemy.schema import CreateTable, CreateSchema,  DropTable
+# FIXME: what happens in DbManager when db_version is None or 0000, etc?
 
 
-class DbTableManager(ABC):
-    engine: Engine
-    table: Table
+class DbManager(object):
+    """
+    Class to manage an SQLite database.
+    """
 
-    @abstractmethod
-    def __init__(
-        self,
-        table: Union[Type[DeclarativeBase], Table],
-        db_filepath: str = None,
-        schema: Optional[str] = None,
-    ) -> None:
+    def __init__(self, root_path, db_name, db_version):
+        self.root_path = root_path
+        self.db_name = db_name
+        self.db_version = db_version
+        is_new = not os.path.exists(self._get_db_filepath())
+        self.connection = sqlite3.connect(self._get_db_filepath())
+        if is_new:
+            self._initialize_database()
+    def backup(self):
+        pass
+    def restore(self):
+        pass
+
+    def disconnect(self):
         """
-        Class to manage a database table with common methods
-        :param table: SQLAlchemy Table
-        :param db_filepath: File path location in case of SQLite is used as database backend
-        :param schema: Almost always same as expid. Postgres database schema in case this is a distributed table.
+        Closes the manager connection
+
         """
+        self.connection.close()
+
+    def create_table(self, table_name, fields):
+        """
+        Creates a new table with the given fields
+        :param table_name: str
+        :param fields: [str]
+
+        """
+        cursor = self.connection.cursor()
+        create_command = self.generate_create_table_command(table_name, fields[:])
+        cursor.execute(create_command)
+        self.connection.commit()
+
+    def drop_table(self, table_name):
+        """
+        Drops the given table
+        :param table_name: str
+
+        """
+        cursor = self.connection.cursor()
+        drop_command = self.generate_drop_table_command(table_name)
+        cursor.execute(drop_command)
+        self.connection.commit()
+
+    def insert(self, table_name, columns, values):
+        """
+        Inserts a new row on the given table
+        :param table_name: str
+        :param columns: [str]
+        :param values: [str]
+
+        """
+        cursor = self.connection.cursor()
+        insert_command = self.generate_insert_command(table_name, columns[:], values[:])
+        cursor.execute(insert_command)
+        self.connection.commit()
+
+    def insertMany(self, table_name, data):
+        """
+        Inserts multiple new rows on the given table
+        :param table_name: str
+        :param data: [()]
+
+        """
+        cursor = self.connection.cursor()
+        insert_many_command = self.generate_insert_many_command(table_name, len(data[0]))
+        cursor.executemany(insert_many_command, data)
+        self.connection.commit()
+
+    def select_first(self, table_name):
+        """
+        Returns the first row of the given table
+        :param table_name: str
+        :return row: []
+        """
+        cursor = self._select_with_all_fields(table_name)
+        return cursor.fetchone()
+
+    def select_first_where(self, table_name, where):
+        """
+        Returns the first row of the given table that matches the given where conditions
+        :param table_name: str
+        :param where: [str]
+        :return row: []
+        """
+        cursor = self._select_with_all_fields(table_name, where)
+        return cursor.fetchone()
+
+    def select_all(self, table_name):
+        """
+        Returns all the rows of the given table
+        :param table_name: str
+        :return rows: [[]]
+        """
+        cursor = self._select_with_all_fields(table_name)
+        return cursor.fetchall()
+
+    def select_all_where(self, table_name, where):
+        """
+        Returns all the rows of the given table that matches the given where conditions
+        :param table_name: str
+        :param where: [str]
+        :return rows: [[]]
+        """
+        cursor = self._select_with_all_fields(table_name, where)
+        return cursor.fetchall()
+
+    def count(self, table_name):
+        """
+        Returns the number of rows of the given table
+        :param table_name: str
+        :return int
+        """
+        cursor = self.connection.cursor()
+        count_command = self.generate_count_command(table_name)
+        cursor.execute(count_command)
+        return cursor.fetchone()[0]
+
+    def drop(self):
+        """
+        Drops the database (deletes the .db file)
+
+        """
+        self.connection.close()
+        if os.path.exists(self._get_db_filepath()):
+            os.remove(self._get_db_filepath())
+
+    def _get_db_filepath(self):
+        """
+        Returns the path of the .db file
+        :return path: int
+
+        """
+        return os.path.join(self.root_path, self.db_name) + '.db'
+
+    def _initialize_database(self):
+        """
+        Initialize the database with an option's table
+        with the name and the version of the DB
+
+        """
+        options_table_name = 'db_options'
+        columns = ['option_name', 'option_value']
+        self.create_table(options_table_name, columns)
+        self.insert(options_table_name, columns, ['name', self.db_name])
+        self.insert(options_table_name, columns, ['version', self.db_version])
+
+    def _select_with_all_fields(self, table_name, where=[]):
+        """
+        Returns the cursor of the select command with the given parameters
+        :param table_name: str
+        :param where: [str]
+        :return cursor: Cursor
+        """
+        cursor = self.connection.cursor()
+        count_command = self.generate_select_command(table_name, where[:])
+        cursor.execute(count_command)
+        return cursor
+
+    """
+    Static methods that generates the SQLite commands to make the queries
+    """
+
+    @staticmethod
+    def generate_create_table_command(table_name, fields):
+        create_command = 'CREATE TABLE IF NOT EXISTS ' + table_name + ' (' + fields.pop(0)
+        for field in fields:
+            create_command += (', ' + field)
+        create_command += ')'
+        return create_command
+
+    @staticmethod
+    def generate_drop_table_command(table_name):
+        drop_command = 'DROP TABLE IF EXISTS ' + table_name
+        return drop_command
+
+    @staticmethod
+    def generate_insert_command(table_name, columns, values):
+        insert_command = 'INSERT INTO ' + table_name + '(' + columns.pop(0)
+        for column in columns:
+            insert_command += (', ' + column)
+        insert_command += (') VALUES ("' + str(values.pop(0)) + '"')
+        for value in values:
+            insert_command += (', "' + str(value) + '"')
+        insert_command += ')'
+        return insert_command
+
+    @staticmethod
+    def generate_insert_many_command(table_name, num_of_values):
+        insert_command = 'INSERT INTO ' + table_name + ' VALUES (?'
+        num_of_values -= 1
+        while num_of_values > 0:
+            insert_command += ',?'
+            num_of_values -= 1
+        insert_command += ')'
+        return insert_command
+
+    @staticmethod
+    def generate_count_command(table_name):
+        count_command = 'SELECT count(*) FROM ' + table_name
+        return count_command
+
+    @staticmethod
+    def generate_select_command(table_name, where=[]):
+        basic_select = 'SELECT * FROM ' + table_name
+        select_command = basic_select if len(where) == 0 else basic_select + ' WHERE ' + where.pop(0)
+        for condition in where:
+            select_command += ' AND ' + condition
+        return select_command
+
+
+class DatabaseManager(Protocol):
+    """Common interface for database managers.
+
+    We used a protocol here to avoid having to modify the existing
+    SQLite code (as we would if we used an abstract/ABC class).
+
+    And the new database manager will "quack" like the other one does.
+    """
+
+    connection: Union[Connection, sqlite3.Connection]
+
+    def backup(self): ...
+    def restore(self): ...
+    def disconnect(self): ...
+    def create_table(self, table_name, fields): ...
+    def drop_table(self, table_name): ...
+    def insert(self, table_name, columns, values): ...
+    def insertMany(self, table_name, data): ...
+    def select_first(self, table_name): ...
+    def select_first_where(self, table_name, where): ...
+    def select_all(self, table_name): ...
+    def select_all_where(self, table_name, where): ...
+    def count(self, table_name): ...
+    def drop(self): ...
+
+
+class SqlAlchemyDbManager:
+    """A database manager using SQLAlchemy.
+
+    It contains the same public functions as ``DbManager``
+    (SQLite only), but uses SQLAlchmey instead of calling database
+    driver functions directly.
+
+    It can be used with any engine supported by SQLAlchemy, such
+    as Postgres, Mongo, MySQL, etc.
+
+    Static functions from ``DbManager`` were skipped, as those are
+    similar to what SQLAlchemy already provides for creating and
+    queries.
+
+    Some operations here may raise ``NotImplemented``, as they existed in
+    the ``DbManager`` but were never used in Autosubmit (i.e. we can
+    delete that code -- for later).
+
+    TODO: At some point in the future, we can drop ``DbManager`` and
+          replace it with this one (or rename this to DbManager), as
+          SQLAlchemy should be able to handle SQLite too.
+    """
+
+    def __init__(self, schema: Optional[str] = None) -> None:
+        self.engine: Engine = session.create_engine()
         self.schema = schema
-        self.db_filepath = db_filepath
-        if isinstance(table, type) and issubclass(table, DeclarativeBase):
-            self.table = table.__table__
-        else:
-            self.table = table
+        # TODO: if we cannot do that (too long-lived conns?), then we can open for each operation...
+        self.connection: Connection = self.engine.connect()
+        # TODO: in SQLite-land, it creates the tables if they do not exist... what about here?
 
-    def get_connection(self) -> Connection:
-        return self.engine.connect()
+    def backup(self):
+        pass
 
-    def create_table(self, conn: Connection):
-        """
-        Create table
-        """
-        conn.execute(CreateTable(self.table, if_not_exists=True))
-        conn.commit()
+    def restore(self):
+        pass
 
-    def drop_table(self, conn: Connection):
-        """
-        Drops the table
-        """
-        conn.execute(DropTable(self.table, if_exists=True))
-        conn.commit()
+    def disconnect(self):
+        self.connection.close()
 
-    def insert_many(self, conn: Connection, values: List[Dict[str, Any]]) -> int:
-        """
-        Insert many values
-        """
-        result = conn.execute(insert(self.table), values)
-        conn.commit()
-        return result.rowcount
+    def create_table(self, table_name, fields):
+        # NOTE: ``fields`` is ignored as they are defined in the SQLAlchemy
+        #       tables definitions (see ``.database.tables``). Kept for
+        #       backward compatibility with the old API for SQLite.
+        table = get_table_from_name(schema=self.schema, table_name=table_name)
+        self.connection.execute(CreateSchema(self.schema, if_not_exists=True))
+        self.connection.execute(CreateTable(table, if_not_exists=True))
+        self.connection.commit()
 
-    def select_all(self, conn: Connection):
-        rows = conn.execute(select(self.table)).all()
+    def drop_table(self, table_name):
+        table = get_table_from_name(schema=self.schema, table_name=table_name)
+        self.connection.execute(DropTable(table, if_exists=True))
+        self.connection.commit()
+
+    def insert(self, table_name, columns, values):
+        """Not implemented.
+
+        In the original ``DbManager`` (SQLite), this function is used
+        only to initialize the SQLite database (i.e. no external users).
+        """
+        raise NotImplementedError()
+
+    def insertMany(self, table_name, data):
+        """
+        N.B.: One difference between SQLite and SQLAlchemy here;
+              whereas with SQLite you insert a list of values
+              matching the columns, for SQLAlchemy you provide
+              a dictionary. For backward-compatibility, we risk
+              accepting a list or dictionary here. If a list
+              is provided, then we will use the Table metadata
+              to fetch the columns. Not the safest approach, so
+              prefer to send a dictionary!
+
+        :type table_name: str
+        :type data: Union[List, Dict]
+        """
+        if len(data) == 0:  # type: ignore
+            return 0
+        table = get_table_from_name(schema=self.schema, table_name=table_name)
+        if type(data[0]) == list:
+            # Convert into a dictionary; we know the keys from the
+            # table metadata columns.
+            columns = [column.name for column in cast(list, table.columns)]
+            data = map(lambda values: {
+                key: value
+                for key, value in
+                zip(columns, values)
+            }, cast(list, data))
+            data = list(data)
+        result = self.connection.execute(insert(table), data)
+        self.connection.commit()
+        return cast(int, result.rowcount)
+
+    def select_first(self, table_name):
+        """Not used in the original ``DbManager``!"""
+        raise NotImplementedError()
+
+    def select_first_where(self, table_name, where):
+        """Not used in the original ``DbManager``!"""
+        raise NotImplementedError()
+
+    def select_all(self, table_name):
+        table = get_table_from_name(schema=self.schema, table_name=table_name)
+        rows = self.connection.execute(select(table)).all()
         return rows
 
-    def delete_all(self, conn: Connection) -> int:
+    def select_all_where(self, table_name, where):
+        """Not used in the original ``DbManager``!"""
+        raise NotImplementedError()
+
+    def count(self, table_name):
+        """Not used in the original ``DbManager``!"""
+        raise NotImplementedError()
+
+    def drop(self):
+        """Not used in the original ``DbManager``!"""
+        raise NotImplementedError()
+
+    # New! Used for testing...
+
+    def delete_all(self, table_name: str) -> int:
+        """Deletes all the rows of the table.
+
+        :params table_name: The name of the table.
+        :return: number of tables modified.
         """
-        Deletes all the rows of the table
-        """
-        result = conn.execute(delete(self.table))
-        conn.commit()
-        return result.rowcount
+        table = get_table_from_name(schema=self.schema, table_name=table_name)
+        result = self.connection.execute(delete(table))
+        self.connection.commit()
+        return cast(int, result.rowcount)
 
 
-class SQLiteDbTableManager(DbTableManager):
-    def __init__(
-        self,
-        table: Union[Type[DeclarativeBase], Table],
-        db_filepath: str = None,
-        schema: Optional[str] = None,
-    ) -> None:
-        super().__init__(table, db_filepath, schema)
-        self.engine = create_sqlite_engine(self.db_filepath)
-
-
-class PostgresDbTableManager(DbTableManager):
-    def __init__(
-        self,
-        table: Union[Type[DeclarativeBase], Table],
-        db_filepath: str = None,
-        schema: Optional[str] = None,
-    ) -> None:
-        super().__init__(table, db_filepath, schema)
-        self.engine = session.Session().bind
-        if schema:
-            self.table = tables.table_change_schema(schema, table)
-
-    def create_table(self, conn: Connection):
-        """
-        Create table and the schema (if applicable)
-        """
-        if self.schema:
-            conn.execute(CreateSchema(self.schema, if_not_exists=True))
-        super().create_table(conn)
-
-
-def create_db_table_manager(
-    table: Union[Type[DeclarativeBase], Table],
-    db_filepath: str = None,
-    schema: Optional[str] = None,
-) -> DbTableManager:
+def create_db_manager(db_engine: str, **options) -> DatabaseManager:
     """
-    Creates a Postgres or SQLite DbTableManager depending on the Autosubmit configuration
-    :param table: SQLAlchemy Table
-    :param db_filepath: File path location in case of SQLite is used as database backend
-    :param schema: Almost always same as expid. Postgres database schema in case this is a distributed table.
+    Creates a Postgres or SQLite database manager based on the Autosubmit configuration.
+
+    Note that you must provide the options even if they are optional, in which case
+    you must provide ``options=None``, or you will get a ``KeyError``.
+
+    Later we might be able to drop the SQLite database manager. So, for the moment,
+    please call the function providing the database engine type, and the arguments
+    for both SQLite and for SQLAlchemy.
+
+    This means you do not have to do an ``if/else`` in your code, just give
+    this function the engine type, and all the valid options, and it should
+    handle choosing and building the database manager for you. e.g.
+
+    >>> from autosubmit.database.db_manager import create_db_manager
+    >>> options = {
+    >>>     # these are for sqlite
+    >>>     'root_path': '/tmp/',
+    >>>     'db_name': 'name.db',
+    >>>     'db_version': 1,
+    >>>     # and these for sqlalchemy -- not very elegant, but this is
+    >>>     # to work-effectively-with-legacy-code (as in that famous book).
+    >>>     'schema': 'a001'
+    >>> }
+    >>> db_manager = create_db_manager(db_engine='postgres', **options)
+
+    :param db_engine: The database engine type.
+    :return: A ``DatabaseManager``.
+    :raises ValueError: If the database engine type is not valid.
+    :raises KeyError: If the ``options`` dictionary is missing a required parameter for an engine.
     """
-    BasicConfig.read()
-    if BasicConfig.DATABASE_BACKEND == "postgres":
-        return PostgresDbTableManager(table, db_filepath, schema)
-    elif BasicConfig.DATABASE_BACKEND == "sqlite":
-        return SQLiteDbTableManager(table, db_filepath, schema)
+    if db_engine == "postgres":
+        return cast(DatabaseManager, SqlAlchemyDbManager(options['schema']))
+    elif db_engine == "sqlite":
+        return cast(DatabaseManager, DbManager(options['root_path'], options['db_name'], options['db_version']))
     else:
-        raise Exception("Invalid DATABASE_BACKEND")
+        raise ValueError(f"Invalid database engine: {db_engine}")

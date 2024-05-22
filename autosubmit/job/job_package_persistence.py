@@ -1,3 +1,5 @@
+
+
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
 # This file is part of Autosubmit.
@@ -15,11 +17,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
-from typing import List
-from autosubmit.database import tables
-from autosubmit.database.db_manager import create_db_table_manager
+from autosubmit.database.db_manager import create_db_manager
 from autosubmitconfigparser.config.basicconfig import BasicConfig
+from pathlib import Path
 
 
 class JobPackagePersistence(object):
@@ -28,85 +28,75 @@ class JobPackagePersistence(object):
 
     Create Packages Table, Wrappers Table.
 
-    :param expid: Experiment id
+    :param persistence_path: Path to the persistence folder pkl. \n
+    :type persistence_path: String \n
+    :param persistence_file: Name of the persistence pkl file. \n
+    :type persistence_file: String
     """
 
     VERSION = 1
-    JOB_PACKAGES_TABLE = "job_package"
-    WRAPPER_JOB_PACKAGES_TABLE = "wrapper_job_package"
-    TABLE_FIELDS = ["exp_id", "package_name", "job_name"]
+    JOB_PACKAGES_TABLE = 'job_package'
+    WRAPPER_JOB_PACKAGES_TABLE = 'wrapper_job_package'
+    TABLE_FIELDS = ['exp_id', 'package_name', 'job_name']
 
-    def __init__(self, expid: str):
-        BasicConfig.read()
-        db_filepath = (
-            os.path.join(
-                os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
-                "job_packages_" + expid,
-            )
-            + ".db"
-        )
-
-        # Setup job_package manager
-        self.packages_db_manager = create_db_table_manager(
-            tables.JobPackageTable, db_filepath, expid
-        )
-        # Setup wrapper_job_package manager
-        self.wrapper_db_manager = create_db_table_manager(
-            tables.WrapperJobPackageTable, db_filepath, expid
-        )
-
-        # Create tables
-        with self.packages_db_manager.get_connection() as conn:
-            self.packages_db_manager.create_table(conn)
-
-        with self.wrapper_db_manager.get_connection() as conn:
-            self.wrapper_db_manager.create_table(conn)
-
-    def load(self, wrapper=False):
+    def __init__(self, expid):
+        options = {
+            'root_path': Path(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
+            'db_name': f"job_packages_{expid}",
+            'db_version': self.VERSION,
+            'schema': expid
+        }
+        self.db_manager = create_db_manager(BasicConfig.DATABASE_BACKEND, **options)
+        self.db_manager.create_table(self.JOB_PACKAGES_TABLE, self.TABLE_FIELDS)
+        self.db_manager.create_table(self.WRAPPER_JOB_PACKAGES_TABLE, self.TABLE_FIELDS)
+    def load(self,wrapper=False):
         """
         Loads package of jobs from a database
         :param: wrapper: boolean
         :return: dictionary of jobs per package
+
+
         """
         if not wrapper:
-            with self.packages_db_manager.get_connection() as conn:
-                rows = self.packages_db_manager.select_all(conn)
+            return self.db_manager.select_all(self.JOB_PACKAGES_TABLE)
         else:
-            with self.wrapper_db_manager.get_connection() as conn:
-                rows = self.wrapper_db_manager.select_all(conn)
+            return self.db_manager.select_all(self.WRAPPER_JOB_PACKAGES_TABLE)
+    def reset(self):
+        """
+        Loads package of jobs from a database
 
-        return [(row.exp_id, row.package_name, row.job_name) for row in rows]
-
-    def save(self, package_name: str, jobs: List, exp_id: str, wrapper=False):
+        """
+        self.db_manager.drop_table(self.WRAPPER_JOB_PACKAGES_TABLE)
+        self.db_manager.create_table(self.WRAPPER_JOB_PACKAGES_TABLE, self.TABLE_FIELDS)
+    def save(self, package_name, jobs, exp_id,wrapper=False):
         """
         Persists a job list in a database
         :param package_name: str
         :param jobs: list of jobs
         :param exp_id: str
         :param wrapper: boolean
+
+
         """
+        #self._reset_table()
         job_packages_data = []
         for job in jobs:
-            job_packages_data.append(
-                {"exp_id": exp_id, "package_name": package_name, "job_name": job.name}
-            )
+            job_packages_data += [(exp_id, package_name, job.name)]
 
-        if not wrapper:
-            with self.packages_db_manager.get_connection() as conn:
-                self.packages_db_manager.insert_many(conn, job_packages_data)
-
-        with self.wrapper_db_manager.get_connection() as conn:
-            self.wrapper_db_manager.insert_many(conn, job_packages_data)
-
-    def reset_table(self, wrappers=False):
+        if  wrapper:
+            self.db_manager.insertMany(self.WRAPPER_JOB_PACKAGES_TABLE, job_packages_data)
+        else:
+            self.db_manager.insertMany(self.JOB_PACKAGES_TABLE, job_packages_data)
+            self.db_manager.insertMany(self.WRAPPER_JOB_PACKAGES_TABLE, job_packages_data)
+    def reset_table(self,wrappers=False):
         """
         Drops and recreates the database
         """
-        if not wrappers:
-            with self.packages_db_manager.get_connection() as conn:
-                self.packages_db_manager.drop_table(conn)
-                self.packages_db_manager.create_table(conn)
-
-        with self.wrapper_db_manager.get_connection() as conn:
-            self.wrapper_db_manager.drop_table(conn)
-            self.wrapper_db_manager.create_table(conn)
+        if wrappers:
+            self.db_manager.drop_table(self.WRAPPER_JOB_PACKAGES_TABLE)
+            self.db_manager.create_table(self.WRAPPER_JOB_PACKAGES_TABLE, self.TABLE_FIELDS)
+        else:
+            self.db_manager.drop_table(self.JOB_PACKAGES_TABLE)
+            self.db_manager.create_table(self.JOB_PACKAGES_TABLE, self.TABLE_FIELDS)
+            self.db_manager.drop_table(self.WRAPPER_JOB_PACKAGES_TABLE)
+            self.db_manager.create_table(self.WRAPPER_JOB_PACKAGES_TABLE, self.TABLE_FIELDS)

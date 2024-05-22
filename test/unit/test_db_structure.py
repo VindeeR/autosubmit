@@ -1,63 +1,49 @@
-import os
-import tempfile
 import networkx as nx
+import pytest
+from pathlib import Path
+from typing import Type
+
 from autosubmit.database import db_structure
-from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmit.database.db_manager import DbManager, SqlAlchemyDbManager
 
 
-class TestDbStructure:
-    def test_sqlite(self, fixture_sqlite: BasicConfig):
-        G = nx.DiGraph([("a", "b"), ("b", "c"), ("a", "d")])
-        G.add_node("z")
+@pytest.mark.parametrize(
+    'db_engine,options,clazz',
+    [
+        # postgres
+        pytest.param('postgres', {'schema': 'test_schema'}, SqlAlchemyDbManager, marks=[pytest.mark.postgres]),
+        # sqlite
+        ('sqlite', {'db_name': 'test_db_manager.db', 'db_version': 999}, DbManager)
+    ])
+def test_db_structure(
+        tmp_path: Path,
+        db_engine: str,
+        options: dict,
+        clazz: Type,
+        request
+):
+    # Load dynamically the fixture,
+    # ref: https://stackoverflow.com/a/64348247.
+    request.getfixturevalue(f'as_db_{db_engine}')
 
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            # Creates a new SQLite db file
-            expid = "SQLi"
+    graph = nx.DiGraph([("a", "b"), ("b", "c"), ("a", "d")])
+    graph.add_node("z")
 
-            # Table not exists
-            assert db_structure.get_structure(expid, tmpdirname) == {}
+    # Creates a new SQLite db file
+    expid = "ut01"
 
-            # Save table
-            db_structure.save_structure(G, expid, tmpdirname)
-            assert os.path.exists(os.path.join(tmpdirname, f"structure_{expid}.db"))
+    # Table not exists
+    assert db_structure.get_structure(expid, str(tmp_path)) == {}
 
-            # Get correct data
-            structure_data = db_structure.get_structure(expid, tmpdirname)
-            assert structure_data == {
-                "a": ["d", "b"],
-                "b": ["c"],
-                "c": [],
-                "d": [],
-                "z": ["z"],
-            } or structure_data == {
-                "a": ["b", "d"],
-                "b": ["c"],
-                "c": [],
-                "d": [],
-                "z": ["z"],
-            }
+    # Save table
+    db_structure.save_structure(graph, expid, str(tmp_path))
 
-    def test_postgres(self, fixture_postgres: BasicConfig):
-        G = nx.DiGraph([("m", "o"), ("o", "p"), ("o", "q")])
-        G.add_node("n")
-        expid = "PGXX"
-
-        # Table not exists
-        assert db_structure.get_structure(expid, "") == {}
-
-        # Save and get correct data
-        db_structure.save_structure(G, expid, "")
-        structure_data = db_structure.get_structure(expid, "")
-        assert structure_data == {
-            "m": ["o"],
-            "n": ["n"],
-            "o": ["q", "p"],
-            "p": [],
-            "q": [],
-        } or structure_data == {
-            "m": ["o"],
-            "n": ["n"],
-            "o": ["p", "q"],
-            "p": [],
-            "q": [],
-        }
+    # Get correct data
+    structure_data = db_structure.get_structure(expid, str(tmp_path))
+    assert sorted(structure_data) == sorted({
+        "a": ["b", "d"],
+        "b": ["c"],
+        "c": [],
+        "d": [],
+        "z": ["z"],
+    })

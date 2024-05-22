@@ -1,4 +1,3 @@
-from typing import Type, Union
 from sqlalchemy import (
     MetaData,
     Integer,
@@ -9,94 +8,84 @@ from sqlalchemy import (
     UniqueConstraint,
     Column,
 )
-from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped
+from typing import List, Optional, cast
 
 metadata_obj = MetaData()
 
 
-## SQLAlchemy ORM tables
-class BaseTable(DeclarativeBase):
-    metadata = metadata_obj
+ExperimentTable = Table(
+    'experiment',
+    metadata_obj,
+    Column('id', Integer, nullable=False, primary_key=True),
+    Column('name', String, nullable=False),
+    Column('description', String, nullable=False),
+    Column('autosubmit_version', String)
+)
+"""The main table, populated by Autosubmit. Should be read-only by the API."""
 
+# NOTE: In the original SQLite DB, db_version.version was the only field,
+#       and not a PK.
+DBVersionTable = Table(
+    'db_version',
+    metadata_obj,
+    Column('version', Integer, nullable=False, primary_key=True)
+)
 
-class ExperimentTable(BaseTable):
-    """
-    Is the main table, populated by Autosubmit. Should be read-only by the API.
-    """
+ExperimentStructureTable = Table(
+    'experiment_structure',
+    metadata_obj,
+    Column('e_from', Text, nullable=False, primary_key=True),
+    Column('e_to', Text, nullable=False, primary_key=True),
+)
+"""Table that holds the structure of the experiment jobs."""
 
-    __tablename__ = "experiment"
+ExperimentStatusTable = Table(
+    'experiment_status',
+    metadata_obj,
+    Column('exp_id', Integer, primary_key=True),
+    Column('name', Text, nullable=False),
+    Column('status', Text, nullable=False),
+    Column('seconds_diff', Integer, nullable=False),
+    Column('modified', Text, nullable=False)
+)
+"""Stores the status of the experiments."""
 
-    id: Mapped[int] = mapped_column(Integer, nullable=False, primary_key=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    description: Mapped[str] = mapped_column(String, nullable=False)
-    autosubmit_version: Mapped[str] = mapped_column(String)
+JobPackageTable = Table(
+    'job_package',
+    metadata_obj,
+    Column('package_name', Text, primary_key=True),
+    Column('job_name', Text, primary_key=True),
+    Column('exp_id', Text)
+)
+"""Stores a mapping between the wrapper name and the actual job in SLURM."""
 
+WrapperJobPackageTable = Table(
+    'wrapper_job_package',
+    metadata_obj,
+    Column('package_name', Text, primary_key=True),
+    Column('job_name', Text, primary_key=True),
+    Column('exp_id', Text)
+)
+"""It is a replication.
 
-class DBVersionTable(BaseTable):
-    __tablename__ = "db_version"
+It is only created/used when using inspect and create or monitor
+with flag -cw in Autosubmit.
 
-    version: Mapped[int] = mapped_column(Integer, nullable=False, primary_key=True)
+This replication is used to not interfere with the current
+autosubmit run of that experiment since wrapper_job_package
+will contain a preview, not the real wrapper packages."""
 
-
-class ExperimentStructureTable(BaseTable):
-    """
-    Table that holds the structure of the experiment jobs
-    """
-
-    __tablename__ = "experiment_structure"
-
-    e_from: Mapped[str] = mapped_column(Text, nullable=False, primary_key=True)
-    e_to: Mapped[str] = mapped_column(Text, nullable=False, primary_key=True)
-
-
-class ExperimentStatusTable(BaseTable):
-    """
-    Stores the status of the experiments
-    """
-
-    __tablename__ = "experiment_status"
-
-    exp_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(Text, nullable=False)
-    seconds_diff: Mapped[int] = mapped_column(Integer, nullable=False)
-    modified: Mapped[str] = mapped_column(Text, nullable=False)
-
-
-class JobPackageTable(BaseTable):
-    """
-    Stores a mapping between the wrapper name and the actual job in slurm
-    """
-
-    __tablename__ = "job_package"
-
-    exp_id: Mapped[str] = mapped_column(Text)
-    package_name: Mapped[str] = mapped_column(Text, primary_key=True)
-    job_name: Mapped[str] = mapped_column(Text, primary_key=True)
-
-
-class WrapperJobPackageTable(BaseTable):
-    """
-    It is a replication. It is only created/used when using inspectand create or monitor
-    with flag -cw in Autosubmit.\n
-    This replication is used to not interfere with the current autosubmit run of that experiment
-    since wrapper_job_package will contain a preview, not the real wrapper packages
-    """
-
-    __tablename__ = "wrapper_job_package"
-
-    exp_id: Mapped[str] = mapped_column(Text)
-    package_name: Mapped[str] = mapped_column(Text, primary_key=True)
-    job_name: Mapped[str] = mapped_column(Text, primary_key=True)
-
-
-# Reserved name "metadata" with Declarative API, SQLAlchemy Core Table should be used
-experiment_run_table = Table(
+# NOTE: The column ``metadata`` has a name that is reserved in
+#       SQLAlchemy ORM. It works for SQLAlchemy Core, here, but
+#       if you plan to use ORM, be warned that you will have to
+#       search how to workaround it (or will probably have to
+#       use SQLAlchemy core here).
+ExperimentRunTable = Table(
     "experiment_run",
     metadata_obj,
     Column("run_id", Integer, primary_key=True),
     Column("created", Text, nullable=False),
-    Column("modified", Text, nullable=False),
+    Column("modified", Text, nullable=True),
     Column("start", Integer, nullable=False),
     Column("finish", Integer),
     Column("chunk_unit", Text, nullable=False),
@@ -111,84 +100,108 @@ experiment_run_table = Table(
     Column("metadata", Text),
 )
 
+JobDataTable = Table(
+    'job_data',
+    metadata_obj,
+    Column('id', Integer, nullable=False, primary_key=True),
+    Column('counter', Integer, nullable=False),
+    Column('job_name', Text, nullable=False, index=True),
+    Column('created', Text, nullable=False),
+    Column('modified', Text, nullable=False),
+    Column('submit', Integer, nullable=False),
+    Column('start', Integer, nullable=False),
+    Column('finish', Integer, nullable=False),
+    Column('status', Text, nullable=False),
+    Column('rowtype', Integer, nullable=False),
+    Column('ncpus', Integer, nullable=False),
+    Column('wallclock', Text, nullable=False),
+    Column('qos', Text, nullable=False),
+    Column('energy', Integer, nullable=False),
+    Column('date', Text, nullable=False),
+    Column('section', Text, nullable=False),
+    Column('member', Text, nullable=False),
+    Column('chunk', Integer, nullable=False),
+    Column('last', Integer, nullable=False),
+    Column('platform', Text, nullable=False),
+    Column('job_id', Integer, nullable=False),
+    Column('extra_data', Text, nullable=False),
+    Column('nnodes', Integer, nullable=False, default=0),
+    Column('run_id', Integer),
+    Column('MaxRSS', Float, nullable=False, default=0.0),
+    Column('AveRSS', Float, nullable=False, default=0.0),
+    Column('out', Text, nullable=False),
+    Column('err', Text, nullable=False),
+    Column('rowstatus', Integer, nullable=False, default=0),
+    Column('children', Text, nullable=True),
+    Column('platform_output', Text, nullable=True),
+    UniqueConstraint('counter', 'job_name', name='unique_counter_and_job_name')
+)
 
-class JobDataTable(BaseTable):
-    __tablename__ = "job_data"
+JobListTable = Table(
+    'job_list',
+    metadata_obj,
+    Column('name', String, primary_key=True),
+    Column('id', Integer),
+    Column('status', Integer),
+    Column('priority', Integer),
+    Column('section', String),
+    Column('date', String),
+    Column('member', String),
+    Column('chunk', Integer),
+    Column('split', Integer),
+    Column('local_out', String),
+    Column('local_err', String),
+    Column('remote_out', String),
+    Column('remote_err', String)
+)
 
-    id: Mapped[int] = mapped_column(Integer, nullable=False, primary_key=True)
-    counter: Mapped[int] = mapped_column(Integer, nullable=False)
-    job_name: Mapped[str] = mapped_column(Text, nullable=False)
-    created: Mapped[str] = mapped_column(Text, nullable=False)
-    modified: Mapped[str] = mapped_column(Text, nullable=False)
-    submit: Mapped[int] = mapped_column(Integer, nullable=False)
-    start: Mapped[int] = mapped_column(Integer, nullable=False)
-    finish: Mapped[int] = mapped_column(Integer, nullable=False)
-    status: Mapped[str] = mapped_column(Text, nullable=False)
-    rowtype: Mapped[int] = mapped_column(Integer, nullable=False)
-    ncpus: Mapped[int] = mapped_column(Integer, nullable=False)
-    wallclock: Mapped[str] = mapped_column(Text, nullable=False)
-    qos: Mapped[str] = mapped_column(Text, nullable=False)
-    energy: Mapped[int] = mapped_column(Integer, nullable=False)
-    date: Mapped[str] = mapped_column(Text, nullable=False)
-    section: Mapped[str] = mapped_column(Text, nullable=False)
-    member: Mapped[str] = mapped_column(Text, nullable=False)
-    chunk: Mapped[int] = mapped_column(Integer, nullable=False)
-    last: Mapped[int] = mapped_column(Integer, nullable=False)
-    platform: Mapped[str] = mapped_column(Text, nullable=False)
-    job_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    extra_data: Mapped[str] = mapped_column(Text, nullable=False)
-    nnodes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    run_id: Mapped[int] = mapped_column(Integer)
-    MaxRSS: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    AveRSS: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    out: Mapped[str] = mapped_column(Text, nullable=False)
-    err: Mapped[str] = mapped_column(Text, nullable=False)
-    rowstatus: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    children: Mapped[str] = mapped_column(Text)
-    platform_output: Mapped[str] = mapped_column(Text)
-    UniqueConstraint()
-
-    # SQLAlchemy Composed unique constraint of ("counter", "job_name")
-    __table_args__ = (UniqueConstraint("counter", "job_name"),)
+TABLES = (ExperimentTable,
+          ExperimentStatusTable,
+          ExperimentStructureTable,
+          ExperimentRunTable,
+          DBVersionTable,
+          JobPackageTable,
+          JobDataTable,
+          JobListTable,
+          WrapperJobPackageTable)
+"""The tables available in the Autosubmit databases."""
 
 
-def table_change_schema(
-    schema: str, source: Union[Type[DeclarativeBase], Table]
-) -> Table:
+def get_table_with_schema(schema: str, table: Table) -> Table:
+    """Get the ``Table`` instance with the metadata modified.
+
+    The metadata will use the given container. This means you can
+    have table ``A`` with no schema, then call this function with
+    ``schema=a000``, and then a new table ``A`` with ``schema=a000``
+    will be returned.
+
+    :param schema: The target schema for the table metadata.
+    :param table: The SQLAlchemy Table.
+    :return: The same table, but with the given schema set as metadata.
     """
-    Copy the source table and change the schema of that SQLAlchemy table into a new table instance
-    """
-    if isinstance(source, type) and issubclass(source, DeclarativeBase):
-        _source_table: Table = source.__table__
-    elif isinstance(source, Table):
-        _source_table = source
-    else:
+    if not isinstance(table, Table):
         raise RuntimeError("Invalid source type on table schema change")
 
     metadata = MetaData(schema=schema)
-    dest_table = Table(_source_table.name, metadata)
+    dest_table = Table(table.name, metadata)
 
-    for col in _source_table.columns:
+    for col in cast(List, table.columns):
         dest_table.append_column(col.copy())
 
     return dest_table
 
 
-class JobListTable(BaseTable):
-    # TODO review column typing
+def get_table_from_name(*, schema: str, table_name: str) -> Optional[Table]:
+    """Get the table from a given table name.
 
-    __tablename__ = "job_list"
+    :param schema: The schema name.
+    :param table_name: The table name.
+    :return: The table if found, ``None`` otherwise.
+    :raises ValueError: If the table name is not provided.
+    """
+    if not table_name:
+        raise ValueError(f'Missing table name: {table_name}')
 
-    name: Mapped[str] = mapped_column(String, primary_key=True)
-    id: Mapped[int] = mapped_column(Integer)
-    status: Mapped[int] = mapped_column(Integer)
-    priority: Mapped[int] = mapped_column(Integer)
-    section: Mapped[str] = mapped_column(String)
-    date: Mapped[str] = mapped_column(String)
-    member: Mapped[str] = mapped_column(String)
-    chunk: Mapped[int] = mapped_column(Integer)
-    split: Mapped[int] = mapped_column(Integer)
-    local_out: Mapped[str] = mapped_column(String)
-    local_err: Mapped[str] = mapped_column(String)
-    remote_out: Mapped[str] = mapped_column(String)
-    remote_err: Mapped[str] = mapped_column(String)
+    predicate = lambda table: table.name.lower() == table_name.lower()
+    table = next(filter(predicate, TABLES), None)
+    return get_table_with_schema(schema, table)

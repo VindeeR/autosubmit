@@ -28,7 +28,7 @@ test_python3:
     - pip install --upgrade pip
     # This installs default dependencies, plus those for running tests and for building docs.
     - pip install -e .[tests]
-    - pytest
+    - pytest -m "not postgres"
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   # These artifacts are saved with every build in GitLab and can be reviewed later. If
   # we have a folder with HTML files, as in this example, users can navigate with their

@@ -20,6 +20,14 @@ from sqlalchemy import Connection, create_engine, text
 from sqlalchemy.orm import sessionmaker, scoped_session
 from autosubmit.database import session
 from test.unit.utils import custom_return_value
+from pathlib import Path
+from pytest import MonkeyPatch
+from sqlalchemy import Connection, text
+from testcontainers.postgres import PostgresContainer
+from typing import Type
+
+from autosubmit.database.session import create_engine
+from autosubmitconfigparser.config.basicconfig import BasicConfig
 
 
 @dataclass
@@ -128,33 +136,78 @@ DEFAULT_DATABASE_CONN_URL = (
     "postgresql://postgres:mysecretpassword@localhost:5432/autosubmit_test"
 )
 
+PG_USER = "postgres"
+PG_PASS = "mysecretpassword"
+PG_HOST = "localhost"
+PG_PORT = 5432
+PG_DB = "autosubmit_test"
+
+DEFAULT_DATABASE_CONN_URL = f"postgresql://{PG_USER}:{PG_PASS}@{PG_HOST}:{PG_PORT}/{PG_DB}"
+"""Default Postgres connection URL."""
+
+_identity_value = lambda value=None: lambda *ignore_args, **ignore_kwargs: value
+"""A type of identity function; returns a function that returns ``value``."""
+
 
 @pytest.fixture
-def fixture_sqlite(monkeypatch: MonkeyPatch):
+def as_db_sqlite(monkeypatch: MonkeyPatch, tmp_path: Path) -> Type[BasicConfig]:
+    """Overwrites the BasicConfig to use SQLite database for testing.
+
+    Args:
+        monkeypatch: Monkey Patcher.
+    Returns:
+        BasicConfig class.
     """
-    Fixture that overwrites the BasicConfig to use SQLite database for testing.
-    """
-    monkeypatch.setattr(BasicConfig, "read", custom_return_value())
+    monkeypatch.setattr(BasicConfig, "read", _identity_value())
     monkeypatch.setattr(BasicConfig, "DATABASE_BACKEND", "sqlite")
+    monkeypatch.setattr(BasicConfig, 'DB_PATH', str(tmp_path / 'autosubmit.db'))
 
-    yield BasicConfig
+    return BasicConfig
 
 
-def _setup_pg_db(conn: Connection):
+@pytest.fixture(scope="session")
+def run_test_pg_db() -> PostgresContainer:
+    """Run a TestContainer for PostgreSQL.
+
+    It is started for the test session, and stopped at the end of such.
+
+    Returns:
+        Postgres test container instance.
     """
-    Resets database by dropping all schemas except the system ones and restoring the public schema
+    with PostgresContainer(
+            image="postgres:16-bookworm",
+            port=PG_PORT,
+            username=PG_USER,
+            password=PG_PASS,
+            dbname=PG_DB,
+            driver=None
+    ).with_env(
+        "POSTGRES_HOST_AUTH_METHOD", "trust"
+    ).with_bind_ports(
+        5432, 5432
+    ) as postgres:
+        yield postgres
+
+
+def _setup_pg_db(conn: Connection) -> None:
+    """Reset the database.
+
+    Drops all schemas except the system ones and restoring the public schema.
+
+    Args:
+        conn: Database connection.
     """
     # Get all schema names that are not from the system
     results = conn.execute(
-        text(
-            "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT LIKE 'pg_%' AND schema_name != 'information_schema'"
-        )
+        text("""SELECT schema_name FROM information_schema.schemata
+               WHERE schema_name NOT LIKE 'pg_%'
+               AND schema_name != 'information_schema'""")
     ).all()
     schema_names = [res[0] for res in results]
 
     # Drop all schemas
     for schema_name in schema_names:
-        conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE'))
+        conn.execute(text(f"""DROP SCHEMA IF EXISTS "{schema_name}" CASCADE"""))
 
     # Restore default public schema
     conn.execute(text("CREATE SCHEMA public"))
@@ -163,40 +216,38 @@ def _setup_pg_db(conn: Connection):
 
 
 @pytest.fixture
-def fixture_postgres(monkeypatch: MonkeyPatch):
-    """
-    Fixture to setup and teardown a Postgres database for testing.
-    It will overwrite the BasicConfig to use Postgres.
+def as_db_postgres(monkeypatch: MonkeyPatch, run_test_pg_db) -> BasicConfig:
+    """Fixture to set up and tear down a Postgres database for testing.
 
-    It uses the environment variable PYTEST_DATABASE_CONN_URL to connect to the database.
-    If the variable is not set, it uses the default connection URL
+    It will overwrite the ``BasicConfig`` to use Postgres.
+
+    It uses the environment variable ``PYTEST_DATABASE_CONN_URL`` to connect to the database.
+    If the variable is not set, it uses the default connection URL.
+
+    Args:
+        monkeypatch: Monkey Patcher.
+        run_test_pg_db: Fixture that starts the Postgres container.
+    Returns:
+        Autosubmit configuration for Postgres.
     """
 
     # Apply patch BasicConfig
-    monkeypatch.setattr(BasicConfig, "read", custom_return_value())
+    monkeypatch.setattr(BasicConfig, "read", _identity_value())
     monkeypatch.setattr(BasicConfig, "DATABASE_BACKEND", "postgres")
     monkeypatch.setattr(
         BasicConfig,
         "DATABASE_CONN_URL",
         os.environ.get("PYTEST_DATABASE_CONN_URL", DEFAULT_DATABASE_CONN_URL),
     )
-    MockSession = scoped_session(
-        sessionmaker(
-            bind=create_engine(
-                os.environ.get("PYTEST_DATABASE_CONN_URL", DEFAULT_DATABASE_CONN_URL)
-            )
-        )
-    )
-    monkeypatch.setattr(session, "Session", custom_return_value(MockSession))
 
     # Setup database
-    with MockSession().bind.connect() as conn:
+    with create_engine().connect() as conn:
         _setup_pg_db(conn)
         conn.commit()
 
     yield BasicConfig
 
     # Teardown database
-    with MockSession().bind.connect() as conn:
+    with create_engine().connect() as conn:
         _setup_pg_db(conn)
         conn.commit()

@@ -37,6 +37,7 @@ install_requires = [
     'paramiko<=3.4',
     'pyparsing==3.1.1',
     'matplotlib<=3.8.3',
+    'argparse<=1.4.0',
     'packaging<=23.2',
     'ruamel.yaml.clib<=0.2.8',
     'typing_extensions<=4.9.0',
@@ -50,8 +51,8 @@ install_requires = [
     'rocrate==0.*',
     'autosubmitconfigparser==1.0.67',
     'configparser',
-    'setproctitle',
-    # 'sqlalchemy[mypy]' # TODO: pending Postgres MR
+    'pathlib',
+    'setproctitle'
 ]
 
 pg_require = [
@@ -68,10 +69,12 @@ docs_require = [
 ]
 
 tests_require = [
-    'pytest==8.2.*',
+    'mock==5.1.0',
+    'nose==1.3.7',
+    'pytest==8.3.*',
     'pytest-cov',
     'pytest-mock',
-    # 'testcontainers'  # TODO: pending Postgres MR
+    'testcontainers'
 ]
 
 # You can add more groups, e.g. all_require = tests_require + graph_require, etc...

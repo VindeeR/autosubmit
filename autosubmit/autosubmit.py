@@ -35,7 +35,7 @@ from autosubmitconfigparser.config.basicconfig import BasicConfig
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 from log.log import Log, AutosubmitError, AutosubmitCritical
-from .database.db_common import create_db, create_db_pg
+from .database.db_common import create_db
 from .database.db_common import delete_experiment, get_experiment_descrip
 from .database.db_common import get_autosubmit_version, check_experiment_exists
 from .database.db_structure import get_structure
@@ -3767,13 +3767,9 @@ class Autosubmit:
         Creates a new database instance for autosubmit at the configured path
 
         """
-        if BasicConfig.DATABASE_BACKEND == "postgres":
-            Log.info("Creating autosubmit Postgres database...")
-            if not create_db_pg():
-                raise AutosubmitCritical("Can not write database file", 7004)
-        else:
+        if BasicConfig.DATABASE_BACKEND == 'sqlite':
             if not os.path.exists(BasicConfig.DB_PATH):
-                Log.info("Creating autosubmit SQLite database...")
+                Log.info("Creating autosubmit database...")
                 qry = resource_string('autosubmit.database', 'data/autosubmit.sql').decode(locale.getlocale()[1])
                 #qry = importlib.resources.read_text('autosubmit.database', 'data/autosubmit.sql').decode(locale.getlocale()[1])
                 if not create_db(qry):
@@ -3781,6 +3777,10 @@ class Autosubmit:
                 Log.result("Autosubmit database created successfully")
             else:
                 raise AutosubmitCritical("Database already exists.", 7004)
+        else:
+            Log.info("Creating autosubmit Postgres database...")
+            if not create_db(''):
+                raise AutosubmitCritical("Failed to create Postgres database", 7004)
         return True
 
     @staticmethod
@@ -4588,7 +4588,6 @@ class Autosubmit:
                             Autosubmit.generate_scripts_andor_wrappers(
                                 as_conf, job_list_wr, job_list_wr.get_job_list(), packages_persistence, True)
                             packages = packages_persistence.load(True)
-
                         else:
                             packages = None
 
@@ -5533,8 +5532,7 @@ class Autosubmit:
         if storage_type == 'pkl':
             return JobListPersistencePkl()
         elif storage_type == 'db':
-            return JobListPersistenceDb(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl"),
-                                        "job_list_" + expid)
+            return JobListPersistenceDb(expid)
         raise AutosubmitCritical('Storage type not known', 7014)
 
     @staticmethod

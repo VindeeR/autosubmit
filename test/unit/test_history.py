@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import pytest
 # Copyright 2015-2020 Earth Sciences Department, BSC-CNS
 # This file is part of Autosubmit.
 

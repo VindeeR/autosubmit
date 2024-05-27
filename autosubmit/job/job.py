@@ -1116,7 +1116,7 @@ class Job(object):
         self.tasks = int(self.tasks)
         if self.tasks == 0:
             self.tasks = 1
-        if self.tasks <= 1 < int(job_platform.processors_per_node) and int(
+        if job_platform.processors_per_node is not None and self.tasks <= 1 < int(job_platform.processors_per_node) and int(
                 self.processors) > int(job_platform.processors_per_node):
             self.tasks = job_platform.processors_per_node
         self.tasks = str(self.tasks)

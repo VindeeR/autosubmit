@@ -901,21 +901,24 @@ class JobPackagerHorizontal(object):
         for section in jobs_by_section:
             current_package_by_section[section] = 0
             for job in jobs_by_section[section]:
+                if str(job.processors).isdigit() and str(job.nodes).isdigit() and int(job.nodes) > 1 and int(job.processors) <= 1:
+                    job.processors = 0
+                if job.total_processors == "":
+                    job_total_processors = 0
+                else:
+                    job_total_processors = int(job.total_processors)
                 if len(current_package) < self.wrapper_limits["max_h"] and len(current_package) < self.wrapper_limits["max"]  and current_package_by_section[section] < self.wrapper_limits["max_by_section"][section]:
                     if int(job.tasks) != 0 and int(job.tasks) != int(self.processors_node) and \
-                            int(job.tasks) < job.total_processors:
+                            int(self.processors_node) < int(job_total_processors):
                         nodes = int(
-                            ceil(job.total_processors / float(job.tasks)))
+                            ceil(job_total_processors / float(job.tasks)))
                         total_processors = int(self.processors_node) * nodes
                     else:
-                        total_processors = job.total_processors
+                        total_processors = job_total_processors
                     if (self._current_processors + total_processors) <= int(self.max_processors):
                         current_package.append(job)
                         self._current_processors += total_processors
-                    else:
-                        current_package = [job]
-                        self._current_processors = total_processors
-                    current_package_by_section[section] += 1
+                        current_package_by_section[section] += 1
                 else:
                     break
 

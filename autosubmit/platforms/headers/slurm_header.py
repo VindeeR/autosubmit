@@ -147,7 +147,7 @@ class SlurmHeader(object):
         :return: tasks per node directive
         :rtype: str
         """
-        if job.parameters['TASKS_PER_NODE'] != '' and job.parameters['TASKS_PER_NODE'] != '0':
+        if job.parameters['TASKS'].isdigit() and int(job.parameters['TASKS']) > 1:
             return "SBATCH --ntasks-per-node={0}".format(job.parameters['TASKS'])
         return ""
 

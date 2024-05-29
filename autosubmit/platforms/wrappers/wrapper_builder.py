@@ -200,6 +200,7 @@ class PythonWrapperBuilder(WrapperBuilder):
             all_nodes = ""
         """).format(self.allocated_nodes, '\n'.ljust(13))
 
+
     def build_cores_list(self):
         return textwrap.dedent("""
 total_cores = {0}
@@ -215,6 +216,9 @@ while total_cores > 0:
     else:
         idx += 1
         processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
+        # Break the loop if total_cores is still greater than 0 after resetting processors_per_node
+        if total_cores > 0 and processors_per_node == 0:
+            break
 processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
         """).format(self.num_procs, str(self.jobs_resources), '\n'.ljust(13))
 
@@ -240,10 +244,16 @@ processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
                         if node:
                             machines += node +"_NEWLINE_"
                             cores -= 1
+                    # Break the loop if cores is still greater than 0
+                    if cores > 0:
+                        break
                 for rest in range(processors_per_node-tasks):
                     if len(all_cores) > 0:
                         all_cores.pop(0)
                 nodes -= 1
+                # Break the loop if nodes is still greater than 0
+                if nodes > 0:
+                    break
                 if tasks < processors_per_node:
                     cores = job_cores
         """).format('\n'.ljust(13))
@@ -723,9 +733,11 @@ while total_cores > 0:
     else:
         idx += 1
         processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
+        # Break the loop if total_cores is still greater than 0 after resetting processors_per_node
+        if total_cores > 0 and processors_per_node == 0:
+            break
 processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
         """).format(self.num_procs, str(self.jobs_resources), '\n'.ljust(13))
-
     def build_machinefiles(self):
         machinefile_function = self.get_machinefile_function()
         if machinefile_function:
@@ -748,10 +760,16 @@ processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
                         if node:
                             machines += node +"_NEWLINE_"
                             cores -= 1
+                    # Break the loop if cores is still greater than 0
+                    if cores > 0:
+                        break
                 for rest in range(processors_per_node-tasks):
                     if len(all_cores) > 0:
                         all_cores.pop(0)
                 nodes -= 1
+                # Break the loop if nodes is still greater than 0
+                if nodes > 0:
+                    break
                 if tasks < processors_per_node:
                     cores = job_cores
         """).format('\n'.ljust(13))

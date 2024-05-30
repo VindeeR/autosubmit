@@ -311,7 +311,7 @@ class AutosubmitConfig(object):
         :return: tasks (processes) per host
         :rtype: str
         """
-        return str(self._jobs_parser.get_option(section, 'TASKS', '0'))
+        return str(self._jobs_parser.get_option(section, 'TASKS', '1'))
 
     def get_nodes(self, section):
         """

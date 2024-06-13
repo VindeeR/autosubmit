@@ -2239,7 +2239,7 @@ class Job(object):
                 return
         if self.wrapper_type == "vertical" and self.fail_count > 0:
             self.submit_time_timestamp = self.finish_time_timestamp
-        print(("Call from {} with status {}".format(self.name, self.status_str)))
+        Log.info(f"Call from {self.name} with status {self.status_str}")
         if hold is True:
             return # Do not write for HELD jobs.
 

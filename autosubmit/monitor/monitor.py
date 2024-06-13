@@ -307,6 +307,13 @@ class Monitor:
                 color =  self._table.get(Status.READY,None)
             elif job.name in child.edge_info.get("SUBMITTED",{}):
                 color =  self._table.get(Status.SUBMITTED,None)
+            elif job.name in child.edge_info.get("FINAL",{}):
+                color =  "black"
+            elif job.name in child.edge_info.get("FINAL_NO_SKIP",{}):
+                color =  "lightblack"
+
+            elif job.name in child.edge_info.get("COMPLETED",{}):
+                color = "grey"
             else:
                 return None, None
             if label and label == 0:

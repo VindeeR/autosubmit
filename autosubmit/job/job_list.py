@@ -937,11 +937,28 @@ class JobList(object):
         :return:
         """
         if special_status not in self.jobs_edges:
-            self.jobs_edges[special_status] = set()
-        self.jobs_edges[special_status].add(job)
-        if "ALL" not in self.jobs_edges:
-            self.jobs_edges["ALL"] = set()
-        self.jobs_edges["ALL"].add(job)
+            multi = []
+            if "," in special_status:
+                multi = [ status.strip(" ") for status in special_status.split(",") if status.strip(" ") != ""]
+            else:
+                multi = [ status.strip(" ") for status in special_status.split(" ") if status.strip(" ") != ""]
+            if len(multi) == 1:
+                self.jobs_edges[special_status] = set()
+                self.jobs_edges[special_status].add(job)
+            else:
+                self.jobs_edges["MULTI"] = set()
+                self.jobs_edges["MULTI"].add(job)
+                # self.jobs_edges["MULTI"] = {}
+                # for status in multi:
+                #     if job.name not in self.jobs_edges["MULTI"]:
+                #         self.jobs_edges["MULTI"][job.name] = dict()
+                #     if status not in self.jobs_edges["MULTI"][job.name]:
+                #         self.jobs_edges["MULTI"][job.name][status] = set()
+                #     self.jobs_edges["MULTI"][job.name][status].add(job)
+            if "ALL" not in self.jobs_edges:
+                self.jobs_edges["ALL"] = set()
+            self.jobs_edges["ALL"].add(job)
+
 
     def add_special_conditions(self, job, special_conditions, filters_to_apply, parent):
         """
@@ -2592,20 +2609,12 @@ class JobList(object):
                         job.get_checkpoint_files()
                 non_completed_parents_current = 0
                 completed_parents = len([parent for parent in job.parents if parent.status == Status.COMPLETED])
-                for parent in job.edge_info[status].values():
-                    if status.upper() in ["RUNNING", "FAILED"] and parent[1] and int(parent[1]) >= job.current_checkpoint_step:
+                for parent in job.edge_info[status.upper()].values():
+                    if status in ["RUNNING", "FAILED"] and parent[1] and int(parent[1]) >= job.current_checkpoint_step:
                         continue
                     else:
                         status_str = Status.VALUE_TO_KEY[parent[0].status]
-                        if status.upper() == "FINAL":
-                            if status_str in ["FAILED","UNKNOWN","SKIPPED"]:
-                                non_completed_parents_current += 1
-                        elif status.upper() == "FINAL_NO_SKIP":
-                            if status_str in ["FAILED","UNKNOWN"]:
-                                non_completed_parents_current += 1
-                            elif status_str == "SKIPPED":
-                                jobs_to_skip.append(job)
-                        elif status.upper() == "FAILED":
+                        if status.upper() == "FAILED":
                             if status_str in ["FAILED","UNKNOWN"]:
                                 non_completed_parents_current += 1
                             elif status_str == "COMPLETED":
@@ -2613,6 +2622,9 @@ class JobList(object):
                         elif status.upper() == "COMPLETED":
                             if status_str == "FAILED":
                                 jobs_to_skip.append(job)
+                        elif status.upper() == "MULTI":
+                            if status not in Status.COMBINABLE:
+                                raise AutosubmitCritical(f"Invalid status {status} in special status. Combinable Status are: {Status.COMBINABLE}")
                         else:
                             if Status.LOGICAL_ORDER.index(status_str) >= Status.LOGICAL_ORDER.index(status.upper()):
                                 non_completed_parents_current += 1

@@ -226,13 +226,21 @@ The ``STATUS`` keyword can be used to select the status of the dependency that y
 * "HELD": The task is held.
 * "QUEUING": The task is queuing.
 * "RUNNING": The task is running.
+
+The status are ordered, so if you select "RUNNING" status, the task will be run if the parent is in any of the following statuses: "RUNNING", "QUEUING", "HELD", "SUBMITTED", "READY", "PREPARED", "DELAYED", "WAITING".
+
+There are also a few "final" statuses that can be combined, the ones that can be combined are the following:
+
 * "SKIPPED": The task is skipped.
-* "FAILED": The task is failed.
+* "FAILED": The task is failed and only failed.
 * "UNKNOWN": The task is unknown.
 * "COMPLETED": The task is completed. # Default
 * "SUSPENDED": The task is suspended.
 
-The status are ordered, so if you select "RUNNING" status, the task will be run if the parent is in any of the following statuses: "RUNNING", "QUEUING", "HELD", "SUBMITTED", "READY", "PREPARED", "DELAYED", "WAITING".
+Example:
+    STATUS: "COMPLETED, FAILED"
+
+
 
 .. code-block:: yaml
 

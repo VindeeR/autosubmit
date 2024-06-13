@@ -63,7 +63,6 @@ class Platform(object):
         self._project = ''
         self._budget = ''
         self._reservation = ''
-        self._exclusivity = ''
         self._type = ''
         self._scratch = ''
         self._project_dir = ''
@@ -165,16 +164,6 @@ class Platform(object):
     @reservation.setter
     def reservation(self, value):
         self._reservation = value
-
-    @property
-    @autosubmit_parameter(name='current_exclusivity')
-    def exclusivity(self):
-        """True if you want to request exclusivity nodes."""
-        return self._exclusivity
-
-    @exclusivity.setter
-    def exclusivity(self, value):
-        self._exclusivity = value
 
     @property
     @autosubmit_parameter(name='current_hyperthreading')
@@ -473,7 +462,6 @@ class Platform(object):
         parameters['{0}PROJ'.format(prefix)] = self.project
         parameters['{0}BUDG'.format(prefix)] = self.budget
         parameters['{0}RESERVATION'.format(prefix)] = self.reservation
-        parameters['{0}EXCLUSIVITY'.format(prefix)] = self.exclusivity
         parameters['{0}TYPE'.format(prefix)] = self.type
         parameters['{0}SCRATCH_DIR'.format(prefix)] = self.scratch
         parameters['{0}TEMP_DIR'.format(prefix)] = self.temp_dir

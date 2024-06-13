@@ -52,12 +52,6 @@ class LsfHeader(object):
         else:
             return '#BSUB -R "span[ptile={0}]"'.format(job.tasks)
 
-    # noinspection PyMethodMayBeStatic
-    def get_exclusivity(self, job):
-        if job._platform.exclusivity == 'true':
-            return "#BSUB -x"
-        else:
-            return ""
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def get_custom_directives(self, job):
@@ -158,7 +152,6 @@ class LsfHeader(object):
             #BSUB -eo %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%ERR_LOG_DIRECTIVE%
             #BSUB -W %WALLCLOCK%
             #BSUB -n %NUMPROC%
-            %EXCLUSIVITY_DIRECTIVE%
             %CUSTOM_DIRECTIVES%
             #
             ###############################################################################

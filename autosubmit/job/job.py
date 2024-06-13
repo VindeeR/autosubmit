@@ -237,7 +237,7 @@ class Job(object):
         self.edge_info = dict()
         self.total_jobs = None
         self.max_waiting_jobs = None
-        self.exclusive = ""
+        self._exclusive = ""
         self._retrials = 0
         # internal
         self.current_checkpoint_step = 0
@@ -270,6 +270,15 @@ class Job(object):
         self.start_time_placeholder = ""
         self.processors_per_node = ""
 
+    @property
+    @autosubmit_parameter(name='exclusive')
+    def exclusive(self):
+        """Request the full node"""
+        return self._exclusive
+
+    @exclusive.setter
+    def exclusive(self, value):
+        self._exclusive = value
 
     @property
     @autosubmit_parameter(name='x11')
@@ -1353,7 +1362,6 @@ class Job(object):
         parameters['CURRENT_PROJ'] = job_platform.project
         parameters['CURRENT_BUDG'] = job_platform.budget
         parameters['CURRENT_RESERVATION'] = job_platform.reservation
-        parameters['CURRENT_EXCLUSIVITY'] = job_platform.exclusivity
         parameters['CURRENT_HYPERTHREADING'] = job_platform.hyperthreading
         parameters['CURRENT_TYPE'] = job_platform.type
         parameters['CURRENT_SCRATCH_DIR'] = job_platform.scratch

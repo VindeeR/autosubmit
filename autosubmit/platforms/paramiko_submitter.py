@@ -189,7 +189,6 @@ class ParamikoSubmitter(Submitter):
             remote_platform.project = platform_data[section].get('PROJECT',"")
             remote_platform.budget = platform_data[section].get('BUDGET', "")
             remote_platform.reservation = platform_data[section].get('RESERVATION', "")
-            remote_platform.exclusivity = platform_data[section].get('EXCLUSIVITY', "")
             remote_platform.user = platform_data[section].get('USER', "")
             remote_platform.scratch = platform_data[section].get('SCRATCH_DIR', "")
             remote_platform.shape = platform_data[section].get('SHAPE', "")

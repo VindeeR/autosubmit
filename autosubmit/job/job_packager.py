@@ -337,7 +337,7 @@ class JobPackager(object):
         Check if the packages are ready to be built
         :return: List of jobs ready to be built, boolean indicating if packages can't be built for other reasons ( max_total_jobs...)
         """
-        Log.info("Calculating size limits for {0}".format(self._platform.name))
+        Log.debug("Calculating size limits for {0}".format(self._platform.name))
         jobs_ready = list()
         if len(self._jobs_list.jobs_to_run_first) > 0:
             jobs_ready = [job for job in self._jobs_list.jobs_to_run_first if

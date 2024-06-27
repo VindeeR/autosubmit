@@ -55,7 +55,7 @@ setup(
         'ruamel.yaml.clib<=0.2.8',
         'typing_extensions<=4.9.0',
         'typing<=3.7.4.3',
-        'psutil>6.0.0',
+        'psutil>=5.6.1',
         'networkx<=2.6.3',
         'py3dotplus==1.1.0',
         'matplotlib<=3.8.3',

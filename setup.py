@@ -41,7 +41,7 @@ setup(
     keywords=['climate', 'weather', 'workflow', 'HPC'],
     install_requires=[
         'xlib==0.21',
-        'setuptools<=68.2.2',
+        'setuptools>=68.2.2',
         'bscearth.utils<=0.5.2',
         'requests<=2.31.0',
         'networkx<=2.6.3',
@@ -50,23 +50,21 @@ setup(
         'paramiko<=3.4',
         'pyparsing==3.1.1',
         'matplotlib<=3.8.3',
-        'argparse<=1.4.0',
+        'argparse>=1.4.0',
         'packaging<=23.2',
         'ruamel.yaml.clib<=0.2.8',
         'typing_extensions<=4.9.0',
         'typing<=3.7.4.3',
-        'psutil<=5.6.1',
+        'psutil>6.0.0',
         'networkx<=2.6.3',
         'py3dotplus==1.1.0',
         'matplotlib<=3.8.3',
         'numpy<2',
         'ruamel.yaml==0.17.21',
         'rocrate==0.*',
-        'autosubmitconfigparser==1.0.67',
+        'autosubmitconfigparser==1.0.68',
         'configparser',
-        'pathlib',
         'setproctitle'
-
     ],
     extras_require={
         ':python_version <= "3.7"':

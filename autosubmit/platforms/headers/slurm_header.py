@@ -127,10 +127,10 @@ class SlurmHeader(object):
         :rtype: str
         """
         if het > -1 and len(job.het['EXCLUSIVE']) > 0:
-            if job.het['EXCLUSIVE'][het] != '':
+            if job.het['EXCLUSIVE'][het] != '' and str(job.parameters['EXCLUSIVE']).lower() == 'true':
                 return "SBATCH --exclusive"
         else:
-            if job.parameters['EXCLUSIVE'] != '':
+            if job.parameters['EXCLUSIVE'] != '' and str(job.parameters['EXCLUSIVE']).lower() == 'true':
                 return "SBATCH --exclusive"
         return ""
 

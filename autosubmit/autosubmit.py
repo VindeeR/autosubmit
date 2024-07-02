@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import print_function
-
+from helpers.utils import as_rsync
 import requests
 import threading
 import traceback
@@ -2967,6 +2967,8 @@ class Autosubmit:
 
         return True
 
+
+
     @staticmethod
     def migrate(experiment_id, offer, pickup, only_remote):
         """
@@ -3235,55 +3237,9 @@ class Autosubmit:
                             "Copying remote files/dirs on {0}", platform)
                         Log.info("Copying from {0} to {1}", os.path.join(
                             p.temp_dir, experiment_id), p.root_dir)
-                        finished = False
-                        limit = 150
-                        rsync_retries = 0
                         try:
-                            # Avoid infinite loop unrealistic upper limit, only for rsync failure
-                            while not finished and rsync_retries < limit:
-                                finished = False
-                                pipeline_broke = False
-                                Log.info(
-                                    "Rsync launched {0} times. Can take up to 150 retrials or until all data is transfered".format(
-                                        rsync_retries + 1))
-                                try:
-                                    p.send_command(
-                                        "rsync --timeout=3600 --bwlimit=20000 -aq --remove-source-files " + os.path.join(
-                                            p.temp_dir, experiment_id) + " " + p.root_dir[:-5])
-                                except BaseException as e:
-                                    Log.debug("{0}".format(str(e)))
-                                    rsync_retries += 1
-                                    try:
-                                        if p.get_ssh_output_err() == "":
-                                            finished = True
-                                        elif p.get_ssh_output_err().lower().find("no such file or directory") == -1:
-                                            finished = True
-                                        else:
-                                            finished = False
-                                    except:
-                                        finished = False
-                                    pipeline_broke = True
-                                if not pipeline_broke:
-                                    if p.get_ssh_output_err().lower().find("no such file or directory") == -1:
-                                        finished = True
-                                    elif p.get_ssh_output_err().lower().find(
-                                            "warning: rsync") != -1 or p.get_ssh_output_err().lower().find(
-                                        "closed") != -1 or p.get_ssh_output_err().lower().find(
-                                        "broken pipe") != -1 or p.get_ssh_output_err().lower().find(
-                                        "directory has vanished") != -1:
-                                        rsync_retries += 1
-                                        finished = False
-                                    elif p.get_ssh_output_err() == "":
-                                        finished = True
-                                    else:
-                                        error = True
-                                        finished = False
-                                        break
-                                p.send_command(
-                                    "find {0} -depth -type d -empty -delete".format(
-                                        os.path.join(p.temp_dir, experiment_id)))
-                                Log.result(
-                                    "Empty dirs on {0} have been successfully deleted".format(p.temp_dir))
+                            finished = as_rsync(p, os.path.join(
+                                p.temp_dir, experiment_id), p.root_dir[:-5])
                             if finished:
                                 p.send_command("chmod 755 -R " + p.root_dir)
                                 Log.result(
@@ -3296,8 +3252,6 @@ class Autosubmit:
                                 Log.printlog("The files/dirs on {0} cannot be copied to {1}.".format(
                                     os.path.join(p.temp_dir, experiment_id), p.root_dir), 6012)
                                 error = True
-                                break
-
                         except IOError as e:
                             raise AutosubmitError(
                                 "I/O Issues", 6016, e.message)

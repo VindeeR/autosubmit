@@ -18,7 +18,7 @@ from paramiko.ssh_exception import (SSHException, BadAuthenticationType,
                                     ChannelException, ProxyCommandFailure)
 import Xlib.support.connect as xlib_connect
 from threading import Thread
-
+from autosubmit.helpers.utils import as_rsync
 
 
 class ParamikoPlatform(Platform):
@@ -388,6 +388,8 @@ class ParamikoPlatform(Platform):
         :param dest: destination name
         :param must_exist: ignore if file exist or not
         :type dest: str
+        :param path_root: root path
+        :type path_root: str
         """
         if path_root is None:
             path_root = self.get_files_path()
@@ -402,13 +404,9 @@ class ParamikoPlatform(Platform):
                 raise AutosubmitError('File {0} does not exists, something went wrong with the platform'.format(os.path.join(path_root,src)), 6004, e.message)
             if e.message.lower() in "failure":
                 try:
-                    Log.warning("FTP Channel did not work, trying with bash command")
-                    bash_command = "mv {0} {1}".format(src, dest)
-                    self.send_command(bash_command)
-                    if "file exists" in self.get_ssh_output_err().lower() or "move failed" in self.get_ssh_output_err().lower():
-                        Log.warning("Bash: File {0} was already moved or couldn't be moved".format(src))
-                    else:
-                        Log.result("Bash: Move command was successful")
+                    Log.warning("FTP Channel did not work due an inter-device operation... Rsync will be used")
+                    finished = as_rsync(self, src, dest)
+                    if finished and not self._ftpChannel.stat(src) and self._ftpChannel.stat(dest):
                         return True
                 except BaseException as e:
                     raise AutosubmitError('File {0} does not exists, something went wrong with the platform'.format(

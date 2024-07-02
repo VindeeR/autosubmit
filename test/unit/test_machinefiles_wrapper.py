@@ -37,7 +37,7 @@ class TestMachinefiles(TestCase):
             machinefiles_dict[job] = machines
         """).format(nodes, cores_list, self.job_scripts, wrapper_builder._indent(machinefiles_code, 4))
 
-        exec (script, result)
+        exec(script, result)
 
         machinefiles_dict = result["machinefiles_dict"]
         all_machines = list()

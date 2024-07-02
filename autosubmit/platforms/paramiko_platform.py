@@ -380,7 +380,7 @@ class ParamikoPlatform(Platform):
                 raise AutosubmitCritical(
                     "Wrong User or invalid .ssh/config. Or invalid user in platform.conf or public key not set ", 7051, e.message)
 
-    def move_file(self, src, dest, must_exist=False):
+    def move_file(self, src, dest, must_exist=False, path_root=None):
         """
         Moves a file on the platform (includes .err and .out)
         :param src: source name
@@ -389,8 +389,9 @@ class ParamikoPlatform(Platform):
         :param must_exist: ignore if file exist or not
         :type dest: str
         """
-        try:
+        if path_root is None:
             path_root = self.get_files_path()
+        try:
             src = os.path.join(path_root, src)
             dest = os.path.join(path_root, dest)
             self._ftpChannel.rename(src,dest)
@@ -399,11 +400,24 @@ class ParamikoPlatform(Platform):
         except IOError as e:
             if str(e) in "Garbage":
                 raise AutosubmitError('File {0} does not exists, something went wrong with the platform'.format(os.path.join(path_root,src)), 6004, e.message)
+            if e.message.lower() in "failure":
+                try:
+                    Log.warning("FTP Channel did not work, trying with bash command")
+                    bash_command = "mv {0} {1}".format(src, dest)
+                    self.send_command(bash_command)
+                    if "file exists" in self.get_ssh_output_err().lower() or "move failed" in self.get_ssh_output_err().lower():
+                        Log.warning("Bash: File {0} was already moved or couldn't be moved".format(src))
+                    else:
+                        Log.result("Bash: Move command was successful")
+                        return True
+                except BaseException as e:
+                    raise AutosubmitError('File {0} does not exists, something went wrong with the platform'.format(
+                        os.path.join(path_root, src)), 6004, e.message)
             if must_exist:
                 raise AutosubmitError("File {0} does not exists".format(
                     os.path.join(path_root,src)), 6004, e.message)
             else:
-                Log.debug("File {0} doesn't exists ".format(path_root))
+                Log.debug("File {0} was already moved or couldn't be moved".format(src))
                 return False
         except Exception as e:
             if str(e) in "Garbage":

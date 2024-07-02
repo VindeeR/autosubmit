@@ -151,7 +151,7 @@ class Platform(object):
         """
         raise NotImplementedError
 
-    def move_file(self, src, dest):
+    def move_file(self, src, dest, must_exists = False, path_root = None):
         """
         Moves a file on the platform
         :param src: source name

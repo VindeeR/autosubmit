@@ -3073,9 +3073,9 @@ class Autosubmit:
                     Log.result(
                         "[OPTIONAL] HOST_TO directive not found. The directive HOST will remain unchanged")
                 p = submitter.platforms[platform]
-                if p.temp_dir not in already_moved:
+                if p.root_dir not in already_moved:
                     if p.root_dir != p.temp_dir and len(p.temp_dir) > 0:
-                        already_moved.add(p.temp_dir)
+                        already_moved.add(p.root_dir)
                         # find /home/bsc32/bsc32070/dummy3 -type l -lname '/*' -printf ' ln -sf "$(realpath -s --relative-to="%p" $(readlink "%p")")" \n' > script.sh
                         # command = "find " + p.root_dir + " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n'"
                         Log.info(
@@ -3112,7 +3112,7 @@ class Autosubmit:
                             Log.info(
                                 "Moving remote files/dirs on {0}", platform)
                             p.send_command("chmod 777 -R " + p.root_dir)
-                            if not p.move_file(p.root_dir, os.path.join(p.temp_dir, experiment_id), False):
+                            if not p.move_file(p.root_dir, os.path.join(p.temp_dir, experiment_id), False, path_root=""):
                                 Log.result("No data found in {0} for [{1}]\n".format(
                                     p.root_dir, platform))
                         except IOError as e:

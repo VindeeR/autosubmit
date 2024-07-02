@@ -12,3 +12,8 @@ def generate_expid(envirom, platform="local"):
     Autosubmit.create(expid, True,False, force=True)
     return expid
 
+def create_expid(envirom, expid):
+    os.environ['AUTOSUBMIT_CONFIGURATION'] = envirom
+    Autosubmit.create(expid, True,False, force=True)
+
+

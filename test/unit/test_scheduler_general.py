@@ -6,12 +6,17 @@ from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 import os
-
+import sys
 import pwd
 from log.log import AutosubmitCritical
 
 from test.unit.utils.common import create_database, generate_expid, create_expid
 
+def get_script_files_path():
+    current_folder = Path(__file__).resolve().parent
+    print(current_folder)
+    files_folder = os.path.join(current_folder, 'files')
+    return files_folder
 # Maybe this should be a regression test
 class TestScheduler:
 
@@ -148,19 +153,49 @@ JOBS:
         os.symlink(dummy_dir.joinpath('dummy_file'), real_data.joinpath('dummy_symlink'))
         return scheduler_tmpdir
 
-    @pytest.fixture
+    @pytest.fixture(scope='class')
     def generate_cmds(self, prepare_scheduler):
         create_expid(os.environ["AUTOSUBMIT_CONFIGURATION"], 't000')
         Autosubmit.inspect(expid='t000',check_wrapper=False,force=True, lst=None, filter_chunks=None, filter_status=None, filter_section=None)
         return prepare_scheduler
 
-    def test_check_slurm(self, generate_cmds, scheduler_tmpdir):
-        # get t000_JOB_SLURM.cmd
-        pjm_cmd = Path(f"{scheduler_tmpdir.strpath}/t000/tmp/t000_JOB_SLURM.cmd")
-        pjm_basic_cmd = Path(f"{scheduler_tmpdir.strpath}/t000/tmp/t000_BASIC_SLURM.cmd")
-        with pjm_cmd.open() as f:
-            pjm_cmd_content = f.read()
-            assert "pjsub" in pjm_cmd_content
+    def test_default_parameters(self, generate_cmds, scheduler_tmpdir):
+        """
+        Test that the default parameters are correctly set in the scheduler files. It is a comparasion line to line, so the new templates must match the same line order as the old ones. Additional default parameters must be filled in the files/base_{scheduler}.yml as well as any change in the order
+        :param generate_cmds:
+        :param scheduler_tmpdir:
+        :return:
+        """
+        # Get all expected default parameters from files/base_{scheduler}.yml
+        schedulers_to_test = ['pjm', 'slurm', 'ecaccess', 'ps']
+        # Load the base file for each scheduler
+        files_folder = get_script_files_path()
+        default_data = {}
+        for base_f in Path(files_folder).glob('base_*.cmd'):
+            name = base_f.stem.split('_')[1].upper()
+            default_data[name] = Path(base_f).read_text()
+        for scheduler in schedulers_to_test:
+            scheduler = scheduler.upper()
+            # Get the expected default parameters for the scheduler
+            expected = default_data[scheduler]
+            # Get the actual default parameters for the scheduler
+            actual = Path(f"{scheduler_tmpdir.strpath}/t000/tmp/t000_BASE_{scheduler}.cmd").read_text()
+            # Remove all after # Autosubmit header
+            # ###################
+            # count number of lines in expected
+            expected_lines = expected.split('\n')
+            actual = actual.split('\n')[:len(expected_lines)]
+            actual = '\n'.join(actual)
+            # Compare line to line
+            for i, (line1, line2) in enumerate(zip(expected.split('\n'), actual.split('\n'))):
+                if "PJM -o" in line1 or "PJM -e" in line1 or "#SBATCH --output" in line1 or "#SBATCH --error" in line1: # output error will be different
+                    continue
+                elif "##" in line1 or "##" in line2: # comment line
+                    continue
+                elif "header" in line1 or "header" in line2: # header line
+                    continue
+                else:
+                    assert line1 == line2
 
 
 

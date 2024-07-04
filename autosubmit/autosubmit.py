@@ -3086,12 +3086,14 @@ class Autosubmit:
                                   " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n' "
                         try:
                             p.send_command(link_finder, True)
-                            while p.get_ssh_output().startswith("var="):
+                            retrials = 2
+                            while p.get_ssh_output().startswith("var=") and retrials > 0:
                                 convertLinkPath = os.path.join(
                                     BasicConfig.LOCAL_ROOT_DIR, experiment_id, BasicConfig.LOCAL_TMP_DIR,
                                     'convertLink.sh')
                                 with open(convertLinkPath, 'w') as convertLinkFile:
                                     convertLinkFile.write(p.get_ssh_output())
+                                Log.debug("Link\n{0}", p.get_ssh_output())
                                 p.send_file("convertLink.sh")
                                 convertLinkPathRemote = os.path.join(
                                     p.remote_log_dir, "convertLink.sh")
@@ -3102,6 +3104,7 @@ class Autosubmit:
                             else:
                                 Log.result("No links found in {0} for [{1}] ".format(
                                     p.root_dir, platform))
+                            retrials -= 1
 
                         except IOError:
                             Log.debug(

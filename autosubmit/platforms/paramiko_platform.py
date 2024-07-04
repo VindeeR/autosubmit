@@ -380,6 +380,7 @@ class ParamikoPlatform(Platform):
                 raise AutosubmitCritical(
                     "Wrong User or invalid .ssh/config. Or invalid user in platform.conf or public key not set ", 7051, e.message)
 
+
     def move_file(self, src, dest, must_exist=False, path_root=None):
         """
         Moves a file on the platform (includes .err and .out)
@@ -396,21 +397,14 @@ class ParamikoPlatform(Platform):
         try:
             src = os.path.join(path_root, src)
             dest = os.path.join(path_root, dest)
-            self._ftpChannel.rename(src,dest)
+            self._ftpChannel.rename(src, dest)
             return True
-
         except IOError as e:
             if str(e) in "Garbage":
                 raise AutosubmitError('File {0} does not exists, something went wrong with the platform'.format(os.path.join(path_root,src)), 6004, e.message)
             if e.message.lower() in "failure":
-                try:
-                    Log.warning("FTP Channel did not work due an inter-device operation... Rsync will be used")
-                    finished = as_rsync(self, src, dest)
-                    if finished and not self._ftpChannel.stat(src) and self._ftpChannel.stat(dest):
-                        return True
-                except BaseException as e:
-                    raise AutosubmitError('File {0} does not exists, something went wrong with the platform'.format(
-                        os.path.join(path_root, src)), 6004, e.message)
+                Log.warning("FTP Channel did not work due an inter-device operation... Rsync will be used")
+                return False
             if must_exist:
                 raise AutosubmitError("File {0} does not exists".format(
                     os.path.join(path_root,src)), 6004, e.message)

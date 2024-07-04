@@ -3082,11 +3082,11 @@ class Autosubmit:
                         # command = "find " + p.root_dir + " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n'"
                         Log.info(
                             "Converting the absolute symlinks into relatives on platform {0} ", platform)
-                        command = "find " + p.root_dir + \
+                        link_finder = "find " + p.root_dir + \
                                   " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n' "
                         try:
-                            p.send_command(command, True)
-                            if p.get_ssh_output().startswith("var="):
+                            p.send_command(link_finder, True)
+                            while p.get_ssh_output().startswith("var="):
                                 convertLinkPath = os.path.join(
                                     BasicConfig.LOCAL_ROOT_DIR, experiment_id, BasicConfig.LOCAL_TMP_DIR,
                                     'convertLink.sh')
@@ -3098,6 +3098,7 @@ class Autosubmit:
                                 command = "chmod +x " + convertLinkPathRemote + " && " + \
                                           convertLinkPathRemote + " && rm " + convertLinkPathRemote
                                 p.send_command(command, True)
+                                p.send_command(link_finder, True)
                             else:
                                 Log.result("No links found in {0} for [{1}] ".format(
                                     p.root_dir, platform))
@@ -3114,9 +3115,12 @@ class Autosubmit:
                             Log.info(
                                 "Moving remote files/dirs on {0}", platform)
                             p.send_command("chmod 777 -R " + p.root_dir)
-                            if not p.move_file(p.root_dir, os.path.join(p.temp_dir, experiment_id), False, path_root=""):
-                                Log.result("No data found in {0} for [{1}]\n".format(
-                                    p.root_dir, platform))
+                            if not p.move_file(p.root_dir, os.path.join(p.temp_dir,experiment_id), False, path_root=""):
+                                if not as_rsync(p,p.root_dir, p.temp_dir):
+                                    error = True
+                                    break
+                            Log.result("Data on {0} has been successfully moved".format(p.root_dir))
+
                         except IOError as e:
                             Log.printlog("The files/dirs on {0} cannot be moved to {1}.".format(p.root_dir,
                                                                                                 os.path.join(p.temp_dir,

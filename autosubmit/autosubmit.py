@@ -3093,7 +3093,10 @@ class Autosubmit:
                                     'convertLink.sh')
                                 with open(convertLinkPath, 'w') as convertLinkFile:
                                     convertLinkFile.write(p.get_ssh_output())
-                                Log.debug("Link\n{0}", p.get_ssh_output())
+                                try:
+                                    Log.debug("Link\n{0}", p.get_ssh_output())
+                                except:
+                                    pass
                                 p.send_file("convertLink.sh")
                                 convertLinkPathRemote = os.path.join(
                                     p.remote_log_dir, "convertLink.sh")
@@ -3101,10 +3104,10 @@ class Autosubmit:
                                           convertLinkPathRemote + " && rm " + convertLinkPathRemote
                                 p.send_command(command, True)
                                 p.send_command(link_finder, True)
+                                retrials = retrials - 1
                             else:
                                 Log.result("No links found in {0} for [{1}] ".format(
                                     p.root_dir, platform))
-                            retrials -= 1
 
                         except IOError:
                             Log.debug(

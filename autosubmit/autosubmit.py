@@ -3117,8 +3117,11 @@ class Autosubmit:
                             p.send_command("chmod 777 -R " + p.root_dir)
                             if not p.move_file(p.root_dir, os.path.join(p.temp_dir,experiment_id), False, path_root=""):
                                 if not as_rsync(p,p.root_dir, p.temp_dir):
-                                    error = True
-                                    break
+                                    Log.printlog("The files/dirs on {0} cannot be moved to {1}.".format(p.root_dir,
+                                                                                                        os.path.join(
+                                                                                                            p.temp_dir,
+                                                                                                            experiment_id),
+                                                                                                        6012))
                             Log.result("Data on {0} has been successfully moved".format(p.root_dir))
 
                         except IOError as e:

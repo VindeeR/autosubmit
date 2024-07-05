@@ -1112,7 +1112,6 @@ class Job(object):
         self.hyperthreading = str(as_conf.get_hyperthreading(self.section)).lower()
         if self.hyperthreading is 'none':
             self.hyperthreading = str(job_platform.hyperthreading).lower()
-
         if job_platform.processors_per_node is not None and int(self.tasks) > int(job_platform.processors_per_node):
             self.tasks = job_platform.processors_per_node
         self.tasks = str(self.tasks)

@@ -2845,9 +2845,13 @@ class Autosubmit:
                             job.platform_name = hpcarch
                         job.platform = submitter.platforms[job.platform_name.lower()]
                         platforms_to_test.add(job.platform)
-                        job.platform.send_command(job.platform.cancel_cmd + " " + str(job.id), ignore_log=True)
                     for platform in platforms_to_test:
                         platform.test_connection()
+                    for job in current_active_jobs:
+                        try:
+                            job.platform.send_command(job.platform.cancel_cmd + " " + str(job.id), ignore_log=True)
+                        except:
+                            Log.warning("Job {0} could not be cancelled, please cancel it manually".format(job.name))
                 if not force:
                     raise AutosubmitCritical(
                         "Experiment can't be recovered due being {0} active jobs in your experiment, If you want to recover the experiment, please use the flag -f and all active jobs will be cancelled".format(

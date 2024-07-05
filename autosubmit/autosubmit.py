@@ -4019,6 +4019,12 @@ class Autosubmit:
             pkl_folder_path, "job_list_{}.pkl".format(expid))
         backup_pkl_path = os.path.join(
             pkl_folder_path, "job_list_{}_backup.pkl".format(expid))
+        # remove any file that has 0 bytes inside the pkl_folder_path
+        try:
+            Autosubmit._check_ownership(expid, raise_error=True)
+        except:
+            Log.debug("User is not the owner of the experiment")
+            return
         try:
             with portalocker.Lock(os.path.join(tmp_path, 'autosubmit.lock'), timeout=1):
                 # Not locked
@@ -4029,6 +4035,7 @@ class Autosubmit:
                     # Make sure backup file is not empty
                     _stat_b = os.stat(backup_pkl_path)
                     if _stat_b.st_size <= 6:
+                        os.remove(backup_pkl_path)
                         # It is empty -> Return
                         Log.info(
                             "The backup file {} is empty. Pkl restore operation stopped. No changes have been made.".format(

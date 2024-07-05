@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import print_function
-
+from helpers.utils import as_rsync
 import requests
 import threading
 import traceback
@@ -2967,6 +2967,8 @@ class Autosubmit:
 
         return True
 
+
+
     @staticmethod
     def migrate(experiment_id, offer, pickup, only_remote):
         """
@@ -3073,29 +3075,36 @@ class Autosubmit:
                     Log.result(
                         "[OPTIONAL] HOST_TO directive not found. The directive HOST will remain unchanged")
                 p = submitter.platforms[platform]
-                if p.temp_dir not in already_moved:
+                if p.root_dir not in already_moved:
                     if p.root_dir != p.temp_dir and len(p.temp_dir) > 0:
-                        already_moved.add(p.temp_dir)
+                        already_moved.add(p.root_dir)
                         # find /home/bsc32/bsc32070/dummy3 -type l -lname '/*' -printf ' ln -sf "$(realpath -s --relative-to="%p" $(readlink "%p")")" \n' > script.sh
                         # command = "find " + p.root_dir + " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n'"
                         Log.info(
                             "Converting the absolute symlinks into relatives on platform {0} ", platform)
-                        command = "find " + p.root_dir + \
+                        link_finder = "find " + p.root_dir + \
                                   " -type l -lname \'/*\' -printf 'var=\"$(realpath -s --relative-to=\"%p\" \"$(readlink \"%p\")\")\" && var=${var:3} && ln -sf $var \"%p\"  \\n' "
                         try:
-                            p.send_command(command, True)
-                            if p.get_ssh_output().startswith("var="):
+                            p.send_command(link_finder, True)
+                            retrials = 2
+                            while p.get_ssh_output().startswith("var=") and retrials > 0:
                                 convertLinkPath = os.path.join(
                                     BasicConfig.LOCAL_ROOT_DIR, experiment_id, BasicConfig.LOCAL_TMP_DIR,
                                     'convertLink.sh')
                                 with open(convertLinkPath, 'w') as convertLinkFile:
                                     convertLinkFile.write(p.get_ssh_output())
+                                try:
+                                    Log.debug("Link\n{0}", p.get_ssh_output())
+                                except:
+                                    pass
                                 p.send_file("convertLink.sh")
                                 convertLinkPathRemote = os.path.join(
                                     p.remote_log_dir, "convertLink.sh")
                                 command = "chmod +x " + convertLinkPathRemote + " && " + \
                                           convertLinkPathRemote + " && rm " + convertLinkPathRemote
                                 p.send_command(command, True)
+                                p.send_command(link_finder, True)
+                                retrials = retrials - 1
                             else:
                                 Log.result("No links found in {0} for [{1}] ".format(
                                     p.root_dir, platform))
@@ -3112,9 +3121,15 @@ class Autosubmit:
                             Log.info(
                                 "Moving remote files/dirs on {0}", platform)
                             p.send_command("chmod 777 -R " + p.root_dir)
-                            if not p.move_file(p.root_dir, os.path.join(p.temp_dir, experiment_id), False):
-                                Log.result("No data found in {0} for [{1}]\n".format(
-                                    p.root_dir, platform))
+                            if not p.move_file(p.root_dir, os.path.join(p.temp_dir,experiment_id), False, path_root=""):
+                                if not as_rsync(p,p.root_dir, p.temp_dir):
+                                    Log.printlog("The files/dirs on {0} cannot be moved to {1}.".format(p.root_dir,
+                                                                                                        os.path.join(
+                                                                                                            p.temp_dir,
+                                                                                                            experiment_id),
+                                                                                                        6012))
+                            Log.result("Data on {0} has been successfully moved".format(p.root_dir))
+
                         except IOError as e:
                             Log.printlog("The files/dirs on {0} cannot be moved to {1}.".format(p.root_dir,
                                                                                                 os.path.join(p.temp_dir,
@@ -3235,55 +3250,9 @@ class Autosubmit:
                             "Copying remote files/dirs on {0}", platform)
                         Log.info("Copying from {0} to {1}", os.path.join(
                             p.temp_dir, experiment_id), p.root_dir)
-                        finished = False
-                        limit = 150
-                        rsync_retries = 0
                         try:
-                            # Avoid infinite loop unrealistic upper limit, only for rsync failure
-                            while not finished and rsync_retries < limit:
-                                finished = False
-                                pipeline_broke = False
-                                Log.info(
-                                    "Rsync launched {0} times. Can take up to 150 retrials or until all data is transfered".format(
-                                        rsync_retries + 1))
-                                try:
-                                    p.send_command(
-                                        "rsync --timeout=3600 --bwlimit=20000 -aq --remove-source-files " + os.path.join(
-                                            p.temp_dir, experiment_id) + " " + p.root_dir[:-5])
-                                except BaseException as e:
-                                    Log.debug("{0}".format(str(e)))
-                                    rsync_retries += 1
-                                    try:
-                                        if p.get_ssh_output_err() == "":
-                                            finished = True
-                                        elif p.get_ssh_output_err().lower().find("no such file or directory") == -1:
-                                            finished = True
-                                        else:
-                                            finished = False
-                                    except:
-                                        finished = False
-                                    pipeline_broke = True
-                                if not pipeline_broke:
-                                    if p.get_ssh_output_err().lower().find("no such file or directory") == -1:
-                                        finished = True
-                                    elif p.get_ssh_output_err().lower().find(
-                                            "warning: rsync") != -1 or p.get_ssh_output_err().lower().find(
-                                        "closed") != -1 or p.get_ssh_output_err().lower().find(
-                                        "broken pipe") != -1 or p.get_ssh_output_err().lower().find(
-                                        "directory has vanished") != -1:
-                                        rsync_retries += 1
-                                        finished = False
-                                    elif p.get_ssh_output_err() == "":
-                                        finished = True
-                                    else:
-                                        error = True
-                                        finished = False
-                                        break
-                                p.send_command(
-                                    "find {0} -depth -type d -empty -delete".format(
-                                        os.path.join(p.temp_dir, experiment_id)))
-                                Log.result(
-                                    "Empty dirs on {0} have been successfully deleted".format(p.temp_dir))
+                            finished = as_rsync(p, os.path.join(
+                                p.temp_dir, experiment_id), p.root_dir[:-5])
                             if finished:
                                 p.send_command("chmod 755 -R " + p.root_dir)
                                 Log.result(
@@ -3296,8 +3265,6 @@ class Autosubmit:
                                 Log.printlog("The files/dirs on {0} cannot be copied to {1}.".format(
                                     os.path.join(p.temp_dir, experiment_id), p.root_dir), 6012)
                                 error = True
-                                break
-
                         except IOError as e:
                             raise AutosubmitError(
                                 "I/O Issues", 6016, e.message)

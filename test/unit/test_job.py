@@ -292,10 +292,10 @@ class TestJob(TestCase):
         self.job.parameters['PROJECT_TYPE'] = "none"
         dummy_serial_platform = Mock()
         dummy_serial_platform.name = 'serial'
-        dummy_platform = Mock()
+        dummy_platform = MagicMock()
         dummy_platform.serial_platform = dummy_serial_platform
         dummy_platform.custom_directives = '["whatever"]'
-
+        dummy_platform.proccesors_per_node = MagicMock(return_value=None)
         self.job._platform = dummy_platform
 
         # Act

@@ -18,7 +18,7 @@ from paramiko.ssh_exception import (SSHException, BadAuthenticationType,
                                     ChannelException, ProxyCommandFailure)
 import Xlib.support.connect as xlib_connect
 from threading import Thread
-
+from autosubmit.helpers.utils import as_rsync
 
 
 class ParamikoPlatform(Platform):
@@ -380,7 +380,8 @@ class ParamikoPlatform(Platform):
                 raise AutosubmitCritical(
                     "Wrong User or invalid .ssh/config. Or invalid user in platform.conf or public key not set ", 7051, e.message)
 
-    def move_file(self, src, dest, must_exist=False):
+
+    def move_file(self, src, dest, must_exist=False, path_root=None):
         """
         Moves a file on the platform (includes .err and .out)
         :param src: source name
@@ -388,22 +389,27 @@ class ParamikoPlatform(Platform):
         :param dest: destination name
         :param must_exist: ignore if file exist or not
         :type dest: str
+        :param path_root: root path
+        :type path_root: str
         """
-        try:
+        if path_root is None:
             path_root = self.get_files_path()
+        try:
             src = os.path.join(path_root, src)
             dest = os.path.join(path_root, dest)
-            self._ftpChannel.rename(src,dest)
+            self._ftpChannel.rename(src, dest)
             return True
-
         except IOError as e:
             if str(e) in "Garbage":
                 raise AutosubmitError('File {0} does not exists, something went wrong with the platform'.format(os.path.join(path_root,src)), 6004, e.message)
+            if e.message.lower() in "failure":
+                Log.warning("FTP Channel did not work due an inter-device operation... Rsync will be used")
+                return False
             if must_exist:
                 raise AutosubmitError("File {0} does not exists".format(
                     os.path.join(path_root,src)), 6004, e.message)
             else:
-                Log.debug("File {0} doesn't exists ".format(path_root))
+                Log.debug("File {0} was already moved or couldn't be moved".format(src))
                 return False
         except Exception as e:
             if str(e) in "Garbage":

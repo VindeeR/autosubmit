@@ -1,20 +1,13 @@
 import pytest
 from pathlib import Path
 from autosubmit.autosubmit import Autosubmit
-from autosubmit.migrate.migrate import Migrate
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
-from autosubmitconfigparser.config.basicconfig import BasicConfig
 import os
-import sys
 import pwd
-from log.log import AutosubmitCritical
 
-from test.unit.utils.common import create_database, generate_expid, create_expid
+from test.unit.utils.common import create_database, init_expid
 
 def get_script_files_path():
     current_folder = Path(__file__).resolve().parent
-    print(current_folder)
     files_folder = os.path.join(current_folder, 'files')
     return files_folder
 # Maybe this should be a regression test
@@ -59,7 +52,7 @@ path = {folder}
         os.environ['AUTOSUBMIT_CONFIGURATION'] = str(folder.join('autosubmitrc'))
         create_database(str(folder.join('autosubmitrc')))
         assert "tests.db" in [Path(f).name for f in folder.listdir()]
-        generate_expid(str(folder.join('autosubmitrc')), platform='local')
+        init_expid(str(folder.join('autosubmitrc')), platform='local', create=False)
         assert "t000" in [Path(f).name for f in folder.listdir()]
         return folder
 
@@ -155,7 +148,7 @@ JOBS:
 
     @pytest.fixture(scope='class')
     def generate_cmds(self, prepare_scheduler):
-        create_expid(os.environ["AUTOSUBMIT_CONFIGURATION"], 't000')
+        init_expid(os.environ["AUTOSUBMIT_CONFIGURATION"], platform='local', expid='t000', create=True)
         Autosubmit.inspect(expid='t000',check_wrapper=False,force=True, lst=None, filter_chunks=None, filter_status=None, filter_section=None)
         return prepare_scheduler
 
@@ -179,7 +172,7 @@ JOBS:
             # Get the expected default parameters for the scheduler
             expected = default_data[scheduler]
             # Get the actual default parameters for the scheduler
-            actual = Path(f"{scheduler_tmpdir.strpath}/t000/tmp/t000_BASE_{scheduler}.cmd").read_text()
+            actual = Path(f"{generate_cmds.strpath}/t000/tmp/t000_BASE_{scheduler}.cmd").read_text()
             # Remove all after # Autosubmit header
             # ###################
             # count number of lines in expected

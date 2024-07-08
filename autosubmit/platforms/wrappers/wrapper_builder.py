@@ -237,25 +237,18 @@ processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
             if tasks < processors_per_node:
                 cores = tasks
             job_cores = cores
-            while nodes > 0:
-                while cores > 0:
-                    if len(all_cores) > 0:
-                        node = all_cores.pop(0)
-                        if node:
-                            machines += node +"_NEWLINE_"
-                            cores -= 1
-                        else:
-                            break
-                    # Break the loop if cores is still greater than 0
+            while nodes > 0 and len(all_cores) > 0 and cores > 0:
+                while cores > 0 and len(all_cores) > 0:
+                    node = all_cores.pop(0)
+                    if node:
+                        machines += node +"_NEWLINE_"
+                        cores -= 1
                     else:
                         break
                 for rest in range(processors_per_node-tasks):
                     if len(all_cores) > 0:
                         all_cores.pop(0)
                 nodes -= 1
-                # Break the loop if nodes is still greater than 0
-                if nodes > 0:
-                    break
                 if tasks < processors_per_node:
                     cores = job_cores
         """).format('\n'.ljust(13))
@@ -755,25 +748,18 @@ processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
             if tasks < processors_per_node:
                 cores = tasks
             job_cores = cores
-            while nodes > 0:
-                while cores > 0:
-                    if len(all_cores) > 0:
-                        node = all_cores.pop(0)
-                        if node:
-                            machines += node +"_NEWLINE_"
-                            cores -= 1
-                        else:
-                            break
-                    # Break the loop if cores is still greater than 0
+            while nodes > 0 and len(all_cores) > 0 and cores > 0:
+                while cores > 0 and len(all_cores) > 0:
+                    node = all_cores.pop(0)
+                    if node:
+                        machines += node +"_NEWLINE_"
+                        cores -= 1
                     else:
                         break
                 for rest in range(processors_per_node-tasks):
                     if len(all_cores) > 0:
                         all_cores.pop(0)
                 nodes -= 1
-                # Break the loop if nodes is still greater than 0
-                if nodes > 0:
-                    break
                 if tasks < processors_per_node:
                     cores = job_cores
         """).format('\n'.ljust(13))

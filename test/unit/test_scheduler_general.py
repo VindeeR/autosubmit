@@ -6,10 +6,9 @@ import pwd
 
 from test.unit.utils.common import create_database, init_expid
 
-def get_script_files_path():
-    current_folder = Path(__file__).resolve().parent
-    files_folder = os.path.join(current_folder, 'files')
-    return files_folder
+def _get_script_files_path() -> Path:
+    return Path(__file__).resolve().parent / 'files'
+
 # Maybe this should be a regression test
 
 @pytest.fixture
@@ -142,7 +141,7 @@ JOBS:
     with open(dummy_dir.joinpath('dummy_file'), 'w') as f:
         f.write('dummy data')
     # create some dummy absolute symlinks in expid_dir to test migrate function
-    os.symlink(dummy_dir.joinpath('dummy_file'), real_data.joinpath('dummy_symlink'))
+    (real_data / 'dummy_symlink').symlink_to(dummy_dir / 'dummy_file')
     return scheduler_tmpdir
 
 @pytest.fixture
@@ -151,42 +150,42 @@ def generate_cmds(prepare_scheduler):
     Autosubmit.inspect(expid='t000',check_wrapper=False,force=True, lst=None, filter_chunks=None, filter_status=None, filter_section=None)
     return prepare_scheduler
 
-def test_default_parameters(generate_cmds):
+@pytest.mark.parametrize("scheduler", ['pjm', 'slurm', 'ecaccess', 'ps'])
+def test_default_parameters(scheduler: str, generate_cmds):
     """
     Test that the default parameters are correctly set in the scheduler files. It is a comparasion line to line, so the new templates must match the same line order as the old ones. Additional default parameters must be filled in the files/base_{scheduler}.yml as well as any change in the order
     :param generate_cmds: fixture that generates the templates.
     :return:
     """
-    # Get all expected default parameters from files/base_{scheduler}.yml
-    schedulers_to_test = ['pjm', 'slurm', 'ecaccess', 'ps']
+
     # Load the base file for each scheduler
-    files_folder = get_script_files_path()
-    default_data = {}
-    for base_f in Path(files_folder).glob('base_*.cmd'):
-        name = base_f.stem.split('_')[1].upper()
-        default_data[name] = Path(base_f).read_text()
-    for scheduler in schedulers_to_test:
-        scheduler = scheduler.upper()
-        # Get the expected default parameters for the scheduler
-        expected = default_data[scheduler]
-        # Get the actual default parameters for the scheduler
-        actual = Path(f"{generate_cmds.strpath}/t000/tmp/t000_BASE_{scheduler}.cmd").read_text()
-        # Remove all after # Autosubmit header
-        # ###################
-        # count number of lines in expected
-        expected_lines = expected.split('\n')
-        actual = actual.split('\n')[:len(expected_lines)]
-        actual = '\n'.join(actual)
-        # Compare line to line
-        for i, (line1, line2) in enumerate(zip(expected.split('\n'), actual.split('\n'))):
-            if "PJM -o" in line1 or "PJM -e" in line1 or "#SBATCH --output" in line1 or "#SBATCH --error" in line1: # output error will be different
-                continue
-            elif "##" in line1 or "##" in line2: # comment line
-                continue
-            elif "header" in line1 or "header" in line2: # header line
-                continue
-            else:
-                assert line1 == line2
+    scheduler = scheduler.upper()
+    expected_data = {}
+    for base_f in _get_script_files_path().glob('base_*.cmd'):
+        if scheduler in base_f.stem.split('_')[1].upper():
+            expected_data = Path(base_f).read_text()
+            break
+    if not expected_data:
+        raise NotImplemented
+
+    # Get the actual default parameters for the scheduler
+    actual = Path(f"{generate_cmds.strpath}/t000/tmp/t000_BASE_{scheduler}.cmd").read_text()
+    # Remove all after # Autosubmit header
+    # ###################
+    # count number of lines in expected
+    expected_lines = expected_data.split('\n')
+    actual = actual.split('\n')[:len(expected_lines)]
+    actual = '\n'.join(actual)
+    # Compare line to line
+    for i, (line1, line2) in enumerate(zip(expected_data.split('\n'), actual.split('\n'))):
+        if "PJM -o" in line1 or "PJM -e" in line1 or "#SBATCH --output" in line1 or "#SBATCH --error" in line1: # output error will be different
+            continue
+        elif "##" in line1 or "##" in line2: # comment line
+            continue
+        elif "header" in line1 or "header" in line2: # header line
+            continue
+        else:
+            assert line1 == line2
 
 
 

@@ -162,6 +162,13 @@ class JobList(object):
                         job.delete_when_edgeless).casefold() == "true".casefold():
                     self._job_list.remove(job)
                     self.graph.remove_node(job.name)
+    @staticmethod
+    def check_split_set_to_auto(as_conf):
+        # If this is true, the workflow needs to be recreated on create
+        for job_name, values in as_conf.experiment_data.get("JOBS",{}).items():
+            if values.get("SPLITS", None) == "auto":
+                return True
+        return False
 
     def generate(self, as_conf, date_list, member_list, num_chunks, chunk_ini, parameters, date_format,
                  default_retrials,
@@ -198,6 +205,8 @@ class JobList(object):
         :param monitor: monitor
         :type monitor: bool
         """
+        if create and self.check_split_set_to_auto(as_conf):
+            force = True
         if force:
             Log.debug("Resetting the workflow graph to a zero state")
             if os.path.exists(os.path.join(self._persistence_path, self._persistence_file + ".pkl")):
@@ -433,6 +442,7 @@ class JobList(object):
                     self.graph.nodes.get(job.name)["job"] = job
                 if dependencies and changes:
                     job = self.graph.nodes.get(job.name)['job']
+                    ## Adds the dependencies to the job, and if not possible, adds the job to the problematic_dependencies
                     problematic_dependencies = self._manage_job_dependencies(dic_jobs, job, date_list, member_list, chunk_list,
                                                   dependencies_keys,
                                                   dependencies, self.graph)
@@ -538,7 +548,7 @@ class JobList(object):
         return final_values
 
     @staticmethod
-    def _parse_filter_to_check(value_to_check, value_list=[], level_to_check="DATES_FROM"):
+    def _parse_filter_to_check(value_to_check, value_list=[], level_to_check="DATES_FROM", splits=None):
         """
         Parse the filter to check and return the value to check.
         Selection process:
@@ -551,6 +561,13 @@ class JobList(object):
         :return: parsed value to check.
         """
         step = 1
+        if "SPLITS" in level_to_check:
+            if "auto" in value_to_check:
+                value_to_check = value_to_check.replace("auto", str(splits))
+            elif "-1" in value_to_check:
+                value_to_check = value_to_check.replace("-1", str(splits))
+            elif "last" in value_to_check:
+                value_to_check = value_to_check.replace("last", str(splits))
         if value_to_check.count(":") == 1:
             # range
             if value_to_check[1] == ":":
@@ -757,10 +774,10 @@ class JobList(object):
 
         filters_to_apply = self._check_relationship(relationships, "SPLITS_FROM", current_job.split)
         # No more FROM sections to check, unify _to FILTERS and return
-        filters_to_apply = self._unify_to_filters(filters_to_apply)
+        filters_to_apply = self._unify_to_filters(filters_to_apply, current_job.splits)
         return filters_to_apply
 
-    def _unify_to_filter(self, unified_filter, filter_to, filter_type):
+    def _unify_to_filter(self, unified_filter, filter_to, filter_type, splits = None):
         """
         Unify filter_to filters into a single dictionary
         :param unified_filter: Single dictionary with all filters_to
@@ -796,7 +813,7 @@ class JobList(object):
                     parsed_element = re.findall(r"([\[:\]a-zA-Z0-9._-]+)", element)[0].lower()
                     extra_data = element[len(parsed_element):]
                     parsed_element = JobList._parse_filter_to_check(parsed_element, value_list=value_list,
-                                                                    level_to_check=filter_type)
+                                                                    level_to_check=filter_type, splits=splits)
                     # convert list to str
                     skip = False
                     if isinstance(parsed_element, list):
@@ -839,7 +856,7 @@ class JobList(object):
             if "," in filter_to[filter_type][0]:
                 filter_to[filter_type] = filter_to[filter_type][1:]
 
-    def _unify_to_filters(self, filter_to_apply):
+    def _unify_to_filters(self, filter_to_apply, splits = None):
         """
         Unify all filter_to filters into a single dictionary ( of current selection )
         :param filter_to_apply: Filters to apply
@@ -855,7 +872,7 @@ class JobList(object):
                 self._unify_to_filter(unified_filter, filter_to, "DATES_TO")
                 self._unify_to_filter(unified_filter, filter_to, "MEMBERS_TO")
                 self._unify_to_filter(unified_filter, filter_to, "CHUNKS_TO")
-                self._unify_to_filter(unified_filter, filter_to, "SPLITS_TO")
+                self._unify_to_filter(unified_filter, filter_to, "SPLITS_TO", splits=splits)
 
         JobList._normalize_to_filters(unified_filter, "DATES_TO")
         JobList._normalize_to_filters(unified_filter, "MEMBERS_TO")
@@ -1064,7 +1081,7 @@ class JobList(object):
                     elif not self.actual_job_depends_on_previous_chunk:
                         graph.add_edge(parent.name, job.name)
                     elif not self.actual_job_depends_on_special_chunk and self.actual_job_depends_on_previous_chunk:
-                        if job.running == "chunk" and job.chunk == 1:
+                        if job.running == "chunk" and job.chunk == 1 or job.running == "member" and parent.running == "member" or job.running == "chunk" and parent.running == "chunk":
                             graph.add_edge(parent.name, job.name)
             else:
                 if job.section == parent.section:
@@ -1205,7 +1222,7 @@ class JobList(object):
         :param graph: Graph
         :return: problematic_dependencies
         """
-        # self.depends_on_previous_chunk = dict()
+        # Initialize variables
         depends_on_previous_section = set()
         distances_of_current_section = {}
         distances_of_current_section_member = {}
@@ -1219,7 +1236,7 @@ class JobList(object):
         depends_on_itself = None
         if not job.splits:
             child_splits = 0
-        else:
+        elif job.splits != "auto":
             child_splits = int(job.splits)
         parsed_date_list = []
         for dat in date_list:
@@ -1312,6 +1329,7 @@ class JobList(object):
                 if aux_key in distances_of_current_section_member:
                     if distance > distances_of_current_section_member[aux_key]:
                         distances_of_current_section_member[aux_key] = distance
+        ### Adding the dependency to the graph if possible
         sections_to_calculate = [key for key in dependencies_keys_aux if key not in dependencies_to_del]
         natural_sections = list()
         # Parse first sections with special filters if any
@@ -1328,6 +1346,7 @@ class JobList(object):
             filters_to_apply.pop("FROM_STEP", None)
             if len(filters_to_apply) > 0:
                 dependencies_of_that_section = dic_jobs.as_conf.jobs_data[dependency.section].get("DEPENDENCIES", {})
+                ## Adds the dependencies to the job, and if not possible, adds the job to the problematic_dependencies
                 special_dependencies, problematic_dependencies = self._calculate_filter_dependencies(filters_to_apply, dic_jobs, job, dependency, date, member, chunk,
                                                   graph,
                                                   dependencies_keys_without_special_chars,
@@ -1356,7 +1375,7 @@ class JobList(object):
                     key_aux_stripped = key_aux_stripped.split("+")[0]
 
                 dependencies_of_that_section.append(key_aux_stripped)
-
+            ## Adds the dependencies to the job, and if not possible, adds the job to the problematic_dependencies
             problematic_dependencies = self._calculate_natural_dependencies(dic_jobs, job, dependency, date,
                                                member, chunk, graph,
                                                dependencies_keys_without_special_chars,
@@ -1860,7 +1879,7 @@ class JobList(object):
         """
         unsubmitted = [job for job in self._job_list if (platform is None or job.platform.name == platform.name) and
                        (
-                               job.status != Status.SUBMITTED and job.status != Status.QUEUING and job.status == Status.RUNNING and job.status == Status.COMPLETED)]
+                               job.status != Status.SUBMITTED and job.status != Status.QUEUING and job.status != Status.RUNNING)]
 
         if wrapper:
             return [job for job in unsubmitted if job.packed is False]

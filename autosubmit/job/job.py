@@ -258,7 +258,7 @@ class Job(object):
         # hetjobs
         self.het = {'HETSIZE': 0}
         self.parameters = dict()
-        self._tasks = '1'
+        self._tasks = '0'
         self._nodes = ""
         self.default_parameters = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
                               'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
@@ -1606,7 +1606,7 @@ class Job(object):
         self.nodes = job_data.get("NODES",platform_data.get("NODES",""))
         self.exclusive = job_data.get("EXCLUSIVE",platform_data.get("EXCLUSIVE",False))
         self.threads = job_data.get("THREADS",platform_data.get("THREADS","1"))
-        self.tasks = job_data.get("TASKS",platform_data.get("TASKS","1"))
+        self.tasks = job_data.get("TASKS",platform_data.get("TASKS","0"))
         self.reservation = job_data.get("RESERVATION",as_conf.platforms_data.get(job_platform.name, {}).get("RESERVATION", ""))
         self.hyperthreading = job_data.get("HYPERTHREADING",platform_data.get("HYPERTHREADING","none"))
         self.queue = job_data.get("QUEUE",platform_data.get("QUEUE",""))
@@ -1700,7 +1700,8 @@ class Job(object):
                 jobs_in_wrapper = jobs_in_wrapper.split(" ")
             if self.section.upper() in jobs_in_wrapper:
                 self.retrials = wrapper_data.get("RETRIALS", self.retrials)
-        self.splits = as_conf.jobs_data.get(self.section,{}).get("SPLITS", None)
+        if not self.splits:
+            self.splits = as_conf.jobs_data.get(self.section,{}).get("SPLITS", None)
         self.delete_when_edgeless = as_conf.jobs_data.get(self.section,{}).get("DELETE_WHEN_EDGELESS", True)
         self.dependencies = str(as_conf.jobs_data.get(self.section,{}).get("DEPENDENCIES",""))
         self.running = as_conf.jobs_data.get(self.section,{}).get("RUNNING", "once")
@@ -1880,7 +1881,8 @@ class Job(object):
         parameters['MEMBER'] = self.member
         parameters['SPLIT'] = self.split
         parameters['SHAPE'] = self.shape
-        parameters['SPLITS'] = self.splits
+        if parameters.get('SPLITS', "auto") == "auto":
+            parameters['SPLITS'] = self.splits
         parameters['DELAY'] = self.delay
         parameters['FREQUENCY'] = self.frequency
         parameters['SYNCHRONIZE'] = self.synchronize

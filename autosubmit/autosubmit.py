@@ -1241,7 +1241,7 @@ class Autosubmit:
         return content
 
     @staticmethod
-    def as_conf_default_values(exp_id,hpc="local",minimal_configuration=False,git_repo="",git_branch="main",git_as_conf=""):
+    def as_conf_default_values(exp_id, hpc, minimal_configuration=False, git_repo="", git_branch="main", git_as_conf=""):
         """
         Replace default values in as_conf files
         :param exp_id: experiment id
@@ -1252,15 +1252,18 @@ class Autosubmit:
         :param git_as_conf: path to as_conf file in git repository
         :return: None
         """
+        # the var hpc was hardcoded in the header of the function
+        hpc_default = "local"
+
         # open and replace values
-        for as_conf_file in os.listdir(os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id,"conf")):
+        for as_conf_file in os.listdir(Path(BasicConfig.LOCAL_ROOT_DIR) / exp_id / "conf"):
             if as_conf_file.endswith(".yml") or as_conf_file.endswith(".yaml"):
-                with open(os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id,"conf", as_conf_file), 'r') as f:
+                with open(Path(BasicConfig.LOCAL_ROOT_DIR) / exp_id / "conf" / as_conf_file, 'r') as f:
                     # Copied files could not have default names.
                     content = f.read()
                     search = re.search('AUTOSUBMIT_VERSION: .*', content, re.MULTILINE)
                     if search is not None:
-                        content = content.replace(search.group(0), "AUTOSUBMIT_VERSION: \""+Autosubmit.autosubmit_version+"\"")
+                        content = content.replace(search.group(0), f"AUTOSUBMIT_VERSION: \"{Autosubmit.autosubmit_version}\"")
                     search = re.search('NOTIFICATIONS: .*', content, re.MULTILINE)
                     if search is not None:
                         content = content.replace(search.group(0),"NOTIFICATIONS: False")
@@ -1270,21 +1273,30 @@ class Autosubmit:
                     content = Autosubmit.replace_parameter_inside_section(content, "EXPID", exp_id, "DEFAULT")
                     search = re.search('HPCARCH: .*', content, re.MULTILINE)
                     if search is not None:
-                        content = content.replace(search.group(0),"HPCARCH: \""+hpc+"\"")
+                        x = search.group(0).split(":")
+                        # clean blank space, quotes and double quote
+                        aux = x[1].strip(' "\'')
+                        # hpc in config is empty && -H is empty-> hpc_default will be introduced
+                        if len(aux) == 0 and not hpc:
+                            content = content.replace(search.group(0), f"HPCARCH: \"{hpc_default}\"")
+                        # hpc in config is empty && -H has a value-> write down hpc value
+                        elif len(aux) == 0 :
+                            content = content.replace(search.group(0), f"HPCARCH: \"{hpc}\"")
+                        ## the other case is aux!=0 that we dont care about val(hpc) because its a copyExpId
                     if minimal_configuration:
                         search = re.search('CUSTOM_CONFIG: .*', content, re.MULTILINE)
                         if search is not None:
                             content = content.replace(search.group(0), "CUSTOM_CONFIG: \"%PROJDIR%/"+git_as_conf+"\"")
                         search = re.search('PROJECT_ORIGIN: .*', content, re.MULTILINE)
                         if search is not None:
-                            content = content.replace(search.group(0), "PROJECT_ORIGIN: \""+git_repo+"\"")
+                            content = content.replace(search.group(0), f"PROJECT_ORIGIN: \"{git_repo}\"")
                         search = re.search('PROJECT_PATH: .*', content, re.MULTILINE)
                         if search is not None:
-                            content = content.replace(search.group(0), "PROJECT_PATH: \""+git_repo+"\"")
+                            content = content.replace(search.group(0), f"PROJECT_PATH: \"{git_repo}\"")
                         search = re.search('PROJECT_BRANCH: .*', content, re.MULTILINE)
                         if search is not None:
-                            content = content.replace(search.group(0), "PROJECT_BRANCH: \""+git_branch+"\"")
-                with open(os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id,"conf", as_conf_file), 'w') as f:
+                            content = content.replace(search.group(0), f"PROJECT_BRANCH: \"{git_branch}\"")
+                with open(Path(BasicConfig.LOCAL_ROOT_DIR) / exp_id / "conf" / as_conf_file, 'w') as f:
                     f.write(content)
 
     @staticmethod
@@ -1473,6 +1485,7 @@ class Autosubmit:
          :rtype: bool
          """
         try:
+            Log.info(f"Inspecting experiment {expid}")
             Autosubmit._check_ownership(expid, raise_error=True)
             exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
             tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
@@ -3341,8 +3354,11 @@ class Autosubmit:
             experiments_ids = []
             basic_conf = BasicConfig()
             for f in Path(basic_conf.LOCAL_ROOT_DIR).glob("????"):
-                if f.is_dir() and f.owner() == get_from_user:
-                    experiments_ids.append(f.name)
+                try:
+                    if f.is_dir() and f.owner() == get_from_user:
+                        experiments_ids.append(f.name)
+                except:
+                    pass # if it reachs there it means that f.owner() doesn't exist anymore( owner is an id) so we just skip it and continue
         else:
             experiments_ids = experiments_ids.split(' ')
         for experiment_id in experiments_ids:
@@ -3359,6 +3375,7 @@ class Autosubmit:
                 except Exception as e:
                     Log.warning(
                         "The user does not exist anymore in the system, using id instead")
+                    continue
 
                 created = datetime.datetime.fromtimestamp(
                     os.path.getmtime(as_conf.conf_folder_yaml))
@@ -4663,6 +4680,7 @@ class Autosubmit:
         :return: True if successful, False if not
         :rtype: bool
         """
+
 
         project_destination = as_conf.get_project_destination()
         if project_destination is None or len(project_destination) == 0:

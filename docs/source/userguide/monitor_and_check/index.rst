@@ -488,7 +488,7 @@ The following command could be adopted to generate the plots for visualizing the
 Options:
 ::
 
-    usage: autosubmit stats [-h] [-ft] [-fp] [-o {pdf,png,ps,svg}] expid
+    usage: autosubmit stats [-h] [-ft] [-fp] [-o {pdf,png,ps,svg}] [-ss] [-js] [--hide] [-nt] [-v] [-db] expid
 
       expid                 experiment identifier
 
@@ -500,6 +500,9 @@ Options:
                             from current time to the past in number of hours back
       -o {pdf,png,ps,svg}, --output {pdf,png,ps,svg}
                             type of output for generated plot
+      -ss, --section_summary
+                            Includes section summary in the plot
+      -js, --jobs_summary   Includes jobs summary in the plot
       --hide,               hide the plot
       -nt                   --notransitive
                                 prevents doing the transitive reduction when plotting the workflow
@@ -514,6 +517,16 @@ The location where user can find the generated plots with date and timestamp can
 ::
 
     <experiments_directory>/cxxx/plot/cxxx_statistics_<date>_<time>.pdf
+
+For including the summaries:
+::
+
+        autosubmit stats -ss -js cxxx
+The location will be the same as the bar diagram plot:
+::
+
+        <experiments_directory>/cxxx/stats/cxxx_section_summary_<date>_<time>.pdf
+        <experiments_directory>/cxxx/stats/cxxx_jobs_summary_<date>_<time>.pdf
 
 Console output description
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -560,6 +573,30 @@ The main `stats` output is a bar diagram. On this diagram, each job presents the
 - Max wallclock (h): Maximum wallclock value for all jobs in the plot.
 
 Notice that the left scale of the diagram measures the time in hours, and the right scale measures the number of attempts.
+
+Summaries output description
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Section summary**
+
+For each section, the following values are presented:
+
+- Count: Number of completed or running jobs.
+- Queue Sum (h): Sum of time spent queuing for completed or running jobs, in hours.
+- Avg Queue (h): Average time spent queuing for completed or running jobs, in hours.
+- Run Sum (h): Sum of time spent running for completed or running jobs, in hours.
+- Avg Run (h): Average time spent running for completed or running jobs, in hours.
+
+Besides, CSV files are generated with the same information.
+
+**Jobs summary**
+
+For each job completed or running, the following values are presented:
+
+- Queue Time (h): Time spent queuing for the job, in hours.
+- Run Time (h): Time spent running for the job, in hours.
+- Status: Status of the job.
+
+Besides, CSV files are generated with the same information.
 
 Custom statistics
 ~~~~~~~~~~~~~~~~~

@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 import time
 
-import pytest  # TODO: need to import something or add to project requirements?
-from typing import List, Any
+import pytest
+from typing import List, Any, Tuple
 from random import seed, randint, choice
 
 from pyparsing import Dict
@@ -20,7 +20,81 @@ NUM_JOBS = 1000  # modify this value to test with different job number
 MAX_NUM_RETRIALS_PER_JOB = 20  # modify this value to test with different retrials number
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
+def job_with_different_retrials():
+    job_aux = Job(name="example_name", job_id="example_id", status="COMPLETED", priority=0)
+    job_aux.processors = "1"
+    job_aux.wallclock = '00:05'
+    job_aux.section = "example_section"
+    job_aux.member = "example_member"
+    job_aux.chunk = "example_chunk"
+    job_aux.processors_per_node = "1"
+    job_aux.tasks = "1"
+    job_aux.nodes = "1"
+    job_aux.exclusive = "example_exclusive"
+    job_aux.retrials = 7
+
+    retrials = [
+        [
+            datetime(2024, 3, 2, 15, 24, 16),
+            datetime(2024, 3, 2, 15, 26, 14),
+            datetime(2024, 3, 3, 00, 10, 7),
+            "COMPLETED"
+        ],
+        [
+            datetime(2024, 3, 2, 15, 17, 31),
+            datetime(2024, 3, 2, 15, 23, 45),
+            datetime(2024, 3, 2, 15, 24, 45),
+            "FAILED"
+        ],
+        [
+            datetime(2024, 3, 2, 15, 17, 31),
+            datetime(1970, 1, 1, 2, 00, 00),
+            datetime(2024, 3, 2, 15, 23, 45),
+            "FAILED"
+        ],
+        [
+            datetime(2024, 3, 2, 15, 17, 31),
+            datetime(2024, 3, 2, 15, 23, 45),
+            datetime(1970, 1, 1, 2, 00, 00),
+            "FAILED"
+        ],
+        [
+            datetime(2024, 3, 2, 15, 17, 31),
+            datetime(2024, 3, 2, 15, 23, 45),
+            "FAILED"
+        ],
+        [
+            datetime(2024, 3, 2, 15, 17, 31),
+            datetime(1970, 1, 1, 2, 00, 00),
+            "FAILED"
+        ],
+        [
+            datetime(2024, 3, 2, 15, 17, 31),
+            "FAILED"
+        ]
+    ]
+    job_aux.get_last_retrials = lambda: retrials
+
+    job_stat_aux = JobStat("example_name", 1, float(5)/60, "example_section",
+                           "example_date", "example_member", "example_chunk", "1",
+                           "1", "1", "example_exclusive")
+
+    job_stat_aux.submit_time = retrials[len(retrials) - 1][0]
+    job_stat_aux.start_time = None
+    job_stat_aux.finish_time = None
+    job_stat_aux.completed_queue_time = timedelta(seconds=118)
+    job_stat_aux.completed_run_time = timedelta(seconds=31433)
+    job_stat_aux.failed_queue_time = timedelta(seconds=374) * 3 + timedelta() * 2
+    job_stat_aux.failed_run_time = timedelta(seconds=60) + timedelta(days=19784, seconds=48225) + timedelta()
+    job_stat_aux.retrial_count = 7
+    job_stat_aux.completed_retrial_count = 1
+    job_stat_aux.failed_retrial_count = 6
+
+    return [job_aux], job_stat_aux
+
+
+@pytest.fixture()
 def jobs_instances():
     # type: () -> List[Job]
     jobs = []
@@ -70,13 +144,13 @@ def jobs_instances():
                     else:
                         retrial[3] = job_aux.status
             retrials.append(retrial)
-        job_aux.get_last_retrials = lambda: retrials  # override get_last_retrials method, similar to mock
+        job_aux.get_last_retrials = lambda: retrials
         jobs.append(job_aux)
 
     return jobs
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def job_stats_instance():
     # type: () -> List[JobStat]
     job_stats_list = []
@@ -99,7 +173,7 @@ def job_stats_instance():
     return job_stats_list
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def statistics_instance(jobs_instances, job_stats_instance):
     # type: (List[Job], List[JobStat]) -> Statistics
     stats = Statistics(jobs=jobs_instances, start=datetime(2023, 1, 1, 10, 0, 0),
@@ -122,7 +196,7 @@ def statistics_instance(jobs_instances, job_stats_instance):
     "failed_cpu_consumption": sum(timedelta2hours(i * timedelta()) for i in range(NUM_JOBS)),
     "total_queue_time": sum(timedelta2hours(timedelta() + timedelta()) for _ in range(NUM_JOBS)),
     "cpu_consumption_percentage": 0.0
-}], scope="function")
+}])
 def summary_instance(request):
     summary = StatsSummary()
     data = request.param
@@ -141,27 +215,27 @@ def summary_instance(request):
     return summary
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def summary_instance_as_list(summary_instance):
     # type: (StatsSummary) -> List[str]
     return [
         "Summary: ",
-        "{}  :  {}".format("CPU Consumption Percentage", str(summary_instance.cpu_consumption_percentage) + "%"),
-        "{}  :  {:,} hrs.".format("Total Queue Time", round(summary_instance.total_queue_time, 2)),
-        "{}  :  {:,}".format("Submitted Count", summary_instance.submitted_count),
-        "{}  :  {:,}".format("Run Count", summary_instance.run_count),
-        "{}  :  {:,}".format("Completed Count", summary_instance.completed_count),
-        "{}  :  {:,}".format("Failed Count", summary_instance.failed_count),
-        "{}  :  {:,} hrs.".format("Expected Consumption", round(summary_instance.expected_consumption, 4)),
-        "{}  :  {:,} hrs.".format("Real Consumption", round(summary_instance.real_consumption, 4)),
-        "{}  :  {:,} hrs.".format("Failed Real Consumption", round(summary_instance.failed_real_consumption, 4)),
-        "{}  :  {:,} hrs.".format("Expected CPU Consumption", round(summary_instance.expected_cpu_consumption, 4)),
-        "{}  :  {:,} hrs.".format("CPU Consumption", round(summary_instance.cpu_consumption, 4)),
-        "{}  :  {:,} hrs.".format("Failed CPU Consumption", round(summary_instance.failed_cpu_consumption, 4))
+        "CPU Consumption Percentage  :  " + "{}".format(str(summary_instance.cpu_consumption_percentage) + "%"),
+        "Total Queue Time  :  " + "{:,}".format((round(summary_instance.total_queue_time, 2))) + " hrs.",
+        "Submitted Count  :  " + "{:,}".format(summary_instance.submitted_count),
+        "Run Count  :  " + "{:,}".format(summary_instance.run_count),
+        "Completed Count  :  " + "{:,}".format(summary_instance.completed_count),
+        "Failed Count  :  " + "{:,}".format(summary_instance.failed_count),
+        "Expected Consumption  :  " + "{:,}".format(round(summary_instance.expected_consumption, 4)) + " hrs.",
+        "Real Consumption  :  " + "{:,}".format(round(summary_instance.real_consumption, 4)) + " hrs.",
+        "Failed Real Consumption  :  " + "{:,}".format(round(summary_instance.failed_real_consumption, 4)) + " hrs.",
+        "Expected CPU Consumption  :  " + "{:,}".format(round(summary_instance.expected_cpu_consumption, 4)) + " hrs.",
+        "CPU Consumption  :  " + "{:,}".format(round(summary_instance.cpu_consumption, 4)) + " hrs.",
+        "Failed CPU Consumption  :  " + "{:,}".format(round(summary_instance.failed_cpu_consumption, 4)) + " hrs."
     ]
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def make_old_format_instance():
     # type: () -> Dict[str, Any]
     return_dict = {}
@@ -185,7 +259,7 @@ def make_old_format_instance():
     return return_dict
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def failed_jobs_only_list_instance(job_stats_instance):
     failed_jobs_only_list = [i for i in range(NUM_JOBS)]
     return_dict = {}
@@ -207,36 +281,25 @@ def test_working_functions(jobs_instances):
     exp_stats.build_failed_jobs_only_list()
 
 
-def test_calculate_statistics(statistics_instance, jobs_instances):
-    # type: (Statistics, List[Job]) -> None
-    stats = statistics_instance
-    job_list = jobs_instances
-    job_stats = stats.calculate_statistics()
+def test_calculate_statistics(statistics_instance, job_with_different_retrials):
+    # type: (Statistics, Tuple[List[Job], JobStat]) -> None
+    statistics_instance._jobs = job_with_different_retrials[0]
 
-    assert len(job_stats) == len(job_list)
-    for index, job_stat in enumerate(job_stats):
-        original_retrials = job_list[index].get_last_retrials()
-        last_retrial = original_retrials[(len(original_retrials) - 1)]
+    job_stats = statistics_instance.calculate_statistics()
 
-        assert job_stat.retrial_count == len(original_retrials)
-        assert job_stat.completed_retrial_count == len(
-            [retrial for retrial in original_retrials
-             if len(retrial) == 4 and retrial[3] == "COMPLETED"])
-
-        assert job_stat.failed_retrial_count == len(
-            [retrial for retrial in original_retrials
-             if (len(retrial) == 4 and retrial[3] != "COMPLETED")
-             or (len(retrial) < 4)])
-
-        assert job_stat.submit_time == (
-            last_retrial[0] if (len(last_retrial) == 4 or len(last_retrial) == 3 or len(last_retrial) == 2) else None)
-        assert job_stat.start_time == (last_retrial[1] if (len(last_retrial) == 4 or len(last_retrial) == 3) else None)
-        assert job_stat.finish_time == (last_retrial[2] if (len(last_retrial) == 4) else None)
-
-        # TODO: by making retrials creation random it is "imposible" to predict the results of:
-        # TODO: completed_queue_time, completed_run_time, failed_queue_time, failed_run_time
-        # TODO: idea, remove randomness and create a fixed dataset dependending on a constant, easier to test
-
+    # Times
+    assert job_stats[0].submit_time == job_with_different_retrials[1].submit_time
+    assert job_stats[0].start_time == job_with_different_retrials[1].start_time
+    assert job_stats[0].finish_time == job_with_different_retrials[1].finish_time
+    # Retrials
+    assert job_stats[0].retrial_count == job_with_different_retrials[1].retrial_count
+    assert job_stats[0].completed_retrial_count == job_with_different_retrials[1].completed_retrial_count
+    assert job_stats[0].failed_retrial_count == job_with_different_retrials[1].failed_retrial_count
+    # Queue/run times
+    assert job_stats[0].completed_queue_time == job_with_different_retrials[1].completed_queue_time
+    assert job_stats[0].completed_run_time == job_with_different_retrials[1].completed_run_time
+    assert job_stats[0].failed_queue_time == job_with_different_retrials[1].failed_queue_time
+    assert job_stats[0].failed_run_time == job_with_different_retrials[1].failed_run_time
 
 
 def test_calculate_summary(statistics_instance, summary_instance):

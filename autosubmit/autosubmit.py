@@ -2818,13 +2818,17 @@ class Autosubmit:
             pkl_folder_path = os.path.join(exp_path, "pkl")
             current_pkl_path = os.path.join(
                 pkl_folder_path, "job_list_{}.pkl".format(expid))
-            if os.path.exists(current_pkl_path):
-                # stat < 6 bytes -> remove
-                _stat = os.stat(current_pkl_path)
-                if _stat.st_size <= 6:
-                    os.remove(current_pkl_path)
-                    Log.info("The pkl file {} is empty. It will be removed.".format(current_pkl_path))
-                    Autosubmit.pkl_fix(expid)
+
+            try:
+                Log.info("Removing job_data db...")
+                job_data_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, BasicConfig.JOBDATA_DIR,
+                                             "job_data_{0}.db".format(expid))
+                # Delete job_data if 0 bytes
+                if os.path.exists(job_data_path) and os.stat(job_data_path).st_size <= 6:
+                    Log.info("job_data db is corrupted. It will be removed.")
+                    os.remove(job_data_path)
+            except BaseException as e:
+                Log.warning("Error removing job_data db: {0}, please remove it manually".format(e.message))
             as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
             as_conf.check_conf_files(True)
 

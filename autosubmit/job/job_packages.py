@@ -113,9 +113,9 @@ class JobPackageBase(object):
                 Log.warning("On submission script has  some empty variables")
             else:
                 Log.result("Script {0} OK", job.name)
-            # lock.acquire()
-            # job.update_parameters(configuration, parameters)
-            # lock.release()
+            lock.acquire()
+            job.update_parameters(configuration, parameters)
+            lock.release()
             # looking for directives on jobs
             self._custom_directives = self._custom_directives | set(job.custom_directives)
     @threaded
@@ -150,7 +150,7 @@ class JobPackageBase(object):
         try:
             # get one job of each section jobs by section
             if only_generate:
-                if hasattr(configuration, 'current_wrapper_section'):
+                if hasattr(self, 'current_wrapper_section'):
                     sections = configuration.get_wrapper_jobs(self.current_wrapper_section)
                     if "&" in sections:
                         sections.split("&")

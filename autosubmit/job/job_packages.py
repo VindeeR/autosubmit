@@ -24,6 +24,7 @@ except ImportError:
     # noinspection PyCompatibility
     from ConfigParser import SafeConfigParser
 
+import multiprocessing
 import os
 import random
 import time
@@ -37,7 +38,6 @@ from autosubmit.job.job import Job
 from bscearth.utils.date import sum_str_hours
 from threading import Thread, Lock
 from typing import List
-import multiprocessing
 import tarfile
 import datetime
 import re
@@ -101,18 +101,18 @@ class JobPackageBase(object):
             if str(job.check).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
                 if only_generate:
                     break
-                if not os.path.exists(os.path.join(configuration.get_project_dir(), job.file)):
-                    lock.acquire()
-                    if str(configuration.get_project_type()).lower() != "none":
-                        raise AutosubmitCritical(
-                            "Template [ {0} ] using CHECK=On_submission has some empty variable {0}".format(
-                                job.name), 7014)
-                    lock.release()
-                if not job.check_script(configuration, parameters, show_logs=job.check_warnings):
-                    Log.warning("Script {0} check failed", job.name)
-                    Log.warning("On submission script has  some empty variables")
-                else:
-                    Log.result("Script {0} OK", job.name)
+            if not os.path.exists(os.path.join(configuration.get_project_dir(), job.file)):
+                lock.acquire()
+                if str(configuration.get_project_type()).lower() != "none":
+                    raise AutosubmitCritical(
+                        "Template [ {0} ] using CHECK=On_submission has some empty variable {0}".format(
+                            job.name), 7014)
+                lock.release()
+            if not job.check_script(configuration, parameters, show_logs=job.check_warnings):
+                Log.warning("Script {0} check failed", job.name)
+                Log.warning("On submission script has  some empty variables")
+            else:
+                Log.result("Script {0} OK", job.name)
             lock.acquire()
             job.update_parameters(configuration, parameters)
             lock.release()
@@ -137,6 +137,7 @@ class JobPackageBase(object):
         """
         exit=False
         thread_number = multiprocessing.cpu_count()
+        #thread_number = 1
         if len(self.jobs) > 2500:
             thread_number = thread_number * 2
         elif len(self.jobs) > 5000:
@@ -149,7 +150,6 @@ class JobPackageBase(object):
         try:
             # get one job of each section jobs by section
             if only_generate:
-                # has self.current_wrapper_section attr
                 if hasattr(self, 'current_wrapper_section'):
                     sections = configuration.get_wrapper_jobs(self.current_wrapper_section)
                     if "&" in sections:
@@ -158,9 +158,11 @@ class JobPackageBase(object):
                         sections.split(" ")
                     else:
                         sections = [sections]
-                    for section in sections:
-                        if str(configuration._jobs_parser.get_option(section, "CHECK", 'True')).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
-                            exit = True
+                else:
+                    sections = [self.jobs[0].section]
+                for section in sections:
+                    if str(configuration._jobs_parser.get_option(section, "CHECK", 'True')).lower() == str(Job.CHECK_ON_SUBMISSION).lower():
+                        exit = True
             if not exit:
                 if len(self.jobs) < thread_number:
                     for job in self.jobs:
@@ -185,8 +187,12 @@ class JobPackageBase(object):
         except BaseException as e:
             original = e
             if not exit:
-                raise AutosubmitCritical(
-                    "Error on {1}, template [{0}] still does not exists in running time(check=on_submission actived)\n{2} ".format(self.jobs[0].file,self.jobs[0].name,e), 7014)
+                if not os.path.exists(os.path.join(configuration.get_project_dir(), self.jobs[0].file)) and str(configuration.get_project_type()).lower() != "none":
+                    raise AutosubmitCritical(
+                        "Error on {1}, template [{0}] still does not exists in running time(check=on_submission actived)\n{2} ".format(self.jobs[0].file,self.jobs[0].name,e), 7014)
+                else:
+                    raise AutosubmitCritical("Error in Custom_directives of {0} \n{1}, Check if it format is correct and there are no extra commas".format(self.jobs[0].section,e),7014)
+
             else:
                 raise AutosubmitCritical(original,7014)
         Log.debug("Creating Scripts")

@@ -28,7 +28,7 @@ import os
 import pickle
 import traceback
 import math
-
+import copy
 from time import localtime, strftime, mktime
 from shutil import move
 from autosubmit.job.job import Job
@@ -584,17 +584,19 @@ class JobList(object):
         for section in sections_running_type_map:
             sections_to_filter += section
 
-        filtered_jobs_list = filter(lambda job: job.section in sections_running_type_map, self._job_list)
+        filtered_jobs_list = [ job for job in self._job_list if job.section in sections_running_type_map]
+        #filtered_jobs_list = filter(lambda job: job.section in sections_running_type_map, self._job_list)
 
         filtered_jobs_fake_date_member, fake_original_job_map = self._create_fake_dates_members(
             filtered_jobs_list)
-
+        pass
         for date in self._date_list:
             str_date = self._get_date(date)
             for member in self._member_list:
                 # Filter list of fake jobs according to date and member, result not sorted at this point
-                sorted_jobs_list = filter(lambda job: job.name.split("_")[1] == str_date and
-                                          job.name.split("_")[2] == member, filtered_jobs_fake_date_member)
+                sorted_jobs_list = [ job for job in filtered_jobs_fake_date_member if job.name.split("_")[1] == str_date and job.name.split("_")[2] == member]
+                #sorted_jobs_list = filter(lambda job: job.name.split("_")[1] == str_date and
+                #                          job.name.split("_")[2] == member, filtered_jobs_fake_date_member)
                 if len(sorted_jobs_list) == 0:
                     continue
                 previous_job = sorted_jobs_list[0]
@@ -663,7 +665,7 @@ class JobList(object):
                 # Declare None values as if they were the last items in corresponding list
                 date = self._date_list[-1]
                 member = self._member_list[-1]
-                fake_job = copy.deepcopy(job)
+                fake_job = copy.copy(job)
                 # Use previous values to modify name of fake job
                 fake_job.name = fake_job.name.split('_', 1)[0] + "_" + self._get_date(date) + "_" \
                     + member + "_" + fake_job.name.split("_", 1)[1]
@@ -675,7 +677,7 @@ class JobList(object):
             elif job.member is None:
                 # Declare None value as if it were the last items in corresponding list
                 member = self._member_list[-1]
-                fake_job = copy.deepcopy(job)
+                fake_job = copy.copy(job)
                 # Use it to modify name of fake job
                 fake_job.name = fake_job.name.split('_', 2)[0] + "_" + fake_job.name.split('_', 2)[
                     1] + "_" + member + "_" + fake_job.name.split("_", 2)[2]
@@ -1210,7 +1212,6 @@ class JobList(object):
         :return: jobs in platforms
         :rtype: list
         """
-
         in_queue = self.get_submitted(platform) + self.get_running(platform) + self.get_queuing(
             platform) + self.get_unknown(platform) + self.get_held_jobs(platform)
         if wrapper:
@@ -1504,6 +1505,15 @@ class JobList(object):
     def parameters(self, value):
         self._parameters = value
 
+    def check_possible_ready_jobs(self,job_list):
+        jobs = [ job for job in self.get_active() if job not in job_list ]
+        jobs += [ job for job in self.get_ready() if job not in job_list ]
+        for job in self.get_waiting():
+            tmp = [parent for parent in job.parents if parent.status == Status.COMPLETED]
+            if len(tmp) == len(job.parents):
+                Log.debug("Job {0} is ready to run".format(job.name))
+                jobs.append(job)
+        return list(set(jobs))
     def update_list(self, as_conf, store_change=True, fromSetStatus=False, submitter=None, first_time=False):
         # type: (AutosubmitConfig, bool, bool, object, bool) -> bool
         """
@@ -1802,11 +1812,13 @@ class JobList(object):
                 if structure_valid == True:
                     Log.info("Using existing valid structure.")
                     for job in self._job_list:
-                        children_to_remove = [
-                            child for child in job.children if child.name not in current_structure[job.name]]
+                        children_to_remove = []
+                        for child in (child for child in job.children if child.name not in current_structure[job.name]):
+                            children_to_remove.append(child)
                         for child in children_to_remove:
                             job.children.remove(child)
                             child.parents.remove(job)
+                    del children_to_remove
             if structure_valid == False:
                 # Structure does not exist or it is not be updated, attempt to create it.
                 Log.info("Updating structure persistence...")
@@ -1828,6 +1840,7 @@ class JobList(object):
         for job in self._job_list:
             if not job.has_parents() and new:
                 job.status = Status.READY
+        pass
 
     @threaded
     def check_scripts_threaded(self, as_conf):

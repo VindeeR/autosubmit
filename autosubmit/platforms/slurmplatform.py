@@ -417,7 +417,7 @@ class SlurmPlatform(ParamikoPlatform):
                 else:
                     job.new_status = Status.HELD
     @staticmethod
-    def wrapper_header(filename, queue, project, wallclock, num_procs, dependency, directives, threads, method="asthreads"):
+    def wrapper_header(filename, queue, project, wallclock, num_procs, dependency, directives, threads, method="asthreads",language="python3"):
         if method == 'srun':
             language = "#!/bin/bash"
             return \
@@ -441,7 +441,10 @@ class SlurmPlatform(ParamikoPlatform):
                 """.format(filename, queue, project, wallclock, num_procs, dependency,
                            '\n'.ljust(13).join(str(s) for s in directives), threads)
         else:
-            language = "#!/usr/bin/env python2"
+            if language.lower() == "python" or language.lower() == "python3":
+                language = "#!/usr/bin/env python3"
+            else:
+                language = "#!/usr/bin/env python2"
             return \
                 language + """
 ###############################################################################

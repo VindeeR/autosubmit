@@ -62,6 +62,10 @@ class WrapperBuilder(object):
         self.machinefiles_name = ''
         self.machinefiles_indent = 0
         self.exit_thread = ''
+        try:
+            self.language = kwargs['configuration'].get_wrapper_language()
+        except:
+            self.language = "PYTHON3"
         if "wallclock_by_level" in kwargs.keys():
             self.wallclock_by_level = kwargs['wallclock_by_level']
     def build_header(self):
@@ -123,7 +127,10 @@ class PythonWrapperBuilder(WrapperBuilder):
         import sys
         #from bscearth.utils.date import date2str 
         from threading import Thread
-        from commands import getstatusoutput
+        try:
+            from commands import getstatusoutput
+        except:
+            from subprocess import getstatusoutput
         from datetime import datetime
         import time
         from math import ceil
@@ -180,14 +187,19 @@ class PythonWrapperBuilder(WrapperBuilder):
     def get_nodes(self):
         return textwrap.dedent("""
         # Getting the list of allocated nodes
-        {0}
-        os.system("mkdir -p machinefiles")
+        try:
+            {0}
+        
+            os.system("mkdir -p machinefiles")
 
-        with open('{{0}}'.format(node_id), 'r') as file:
-             all_nodes = file.read()
+            with open('{{0}}'.format(node_id), 'r') as file:
+                all_nodes = file.read()
 
-        all_nodes = all_nodes.split("_NEWLINE_")
+            all_nodes = all_nodes.split("_NEWLINE_")
+        except:
+            all_nodes = ""
         """).format(self.allocated_nodes, '\n'.ljust(13))
+
 
     def build_cores_list(self):
         return textwrap.dedent("""
@@ -204,6 +216,9 @@ while total_cores > 0:
     else:
         idx += 1
         processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
+        # Break the loop if total_cores is still greater than 0 after resetting processors_per_node
+        if total_cores > 0 and processors_per_node == 0:
+            break
 processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
         """).format(self.num_procs, str(self.jobs_resources), '\n'.ljust(13))
 
@@ -222,13 +237,14 @@ processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
             if tasks < processors_per_node:
                 cores = tasks
             job_cores = cores
-            while nodes > 0:
-                while cores > 0:
-                    if len(all_cores) > 0:
-                        node = all_cores.pop(0)
-                        if node:
-                            machines += node +"_NEWLINE_"
-                            cores -= 1
+            while nodes > 0 and len(all_cores) > 0 and cores > 0:
+                while cores > 0 and len(all_cores) > 0:
+                    node = all_cores.pop(0)
+                    if node:
+                        machines += node +"_NEWLINE_"
+                        cores -= 1
+                    else:
+                        break
                 for rest in range(processors_per_node-tasks):
                     if len(all_cores) > 0:
                         all_cores.pop(0)
@@ -292,11 +308,11 @@ processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
             failed_path = os.path.join(os.getcwd(), failed_filename)
             failed_wrapper = os.path.join(os.getcwd(), wrapper_id)
             if os.path.exists(completed_path):
-                print datetime.now(), "The job ", current.template," has been COMPLETED"
+                print(datetime.now() + "The job " + current.template + " has been COMPLETED")
             else:
                 open(failed_wrapper,'w').close()
                 open(failed_path, 'w').close()
-                print datetime.now(), "The job ", current.template," has FAILED"
+                print(datetime.now() + "The job " + current.template + " has FAILED")
                 #{1}
             """).format(jobs_list, self.exit_thread, '\n'.ljust(13)), 4)
             sequential_threads_launcher += self._indent(textwrap.dedent("""
@@ -343,11 +359,11 @@ for i in range(len(pid_list)):
         failed_path = os.path.join(os.getcwd(),failed_filename)
         failed_wrapper = os.path.join(os.getcwd(),wrapper_id)
         if os.path.exists(completed_path):
-            print datetime.now(), "The job ", pid.template," has been COMPLETED"
+            print(datetime.now() + "The job " + str(pid.template) + " has been COMPLETED")
         else:
             open(failed_wrapper, 'w').close()
             open(failed_path, 'w').close()
-            print datetime.now(), "The job ", pid.template," has FAILED"
+            print(str(datetime.now()) + "The job " + str(pid.template) + " has FAILED")
                     """).format(jobs_list, self.exit_thread, '\n'.ljust(13)), 4)
         return parallel_threads_launcher
     def build_parallel_threads_launcher_horizontal(self, jobs_list, thread, footer=True):
@@ -378,11 +394,11 @@ for i in range(len(pid_list)):
         failed_wrapper = os.path.join(os.getcwd(),wrapper_id)
         Failed = False
         if os.path.exists(completed_path):
-            print datetime.now(), "The job ", pid.template," has been COMPLETED"
+            print(str(datetime.now()) + "The job " + str(pid.template) + " has been COMPLETED")
         else:
             open(failed_wrapper, 'w').close()
             open(failed_path, 'w').close()
-            print datetime.now(), "The job ", pid.template," has FAILED"
+            print(str(datetime.now()) + "The job " + str(pid.template) + " has FAILED")
                     """).format(jobs_list, self.exit_thread, '\n'.ljust(13)), 4)
 
         return parallel_threads_launcher
@@ -414,11 +430,12 @@ for i in range(len(pid_list)):
         failed_wrapper = os.path.join(os.getcwd(),wrapper_id)
         Failed = False
         if os.path.exists(completed_path):
-            print datetime.now(), "The job ", pid.template," has been COMPLETED"
+            print(str(datetime.now()) + "The job " + str(pid.template) + " has been COMPLETED")
         else:
             open(failed_wrapper, 'w').close()
             open(failed_path, 'w').close()
-            print datetime.now(), "The job ", pid.template," has FAILED"
+            print(str(datetime.now()) + "The job " + str(pid.template) + " has FAILED")
+
                     """).format(jobs_list, self.exit_thread, '\n'.ljust(13)), 4)
 
         return parallel_threads_launcher
@@ -441,8 +458,10 @@ class PythonVerticalWrapperBuilder(PythonWrapperBuilder):
         sequential_threads_launcher = textwrap.dedent("""
         failed_wrapper = os.path.join(os.getcwd(),wrapper_id)
         retrials = {2}
-        total_steps = 0 
-        print "JOB.ID:"+ os.getenv('SLURM_JOBID')
+        total_steps = 0
+        if os.getenv('SLURM_JOBID'): 
+            print("JOB.ID:" + os.getenv('SLURM_JOBID'))
+
         for i in range(len({0})):
             job_retrials = retrials
             completed = False
@@ -465,10 +484,10 @@ class PythonVerticalWrapperBuilder(PythonWrapperBuilder):
                 os.system("echo "+str(time.time())+" >> "+scripts[i][:-4]+"_STAT_"+str(job_retrials+1)) #Completed
                 if os.path.exists(completed_path):
                     completed = True
-                    print datetime.now(), "The job ", current.template," has been COMPLETED"
+                    print(str(datetime.now()) + "The job " + str(scripts[i][:-4]) + " has been COMPLETED")
                     os.system("echo COMPLETED >>  " + scripts[i][:-4]+"_STAT_"+str(job_retrials+1))
                 else:
-                    print datetime.now(), "The job ", current.template," has FAILED"
+                    print(str(datetime.now()) + "The job " + str(scripts[i][:-4]) + " has FAILED")
                     os.system("echo FAILED >>  " + scripts[i][:-4]+"_STAT_"+str(job_retrials+1))
                     #{1}
             """).format(jobs_list, self.exit_thread, '\n'.ljust(13)), 8)
@@ -570,11 +589,11 @@ for i in range(len(pid_list)):
         failed_path = os.path.join(os.getcwd(),failed_filename)
         failed_wrapper = os.path.join(os.getcwd(),wrapper_id)
         if os.path.exists(completed_path):
-            print datetime.now(), "The job ", pid.template," has been COMPLETED"
+            print(str(datetime.now()) + "The job " + str(pid.template) + " has been COMPLETED")
         else:
             open(failed_wrapper, 'w').close()
             open(failed_path, 'w').close()
-            print datetime.now(), "The job ", pid.template," has FAILED"
+            print(str(datetime.now()) + "The job " + str(pid.template) + " has FAILED")
                     """).format(jobs_list, self.exit_thread, '\n'.ljust(13)), 4)
         return parallel_threads_launcher
     def build_joblist_thread(self):
@@ -709,9 +728,11 @@ while total_cores > 0:
     else:
         idx += 1
         processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
+        # Break the loop if total_cores is still greater than 0 after resetting processors_per_node
+        if total_cores > 0 and processors_per_node == 0:
+            break
 processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
         """).format(self.num_procs, str(self.jobs_resources), '\n'.ljust(13))
-
     def build_machinefiles(self):
         machinefile_function = self.get_machinefile_function()
         if machinefile_function:
@@ -727,13 +748,14 @@ processors_per_node = int(jobs_resources['PROCESSORS_PER_NODE'])
             if tasks < processors_per_node:
                 cores = tasks
             job_cores = cores
-            while nodes > 0:
-                while cores > 0:
-                    if len(all_cores) > 0:
-                        node = all_cores.pop(0)
-                        if node:
-                            machines += node +"_NEWLINE_"
-                            cores -= 1
+            while nodes > 0 and len(all_cores) > 0 and cores > 0:
+                while cores > 0 and len(all_cores) > 0:
+                    node = all_cores.pop(0)
+                    if node:
+                        machines += node +"_NEWLINE_"
+                        cores -= 1
+                    else:
+                        break
                 for rest in range(processors_per_node-tasks):
                     if len(all_cores) > 0:
                         all_cores.pop(0)
@@ -962,3 +984,62 @@ class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
         nodelist = self.build_nodes_list()
         srun_launcher = self.build_srun_launcher("scripts_list")
         return nodelist, srun_launcher
+
+
+'''TODO the final script should've python3 compatible with this, due mn5 has only python2
+import os
+import sys
+from threading import Thread
+from subprocess import getstatusoutput
+from datetime import datetime
+import time
+from math import ceil
+from collections import OrderedDict
+import copy
+
+class Unbuffered(object):
+    def __init__(self, stream):
+        self.stream = stream
+    def write(self, data):
+        self.stream.write(data)
+        self.stream.flush()
+    def writelines(self, datas):
+        self.stream.writelines(datas)
+        self.stream.flush()
+    def __getattr__(self, attr):
+        return getattr(self.stream, attr)
+
+sys.stdout = Unbuffered(sys.stdout)
+wrapper_id = "7kX3kn51Z3_FAILED"
+node_id = "node_list_7kX3kn51Z3"
+scripts= ['a03u_20000101_fc0_1_TEST.cmd', 'a03u_20000101_fc0_2_TEST.cmd']
+
+class JobThread(Thread):
+    def __init__ (self, template, id_run):
+        Thread.__init__(self)
+        self.template = template
+        self.id_run = id_run
+        self.fail_count = 0
+
+    def run(self):
+        jobname = self.template.replace('.cmd', '')
+        out = str(self.template) + ".out." + str(self.fail_count)
+        err = str(self.template) + ".err." + str(self.fail_count)
+        print(out+"\n")
+        command = "./" + str(self.template) + " " + str(self.id_run) + " " + os.getcwd()
+        (self.status) = getstatusoutput(command + " > " + out + " 2> " + err)
+
+try:
+    os.system("scontrol show hostnames $SLURM_JOB_NODELIST > {0}".format(node_id))
+except:
+    node_id = ""
+os.system("mkdir -p machinefiles")
+
+with open('{0}'.format(node_id), 'r') as file:
+    all_nodes = file.read()
+
+all_nodes = all_nodes.split("\n")
+
+total_cores = 2
+
+'''

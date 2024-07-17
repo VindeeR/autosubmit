@@ -449,7 +449,7 @@ class JobPackager(object):
                                                 message += "\nCheck your configuration: Only jobs_in_wrappers are active, check their dependencies."
                                             if not balanced:
                                                 message += "\nPackages are not well balanced: Check your dependencies(This is not the main cause of the Critical error)"
-                                            if len(self._jobs_list.get_in_queue()) == 0:
+                                            if len(self._jobs_list.check_possible_ready_jobs(p.jobs)) == 0:
                                                 raise AutosubmitCritical(message, 7014)
                                 elif self.wrapper_policy[self.current_wrapper_section] == "mixed":
                                     error = True
@@ -496,7 +496,8 @@ class JobPackager(object):
                                                 message += "\nCheck your configuration: Only jobs_in_wrappers are active, check your jobs_in_wrapper dependencies."
                                             if not balanced:
                                                 message += "\nPackages are not well balanced! (This is not the main cause of the Critical error)"
-                                            if len(self._jobs_list.get_in_queue()) == 0: # When there are not more posible jobs, autosubmit will stop the execution
+                                            if len(self._jobs_list.check_possible_ready_jobs(p.jobs)) == 0: # When there are not more posible jobs, autosubmit will stop the execution
+
                                                 raise AutosubmitCritical(message, 7014)
                                 else:
                                     for job in p.jobs:
@@ -899,21 +900,24 @@ class JobPackagerHorizontal(object):
         for section in jobs_by_section:
             current_package_by_section[section] = 0
             for job in jobs_by_section[section]:
+                if str(job.processors).isdigit() and str(job.nodes).isdigit() and int(job.nodes) > 1 and int(job.processors) <= 1:
+                    job.processors = 0
+                if job.total_processors == "":
+                    job_total_processors = 0
+                else:
+                    job_total_processors = int(job.total_processors)
                 if len(current_package) < self.wrapper_limits["max_h"] and len(current_package) < self.wrapper_limits["max"]  and current_package_by_section[section] < self.wrapper_limits["max_by_section"][section]:
                     if int(job.tasks) != 0 and int(job.tasks) != int(self.processors_node) and \
-                            int(job.tasks) < job.total_processors:
+                            int(self.processors_node) < int(job_total_processors):
                         nodes = int(
-                            ceil(job.total_processors / float(job.tasks)))
+                            ceil(job_total_processors / float(job.tasks)))
                         total_processors = int(self.processors_node) * nodes
                     else:
-                        total_processors = job.total_processors
+                        total_processors = job_total_processors
                     if (self._current_processors + total_processors) <= int(self.max_processors):
                         current_package.append(job)
                         self._current_processors += total_processors
-                    else:
-                        current_package = [job]
-                        self._current_processors = total_processors
-                    current_package_by_section[section] += 1
+                        current_package_by_section[section] += 1
                 else:
                     break
 

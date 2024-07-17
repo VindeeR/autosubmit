@@ -311,7 +311,7 @@ class AutosubmitConfig(object):
         :return: tasks (processes) per host
         :rtype: str
         """
-        return str(self._jobs_parser.get_option(section, 'TASKS', '0'))
+        return str(self._jobs_parser.get_option(section, 'TASKS', '1'))
 
     def get_nodes(self, section):
         """
@@ -846,11 +846,12 @@ class AutosubmitConfig(object):
                                       ['standard', 'noleap']):
             self.wrong_config["Expdef"] += [['experiment',
                                              "Mandatory CALENDAR choice is invalid"]]
-
-        if not parser.check_is_boolean('rerun', 'RERUN', True):
-            self.wrong_config["Expdef"] += [['experiment',
-                                             "Mandatory RERUN choice is not a boolean"]]
-
+        try:
+            if not parser.check_is_boolean('rerun', 'RERUN', True):
+                self.wrong_config["Expdef"] += [['experiment',
+                                                 "Mandatory RERUN choice is not a boolean"]]
+        except:
+            pass
         if parser.check_is_choice('project', 'PROJECT_TYPE', True, ['none', 'git', 'svn', 'local']):
             project_type = parser.get_option('project', 'PROJECT_TYPE', '')
 
@@ -1414,9 +1415,10 @@ class AutosubmitConfig(object):
         :return: rerurn value
         :rtype: list
         """
-
-        return self._exp_parser.get('rerun', 'RERUN').lower()
-
+        try:
+            return self._exp_parser.get('rerun', 'RERUN').lower()
+        except:
+            return "false"
 
 
     def get_platform(self):
@@ -1498,6 +1500,21 @@ class AutosubmitConfig(object):
         """
         return self._platforms_parser.get_option(section, 'DISABLE_RECOVERY_THREADS', 'FALSE').lower()
 
+    def get_shape(self, section):
+        """
+        Returns shape
+
+        :rtype: str
+        """
+        return str(self._platforms_parser.get_option(section, 'SHAPE', '')).lower()
+
+    def get_disable_recovery_logs(self, section):
+        """
+        Returns FALSE/TRUE
+        :return: recovery_threads_option
+        :rtype: str
+        """
+        return self._platforms_parser.get_option(section, 'DISABLE_RECOVERY_LOGS', 'FALSE').lower()
     def get_max_processors(self):
         """
         Returns max processors from autosubmit's config file
@@ -1739,6 +1756,14 @@ class AutosubmitConfig(object):
          """
         return self._conf_parser.get_option(wrapper_section_name, 'METHOD', 'ASThread')
 
+    def get_wrapper_language(self,wrapper_section_name="wrapper"):
+        """
+         Returns the method of make the wrapper
+
+         :return: method
+         :rtype: string
+         """
+        return self._conf_parser.get_option(wrapper_section_name, 'LANGUAGE', 'python3')
     def get_wrapper_check_time(self,wrapper_section_name="wrapper"):
         """
          Returns time to check the status of jobs in the wrapper
@@ -1765,7 +1790,13 @@ class AutosubmitConfig(object):
         :rtype: str
         """
         return self._jobs_parser.get_option(section, 'EXPORT', "none")
+    def get_job_shape(self, section):
+        """
+        Returns shape
 
+        :rtype: str
+        """
+        return str(self._jobs_parser.get_option(section, 'SHAPE', '')).lower()
     def get_jobs_sections(self):
         """
         Returns the list of sections defined in the jobs config file

@@ -37,6 +37,7 @@ and below the [config] block, add the wrapper directive, indicating the wrapper 
 
     [wrapper]
     TYPE =
+    LANGUAGE = PYTHON3
 
 You can also specify which job types should be wrapped. This can be done using the **JOBS_IN_WRAPPER** parameter.
 It is only required for the vertical-mixed type (in which the specified job types will be wrapped together), so if nothing is specified, all jobs will be wrapped.

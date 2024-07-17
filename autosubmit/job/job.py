@@ -151,6 +151,7 @@ class Job(object):
         self.start_time = None
         self.ext_header_path = ''
         self.ext_tailer_path = ''
+        self.shape = ""
 
     def __getstate__(self):
         odict = self.__dict__
@@ -258,6 +259,26 @@ class Job(object):
         :type value: HPCPlatform
         """
         self._queue = value
+
+    @property
+    def shape(self):
+        """
+        Returns the shape of the job. Chooses between serial and parallel platforms
+
+        :return HPCPlatform object for the job to use
+        :rtype: HPCPlatform
+        """
+        return self._shape
+
+    @shape.setter
+    def shape(self, value):
+        """
+        Sets the shape to be used by the job.
+
+        :param value: shape to set
+        :type value: HPCPlatform
+        """
+        self._shape = value
 
     @property
     def children(self):
@@ -653,6 +674,8 @@ class Job(object):
 
     @threaded
     def retrieve_logfiles(self, copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = 0,job_id=""):
+        as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
+        as_conf.reload()
         max_logs = 0
         sleep(5)
         stat_file = self.script_name[:-4] + "_STAT_"
@@ -660,26 +683,27 @@ class Job(object):
         count = 0
         success = False
         error_message = ""
-        while (count < retries) or not success:
+        platform = None
+        while (count < retries) and not success:
             try:
                 as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
                 as_conf.reload()
                 submitter = self._get_submitter(as_conf)
                 submitter.load_platforms(as_conf)
                 platform = submitter.platforms[str(platform_name).lower()]
+                platform.test_connection()
                 success = True
             except BaseException as e:
                 error_message = str(e)
-                sleep(60*5)
+                sleep(5)
                 pass
             count=count+1
-        if not success:
-            raise AutosubmitError("Couldn't load the autosubmit platforms, seems that the local platform has some issue\n:{0}".format(error_message),6006)
+        if not success or not platform:
+            raise AutosubmitError("Couldn't load the autosubmit platforms, seems that the platform has some issue\n:{0}".format(error_message),6006)
         else:
             max_logs = int(as_conf.get_retrials()) - fail_count
             last_log = int(as_conf.get_retrials()) - fail_count
             try:
-                platform.test_connection()
                 if self.wrapper_type is not None and self.wrapper_type == "vertical":
                     found = False
                     retrials = 0
@@ -791,21 +815,18 @@ class Job(object):
                                     self._tmp_path, 'LOG_' + str(self.expid), local_log))
                         except BaseException as e:
                             Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(
-                                e.message, self.name))
-                try:
-                    platform.closeConnection()
-                except BaseException as e:
-                    pass
-            return
+                                str(e), self.name))
+            try:
+                platform.closeConnection()
+            except:
+                pass
         except AutosubmitError as e:
             Log.printlog("Trace {0} \nFailed to retrieve log file for job {1}".format(
                 e.message, self.name), 6001)
             try:
                 platform.closeConnection()
-            except BaseException as e:
+            except:
                 pass
-
-            return
         except AutosubmitCritical as e:  # Critical errors can't be recovered. Failed configuration or autosubmit error
             Log.printlog("Trace {0} \nFailed to retrieve log file for job {0}".format(
                 e.message, self.name), 6001)
@@ -813,14 +834,8 @@ class Job(object):
                 platform.closeConnection()
             except:
                 pass
-
-            return
-        sleep(5)  # safe wait before end a thread
-        try:
-            platform.closeConnection()
-        except BaseException as e:
-            pass
         return
+
     def parse_time(self,wallclock):
         format = "minute"
         regex = re.compile(r'(((?P<hours>\d+):)((?P<minutes>\d+)))(:(?P<seconds>\d+))?')
@@ -937,10 +952,13 @@ class Job(object):
             as_conf = AutosubmitConfig(
                 expid, BasicConfig, ConfigParserFactory())
             as_conf.reload()
-            if as_conf.get_disable_recovery_threads(self.platform.name) == "true":
-                self.retrieve_logfiles_unthreaded(copy_remote_logs, local_logs)
+            if as_conf.get_disable_recovery_logs(self.platform.name) == "false":
+                if as_conf.get_disable_recovery_threads(self.platform.name) == "true":
+                    self.retrieve_logfiles_unthreaded(copy_remote_logs, local_logs)
+                else:
+                    self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count),job_id=self.id)
             else:
-                self.retrieve_logfiles(copy_remote_logs, local_logs, remote_logs, expid, platform_name,fail_count = copy.copy(self.fail_count),job_id=self.id)
+                Log.warning("Log recovery is disabled for this platform, you must go to the platform and check the logs there")
             if self.wrapper_type == "vertical":
                 max_logs = int(as_conf.get_retrials())
                 for i in range(0,max_logs):
@@ -1094,9 +1112,9 @@ class Job(object):
         self.hyperthreading = str(as_conf.get_hyperthreading(self.section)).lower()
         if self.hyperthreading is 'none':
             self.hyperthreading = str(job_platform.hyperthreading).lower()
-
-        if self.tasks == '0' and job_platform.processors_per_node:
+        if job_platform.processors_per_node is not None and int(self.tasks) > int(job_platform.processors_per_node):
             self.tasks = job_platform.processors_per_node
+        self.tasks = str(self.tasks)
         self.memory = as_conf.get_memory(self.section)
         self.memory_per_task = as_conf.get_memory_per_task(self.section)
         self.wallclock = as_conf.get_wallclock(self.section)
@@ -1122,7 +1140,9 @@ class Job(object):
             self.custom_directives = json.loads(job_platform.custom_directives)
         elif self.custom_directives == '':
             self.custom_directives = []
+        self.shape = as_conf.get_job_shape(self.section)
 
+        parameters['SHAPE'] = self.shape
         parameters['NUMPROC'] = self.processors
         parameters['PROCESSORS'] = self.processors
         parameters['MEMORY'] = self.memory
@@ -1141,8 +1161,10 @@ class Job(object):
         parameters['HYPERTHREADING'] = self.hyperthreading
         # we open the files and offload the whole script as a string
         # memory issues if the script is too long? Add a check to avoid problems...
-        parameters['EXTENDED_HEADER'] = self.read_header_tailer_script(self.ext_header_path, as_conf)
-        parameters['EXTENDED_TAILER'] = self.read_header_tailer_script(self.ext_tailer_path, as_conf)
+        if as_conf.get_project_type() != "none":
+            # add Dani's check to make his debug easier
+            parameters['EXTENDED_HEADER'] = self.read_header_tailer_script(self.ext_header_path, as_conf)
+            parameters['EXTENDED_TAILER'] = self.read_header_tailer_script(self.ext_tailer_path, as_conf)
 
         parameters['CURRENT_ARCH'] = job_platform.name
         parameters['CURRENT_HOST'] = job_platform.host
@@ -1239,7 +1261,7 @@ class Job(object):
                 template = ''
                 if as_conf.get_remote_dependencies():
                     if self.type == Type.BASH:
-                        template = 'sleep 360' + "\n"
+                        template = 'sleep 1' + "\n"
                     elif self.type == Type.PYTHON:
                         template = 'time.sleep(5)' + "\n"
                     elif self.type == Type.R:
@@ -1248,7 +1270,7 @@ class Job(object):
                 template_file.close()
             else:
                 if self.type == Type.BASH:
-                    template = 'sleep 360'
+                    template = 'sleep 5'
                 elif self.type == Type.PYTHON or self.type == Type.PYTHON2 or self.type == Type.PYTHON3:
                     template = 'time.sleep(5)'
                 elif self.type == Type.R:
@@ -1943,8 +1965,12 @@ class WrapperJob(Job):
 
     def cancel_failed_wrapper_job(self):
         Log.printlog("Cancelling job with id {0}".format(self.id), 6009)
-        self._platform.send_command(
-            self._platform.cancel_cmd + " " + str(self.id))
+        try:
+            self._platform.send_command(
+                self._platform.cancel_cmd + " " + str(self.id))
+        except:
+            Log.info('Job was finished before canceling it')
+
         for job in self.job_list:
             if job.status not in [Status.COMPLETED, Status.FAILED]:
                 job.packed = False

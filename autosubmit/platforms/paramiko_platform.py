@@ -18,7 +18,7 @@ from paramiko.ssh_exception import (SSHException, BadAuthenticationType,
                                     ChannelException, ProxyCommandFailure)
 import Xlib.support.connect as xlib_connect
 from threading import Thread
-
+from autosubmit.helpers.utils import as_rsync
 
 
 class ParamikoPlatform(Platform):
@@ -213,8 +213,13 @@ class ParamikoPlatform(Platform):
                     self._ssh.connect(self._host_config['hostname'], port, username=self.user,
                                       key_filename=self._host_config_id, timeout=60 , banner_timeout=60)
                 except Exception as e:
-                    self._ssh.connect(self._host_config['hostname'], port, username=self.user,
-                                      key_filename=self._host_config_id, timeout=60 , banner_timeout=60,disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']})
+                    try:
+                        self._ssh.connect(self._host_config['hostname'], port, username=self.user,
+                                          key_filename=self._host_config_id, timeout=60 , banner_timeout=60,disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']})
+                    except Exception as e:
+                        raise AutosubmitCritical(
+                            "Authentication Failed, please check the platform.conf of {0}".format(
+                                self._host_config['hostname']), 7050, str(e))
             self.transport = self._ssh.get_transport()
             self.transport.banner_timeout = 60
             self.transport.set_keepalive(120)
@@ -307,7 +312,7 @@ class ParamikoPlatform(Platform):
         return self._ftpChannel.get(self.get_files_path)
 
     # Gets .err and .out
-    def get_file(self, filename, must_exist=True, relative_path='', ignore_log=False, wrapper_failed=False):
+    def get_file(self, filename, must_exist=True, relative_path='', ignore_log=False, wrapper_failed=False, max_tries = 1):
         """
         Copies a file from the current platform to experiment's tmp folder
 
@@ -375,7 +380,8 @@ class ParamikoPlatform(Platform):
                 raise AutosubmitCritical(
                     "Wrong User or invalid .ssh/config. Or invalid user in platform.conf or public key not set ", 7051, e.message)
 
-    def move_file(self, src, dest, must_exist=False):
+
+    def move_file(self, src, dest, must_exist=False, path_root=None):
         """
         Moves a file on the platform (includes .err and .out)
         :param src: source name
@@ -383,22 +389,27 @@ class ParamikoPlatform(Platform):
         :param dest: destination name
         :param must_exist: ignore if file exist or not
         :type dest: str
+        :param path_root: root path
+        :type path_root: str
         """
-        try:
+        if path_root is None:
             path_root = self.get_files_path()
+        try:
             src = os.path.join(path_root, src)
             dest = os.path.join(path_root, dest)
-            self._ftpChannel.rename(src,dest)
+            self._ftpChannel.rename(src, dest)
             return True
-
         except IOError as e:
             if str(e) in "Garbage":
                 raise AutosubmitError('File {0} does not exists, something went wrong with the platform'.format(os.path.join(path_root,src)), 6004, e.message)
+            if e.message.lower() in "failure":
+                Log.warning("FTP Channel did not work due an inter-device operation... Rsync will be used")
+                return False
             if must_exist:
                 raise AutosubmitError("File {0} does not exists".format(
                     os.path.join(path_root,src)), 6004, e.message)
             else:
-                Log.debug("File {0} doesn't exists ".format(path_root))
+                Log.debug("File {0} was already moved or couldn't be moved".format(src))
                 return False
         except Exception as e:
             if str(e) in "Garbage":
@@ -595,14 +606,26 @@ class ParamikoPlatform(Platform):
         try:
             self.send_command(cmd)
         except AutosubmitError as e:
-            e_msg = e.trace+" "+e.message
+            try:
+                if e.trace:
+                    e_msg = e.trace + " " + e.message
+                else:
+                    e_msg = e.message
+            except:
+                pass
             slurm_error = True
         if not slurm_error:
             while not self._check_jobid_in_queue(self.get_ssh_output(), job_list_cmd) and retries > 0:
                 try:
                     self.send_command(cmd)
                 except AutosubmitError as e:
-                    e_msg = e.trace + " " + e.message
+                    try:
+                        if e.trace:
+                            e_msg = e.trace + " " + e.message
+                        else:
+                            e_msg = e.message
+                    except:
+                        pass
                     slurm_error = True
                     break
                 Log.debug('Retrying check job command: {0}', cmd)
@@ -929,11 +952,9 @@ class ParamikoPlatform(Platform):
                     self._ssh_output += s
             for errorLineCase in stderr_readlines:
                 self._ssh_output_err += errorLineCase
-            # if self._bashrc_output matchs the start of self.ssh_output, then strip it from self.ssh_output
-            if self._ssh_output.startswith(self.bashrc_output):
-                self._ssh_output = self._ssh_output[len(self.bashrc_output):]
-            if self._ssh_output_err.startswith(self.bashrc_err):
-                self._ssh_output_err = self._ssh_output_err[len(self.bashrc_err):]
+            self._ssh_output = self._ssh_output.replace(self.bashrc_output, "")
+            self._ssh_output_err = self._ssh_output_err.replace(self.bashrc_err, "")
+
             if "not active" in self._ssh_output_err:
                 raise AutosubmitError(
                     'SSH Session not active, will restart the platforms', 6005)
@@ -1146,9 +1167,15 @@ class ParamikoPlatform(Platform):
         if hasattr(self.header, 'get_nodes_directive'):
             header = header.replace(
                 '%NODES_DIRECTIVE%', self.header.get_nodes_directive(job))
+        if hasattr(self.header, 'get_numproc_directive'):
+            header = header.replace(
+                '%NUMPROC_DIRECTIVE%', self.header.get_numproc_directive(job))
         if hasattr(self.header, 'get_memory_directive'):
             header = header.replace(
                 '%MEMORY_DIRECTIVE%', self.header.get_memory_directive(job))
+        if hasattr(self.header, 'get_shape_directive'):
+            header = header.replace(
+                '%SHAPE_DIRECTIVE%', self.header.get_shape_directive(job))
         if hasattr(self.header, 'get_memory_per_task_directive'):
             header = header.replace(
                 '%MEMORY_PER_TASK_DIRECTIVE%', self.header.get_memory_per_task_directive(job))
@@ -1169,16 +1196,54 @@ class ParamikoPlatform(Platform):
         return timedelta(**time_params)
 
     def closeConnection(self):
-        if self._ftpChannel is not None:
-            self._ftpChannel.close()
-        if self._ssh is not None:
-            self._ssh.close()
-            self.transport.close()
-            self.transport.stop_thread()
-            try:
-                self.transport.sys.exit(0)
-            except:
-                pass
+        # Ensure to delete all references to the ssh connection, so that it frees all the file descriptors
+        try:
+            if self._ftpChannel:
+                self._ftpChannel.close()
+        except:
+            pass
+        try:
+            if self._ssh._agent: # May not be in all runs
+                self._ssh._agent.close()
+        except:
+            pass
+        try:
+            if self._ssh._transport:
+                self._ssh._transport.close()
+                self._ssh._transport.stop_thread()
+        except:
+            pass
+        try:
+            if self._ssh:
+                self._ssh.close()
+        except:
+            pass
+        try:
+            if self.transport:
+                self.transport.close()
+                self.transport.stop_thread()
+        except:
+            pass
+        try:
+            del self._ssh._agent
+        except:
+            pass
+        try:
+            del self._ssh._transport
+        except:
+            pass
+        try:
+            del self._ftpChannel
+        except:
+            pass
+        try:
+            del self.transport
+        except:
+            pass
+        try:
+            del self._ssh
+        except:
+            pass
 
     def check_tmp_exists(self):
         try:

@@ -131,7 +131,7 @@ class LocalPlatform(ParamikoPlatform):
     def check_file_exists(self,filename,wrapper_failed=False):
         return True
 
-    def get_file(self, filename, must_exist=True, relative_path='',ignore_log = False,wrapper_failed=False):
+    def get_file(self, filename, must_exist=True, relative_path='',ignore_log = False,wrapper_failed=False, max_tries = 1):
         local_path = os.path.join(self.tmp_path, relative_path)
         if not os.path.exists(local_path):
             os.makedirs(local_path)
@@ -198,7 +198,7 @@ class LocalPlatform(ParamikoPlatform):
             Log.debug('Could not remove file {0}'.format(os.path.join(self.tmp_path, filename)))
             return False
         return True
-    def move_file(self, src, dest, must_exist=False):
+    def move_file(self, src, dest, must_exist=False, path_root=None):
         """
         Moves a file on the platform (includes .err and .out)
         :param src: source name
@@ -206,6 +206,7 @@ class LocalPlatform(ParamikoPlatform):
         :param dest: destination name
         :param must_exist: ignore if file exist or not
         :type dest: str
+
         """
         try:
             path_root = self.get_files_path()

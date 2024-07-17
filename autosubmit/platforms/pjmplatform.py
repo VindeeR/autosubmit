@@ -28,6 +28,7 @@ from autosubmit.platforms.headers.pjm_header import PJMHeader
 from autosubmit.platforms.wrappers.wrapper_factory import PJMWrapperFactory
 from log.log import AutosubmitCritical, AutosubmitError, Log
 
+import textwrap
 class PJMPlatform(ParamikoPlatform):
     """
     Class to manage jobs to host using PJM scheduler
@@ -286,7 +287,7 @@ class PJMPlatform(ParamikoPlatform):
         return self.remote_log_dir
 
     def parse_job_output(self, output):
-        return output.strip().split()[0].strip()
+        return output.strip().split()[1].strip().strip("\n")
 
     def parse_job_finish_data(self, output, packed):
         return 0, 0, 0, 0, 0, 0, dict(), False
@@ -389,17 +390,26 @@ class PJMPlatform(ParamikoPlatform):
     def get_checkAlljobs_cmd(self, jobs_id):
         # jobs_id = "jobid1+jobid2+jobid3"
         # -H == sacct
+        if jobs_id[-1] == ",":
+            jobs_id = jobs_id[:-1] # deletes comma
         return "pjstat -H -v --choose jid,st,ermsg --filter \"jid={0}\" > as_checkalljobs.txt ; pjstat -v --choose jid,st,ermsg --filter \"jid={0}\" >> as_checkalljobs.txt ; cat as_checkalljobs.txt ; rm as_checkalljobs.txt".format(jobs_id)
     def get_checkjob_cmd(self, jobs_id):
         # jobs_id = "jobid1+jobid2+jobid3"
         # -H == sacct
         return self.get_checkAlljobs_cmd(self, jobs_id)
 
+    def get_checkjob_cmd(self, job_id):
+        return "pjstat -H -v --choose st --filter \"jid={job_id}\" > as_checkjob.txt ; pjstat -v --choose st --filter \"jid={job_id}\" >> as_checkjob.txt ; cat as_checkjob.txt ; rm as_checkjob.txt".format(job_id=job_id)
+
+        #return 'pjstat -v --choose jid,st,ermsg --filter \"jid={0}\"'.format(job_id)
     def get_queue_status_cmd(self, job_id):
         return self.get_checkAlljobs_cmd(job_id)
 
-    def get_jobid_by_jobname_cmd(self, job_name):
+    def get_jobid_by_jobname_cmd(self, job_name, minutes=""):
+        if job_name[-1] == ",":
+            job_name = job_name[:-1]
         return 'pjstat -v --choose jid,st,ermsg --filter \"jnam={0}\"'.format(job_name)
+
 
 
     def cancel_job(self, job_id):
@@ -419,8 +429,8 @@ class PJMPlatform(ParamikoPlatform):
         return reason
 
     @staticmethod
-    def wrapper_header(filename, queue, project, wallclock, num_procs, dependency, directives, threads, method="asthreads", partition=""):
-        if method == 'srun':
+    def wrapper_header(kwargs):
+        if kwargs['method'] == 'srun':
             language = "#!/bin/bash"
             return \
                 language + """
@@ -430,22 +440,24 @@ class PJMPlatform(ParamikoPlatform):
 #
 #PJM -N {0}
 {1}
-{8}
 #PJM -g {2}
 #PJM -o {0}.out
 #PJM -e {0}.err
-#PJM -elapse {3}:00
-#PJM --mpi "proc=%NUMPROC%"
+#PJM -L elapse={3}:00
+#PJM --mpi "proc={4}"
 #PJM --mpi "max-proc-per-node={7}"
 {5}
 {6}
 
 #
 ###############################################################################
-                """.format(filename, queue, project, wallclock, num_procs, dependency,
-                           '\n'.ljust(13).join(str(s) for s in directives), threads,partition)
+                """.format(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'], kwargs['num_processors'], kwargs['dependency'],
+                       '\n'.ljust(13).join(str(s) for s in kwargs['directives']), kwargs['threads'])
         else:
-            language = "#!/usr/bin/env python3"
+            if kwargs['language'].upper() == 'PYTHON2' or kwargs['language'].upper() == 'PYTHON':
+                language = "#!/usr/bin/env python2"
+            else:
+                language = "#!/usr/bin/env python3"
             return \
                 language + """
 ###############################################################################
@@ -454,19 +466,18 @@ class PJMPlatform(ParamikoPlatform):
 #
 #PJM -N {0}
 {1}
-{8}
 #PJM -g {2}
 #PJM -o {0}.out
 #PJM -e {0}.err
-#PJM -elapse {3}:00
-#PJM --mpi "proc=%NUMPROC%"
+#PJM -L elapse={3}:00
+#PJM --mpi "proc={4}"
 #PJM --mpi "max-proc-per-node={7}"
 {5}
 {6}
 #
 ###############################################################################
-            """.format(filename, queue, project, wallclock, num_procs, dependency,
-                       '\n'.ljust(13).join(str(s) for s in directives), threads,partition)
+            """.format(kwargs['name'], kwargs['queue'], kwargs['project'], kwargs['wallclock'], kwargs['num_processors'], kwargs['dependency'],
+                       '\n'.ljust(13).join(str(s) for s in kwargs['directives']), kwargs['threads'])
 
     @staticmethod
     def allocated_nodes():

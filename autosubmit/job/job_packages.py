@@ -399,6 +399,8 @@ class JobPackageThread(JobPackageBase):
                 self.queue = configuration.get_wrapper_queue(self.current_wrapper_section)
             else:
                 self.queue = jobs[0].queue
+            self.configuration = configuration
+            self._wrapper_factory.configuration = self.configuration
         else:
             self.queue = jobs[0].queue
 

@@ -42,19 +42,18 @@ class TestJobPackage(TestCase):
         self.assertEquals(self.platform, self.job_package.platform)
 
     @patch('os.path.exists')
-    def test_job_package_submission(self, os_mock):
+    @patch('__builtin__.open')
+    def test_job_package_submission(self, os_mock, open_mock):
         # arrange
-        write_mock = Mock().write = Mock()
+        open_mock.return_value = MagicMock()
         os_mock.return_value = True
         for job in self.job_package.jobs:
-            job._tmp_path = Mock()
+            job._tmp_path = "fake-path"
             job.name = "fake-name"
-            job._get_paramiko_template = Mock("false","empty")
+            job._get_paramiko_template = Mock("false", "empty")
             job.file = "fake-file"
             job.update_parameters = MagicMock(return_value="fake-params")
-            job.parameters = "fake-params"
-
-
+            job.parameters = {"fake-params": "fake-value"}
 
         self.job_package._create_scripts = Mock()
         self.job_package._send_files = Mock()
@@ -63,11 +62,10 @@ class TestJobPackage(TestCase):
         configuration.get_project_type = Mock(return_value='fake-type')
         configuration.get_project_dir = Mock(return_value='fake-dir')
         configuration.get_project_name = Mock(return_value='fake-name')
-
         # act
         self.job_package.submit(configuration, 'fake-params')
         # assert
-        for job in self.jobs:
+        for job in self.job_package.jobs:
             job.update_parameters.assert_called_once_with(configuration, 'fake-params')
         self.job_package._create_scripts.is_called_once_with()
         self.job_package._send_files.is_called_once_with()

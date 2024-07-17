@@ -17,16 +17,16 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-from log.log import Log, AutosubmitCritical, AutosubmitError
-from autosubmit.job.job_common import Status, Type
+import operator
 from bscearth.utils.date import sum_str_hours
+from math import ceil
+from operator import attrgetter
+from typing import List
+
+from autosubmit.job.job_common import Status, Type
 from autosubmit.job.job_packages import JobPackageSimple, JobPackageVertical, JobPackageHorizontal, \
     JobPackageSimpleWrapped, JobPackageHorizontalVertical, JobPackageVerticalHorizontal, JobPackageBase
-from operator import attrgetter
-from math import ceil
-import operator
-from collections import defaultdict
-from typing import List
+from log.log import Log, AutosubmitCritical
 
 
 class JobPackager(object):
@@ -437,10 +437,10 @@ class JobPackager(object):
                                                     wrapper_limits["min_v"], wrapper_limits["min"], len(active_jobs)),
                                                 6013)
                                         else:
-                                            message = "Wrapper couldn't be formed under {0} POLICY due minimum limit not being reached: [wrappeable:{4} < defined_min:{5}] [wrappeable_h:{1} < defined_min_h:{2}]|[wrappeable_v:{3} < defined_min_v:{4}] ".format(
+                                            message = "Wrapper couldn't be formed under {0} POLICY due minimum limit not being reached: [wrappeable:{5} <= defined_min:{6}] [wrappeable_h:{1} <= defined_min_h:{2}]|[wrappeable_v:{3} <= defined_min_v:{4}] ".format(
                                                 self.wrapper_policy[self.current_wrapper_section], min_h,
-                                                wrapper_limits["min_h"], min_v, wrapper_limits["min_v"],
-                                                wrapper_limits["min"], len(active_jobs))
+                                                wrapper_limits["min_h"], min_v, wrapper_limits["min_v"], len(p.jobs),
+                                                wrapper_limits["min"])
                                             if hard_deadlock:
                                                 message += "\nCheck your configuration: The next wrappeable job can't be wrapped until some of inner jobs of current packages finishes which is imposible"
                                             if min_v > 1:
@@ -481,13 +481,12 @@ class JobPackager(object):
                                         if len(active_jobs) > 0:
                                             if show_log:
                                                 Log.printlog(
-                                                    "Wrapper policy is set to MIXED and there are not enough jobs to form a wrapper.[wrappeable:{4} < defined_min:{5}] [wrappeable_h:{0} < defined_min_h:{1}]|[wrappeable_v:{2} < defined_min_v:{3}] waiting until the wrapper can be formed.".format(
+                                                    "Wrapper policy is set to MIXED and there are not enough jobs to form a wrapper.[wrappeable:{4} <= defined_min:{5}] [wrappeable_h:{0} <= defined_min_h:{1}]|[wrappeable_v:{2} <= defined_min_v:{3}] waiting until the wrapper can be formed.".format(
                                                         min_h, wrapper_limits["min_h"], min_v,
                                                         wrapper_limits["min_v"],wrapper_limits["min"],len(active_jobs)), 6013)
                                         else:
-                                            message = "Wrapper couldn't be formed under {0} POLICY due minimum limit not being reached: [wrappeable:{4} < defined_min:{5}] [wrappeable_h:{1} < defined_min_h:{2}]|[wrappeable_v:{3} < defined_min_v:{4}] ".format(
-                                                    self.wrapper_policy[self.current_wrapper_section], min_h,
-                                                    wrapper_limits["min_h"], min_v, wrapper_limits["min_v"],wrapper_limits["min"],len(active_jobs))
+                                            message = "Wrapper couldn't be formed under {0} POLICY due minimum limit not being reached: [wrappeable:{5} <= defined_min:{6}] [wrappeable_h:{1} <= defined_min_h:{2}]|[wrappeable_v:{3} <= defined_min_v:{4}] ".format(
+                                                    self.wrapper_policy[self.current_wrapper_section], min_h,wrapper_limits["min_h"],min_v, wrapper_limits["min_v"], len(p.jobs),wrapper_limits["min"])
                                             if hard_deadlock:
                                                 message += "\nCheck your configuration: The next wrappeable job can't be wrapped until some of inner jobs of current packages finishes which is imposible"
                                             if min_v > 1:

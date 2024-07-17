@@ -1452,6 +1452,16 @@ class Autosubmit:
             as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
 
             as_conf.check_conf_files(True)
+            try:
+                Log.info("Removing job_data db...")
+                job_data_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, BasicConfig.JOBDATA_DIR,
+                                             "job_data_{0}.db".format(expid))
+                # Delete job_data if 0 bytes
+                if os.path.exists(job_data_path) and os.stat(job_data_path).st_size <= 6:
+                    Log.info("job_data db is corrupted. It will be removed.")
+                    os.remove(job_data_path)
+            except BaseException as e:
+                Log.warning("Error removing job_data db: {0}, please remove it manually".format(e.message))
 
 
         except BaseException as e:
@@ -4362,6 +4372,16 @@ class Autosubmit:
         # checking if there is a lock file to avoid multiple running on the same expid
         try:
             Autosubmit._check_ownership(expid, raise_error=True)
+            try:
+                Log.info("Removing job_data db...")
+                job_data_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, BasicConfig.JOBDATA_DIR,
+                                             "job_data_{0}.db".format(expid))
+                # Delete job_data if 0 bytes
+                if os.path.exists(job_data_path) and os.stat(job_data_path).st_size <= 6:
+                    Log.info("job_data db is corrupted. It will be removed.")
+                    os.remove(job_data_path)
+            except BaseException as e:
+                Log.warning("Error removing job_data db: {0}, please remove it manually".format(e.message))
             exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
             tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
             # Encapsulating the lock

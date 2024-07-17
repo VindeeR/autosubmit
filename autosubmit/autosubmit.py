@@ -2845,8 +2845,12 @@ class Autosubmit:
                             job.platform_name = hpcarch
                         job.platform = submitter.platforms[job.platform_name.lower()]
                         platforms_to_test.add(job.platform)
+
                     for platform in platforms_to_test:
-                        platform.test_connection()
+                        try:
+                            platform.test_connection()
+                        except:
+                            Log.warning("Platform {0} could not be established, jobs of this platform won't be cancelled in the remote").format(platform.name)
                     for job in current_active_jobs:
                         try:
                             job.platform.send_command(job.platform.cancel_cmd + " " + str(job.id), ignore_log=True)

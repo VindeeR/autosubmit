@@ -1452,6 +1452,16 @@ class Autosubmit:
             as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
 
             as_conf.check_conf_files(True)
+            try:
+                Log.info("Removing job_data db...")
+                job_data_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, BasicConfig.JOBDATA_DIR,
+                                             "job_data_{0}.db".format(expid))
+                # Delete job_data if 0 bytes
+                if os.path.exists(job_data_path) and os.stat(job_data_path).st_size <= 6:
+                    Log.info("job_data db is corrupted. It will be removed.")
+                    os.remove(job_data_path)
+            except BaseException as e:
+                Log.warning("Error removing job_data db: {0}, please remove it manually".format(e.message))
 
 
         except BaseException as e:
@@ -2805,7 +2815,20 @@ class Autosubmit:
             Autosubmit._check_ownership(expid, raise_error=True)
 
             exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
+            pkl_folder_path = os.path.join(exp_path, "pkl")
+            current_pkl_path = os.path.join(
+                pkl_folder_path, "job_list_{}.pkl".format(expid))
 
+            try:
+                Log.info("Removing job_data db...")
+                job_data_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, BasicConfig.JOBDATA_DIR,
+                                             "job_data_{0}.db".format(expid))
+                # Delete job_data if 0 bytes
+                if os.path.exists(job_data_path) and os.stat(job_data_path).st_size <= 6:
+                    Log.info("job_data db is corrupted. It will be removed.")
+                    os.remove(job_data_path)
+            except BaseException as e:
+                Log.warning("Error removing job_data db: {0}, please remove it manually".format(e.message))
             as_conf = AutosubmitConfig(expid, BasicConfig, ConfigParserFactory())
             as_conf.check_conf_files(True)
 
@@ -2836,9 +2859,17 @@ class Autosubmit:
                             job.platform_name = hpcarch
                         job.platform = submitter.platforms[job.platform_name.lower()]
                         platforms_to_test.add(job.platform)
-                        job.platform.send_command(job.platform.cancel_cmd + " " + str(job.id), ignore_log=True)
+
                     for platform in platforms_to_test:
-                        platform.test_connection()
+                        try:
+                            platform.test_connection()
+                        except:
+                            Log.warning("Platform {0} could not be established, jobs of this platform won't be cancelled in the remote").format(platform.name)
+                    for job in current_active_jobs:
+                        try:
+                            job.platform.send_command(job.platform.cancel_cmd + " " + str(job.id), ignore_log=True)
+                        except:
+                            Log.warning("Job {0} could not be cancelled, please cancel it manually".format(job.name))
                 if not force:
                     raise AutosubmitCritical(
                         "Experiment can't be recovered due being {0} active jobs in your experiment, If you want to recover the experiment, please use the flag -f and all active jobs will be cancelled".format(
@@ -4019,9 +4050,16 @@ class Autosubmit:
             pkl_folder_path, "job_list_{}.pkl".format(expid))
         backup_pkl_path = os.path.join(
             pkl_folder_path, "job_list_{}_backup.pkl".format(expid))
+        # remove any file that has 0 bytes inside the pkl_folder_path
+        try:
+            Autosubmit._check_ownership(expid, raise_error=True)
+        except:
+            Log.debug("User is not the owner of the experiment")
+            return
         try:
             with portalocker.Lock(os.path.join(tmp_path, 'autosubmit.lock'), timeout=1):
                 # Not locked
+                stop = False
                 Log.info("Looking for backup file {}".format(backup_pkl_path))
                 if os.path.exists(backup_pkl_path):
                     # Backup file exists
@@ -4029,11 +4067,13 @@ class Autosubmit:
                     # Make sure backup file is not empty
                     _stat_b = os.stat(backup_pkl_path)
                     if _stat_b.st_size <= 6:
+                        os.remove(backup_pkl_path)
                         # It is empty -> Return
                         Log.info(
                             "The backup file {} is empty. Pkl restore operation stopped. No changes have been made.".format(
                                 backup_pkl_path))
-                        return
+                        stop = True
+
                     if os.path.exists(current_pkl_path):
                         # Pkl file exists
                         Log.info("Current pkl file {} found.".format(
@@ -4041,13 +4081,15 @@ class Autosubmit:
                         _stat = os.stat(current_pkl_path)
                         if _stat.st_size > 6:
                             # Greater than 6 bytes -> Not empty
-                            if not Autosubmit._user_yes_no_query(
+                            if not stop and not Autosubmit._user_yes_no_query(
                                     "The current pkl file {0} is not empty. Do you want to continue?".format(
                                         current_pkl_path)):
                                 # The user chooses not to continue. Operation stopped.
                                 Log.info(
                                     "Pkl restore operation stopped. No changes have been made.")
-                                return
+                                stop = True
+                        if stop:
+                            return
                         result = None
                         if _stat.st_size > 6:
                             # File not empty: Archive
@@ -4062,10 +4104,12 @@ class Autosubmit:
                                     current_pkl_path, archive_pkl_name))
                         else:
                             # File empty: Delete
-                            result = os.popen("rm {}".format(current_pkl_path))
-                            if result is not None:
+                            try:
+                                os.remove(current_pkl_path)
                                 Log.info("File {0} deleted.".format(
                                     current_pkl_path))
+                            except:
+                                pass
                     # Restore backup file
                     Log.info("Restoring {0} into {1}".format(
                         backup_pkl_path, current_pkl_path))
@@ -4332,10 +4376,30 @@ class Autosubmit:
         # checking if there is a lock file to avoid multiple running on the same expid
         try:
             Autosubmit._check_ownership(expid, raise_error=True)
+            try:
+                Log.info("Removing job_data db...")
+                job_data_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, BasicConfig.JOBDATA_DIR,
+                                             "job_data_{0}.db".format(expid))
+                # Delete job_data if 0 bytes
+                if os.path.exists(job_data_path) and os.stat(job_data_path).st_size <= 6:
+                    Log.info("job_data db is corrupted. It will be removed.")
+                    os.remove(job_data_path)
+            except BaseException as e:
+                Log.warning("Error removing job_data db: {0}, please remove it manually".format(e.message))
             exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
             tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
             # Encapsulating the lock
             with portalocker.Lock(os.path.join(tmp_path, 'autosubmit.lock'), timeout=1) as fh:
+                pkl_folder_path = os.path.join(exp_path, "pkl")
+                current_pkl_path = os.path.join(
+                    pkl_folder_path, "job_list_{}.pkl".format(expid))
+                if os.path.exists(current_pkl_path):
+                    #stat < 6 bytes -> remove
+                    _stat = os.stat(current_pkl_path)
+                    if _stat.st_size <= 6:
+                        os.remove(current_pkl_path)
+                        Log.info("The pkl file {} is empty. It will be removed.".format(current_pkl_path))
+                        Autosubmit.pkl_fix(expid)
                 try:
                     Log.info(
                         "Preparing .lock file to avoid multiple instances with same expid.")

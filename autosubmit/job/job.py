@@ -1162,9 +1162,10 @@ class Job(object):
         # we open the files and offload the whole script as a string
         # memory issues if the script is too long? Add a check to avoid problems...
         if as_conf.get_project_type() != "none":
-            # add Dani's check to make his debug easier
             parameters['EXTENDED_HEADER'] = self.read_header_tailer_script(self.ext_header_path, as_conf)
             parameters['EXTENDED_TAILER'] = self.read_header_tailer_script(self.ext_tailer_path, as_conf)
+        elif self.ext_header_path != "" or self.ext_tailer_path != "":
+            Log.warning("An extended header or tailer is defined in {0}, but these are ignored in dummy projects.", self.name)
 
         parameters['CURRENT_ARCH'] = job_platform.name
         parameters['CURRENT_HOST'] = job_platform.host

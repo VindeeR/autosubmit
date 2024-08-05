@@ -20,19 +20,24 @@
 import itertools
 import math
 import traceback
+from dataclasses import dataclass, field
 
 import matplotlib as mtp
-
-mtp.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
+from matplotlib.backends.backend_pdf import PdfPages
+
+from autosubmit.statistics.jobs_stat import JobStat
 from autosubmit.statistics.statistics import Statistics
 from autosubmit.job.job import Job
-from log.log import Log
-from datetime import datetime
-from typing import List, Dict
 
+from log.log import Log
+from datetime import datetime, timedelta
+from typing import List, Dict, Union, Any
+from typing_extensions import LiteralString
+
+mtp.use('Agg')
 Log.get_logger("Autosubmit")
 
 # Autosubmit stats constants
@@ -40,6 +45,8 @@ RATIO = 4
 MAX_JOBS_PER_PLOT = 12.0
 MAX_NUM_PLOTS = 40
 
+# Summary config constants
+MARGIN_DISTANCE = 3
 
 
 def _seq(start, end, step):
@@ -47,65 +54,65 @@ def _seq(start, end, step):
     sample_count = int(abs(end - start) / step)
     return itertools.islice(itertools.count(start, step), sample_count)
 
-def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, period_ini=None, period_fi=None,
-                       queue_time_fixes=None) -> bool:
-    # type: (str, List[Job], List[str], str, datetime, datetime, Dict[str, int]) -> None
-    """
-    Creates a bar diagram of the statistics.
 
-    :param queue_time_fixes:
-    :param experiment_id: experiment's identifier
-    :type experiment_id: str
-    :param jobs_list: list of jobs
-    :type jobs_list: List[Job]
-
-    :param general_stats: list of sections and options in the %DEFAULT.EXPID%_GENERAL_STATS file
-    :type general_stats: list of tuples  
-    :param output_file: path to the output file  
-    :type output_file: str  
-    :param period_ini: starting date and time
-    :type period_ini: datetime  
-    :param period_fi: finish date and time
-    :type period_fi: datetime  
-    """
-    # Error prevention
-    plt.close('all')
-    normal_plots_count = 0
-    failed_jobs_plots_count = 0
-    exp_stats = None
+def populate_statistics(jobs_list: List[Job], period_ini: datetime, period_fi: datetime, queue_time_fixes: Dict[str, int]) -> Statistics:
     try:
         exp_stats = Statistics(jobs_list, period_ini, period_fi, queue_time_fixes)
         exp_stats.calculate_statistics()
         exp_stats.calculate_summary()
         exp_stats.make_old_format()
+        return exp_stats
+    except Exception as exp:
+        print(exp)
+        print((traceback.format_exc()))
 
-        failed_jobs_dict = exp_stats.build_failed_jobs_only_list()
-        # Stats variables definition
+
+def create_stats_report(expid: str, jobs_list: List[Job], general_stats: List,
+                        output_file: Union[str, LiteralString, bytes], section_summary: bool, jobs_summary: bool,
+                        period_ini: datetime = None, period_fi: datetime = None,
+                        queue_fix_times: Dict[str, int] = None) -> bool:
+    exp_stats = populate_statistics(jobs_list, period_ini, period_fi, queue_fix_times)
+    plot = create_bar_diagram(expid, exp_stats, jobs_list, general_stats, output_file)
+    if section_summary:
+        create_table(jobs_list, exp_stats.jobs_stat, output_file, expid, table_to_create=True)
+    if jobs_summary:
+        create_table(jobs_list, exp_stats.jobs_stat, output_file, expid, table_to_create=False)
+    return plot
+
+
+def create_bar_diagram(expid: str, exp_stats: Statistics, jobs_list: List[Job], general_stats: List[str],
+                       output_file: Union[str, LiteralString, bytes]) -> bool:
+    # Error prevention
+    plt.close('all')
+    normal_plots_count = 0
+    failed_jobs_plots_count = 0
+    try:
         normal_plots_count = int(math.ceil(len(exp_stats.jobs_stat) / MAX_JOBS_PER_PLOT))
-        failed_jobs_plots_count = int(math.ceil(len(failed_jobs_dict) / MAX_JOBS_PER_PLOT))
+        failed_jobs_plots_count = int(math.ceil(len(exp_stats.build_failed_jobs_only_list()) / MAX_JOBS_PER_PLOT))
     except Exception as exp:
         print(exp)
         print((traceback.format_exc()))
 
     # Plotting
     total_plots_count = normal_plots_count + failed_jobs_plots_count
-    # num_plots = norma
     width = 0.16
     # Creating stats figure + sanity check
     plot = True
-    err_message = "The results are too large to be shown, try narrowing your query.\nUse a filter like -ft where you supply a list of job types, e.g. INI, SIM or use the flag -fp where you supply an integer that represents the number of hours into the past that should be queried:\nSuppose it is noon, if you supply -fp 5 the query will consider changes starting from 7:00 am. If you really wish to query the whole experiment, refer to Autosubmit GUI."
+    err_message = ("The results are too large to be shown, try narrowing your query.\nUse a filter like -ft where you "
+                   "supply a list of job types, e.g. INI, SIM or use the flag -fp where you supply an integer that "
+                   "represents the number of hours into the past that should be queried:\nSuppose it is noon, if you "
+                   "supply -fp 5 the query will consider changes starting from 7:00 am. If you really wish to query the "
+                   "whole experiment, refer to Autosubmit GUI.")
     if total_plots_count > MAX_NUM_PLOTS:
         Log.info(err_message)
         plot = False
     else:
         fig = plt.figure(figsize=(RATIO * 4, 3 * RATIO * total_plots_count))
-        fig.suptitle('STATS - ' + experiment_id, fontsize=24, fontweight='bold')
+        fig.suptitle(f'STATS - {expid}', fontsize=24, fontweight='bold')
+
         # Variables initialization
-        ax, ax2 = [], []
+        ax = []
         rects = [None] * 5
-        # print("Normal plots: {}".format(normal_plots_count))
-        # print("Failed jobs plots: {}".format(failed_jobs_plots_count))
-        # print("Total plots: {}".format(total_plots_count))
         grid_spec = gridspec.GridSpec(RATIO * total_plots_count + 2, 1)
         i_plot = 0
         for plot in range(1, normal_plots_count + 1):
@@ -119,21 +126,21 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
                 ind_width = [x + width for x in ind]
                 ind_width_3 = [x + width * 3 for x in ind]
                 ind_width_4 = [x + width * 4 for x in ind]
+
                 # Building plot axis
                 ax.append(fig.add_subplot(grid_spec[RATIO * plot - RATIO + 2:RATIO * plot + 1]))
                 ax[plot - 1].set_ylabel('hours')
                 ax[plot - 1].set_xticks(ind_width)
                 ax[plot - 1].set_xticklabels(
-                    [job.name for job in jobs_list[l1:l2]], rotation='vertical')
-                ax[plot - 1].set_title(experiment_id, fontsize=20)
+                    [job.name for job in jobs_list[l1:l2]],
+                    rotation='vertical')
+                ax[plot - 1].set_title(expid, fontsize=20)
                 upper_limit = round(1.10 * exp_stats.max_time, 4)
                 step = round(upper_limit / 10, 4)
-                # Here we use ``upper_limit + step`` as np.arange is inclusive at the end,
-                # ``islice`` is not.
                 y_ticks = [round(x, 4) for x in _seq(0, upper_limit + step, step)]
-                # ax[plot - 1].set_yticks(np.arange(0, upper_limit, round(upper_limit / 10, 4)))
                 ax[plot - 1].set_yticks(y_ticks)
                 ax[plot - 1].set_ylim(0, float(1.10 * exp_stats.max_time))
+
                 # Building reacts
                 rects[0] = ax[plot - 1].bar(ind, exp_stats.queued[l1:l2], width, color='lightpink')
                 rects[1] = ax[plot - 1].bar(ind_width, exp_stats.run[l1:l2], width, color='green')
@@ -163,11 +170,11 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
                 ax[plot - 1].set_ylabel('# failed attempts')
                 ax[plot - 1].set_xticks(ind_width)
                 ax[plot - 1].set_xticklabels([name for name in job_names_in_failed[l1:l2]], rotation='vertical')
-                ax[plot - 1].set_title(experiment_id, fontsize=20)
+                ax[plot - 1].set_title(expid, fontsize=20)
                 ax[plot - 1].set_ylim(0, float(1.10 * exp_stats.max_fail))
                 ax[plot - 1].set_yticks(range(0, exp_stats.max_fail + 2))
                 failed_jobs_rects[0] = ax[plot - 1].bar(ind_width_2, [exp_stats.failed_jobs_dict[name] for name in
-                                                                          job_names_in_failed[l1:l2]], width, color='red')
+                                                                      job_names_in_failed[l1:l2]], width, color='red')
             except Exception as exp:
                 print((traceback.format_exc()))
                 print(exp)
@@ -180,22 +187,20 @@ def create_bar_diagram(experiment_id, jobs_list, general_stats, output_file, per
 
         try:
             # Building legends
-            # print("Legends")
             build_legends(legends_plot, rects, exp_stats, general_stats)
-            # Saving output figure
-            grid_spec.tight_layout(fig, rect=[0, 0.03, 1, 0.97])
             plt.savefig(output_file)
         except Exception as exp:
             print(exp)
             print((traceback.format_exc()))
     try:
         create_csv_stats(exp_stats, jobs_list, output_file)
-    except Exception as exp:
+    except Exception:
         Log.info(f'Error while creating csv stats:\n{err_message}')
     return plot
 
 
-def create_csv_stats(exp_stats, jobs_list, output_file):
+def create_csv_stats(exp_stats: Statistics, jobs_list: List[Job],
+                     output_file: Union[str, LiteralString, bytes]) -> None:
     job_names = [job.name for job in exp_stats.jobs_stat]
     start_times = exp_stats.start_times
     end_times = exp_stats.end_times
@@ -206,17 +211,15 @@ def create_csv_stats(exp_stats, jobs_list, output_file):
     with open(output_file, 'w') as file:
         file.write(
             "Job,Started,Ended,Queuing time (hours),Running time (hours)\n")
-        # In the other function, job_names,start_times... etc is only filled if the job has completed retrials
-        # So I'll change this one to do the same
-        for i in range(len([ job for job in jobs_list if job.get_last_retrials() ])):
+        for i in range(len([job for job in jobs_list if job.get_last_retrials()])):
             file.write("{0},{1},{2},{3},{4}\n".format(
                 job_names[i], start_times[i], end_times[i], queuing_times[i], running_times[i]))
 
 
 def build_legends(plot, rects, experiment_stats, general_stats):
     # type: (plt.figure, List[plt.bar], Statistics, List[str]) -> None
-    # Main legend with colourful rectangles
 
+    # Main legend with colourful rectangles
     legend_rects = [[rect[0] for rect in rects]]
 
     legend_titles = [
@@ -260,3 +263,327 @@ def create_legend(plot, rects, titles, loc, handlelength=None):
 def get_whites_array(length):
     white = mpatches.Rectangle((0, 0), 0, 0, alpha=0.0)
     return [white for _ in range(length)]
+
+
+def group_by_section(jobs_list: List[Job], jobs_stats: List[JobStat]) -> Dict[str, List[JobStat]]:
+    grouped_jobs_by_section = {}
+    for job_stats in jobs_stats:
+        for job in jobs_list:
+            if job.name == job_stats.name:
+                if job.section in grouped_jobs_by_section:
+                    grouped_jobs_by_section[job.section].append(job_stats)
+                else:
+                    grouped_jobs_by_section[job.section] = [job_stats]
+    return grouped_jobs_by_section
+
+
+def get_job_by_name(jobs_list: List[Job], job_name: str) -> Job:
+    for job in jobs_list:
+        if job.name == job_name:
+            return job
+
+
+@dataclass
+class JobAggData:
+    section: Dict[str, str] = field(default_factory=dict)
+    count: int = 0
+    queue_sum: timedelta = timedelta()
+    avg_queue: timedelta = timedelta()
+    run_sum: timedelta = timedelta()
+    avg_run: timedelta = timedelta()
+
+    @staticmethod
+    def headers() -> List[str]:
+        spaced = [k.split('_') for k in JobAggData.__annotations__.keys()]
+        return [
+            ' '.join([key.capitalize() for key in keys]) for keys in spaced
+        ]
+
+    def values(self) -> List[Any]:
+        return list(self.__dict__.values())
+
+    @staticmethod
+    def number_of_columns() -> int:
+        return len(JobAggData.__annotations__)
+
+
+def aggregated_by_job_section_data(jobs_list: List['Job'], jobs_stats: List['JobStat']) -> List[JobAggData]:
+    filtered_job_list = filter_by_status(jobs_list)
+    grouped_by_section = group_by_section(filtered_job_list, jobs_stats)
+
+    # Order jobs by section
+    section_order = [section for section in grouped_by_section]
+    for job in filtered_job_list:
+        section = job.status_str
+        if section not in section_order:
+            section_order.append(section)
+
+    # Calculate values
+    section_values = [section for section in section_order if section in grouped_by_section]
+    jobs_values = [grouped_by_section[section] for section in section_values]
+    count_values = [len(values) for values in jobs_values]
+    time_delta = timedelta()
+    total_queue_time_values = [
+        sum([job_stat.completed_queue_time + job_stat.failed_queue_time
+             for job_stat in values], time_delta)
+        for values in jobs_values]
+
+    # Calculate total queue time
+    total_run_time_values = []
+    for section in jobs_values:
+        sum_run_time = timedelta()
+        for job_stat in section:
+            if get_status(jobs_list, job_stat.name) == "RUNNING":
+                sum_run_time += datetime.now() - job_stat.start_time
+            else:
+                sum_run_time += job_stat.completed_run_time + job_stat.failed_run_time
+        total_run_time_values.append(sum_run_time)
+    avg_queue_time_values = [total_queue_time / count if count != 0 else timedelta()
+                             for total_queue_time, count in zip(total_queue_time_values, count_values)]
+    avg_run_time_values = [total_run_time / count if count != 0 else timedelta()
+                           for total_run_time, count in zip(total_run_time_values, count_values)]
+
+    # Format times
+    total_queue_time_values = [format_times(td) for td in total_queue_time_values]
+    avg_queue_time_values = [format_times(td) for td in avg_queue_time_values]
+    total_run_time_values = [format_times(td) for td in total_run_time_values]
+    avg_run_time_values = [format_times(td) for td in avg_run_time_values]
+
+    data = [JobAggData(section, count, total_queue, avg_queue, total_run, avg_run)
+            for section, count, total_queue, avg_queue, total_run, avg_run in
+            zip(section_values, count_values, total_queue_time_values, avg_queue_time_values, total_run_time_values, avg_run_time_values)]
+
+    # Order return data by section
+    ret = []
+    for job in jobs_list:
+        for job_data in data:
+            if job_data.section == job.section and job_data not in ret:
+                ret.append(job_data)
+                break
+    return ret
+
+
+@dataclass
+class JobData:
+    job_name: str = ""
+    queue_time: timedelta = timedelta()
+    run_time: timedelta = timedelta()
+    status: str = ""
+
+    @staticmethod
+    def headers() -> List[str]:
+        spaced = [k.split('_') for k in JobData.__annotations__.keys()]
+        return [
+            ' '.join([key.capitalize() for key in keys]) for keys in spaced
+        ]
+
+    def values(self) -> List[Any]:
+        return list(self.__dict__.values())
+
+    @staticmethod
+    def number_of_columns() -> int:
+        return len(JobData.__annotations__)
+
+
+def jobs_list_data(jobs_list: List[Job], jobs_stats: List[JobStat]) -> List[JobData]:
+    filtered_job_list = sorted(filter_by_status(jobs_list), key=lambda x: x.name)
+
+    jobs_stats_list = []
+    for job in filtered_job_list:
+        for job_stats in jobs_stats:
+            if job_stats.name == job.name:
+                jobs_stats_list.append(job_stats)
+                break
+    # Order inital jobs by name
+    jobs_stats_list = sorted(jobs_stats_list, key=lambda x: x.name)
+
+    # Calculate values
+    job_names = [job_aux.name for job_aux in filtered_job_list]
+    queue_values = [format_times(job_stat.completed_queue_time + job_stat.failed_queue_time) for job_stat in jobs_stats_list]
+    # Calculate run time
+    run_values = []
+    for job_stats in jobs_stats_list:
+        if get_status(jobs_list, job_stats.name) == "RUNNING":
+            run_values.append(format_times(datetime.now() - job_stats.start_time))
+        else:
+            run_values.append(format_times(job_stats.completed_run_time + job_stats.failed_run_time))
+    status = [get_status(jobs_list, job_stat.name) for job_stat in jobs_stats_list]
+    data = [JobData(job_name, queue_time, run_time, status)
+            for job_name, queue_time, run_time, status in
+            zip(job_names, queue_values, run_values, status)]
+
+    # Order return data by job name
+    res = []
+    for job in jobs_list:
+        for job_data in data:
+            if job_data.job_name == job.name:
+                res.append(job_data)
+                break
+    return res
+
+
+def filter_by_status(jobs_list: List[Job]) -> List[Job]:
+    ret = []
+    for job in jobs_list:
+        if job.status_str == "COMPLETED" or job.status_str == "RUNNING":
+            ret.append(job)
+    return ret
+
+
+def get_status(jobs_list: List[Job], job_name: str) -> str:
+    for job in jobs_list:
+        if job.name == job_name:
+            return job.status_str
+
+
+def format_times(td: timedelta) -> str:
+    days = td.days
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if days == 0:
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
+    if days == 1:
+        return f"{days} day - {hours:02}:{minutes:02}:{seconds:02}"
+    return f"{days} days - {hours:02}:{minutes:02}:{seconds:02}"
+
+
+def create_table(jobs_list, jobs_stats, output_file, expid, table_to_create):
+    """
+    Creates a pdf with the table of the jobs aggregated by section or the jobs list.
+    
+    :param jobs_list: list of jobs
+    :type jobs_list: List[Job]
+    :param jobs_stats: jobs statistics
+    :type jobs_stats: List[JobStat]
+    :param output_file: output file
+    :type output_file: _SpecialForm[str, bytes]
+    :param expid: experiment id
+    :type expid: str
+    :param table_to_create: if True, the table will be aggregated by section, otherwise it will be the jobs list
+    :type table_to_create: bool 
+    :return: None
+    """
+    data = []
+    header = []
+    title_doc = ""
+    title_table = ""
+    output_file_aux = ""
+
+    if table_to_create:
+        data_list = aggregated_by_job_section_data(jobs_list, jobs_stats)
+        header = JobAggData.headers()
+        title_doc = f"SECTION SUMMARY - {expid}"
+        output_file_aux = output_file.replace("statistics", "section_summary")
+        title_table = "Aggregated by Job Section"
+    else:
+        data_list = jobs_list_data(jobs_list, jobs_stats)
+        header = JobData.headers()
+        title_doc = f"JOBS SUMMARY - {expid}"
+        output_file_aux = output_file.replace("statistics", "jobs_summary")
+        title_table = "Job List"
+
+    for job in data_list:
+        data.append(job.values())
+
+    row_height = 0.5
+    table_height = len(data_list) * row_height
+    table_width = 15
+
+    pdf_pages = PdfPages(output_file_aux)
+
+    fig = plt.figure(figsize=(table_width, table_height + 2))
+
+    # Grid spec for the document
+    grid_spec = gridspec.GridSpec(3, 1, height_ratios=[0.5, 0.1, len(data_list) * row_height])
+
+    # Document title
+    ax_title = fig.add_subplot(grid_spec[0])
+    ax_title.text(0.5, 0.5, title_doc, fontsize=14, fontweight='bold', va='center', ha='center')
+    ax_title.axis('off')
+
+    # Table title
+    ax_text = fig.add_subplot(grid_spec[1])
+    ax_text.text(0.1, 0.3, title_table, fontsize=14, fontweight='bold', va='center', ha='left')
+    ax_text.axis('off')
+
+    # Table
+    ax_table = fig.add_subplot(grid_spec[2])
+    left_margin, right_margin = 0.1, 0.1
+    table = ax_table.table(
+        cellText=data,
+        colLabels=header,
+        cellLoc='left',
+        loc='center',
+        bbox=[left_margin, 0, 1 - left_margin - right_margin, 1],
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+
+    cell_dict = table.get_celld()
+
+    for i, _ in enumerate(header):
+        cell = cell_dict[(0, i)]
+        cell.set_text_props(ha='left', va='center', weight='bold', color='w')
+        cell.set_facecolor('#404040')
+        cell.set_linewidth(0.1)
+        cell.set_edgecolor('#404040')
+        if i == 0:
+            cell.set_width(0.3)  # first column width 30%
+        else:
+            cell.set_width(0.14)
+    for i in range(1, len(data_list) + 1):  # skip header
+        for j in range(len(header)):
+            cell = cell_dict[(i, j)]
+            cell.set_linewidth(0.1)
+            cell.set_edgecolor('#d9d9d9')
+            if j == 0:
+                cell.set_width(0.3)  # first column width 30%
+            else:
+                cell.set_width(0.14)
+            if i % 2 == 0:
+                cell.set_facecolor('#f0f0f0')
+            else:
+                cell.set_facecolor('#ffffff')
+    ax_table.axis('off')
+
+    # Save table
+    plt.tight_layout()
+    plt.subplots_adjust(left=0, right=1, top=0.7, bottom=0.1)
+    pdf_pages.savefig(fig, bbox_inches='tight')
+    pdf_pages.close()
+    plt.close(fig)
+
+    # Create CSV of table
+    create_csv_tables(jobs_list, jobs_stats, output_file, table_to_create)
+
+
+def create_csv_tables(jobs_list, jobs_stats, output_file, table_to_create):
+    """
+    Creates a csv file with the table of the jobs aggregated by section or the jobs list.
+
+    :param jobs_list: list of jobs
+    :type jobs_list: List[Job]
+    :param jobs_stats: list of jobs statistics
+    :type jobs_stats: List[JobStat]
+    :param output_file: output file
+    :type output_file: _SpecialForm[str, bytes]
+    :param table_to_create: if True, the table will be aggregated by section, otherwise it will be the jobs list
+    :return: None
+    """
+    output_file_aux = ""
+    headers = []
+    data = []
+
+    if table_to_create:
+        output_file_aux = output_file.replace('statistics', 'section_summary').replace('.pdf', '.csv')
+        headers = JobAggData.headers()
+        data = aggregated_by_job_section_data(jobs_list, jobs_stats)
+    else:
+        output_file_aux = output_file.replace('statistics', 'jobs_summary').replace('.pdf', '.csv')
+        headers = JobData.headers()
+        data = jobs_list_data(jobs_list, jobs_stats)
+
+    with open(output_file_aux, 'w') as file:
+        file.write(",".join(headers) + "\n")
+        for job_data in data:
+            file.write(",".join([str(value) for value in job_data.values()]) + "\n")

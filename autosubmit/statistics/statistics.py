@@ -48,7 +48,7 @@ class Statistics(object):
             retrials = job.get_last_retrials()
             for retrial in retrials:
                 job_stat = self._name_to_jobstat_dict.setdefault(job.name, JobStat(job.name, parse_number_processors(
-                    job.processors), job.total_wallclock, job.section, job.date, job.member, job.chunk, job.processors_per_node, job.tasks, job.nodes, job.exclusive ))
+                    job.processors), job.total_wallclock, job.section, job.date, job.member, job.chunk, job.processors_per_node, job.tasks, job.nodes, job.exclusive))
                 job_stat.inc_retrial_count()
                 if Job.is_a_completed_retrial(retrial):
                     job_stat.inc_completed_retrial_count()
@@ -61,9 +61,9 @@ class Statistics(object):
                     job_stat.completed_run_time += max(job_stat.finish_time - job_stat.start_time, timedelta())
                 else:
                     job_stat.inc_failed_retrial_count()
-                    job_stat.submit_time = retrial[0] if len(retrial) >= 1 and type(retrial[0]) == datetime else None
-                    job_stat.start_time = retrial[1] if len(retrial) >= 2 and type(retrial[1]) == datetime else None
-                    job_stat.finish_time = retrial[2] if len(retrial) >= 3 and type(retrial[2]) == datetime else None
+                    job_stat.submit_time = retrial[0] if len(retrial) >= 1 and type(retrial[0]) is datetime else None
+                    job_stat.start_time = retrial[1] if len(retrial) >= 2 and type(retrial[1]) is datetime else None
+                    job_stat.finish_time = retrial[2] if len(retrial) >= 3 and type(retrial[2]) is datetime else None
                     if job_stat.finish_time and job_stat.start_time:
                         job_stat.failed_run_time += max(job_stat.finish_time - job_stat.start_time, timedelta())
                     if job_stat.start_time and job_stat.submit_time:
@@ -72,14 +72,13 @@ class Statistics(object):
                             seconds=self._queue_time_fixes.get(job.name, 0))
                         job_stat.failed_queue_time += max(adjusted_failed_queue, timedelta())
         self.jobs_stat = sorted(list(self._name_to_jobstat_dict.values()), key=lambda x: (
-        x.date if x.date else datetime.now(), x.member if x.member else "", x.section if x.section else "", x.chunk))
+            x.date if x.date else datetime.now(), x.member if x.member else "", x.section if x.section else "", x.chunk))
         return self.jobs_stat
 
     def calculate_summary(self):
-        # type: () -> StatsSummary
+        # type: () -> None
         stat_summary = StatsSummary()
         for job in self.jobs_stat:
-            # print("{} -> {}".format(job._name, job.expected_real_consumption))
             job_stat_dict = job.get_as_dict()
             # Counter
             stat_summary.submitted_count += job_stat_dict["submittedCount"]
@@ -102,7 +101,7 @@ class Statistics(object):
         return self.summary.get_as_list()
 
     def get_statistics(self):
-        job_stat_list = self.calculate_statistics()
+        job_stat_list = self.jobs_stat
         return {
             "Period": {"From": str(self._start), "To": str(self._end)},
             "JobStatistics": [job.get_as_dict() for job in job_stat_list]

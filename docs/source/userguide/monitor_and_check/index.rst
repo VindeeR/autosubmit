@@ -500,9 +500,8 @@ Options:
                             from current time to the past in number of hours back
       -o {pdf,png,ps,svg}, --output {pdf,png,ps,svg}
                             type of output for generated plot
-      -ss, --section_summary
-                            Includes section summary in the plot
-      -js, --jobs_summary   Includes jobs summary in the plot
+      --section_summary     Includes section summary in the plot
+      --jobs_summary        Includes jobs summary in the plot
       --hide,               hide the plot
       -nt                   --notransitive
                                 prevents doing the transitive reduction when plotting the workflow
@@ -521,8 +520,10 @@ The location where user can find the generated plots with date and timestamp can
 For including the summaries:
 ::
 
-        autosubmit stats -ss -js cxxx
-The location will be the same as the bar diagram plot:
+        autosubmit stats --section_summary --jobs_summary cxxx
+.. To be changed if the code is modified
+
+The location will be:
 ::
 
         <experiments_directory>/cxxx/stats/cxxx_section_summary_<date>_<time>.pdf

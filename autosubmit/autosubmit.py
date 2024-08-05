@@ -311,9 +311,9 @@ class Autosubmit:
                                                                             'in number of hours back')
             subparser.add_argument('-o', '--output', choices=('pdf', 'png', 'ps', 'svg'), default='pdf',
                                    help='type of output for generated plot')
-            subparser.add_argument('-ss', '--section_summary', action='store_true', default=False,
+            subparser.add_argument('--section_summary', action='store_true', default=False,
                                    help='Includes section summary in the plot')
-            subparser.add_argument('-js', '--jobs_summary', action='store_true', default=False,
+            subparser.add_argument('--jobs_summary', action='store_true', default=False,
                                    help='Includes jobs summary in the plot')
             subparser.add_argument('--hide', action='store_true', default=False,
                                    help='hides plot window')

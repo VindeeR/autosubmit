@@ -121,7 +121,7 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
-autodoc_mock_imports = ["portalocker", "argparse", "python-dateutil", "py3dotplus", "pyparsing",
+autodoc_mock_imports = ["argparse", "python-dateutil", "py3dotplus", "pyparsing",
                         'numpy', 'matplotlib', 'matplotlib.pyplot', 'matplotlib.gridspec', 'matplotlib.patches', 'paramiko',
                         'mock', "networkx", 'networkx.algorithms.dag', 'bscearth.utils', 'bscearth.utils.config_parser',
                         'bscearth.utils.date']

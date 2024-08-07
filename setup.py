@@ -33,7 +33,6 @@ install_requires = [
     'bscearth.utils<=0.5.2',
     'requests<=2.31.0',
     'networkx<=2.6.3',
-    'portalocker<=2.7.0',
     'paramiko<=3.4',
     'pyparsing==3.1.1',
     'matplotlib<=3.8.3',

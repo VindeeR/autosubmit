@@ -5,12 +5,46 @@ import re
 import signal
 import subprocess
 from itertools import zip_longest
-
 from autosubmitconfigparser.config.basicconfig import BasicConfig
-
 from autosubmit.notifications.mail_notifier import MailNotifier
 from autosubmit.notifications.notifier import Notifier
+from pathlib import Path
 from log.log import AutosubmitCritical, Log
+import socket
+import psutil
+
+
+class ASLock:
+    def __init__(self, expid):
+        self.expid = expid
+        self.basic_config = BasicConfig()
+        self.basic_config.read()
+        self.current_hostname = socket.gethostname()
+        self.current_pid = os.getpid()
+        self.file_path = Path(self.basic_config.LOCAL_ROOT_DIR) / expid / "tmp" / "autosubmit.lock"
+
+    def __enter__(self):
+        if not self.file_path.exists():
+            self.file_path.touch()
+        if os.stat(self.file_path).st_size == 0:
+            with open(self.file_path, "w") as f:
+                f.write(f"{self.current_hostname},{self.current_pid}")
+        else:
+            with open(self.file_path, "r") as f:
+                hostname, pid = f.read().split(",")
+            if hostname == self.current_hostname:
+                if psutil.pid_exists(int(pid)):
+                    raise AutosubmitCritical(f"Lock file {self.file_path} already exists and is being used by process with PID {pid} on host {hostname}", 7000)
+            else:
+                raise AutosubmitCritical(f"Lock file {self.file_path} already exists and is being used by process with PID {pid} on host {hostname}.\n Please, use the previous hostname and try again or delete this file:{self.file_path} if the experiment is not running and was terminated with a kill -9", 7000)
+            with open(self.file_path, "w") as f:
+                f.write(f"{self.current_hostname},{self.current_pid}")
+            Log.info(f"Lock file {self.file_path} created")
+        return True
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.file_path.exists():
+            self.file_path.unlink()
 
 
 def check_jobs_file_exists(as_conf, current_section_name=None):

@@ -39,8 +39,6 @@ def exit_from_error(e: BaseException):
         Log.debug(trace)
     except:
         print(trace)
-    with suppress(FileNotFoundError, PermissionError):
-        os.remove(os.path.join(Log.file_path, "autosubmit.lock"))
     if isinstance(e, (AutosubmitCritical, AutosubmitError)):
         e: Union[AutosubmitError, AutosubmitCritical] = e
         if e.trace:
@@ -57,8 +55,6 @@ def exit_from_error(e: BaseException):
 def main():
     try:
         return_value = Autosubmit.parse_args()
-        if os.path.exists(os.path.join(Log.file_path, "autosubmit.lock")):
-            os.remove(os.path.join(Log.file_path, "autosubmit.lock"))
         if type(return_value) is int:
             os._exit(return_value)
         os._exit(0)

@@ -8,6 +8,7 @@ Works under local_computer TODO introduce in CI
 
 import os
 import subprocess
+import time
 BIN_PATH = '../../bin'
 ACTIVE_DOCS = True # Use autosubmit_docs database
 VERSION = 4.1 # 4.0 or 4.1
@@ -40,7 +41,10 @@ def perform_test(expids):
     to_exclude = []
     for expid in expids:
         try:
+            start = time.time()
             output,error = run_test(expid)
+            end = time.time()
+            print(f"Time taken for {expid}: {end-start}")
             # output to str
             output = output.decode("UTF-8")
             output = output.split("Job list created successfully[0m[39m")[1]
@@ -68,4 +72,8 @@ for experiment in os.listdir(f"{EXPERIMENTS_PATH}"):
             expids.append(experiment)
 # Force
 # expids = ["a001"]
+#General time
+start = time.time()
 perform_test(expids)
+end = time.time()
+print(f"Acc time taken: {end-start}")

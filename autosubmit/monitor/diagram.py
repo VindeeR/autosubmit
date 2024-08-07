@@ -20,6 +20,7 @@
 import itertools
 import math
 import traceback
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 import matplotlib as mtp
@@ -37,6 +38,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Union, Any
 from typing_extensions import LiteralString
 
+
 mtp.use('Agg')
 Log.get_logger("Autosubmit")
 
@@ -48,6 +50,83 @@ MAX_NUM_PLOTS = 40
 # Summary config constants
 MARGIN_DISTANCE = 3
 
+# Table constants
+TABLE_WIDTH = 15
+TABLE_ROW_HEIGHT = 0.5
+
+
+# BRUNO: We can move the helper classes to the top, or all to the bottom.
+#        One way, or the other, but keeping the main class separated.
+#        Also added simple comments to the class.
+@dataclass
+class JobAggData:
+    """A data class with job data aggregated by values."""
+    section: Dict[str, str] = field(default_factory=dict)
+    count: int = 0
+    queue_sum: timedelta = timedelta()
+    avg_queue: timedelta = timedelta()
+    run_sum: timedelta = timedelta()
+    avg_run: timedelta = timedelta()
+
+    @staticmethod
+    def headers() -> List[str]:
+        spaced = [k.split('_') for k in JobAggData.__annotations__.keys()]
+        return [
+            ' '.join([key.capitalize() for key in keys]) for keys in spaced
+        ]
+
+    def values(self) -> List[Any]:
+        return list(self.__dict__.values())
+
+    @staticmethod
+    def number_of_columns() -> int:
+        return len(JobAggData.__annotations__)
+
+
+@dataclass
+class JobData:
+    """A data class with job data."""
+    job_name: str = ""
+    queue_time: timedelta = timedelta()
+    run_time: timedelta = timedelta()
+    status: str = ""
+
+    @staticmethod
+    def headers() -> List[str]:
+        spaced = [k.split('_') for k in JobData.__annotations__.keys()]
+        return [
+            ' '.join([key.capitalize() for key in keys]) for keys in spaced
+        ]
+
+    def values(self) -> List[Any]:
+        return list(self.__dict__.values())
+
+    @staticmethod
+    def number_of_columns() -> int:
+        return len(JobData.__annotations__)
+
+
+# BRUNO: A new type to return the ``show`` flag, and the files produced...
+
+@dataclass
+class StatsReport:
+    """A data class with the stat report file names, and a flag.
+
+    The flag defines whether the bar diagram was generated, and is
+    used to control whether the PDF files are displayed to the user
+    or not (in which case, a warning is displayed on the terminal).
+    """
+    stats_file: Union[str, None] = None
+    jobs_file: Union[str, None] = None
+    jobs_section_file: Union[str, None] = None
+    show: bool = False
+
+    def report_files(self) -> List[str]:
+        return filter(
+            lambda x: x is not None,
+            [self.stats_file, self.jobs_file, self.jobs_section_file]
+        )
+
 
 def _seq(start, end, step):
     """From: https://pynative.com/python-range-for-float-numbers/"""
@@ -55,29 +134,90 @@ def _seq(start, end, step):
     return itertools.islice(itertools.count(start, step), sample_count)
 
 
-def populate_statistics(jobs_list: List[Job], period_ini: datetime, period_fi: datetime, queue_time_fixes: Dict[str, int]) -> Statistics:
+def populate_statistics(
+        jobs_list: List[Job],
+        period_ini: datetime,
+        period_fi: datetime,
+        queue_time_fixes: Dict[str, int]
+) -> Statistics:
     try:
-        exp_stats = Statistics(jobs_list, period_ini, period_fi, queue_time_fixes)
-        exp_stats.calculate_statistics()
-        exp_stats.calculate_summary()
-        exp_stats.make_old_format()
-        return exp_stats
+        # BRUNO: Here's what the builder pattern looks like when called;
+        #        I think SQLAlchemy does this too. Very common in Java/C#.
+        return (
+            Statistics(jobs_list, period_ini, period_fi, queue_time_fixes).
+            calculate_statistics().
+            calculate_summary().
+            make_old_format().
+            build_failed_jobs()
+        )
     except Exception as exp:
-        print(exp)
-        print((traceback.format_exc()))
+        Log.warning(str(exp))
 
 
-def create_stats_report(expid: str, jobs_list: List[Job], general_stats: List,
-                        output_file: Union[str, LiteralString, bytes], section_summary: bool, jobs_summary: bool,
-                        period_ini: datetime = None, period_fi: datetime = None,
-                        queue_fix_times: Dict[str, int] = None) -> bool:
+def create_stats_report(
+        expid: str, jobs_list: List[Job], general_stats: List, output_file: str,
+        section_summary: bool, jobs_summary: bool,period_ini: datetime = None,
+        period_fi: datetime = None, queue_fix_times: Dict[str, int] = None
+) -> StatsReport:
+    """Function to create the stats report.
+
+    Produces one or more PDF files, depending on the parameters.
+
+    Also produces CSV files with the data from each PDF.
+    """
     exp_stats = populate_statistics(jobs_list, period_ini, period_fi, queue_fix_times)
     plot = create_bar_diagram(expid, exp_stats, jobs_list, general_stats, output_file)
-    if section_summary:
-        create_table(jobs_list, exp_stats.jobs_stat, output_file, expid, table_to_create=True)
-    if jobs_summary:
-        create_table(jobs_list, exp_stats.jobs_stat, output_file, expid, table_to_create=False)
-    return plot
+
+    stats_report = StatsReport()
+    stats_report.plot = plot
+    stats_report.stats_file = output_file
+
+    if plot:
+        # We only produce these plots if ``plot`` is ``True``, as this
+        # flag is returned and control whether the user will see these
+        # files after they are created (with ``xdg-open`` or ``open``).
+        if section_summary:
+            jobs_data = _aggregate_jobs_by_section(jobs_list, exp_stats.jobs_stat)
+            job_section_output_file = output_file.replace("statistics", "section_summary")
+            headers = JobAggData.headers()
+            _create_table(
+                jobs_data,
+                job_section_output_file,
+                headers,
+                doc_title=f"SECTION SUMMARY - {expid}",
+                table_title="Aggregated by Job Section"
+            )
+            _create_csv_tables(
+                jobs_data,
+                job_section_output_file,
+                headers
+            )
+            stats_report.jobs_section_file = job_section_output_file
+            # BRUNO: I moved the log lines o within this block. This is the only place with
+            #        ``if``s, so tests only need to worry about covering these branches...
+            Log.result(f'Section Summary created at {job_section_output_file}')
+        if jobs_summary:
+            jobs_data = _get_job_list_data(jobs_list, exp_stats.jobs_stat)
+            jobs_output_file = output_file.replace("statistics", "jobs_summary")
+            headers = JobData.headers()
+            _create_table(
+                jobs_data,
+                jobs_output_file,
+                headers,
+                doc_title=f"JOBS SUMMARY - {expid}",
+                table_title="Job List"
+            )
+            _create_csv_tables(
+                jobs_data,
+                jobs_output_file,
+                headers
+            )
+            stats_report.jobs_file = jobs_output_file
+            Log.result(f'Jobs Summary created at {jobs_output_file}')
+
+    Log.result(f'Stats created at {output_file}')
+
+    return stats_report
 
 
 def create_bar_diagram(expid: str, exp_stats: Statistics, jobs_list: List[Job], general_stats: List[str],
@@ -88,16 +228,16 @@ def create_bar_diagram(expid: str, exp_stats: Statistics, jobs_list: List[Job], 
     failed_jobs_plots_count = 0
     try:
         normal_plots_count = int(math.ceil(len(exp_stats.jobs_stat) / MAX_JOBS_PER_PLOT))
-        failed_jobs_plots_count = int(math.ceil(len(exp_stats.build_failed_jobs_only_list()) / MAX_JOBS_PER_PLOT))
+        failed_jobs_plots_count = int(math.ceil(len(exp_stats.failed_jobs) / MAX_JOBS_PER_PLOT))
     except Exception as exp:
-        print(exp)
-        print((traceback.format_exc()))
+        Log.warning(str(exp))
 
     # Plotting
     total_plots_count = normal_plots_count + failed_jobs_plots_count
     width = 0.16
     # Creating stats figure + sanity check
     plot = True
+    # BRUNO: This change was not needed?
     err_message = ("The results are too large to be shown, try narrowing your query.\nUse a filter like -ft where you "
                    "supply a list of job types, e.g. INI, SIM or use the flag -fp where you supply an integer that "
                    "represents the number of hours into the past that should be queried:\nSuppose it is noon, if you "
@@ -236,7 +376,7 @@ def build_legends(plot, rects, experiment_stats, general_stats):
         legend_handlelengths.append(0)
 
     # Total stats legend
-    stats_summary_as_list = experiment_stats.get_summary_as_list()
+    stats_summary_as_list = experiment_stats.summary_list
     legend_rects.append(get_whites_array(len(stats_summary_as_list)))
     legend_titles.append(stats_summary_as_list)
     legend_locs.append("upper left")
@@ -265,51 +405,56 @@ def get_whites_array(length):
     return [white for _ in range(length)]
 
 
-def group_by_section(jobs_list: List[Job], jobs_stats: List[JobStat]) -> Dict[str, List[JobStat]]:
-    grouped_jobs_by_section = {}
+# BRUNO: Made your functions private, and removed one that was not used, I think.
+#        Also moved the private functions to the top, and then the public
+#        function where they are used below them (don't know if a known convention,
+#        but it is common to see code doing this, or the other way around -- in some
+#        old code/programming languages, "hoisting" is/was not available, so you
+#        HAD to write the functions to be called ahead of time, or you'd have an
+#        error... you can search for variable hoisting for examples I think...).
+#        Oh, also added some quick docs, but they are not complete... it's better
+#        to document the code if possible, even private & simple functions :)
+def _group_by_section(jobs_list: List[Job], jobs_stats: List[JobStat]) -> Dict[str, List[JobStat]]:
+    grouped_jobs_by_section = defaultdict(list)
     for job_stats in jobs_stats:
         for job in jobs_list:
             if job.name == job_stats.name:
-                if job.section in grouped_jobs_by_section:
-                    grouped_jobs_by_section[job.section].append(job_stats)
-                else:
-                    grouped_jobs_by_section[job.section] = [job_stats]
+                grouped_jobs_by_section[job.section].append(job_stats)
     return grouped_jobs_by_section
 
 
-def get_job_by_name(jobs_list: List[Job], job_name: str) -> Job:
+def _format_times(td: timedelta) -> str:
+    """Return a human-readable string with the number of day(s), and the time in the delta."""
+    days = td.days
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if days == 0:
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
+    if days == 1:
+        return f"{days} day - {hours:02}:{minutes:02}:{seconds:02}"
+    return f"{days} days - {hours:02}:{minutes:02}:{seconds:02}"
+
+
+def _filter_by_status(jobs_list: List[Job]) -> List[Job]:
+    """Filter jobs by status."""
+    ret = []
+    for job in jobs_list:
+        if job.status_str == "COMPLETED" or job.status_str == "RUNNING":
+            ret.append(job)
+    return ret
+
+
+def _get_status(jobs_list: List[Job], job_name: str) -> str:
+    """Return the status of the job."""
     for job in jobs_list:
         if job.name == job_name:
-            return job
+            return job.status_str
 
 
-@dataclass
-class JobAggData:
-    section: Dict[str, str] = field(default_factory=dict)
-    count: int = 0
-    queue_sum: timedelta = timedelta()
-    avg_queue: timedelta = timedelta()
-    run_sum: timedelta = timedelta()
-    avg_run: timedelta = timedelta()
-
-    @staticmethod
-    def headers() -> List[str]:
-        spaced = [k.split('_') for k in JobAggData.__annotations__.keys()]
-        return [
-            ' '.join([key.capitalize() for key in keys]) for keys in spaced
-        ]
-
-    def values(self) -> List[Any]:
-        return list(self.__dict__.values())
-
-    @staticmethod
-    def number_of_columns() -> int:
-        return len(JobAggData.__annotations__)
-
-
-def aggregated_by_job_section_data(jobs_list: List['Job'], jobs_stats: List['JobStat']) -> List[JobAggData]:
-    filtered_job_list = filter_by_status(jobs_list)
-    grouped_by_section = group_by_section(filtered_job_list, jobs_stats)
+def _aggregate_jobs_by_section(jobs_list: List['Job'], jobs_stats: List['JobStat']) -> List[JobAggData]:
+    """Aggregate jobs by section."""
+    filtered_job_list = _filter_by_status(jobs_list)
+    grouped_by_section = _group_by_section(filtered_job_list, jobs_stats)
 
     # Order jobs by section
     section_order = [section for section in grouped_by_section]
@@ -333,7 +478,7 @@ def aggregated_by_job_section_data(jobs_list: List['Job'], jobs_stats: List['Job
     for section in jobs_values:
         sum_run_time = timedelta()
         for job_stat in section:
-            if get_status(jobs_list, job_stat.name) == "RUNNING":
+            if _get_status(jobs_list, job_stat.name) == "RUNNING":
                 sum_run_time += datetime.now() - job_stat.start_time
             else:
                 sum_run_time += job_stat.completed_run_time + job_stat.failed_run_time
@@ -344,10 +489,10 @@ def aggregated_by_job_section_data(jobs_list: List['Job'], jobs_stats: List['Job
                            for total_run_time, count in zip(total_run_time_values, count_values)]
 
     # Format times
-    total_queue_time_values = [format_times(td) for td in total_queue_time_values]
-    avg_queue_time_values = [format_times(td) for td in avg_queue_time_values]
-    total_run_time_values = [format_times(td) for td in total_run_time_values]
-    avg_run_time_values = [format_times(td) for td in avg_run_time_values]
+    total_queue_time_values = [_format_times(td) for td in total_queue_time_values]
+    avg_queue_time_values = [_format_times(td) for td in avg_queue_time_values]
+    total_run_time_values = [_format_times(td) for td in total_run_time_values]
+    avg_run_time_values = [_format_times(td) for td in avg_run_time_values]
 
     data = [JobAggData(section, count, total_queue, avg_queue, total_run, avg_run)
             for section, count, total_queue, avg_queue, total_run, avg_run in
@@ -363,30 +508,12 @@ def aggregated_by_job_section_data(jobs_list: List['Job'], jobs_stats: List['Job
     return ret
 
 
-@dataclass
-class JobData:
-    job_name: str = ""
-    queue_time: timedelta = timedelta()
-    run_time: timedelta = timedelta()
-    status: str = ""
-
-    @staticmethod
-    def headers() -> List[str]:
-        spaced = [k.split('_') for k in JobData.__annotations__.keys()]
-        return [
-            ' '.join([key.capitalize() for key in keys]) for keys in spaced
-        ]
-
-    def values(self) -> List[Any]:
-        return list(self.__dict__.values())
-
-    @staticmethod
-    def number_of_columns() -> int:
-        return len(JobData.__annotations__)
-
-
-def jobs_list_data(jobs_list: List[Job], jobs_stats: List[JobStat]) -> List[JobData]:
-    filtered_job_list = sorted(filter_by_status(jobs_list), key=lambda x: x.name)
+# BRUNO: It is clearer if your function is named like ``get_something``, ``do_something``;
+#        leave names that may look like an attribute to ``@property``s, like
+#        ``jobs_aggregated``, or ``jobs_list_data``, and try to have a verb with functions
+#        that do some action (some programming languages prefer Gets, other Get...
+def _get_job_list_data(jobs_list: List[Job], jobs_stats: List[JobStat]) -> List[JobData]:
+    filtered_job_list = sorted(_filter_by_status(jobs_list), key=lambda x: x.name)
 
     jobs_stats_list = []
     for job in filtered_job_list:
@@ -394,24 +521,30 @@ def jobs_list_data(jobs_list: List[Job], jobs_stats: List[JobStat]) -> List[JobD
             if job_stats.name == job.name:
                 jobs_stats_list.append(job_stats)
                 break
-    # Order inital jobs by name
+    # BRUNO: Hmmm, the filtered_job_list is already sorted,
+    #        do we still need to sort it again?
+    # Order initial jobs by name
     jobs_stats_list = sorted(jobs_stats_list, key=lambda x: x.name)
 
     # Calculate values
     job_names = [job_aux.name for job_aux in filtered_job_list]
-    queue_values = [format_times(job_stat.completed_queue_time + job_stat.failed_queue_time) for job_stat in jobs_stats_list]
+    queue_values = [_format_times(job_stat.completed_queue_time + job_stat.failed_queue_time) for job_stat in jobs_stats_list]
     # Calculate run time
     run_values = []
     for job_stats in jobs_stats_list:
-        if get_status(jobs_list, job_stats.name) == "RUNNING":
-            run_values.append(format_times(datetime.now() - job_stats.start_time))
+        if _get_status(jobs_list, job_stats.name) == "RUNNING":
+            job_running_time = _format_times(datetime.now() - job_stats.start_time)
         else:
-            run_values.append(format_times(job_stats.completed_run_time + job_stats.failed_run_time))
-    status = [get_status(jobs_list, job_stat.name) for job_stat in jobs_stats_list]
+            job_running_time = _format_times(job_stats.completed_run_time + job_stats.failed_run_time)
+        run_values.append(job_running_time)
+    status = [_get_status(jobs_list, job_stat.name) for job_stat in jobs_stats_list]
     data = [JobData(job_name, queue_time, run_time, status)
             for job_name, queue_time, run_time, status in
             zip(job_names, queue_values, run_values, status)]
 
+    # BRUNO: Docs say ordering, it's actually ... filtering? Really necessary?
+    #        If not, maybe we can just return the ``data`` var here? We can place
+    #        a breakpoint here to compare ``data`` with ``res``...
     # Order return data by job name
     res = []
     for job in jobs_list:
@@ -422,88 +555,52 @@ def jobs_list_data(jobs_list: List[Job], jobs_stats: List[JobStat]) -> List[JobD
     return res
 
 
-def filter_by_status(jobs_list: List[Job]) -> List[Job]:
-    ret = []
-    for job in jobs_list:
-        if job.status_str == "COMPLETED" or job.status_str == "RUNNING":
-            ret.append(job)
-    return ret
-
-
-def get_status(jobs_list: List[Job], job_name: str) -> str:
-    for job in jobs_list:
-        if job.name == job_name:
-            return job.status_str
-
-
-def format_times(td: timedelta) -> str:
-    days = td.days
-    hours, remainder = divmod(td.seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    if days == 0:
-        return f"{hours:02}:{minutes:02}:{seconds:02}"
-    if days == 1:
-        return f"{days} day - {hours:02}:{minutes:02}:{seconds:02}"
-    return f"{days} days - {hours:02}:{minutes:02}:{seconds:02}"
-
-
-def create_table(jobs_list, jobs_stats, output_file, expid, table_to_create):
+# BRUNO: Have a look at this variation... it does not depend on expid, I think it's
+#        if-less, and must be used by another function that prepares the output_file
+#        and other values. It also does not produce the CSV anymore (i.e. single
+#        responsibility principle). This also means you can write a test for the
+#        creation of tables, without worrying about CSVs, and vice-versa (i.e. you
+#        design your code for tests).
+def _create_table(
+        jobs_data: List[Union[JobData, JobAggData]],
+        output_file: str,
+        headers: List[str],
+        doc_title: str,
+        table_title: str
+) -> None:
     """
     Creates a pdf with the table of the jobs aggregated by section or the jobs list.
-    
-    :param jobs_list: list of jobs
-    :type jobs_list: List[Job]
-    :param jobs_stats: jobs statistics
-    :type jobs_stats: List[JobStat]
+
+    :param jobs_data: jobs data for the table
+    :type jobs_data: List[Union[JobData, JobAggData]]
     :param output_file: output file
-    :type output_file: _SpecialForm[str, bytes]
-    :param expid: experiment id
-    :type expid: str
-    :param table_to_create: if True, the table will be aggregated by section, otherwise it will be the jobs list
-    :type table_to_create: bool 
+    :type output_file: str
+    :param headers: Table headers.
+    :type headers: List[str]
+    :param doc_title: The PDF document title.
+    :type doc_title: str
+    :param table_title: The PDF table title.
+    :type table_title: str
     :return: None
     """
-    data = []
-    header = []
-    title_doc = ""
-    title_table = ""
-    output_file_aux = ""
+    data = [job.values for job in jobs_data]
 
-    if table_to_create:
-        data_list = aggregated_by_job_section_data(jobs_list, jobs_stats)
-        header = JobAggData.headers()
-        title_doc = f"SECTION SUMMARY - {expid}"
-        output_file_aux = output_file.replace("statistics", "section_summary")
-        title_table = "Aggregated by Job Section"
-    else:
-        data_list = jobs_list_data(jobs_list, jobs_stats)
-        header = JobData.headers()
-        title_doc = f"JOBS SUMMARY - {expid}"
-        output_file_aux = output_file.replace("statistics", "jobs_summary")
-        title_table = "Job List"
+    table_height = len(jobs_data) * TABLE_ROW_HEIGHT + 2
+    pdf_pages = PdfPages(output_file)
 
-    for job in data_list:
-        data.append(job.values())
-
-    row_height = 0.5
-    table_height = len(data_list) * row_height
-    table_width = 15
-
-    pdf_pages = PdfPages(output_file_aux)
-
-    fig = plt.figure(figsize=(table_width, table_height + 2))
+    fig = plt.figure(figsize=(TABLE_WIDTH, table_height))
 
     # Grid spec for the document
-    grid_spec = gridspec.GridSpec(3, 1, height_ratios=[0.5, 0.1, len(data_list) * row_height])
+    grid_spec = gridspec.GridSpec(3, 1, height_ratios=[0.5, 0.1, len(jobs_data) * TABLE_ROW_HEIGHT])
 
     # Document title
     ax_title = fig.add_subplot(grid_spec[0])
-    ax_title.text(0.5, 0.5, title_doc, fontsize=14, fontweight='bold', va='center', ha='center')
+    ax_title.text(0.5, 0.5, doc_title, fontsize=14, fontweight='bold', va='center', ha='center')
     ax_title.axis('off')
 
     # Table title
     ax_text = fig.add_subplot(grid_spec[1])
-    ax_text.text(0.1, 0.3, title_table, fontsize=14, fontweight='bold', va='center', ha='left')
+    ax_text.text(0.1, 0.3, table_title, fontsize=14, fontweight='bold', va='center', ha='left')
     ax_text.axis('off')
 
     # Table
@@ -511,7 +608,7 @@ def create_table(jobs_list, jobs_stats, output_file, expid, table_to_create):
     left_margin, right_margin = 0.1, 0.1
     table = ax_table.table(
         cellText=data,
-        colLabels=header,
+        colLabels=headers,
         cellLoc='left',
         loc='center',
         bbox=[left_margin, 0, 1 - left_margin - right_margin, 1],
@@ -521,7 +618,7 @@ def create_table(jobs_list, jobs_stats, output_file, expid, table_to_create):
 
     cell_dict = table.get_celld()
 
-    for i, _ in enumerate(header):
+    for i in range(len(headers)):
         cell = cell_dict[(0, i)]
         cell.set_text_props(ha='left', va='center', weight='bold', color='w')
         cell.set_facecolor('#404040')
@@ -531,8 +628,9 @@ def create_table(jobs_list, jobs_stats, output_file, expid, table_to_create):
             cell.set_width(0.3)  # first column width 30%
         else:
             cell.set_width(0.14)
-    for i in range(1, len(data_list) + 1):  # skip header
-        for j in range(len(header)):
+
+    for i in range(1, len(jobs_data) + 1):  # skip header
+        for j in range(len(headers)):
             cell = cell_dict[(i, j)]
             cell.set_linewidth(0.1)
             cell.set_edgecolor('#d9d9d9')
@@ -544,6 +642,7 @@ def create_table(jobs_list, jobs_stats, output_file, expid, table_to_create):
                 cell.set_facecolor('#f0f0f0')
             else:
                 cell.set_facecolor('#ffffff')
+
     ax_table.axis('off')
 
     # Save table
@@ -553,37 +652,38 @@ def create_table(jobs_list, jobs_stats, output_file, expid, table_to_create):
     pdf_pages.close()
     plt.close(fig)
 
-    # Create CSV of table
-    create_csv_tables(jobs_list, jobs_stats, output_file, table_to_create)
 
-
-def create_csv_tables(jobs_list, jobs_stats, output_file, table_to_create):
+# BRUNO: By modifying the function signature, and moving things around, I think
+#        now we call ``_aggregate_jobs_by_section`` or ``_get_job_list_data``,
+#        and replace the ``output_file`` string, exactly once. Then pass the
+#        values to ``_create_table`` and to this ``create_csv_tables`` (which
+#        could be renamed to ``_create_csv`` perhaps?). Finally, note that this
+#        function became "dumber" too. It has no ``if``'s. You will have the
+#        logic elsewhere, and then just call this function and say "Here, create
+#        a CSV, and to nothing else! If you do anything else, I will catch that
+#        in the tests / coverage report!". So to test this, you just pass a test
+#        ``jobs_data``, a list of valid (or invalid if testing for that) headers,
+#        and a file that was probably created with a fixture in pytest for temp
+#        files (i.e. it should be easier to test too, now).
+def _create_csv_tables(
+        jobs_data: List[Union[JobData, JobAggData]],
+        output_file: str,
+        headers: List[str]
+) -> None:
     """
-    Creates a csv file with the table of the jobs aggregated by section or the jobs list.
+    Creates a CSV file with the table of the jobs aggregated by section or the jobs list.
 
-    :param jobs_list: list of jobs
-    :type jobs_list: List[Job]
-    :param jobs_stats: list of jobs statistics
-    :type jobs_stats: List[JobStat]
+    :param jobs_data: jobs data for the table
+    :type jobs_data: List[Union[JobData, JobAggData]]
     :param output_file: output file
-    :type output_file: _SpecialForm[str, bytes]
-    :param table_to_create: if True, the table will be aggregated by section, otherwise it will be the jobs list
+    :type output_file: str
+    :param headers: Table headers.
+    :type headers: List[str]
     :return: None
     """
-    output_file_aux = ""
-    headers = []
-    data = []
-
-    if table_to_create:
-        output_file_aux = output_file.replace('statistics', 'section_summary').replace('.pdf', '.csv')
-        headers = JobAggData.headers()
-        data = aggregated_by_job_section_data(jobs_list, jobs_stats)
-    else:
-        output_file_aux = output_file.replace('statistics', 'jobs_summary').replace('.pdf', '.csv')
-        headers = JobData.headers()
-        data = jobs_list_data(jobs_list, jobs_stats)
+    output_file_aux = output_file.replace('.pdf', '.csv')
 
     with open(output_file_aux, 'w') as file:
         file.write(",".join(headers) + "\n")
-        for job_data in data:
+        for job_data in jobs_data:
             file.write(",".join([str(value) for value in job_data.values()]) + "\n")

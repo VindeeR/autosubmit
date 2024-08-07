@@ -579,7 +579,7 @@ Summaries output description
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Section summary**
 
-For each section, the following values are presented:
+For each section, the following values are displayed:
 
 - Count: Number of completed or running jobs.
 - Queue Sum (h): Sum of time spent queuing for completed or running jobs, in hours.
@@ -587,17 +587,17 @@ For each section, the following values are presented:
 - Run Sum (h): Sum of time spent running for completed or running jobs, in hours.
 - Avg Run (h): Average time spent running for completed or running jobs, in hours.
 
-Besides, CSV files are generated with the same information.
+CSV files are also generated with the same information, in the same directory as the PDFs.
 
 **Jobs summary**
 
-For each job completed or running, the following values are presented:
+For each job completed or running, the following values are displayed:
 
 - Queue Time (h): Time spent queuing for the job, in hours.
 - Run Time (h): Time spent running for the job, in hours.
 - Status: Status of the job.
 
-Besides, CSV files are generated with the same information.
+CSV files are also generated with the same information, in the same directory as the PDFs.
 
 Custom statistics
 ~~~~~~~~~~~~~~~~~

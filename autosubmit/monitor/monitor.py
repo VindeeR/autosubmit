@@ -46,6 +46,50 @@ from typing import Dict, List
 GENERAL_STATS_OPTION_MAX_LENGTH = 1000
 
 
+def _display_file_xdg(a_file: str) -> None:
+    """Displays the PDF for the user.
+
+    Tries to use the X Desktop Group tool ``xdg-open``. If that fails,
+    it fallbacks to ``mimeopen``. If this latter fails too, then it
+    propagates the possible ``subprocess.CalledProcessError`` exception,
+    or another exception or error raised.
+
+    :param a_file: A file to be displayed.
+    :type a_file: str
+    :return: Nothing.
+    :rtype: None
+    :raises subprocess.CalledProcessError: raised by ``subprocess.check_output`` of
+        either ``xdg-open`` or ``mimeopen``.
+    """
+    try:
+        subprocess.check_output(["xdg-open", a_file])
+    except subprocess.CalledProcessError:
+        subprocess.check_output(["mimeopen", a_file])
+
+
+def _display_file(a_file: str):
+    """Display a file for the user.
+
+    The file is displayed using the user preferred application.
+    This is achieved first checking if the user is on Linux or
+    not. If not, we try to use ``open``.
+
+    If ``open`` fails, then we try the same approach used on
+    Linux (maybe it is not macOS nor windows?).
+
+    But, if the user is already on Linux, then we simply call
+    ``xdg-open``. And if ``xdg-open`` fails, we still fallback
+    to ``mimeopen``.
+    """
+    if sys.platform != "linux":
+        try:
+            subprocess.check_output(["open", a_file])
+        except subprocess.CalledProcessError:
+            _display_file_xdg(a_file)
+    else:
+        _display_file_xdg(a_file)
+
+
 class Monitor:
     """Class to handle monitoring of Jobs at HPC."""
     _table = dict([(Status.UNKNOWN, 'white'), (Status.WAITING, 'gray'), (Status.READY, 'lightblue'), (Status.PREPARED, 'skyblue'),
@@ -516,6 +560,7 @@ class Monitor:
         now = time.localtime()
         output_date = time.strftime("%Y%m%d_%H%M%S", now)
         output_filename = "{}_statistics_{}.{}".format(expid, output_date, output_format)
+        # BRUNO: I think this variable was renamed, but maybe this is not necessary?
         output_complete_path_stats = os.path.join(BasicConfig.DEFAULT_OUTPUT_DIR, output_filename)
         is_default_path = True
         if is_owner or is_eadmin:
@@ -534,59 +579,14 @@ class Monitor:
             Log.info("You don't have enough permissions to the experiment's ({}) folder. The output file will be created in the default location: {}".format(expid, BasicConfig.DEFAULT_OUTPUT_DIR))
             HUtils.create_path_if_not_exists_group_permission(BasicConfig.DEFAULT_OUTPUT_DIR)
 
-        output_complete_path_section_summary = output_complete_path_stats.replace("statistics", "section_summary")
-        output_complete_path_jobs_summary = output_complete_path_stats.replace("statistics", "jobs_summary")
-        show = create_stats_report(expid, joblist, self.get_general_stats(expid), output_complete_path_stats,
-                                   section_summary, jobs_summary, period_ini, period_fi, queue_time_fixes)
-        Log.result('Stats created at {0}', output_complete_path_stats)
-        if section_summary:
-            Log.result('Section Summary created at {0}'.format(output_complete_path_section_summary))
-        if jobs_summary:
-            Log.result('Jobs Summary created at {0}'.format(output_complete_path_jobs_summary))
-        if show:
+        stats_report = create_stats_report(
+            expid, joblist, self.get_general_stats(expid), str(output_complete_path_stats),
+            section_summary, jobs_summary, period_ini, period_fi, queue_time_fixes
+        )
+        if stats_report.show:
             try:
-                if sys.platform != "linux":
-                    try:
-                        subprocess.check_output(["open", output_complete_path_stats])
-                        if section_summary:
-                            subprocess.check_output(["open", output_complete_path_section_summary])
-                        if jobs_summary:
-                            subprocess.check_output(["open", output_complete_path_jobs_summary])
-                    except Exception as e:
-                        try:
-                            subprocess.check_output(["xdg-open", output_complete_path_stats])
-                            if section_summary:
-                                subprocess.check_output(
-                                    ["xdg-open", output_complete_path_section_summary])
-                            if jobs_summary:
-                                subprocess.check_output(
-                                    ["xdg-open", output_complete_path_jobs_summary])
-                        except Exception as e:
-                            subprocess.check_output(["mimeopen", output_complete_path_stats])
-                            if section_summary:
-                                subprocess.check_output(
-                                    ["mimeopen", output_complete_path_section_summary])
-                            if jobs_summary:
-                                subprocess.check_output(
-                                    ["mimeopen", output_complete_path_jobs_summary])
-                else:
-                    try:
-                        subprocess.check_output(["xdg-open", output_complete_path_stats])
-                        if section_summary:
-                            subprocess.check_output(
-                                ["xdg-open", output_complete_path_section_summary])
-                        if jobs_summary:
-                            subprocess.check_output(
-                                ["xdg-open", output_complete_path_jobs_summary])
-                    except Exception as e:
-                        subprocess.check_output(["mimeopen", output_complete_path_stats])
-                        if section_summary:
-                            subprocess.check_output(
-                                ["mimeopen", output_complete_path_section_summary])
-                        if jobs_summary:
-                            subprocess.check_output(
-                                ["mimeopen", output_complete_path_jobs_summary])
-
+                for report_file in stats_report.report_files():
+                    _display_file(report_file)
             except subprocess.CalledProcessError:
                 Log.printlog(
                     'File {0} could not be opened, only the txt option will show'.format(output_complete_path_stats),

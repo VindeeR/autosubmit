@@ -1,20 +1,24 @@
-from datetime import datetime, timedelta
+# BRUNO: In PyCharm, right-click a file (especially new ones) and select Optimize imports,
+#        and that will sort out imports... although I think you probably already knows that.
 import time
+from datetime import datetime, timedelta
+from random import seed, randint, choice
+from typing import Any, Dict, List, Tuple
 
 import pytest
-from typing import List, Any, Tuple
-from random import seed, randint, choice
-
-from pyparsing import Dict
 
 from autosubmit.job.job import Job
 from autosubmit.statistics.jobs_stat import JobStat
 from autosubmit.statistics.statistics import Statistics
 from autosubmit.statistics.stats_summary import StatsSummary
 from autosubmit.statistics.utils import timedelta2hours
+from job.job_common import Status
 
-POSSIBLE_STATUS = ["UNKNOWN", "WAITING", "DELAYED", "READY", "PREPARED", "SUBMITED", "HELD", "QUEUING", "RUNNING",
-                   "SKIPPED", "COMPLETED", "FAILED", "SUSPENDED"]
+# BRUNO: Typo in SUBMITTED, fixed below, and we can use
+#        ``autosubmit.job.job_common.Status``, I think...
+#
+# POSSIBLE_STATUS = ["UNKNOWN", "WAITING", "DELAYED", "READY", "PREPARED", "SUBMITTED", "HELD", "QUEUING", "RUNNING",
+#                    "SKIPPED", "COMPLETED", "FAILED", "SUSPENDED"]
 
 NUM_JOBS = 1000  # modify this value to test with different job number
 MAX_NUM_RETRIALS_PER_JOB = 20  # modify this value to test with different retrials number
@@ -76,7 +80,7 @@ def job_with_different_retrials():
     ]
     job_aux.get_last_retrials = lambda: retrials
 
-    job_stat_aux = JobStat("example_name", 1, float(5)/60, "example_section",
+    job_stat_aux = JobStat("example_name", 1, float(5) / 60, "example_section",
                            "example_date", "example_member", "example_chunk", "1",
                            "1", "1", "example_exclusive")
 
@@ -94,9 +98,13 @@ def job_with_different_retrials():
     return [job_aux], job_stat_aux
 
 
+# BRUNO: I guess instance is already implied here, maybe we can drop it to keep names shorter?
+#        Also, the type hints can go directly in the code (not sure if MyPy will detect the
+#        pydoc comments, nor if other tools supporting PEP-484 will do so, but probably safer
+#        to use the var: type syntax). Also, simpler as we don't need the extra comment line.
 @pytest.fixture()
-def jobs_instances():
-    # type: () -> List[Job]
+def jobs() -> List[Job]:
+    """TODO: Describe me..."""
     jobs = []
     seed(time.time())
     submit_time = datetime(2023, 1, 1, 10, 0, 0)
@@ -109,9 +117,15 @@ def jobs_instances():
         [submit_time, ""],
         [""]
     ]
+    job_statuses = Status.LOGICAL_ORDER
     for i in range(NUM_JOBS):
-        status = POSSIBLE_STATUS[i % len(POSSIBLE_STATUS)]  # random status
-        job_aux = Job(name="example_name_" + str(i), job_id="example_id_" + str(i), status=status, priority=i)
+        status = job_statuses[i % len(job_statuses)]  # random status
+        job_aux = Job(
+            name="example_name_" + str(i),
+            job_id="example_id_" + str(i),
+            status=status,
+            priority=i
+        )
 
         # Custom values for job attributes
         job_aux.processors = str(i)
@@ -151,21 +165,30 @@ def jobs_instances():
 
 
 @pytest.fixture()
-def job_stats_instance():
-    # type: () -> List[JobStat]
+def job_stats() -> List[JobStat]:
+    """Create a list of ``JobStat`` with the same length as the ``NUM_JOBS`` constant."""
     job_stats_list = []
     for i in range(NUM_JOBS):
-        job_stat = JobStat("example_name" + str(i), 0, 0.0, "", "", "", "", "", "", "", "")
-        job_stat._name = "example_name" + str(i)
-        job_stat._processors = i
-        job_stat._wallclock = float(i)
+        job_stat_timedelta = timedelta()
+        job_stat = JobStat(
+            name="example_name" + str(i),
+            processors=i,
+            wallclock=float(i),
+            section="",
+            date="",
+            member="",
+            chunk="",
+            processors_per_node="",
+            tasks="",
+            nodes="",
+            exclusive="")
         job_stat.submit_time = datetime(2023, 1, 1, 10, 0, 0)
         job_stat.start_time = datetime(2023, 1, 1, 10, 30, 0)
         job_stat.finish_time = datetime(2023, 1, 1, 11, 0, 0)
-        job_stat.completed_queue_time = timedelta()
-        job_stat.completed_run_time = timedelta()
-        job_stat.failed_queue_time = timedelta()
-        job_stat.failed_run_time = timedelta()
+        job_stat.completed_queue_time = job_stat_timedelta
+        job_stat.completed_run_time = job_stat_timedelta
+        job_stat.failed_queue_time = job_stat_timedelta
+        job_stat.failed_run_time = job_stat_timedelta
         job_stat.retrial_count = i
         job_stat.completed_retrial_count = i
         job_stat.failed_retrial_count = i
@@ -174,182 +197,223 @@ def job_stats_instance():
 
 
 @pytest.fixture()
-def statistics_instance(jobs_instances, job_stats_instance):
-    # type: (List[Job], List[JobStat]) -> Statistics
-    stats = Statistics(jobs=jobs_instances, start=datetime(2023, 1, 1, 10, 0, 0),
-                       end=datetime(2023, 1, 1, 11, 0, 0), queue_time_fix={})
-    stats.jobs_stat = job_stats_instance
-    return stats
+def statistics(jobs: List[Job], job_stats) -> Statistics:
+    # BRUNO: Added a new param to ``Statistics`` constructor, initialized to
+    #        ``None`` by default, for the ``jobs_stat``. That way a simple
+    #        return Statistics is possible here...
+    return Statistics(
+        jobs=jobs,
+        start=datetime(2023, 1, 1, 10, 0, 0),
+        end=datetime(2023, 1, 1, 11, 0, 0),
+        queue_time_fix={},
+        jobs_stat=job_stats)
 
 
-@pytest.fixture(params=[{
-    "submitted_count": (NUM_JOBS * (NUM_JOBS - 1)) // 2,
-    "run_count": (NUM_JOBS * (NUM_JOBS - 1)) // 2,
-    "completed_count": (NUM_JOBS * (NUM_JOBS - 1)) // 2,
-    "failed_count": (NUM_JOBS * (NUM_JOBS - 1)) // 2,
-    "expected_consumption": (NUM_JOBS * (NUM_JOBS - 1)) / 2,
-    "real_consumption": timedelta2hours(timedelta() + timedelta()) * NUM_JOBS,
-    "failed_real_consumption": timedelta2hours(timedelta() + timedelta()) * NUM_JOBS,
-    "expected_cpu_consumption": NUM_JOBS * (NUM_JOBS - 1) * (2 * NUM_JOBS - 1) / 6,
-    "cpu_consumption": sum(
-        timedelta2hours(i * timedelta()) + timedelta2hours(i * timedelta()) for i in range(NUM_JOBS)),
-    "failed_cpu_consumption": sum(timedelta2hours(i * timedelta()) for i in range(NUM_JOBS)),
-    "total_queue_time": sum(timedelta2hours(timedelta() + timedelta()) for _ in range(NUM_JOBS)),
-    "cpu_consumption_percentage": 0.0
-}])
-def summary_instance(request):
+# BRUNO: Simpler without the params? I couldn't find a place where request.params was modified
+#        by a caller of the fixture... if someone needs that in the future, we implement it,
+#        and then the complexity is justifiable.
+@pytest.fixture()
+def summary(request):
+    """Create a test statistics summary instance."""
     summary = StatsSummary()
-    data = request.param
-    summary.submitted_count = data["submitted_count"]
-    summary.run_count = data["run_count"]
-    summary.completed_count = data["completed_count"]
-    summary.failed_count = data["failed_count"]
-    summary.expected_consumption = data["expected_consumption"]
-    summary.real_consumption = data["real_consumption"]
-    summary.failed_real_consumption = data["failed_real_consumption"]
-    summary.expected_cpu_consumption = data["expected_cpu_consumption"]
-    summary.cpu_consumption = data["cpu_consumption"]
-    summary.failed_cpu_consumption = data["failed_cpu_consumption"]
-    summary.total_queue_time = data["total_queue_time"]
-    summary.cpu_consumption_percentage = data["cpu_consumption_percentage"]
+    summary.submitted_count = (NUM_JOBS * (NUM_JOBS - 1)) // 2
+    summary.run_count = (NUM_JOBS * (NUM_JOBS - 1)) // 2
+    summary.completed_count = (NUM_JOBS * (NUM_JOBS - 1)) // 2
+    summary.failed_count = (NUM_JOBS * (NUM_JOBS - 1)) // 2
+    summary.expected_consumption = (NUM_JOBS * (NUM_JOBS - 1)) / 2
+    summary.real_consumption = timedelta2hours(timedelta() + timedelta()) * NUM_JOBS
+    summary.failed_real_consumption = timedelta2hours(timedelta() + timedelta()) * NUM_JOBS
+    summary.expected_cpu_consumption = NUM_JOBS * (NUM_JOBS - 1) * (2 * NUM_JOBS - 1) / 6
+    summary.cpu_consumption = sum(
+        timedelta2hours(i * timedelta()) + timedelta2hours(i * timedelta()) for i in range(NUM_JOBS))
+    summary.failed_cpu_consumption = sum(timedelta2hours(i * timedelta()) for i in range(NUM_JOBS))
+    summary.total_queue_time = sum(timedelta2hours(timedelta() + timedelta()) for _ in range(NUM_JOBS))
+    summary.cpu_consumption_percentage = 0.0
     return summary
 
 
 @pytest.fixture()
-def summary_instance_as_list(summary_instance):
-    # type: (StatsSummary) -> List[str]
+def summary_as_list(summary: StatsSummary) -> List[str]:
+    """Return the summary as a list of strings."""
+    # BRUNO: f-strings simplify it a bit (and are faster, normally). Maybe this change is OK?
     return [
         "Summary: ",
-        "CPU Consumption Percentage  :  " + "{}".format(str(summary_instance.cpu_consumption_percentage) + "%"),
-        "Total Queue Time  :  " + "{:,}".format((round(summary_instance.total_queue_time, 2))) + " hrs.",
-        "Submitted Count  :  " + "{:,}".format(summary_instance.submitted_count),
-        "Run Count  :  " + "{:,}".format(summary_instance.run_count),
-        "Completed Count  :  " + "{:,}".format(summary_instance.completed_count),
-        "Failed Count  :  " + "{:,}".format(summary_instance.failed_count),
-        "Expected Consumption  :  " + "{:,}".format(round(summary_instance.expected_consumption, 4)) + " hrs.",
-        "Real Consumption  :  " + "{:,}".format(round(summary_instance.real_consumption, 4)) + " hrs.",
-        "Failed Real Consumption  :  " + "{:,}".format(round(summary_instance.failed_real_consumption, 4)) + " hrs.",
-        "Expected CPU Consumption  :  " + "{:,}".format(round(summary_instance.expected_cpu_consumption, 4)) + " hrs.",
-        "CPU Consumption  :  " + "{:,}".format(round(summary_instance.cpu_consumption, 4)) + " hrs.",
-        "Failed CPU Consumption  :  " + "{:,}".format(round(summary_instance.failed_cpu_consumption, 4)) + " hrs."
+        f"CPU Consumption Percentage  :  {str(summary.cpu_consumption_percentage)}%",
+        f"Total Queue Time  :  {round(summary.total_queue_time, 2)} hrs.",
+        f"Submitted Count  :  {summary.submitted_count}",
+        f"Run Count  :  {summary.run_count}",
+        f"Completed Count  :  {summary.completed_count}",
+        f"Failed Count  :  {summary.failed_count}",
+        f"Expected Consumption  :  {round(summary.expected_consumption, 4)} hrs.",
+        f"Real Consumption  :  {round(summary.real_consumption, 4)} hrs.",
+        f"Failed Real Consumption  :  {round(summary.failed_real_consumption, 4)} hrs.",
+        f"Expected CPU Consumption  :  {round(summary.expected_cpu_consumption, 4)} hrs.",
+        f"CPU Consumption  :  {round(summary.cpu_consumption, 4)} hrs.",
+        f"Failed CPU Consumption  :  {round(summary.failed_cpu_consumption, 4)} hrs."
     ]
 
 
 @pytest.fixture()
-def make_old_format_instance():
-    # type: () -> Dict[str, Any]
-    return_dict = {}
+def statistics_old_format() -> Dict[str, Any]:
+    """Create an instance of ``Statistics`` but with the old format."""
+    # BRUNO: Moved vars to top, and then no need to have a local dict, just return the dict at the end...
+    #        This way your code also accesses local vars, without accessing the dict/hash table (which
+    #        in reality doesn't matter here...)
+    start_times = [datetime(2023, 1, 1, 10, 30, 0) for _ in range(NUM_JOBS)]
+    end_times = [datetime(2023, 1, 1, 11, 0, 0) for _ in range(NUM_JOBS)]
+    queued = [timedelta2hours(timedelta()) for _ in range(NUM_JOBS)]
+    run = [timedelta2hours(timedelta()) for _ in range(NUM_JOBS)]
+    failed_jobs = [i for i in range(NUM_JOBS)]
+    max_fail = 0 if len(failed_jobs) == 0 else max(failed_jobs)
+    fail_run = [timedelta2hours(timedelta()) for _ in range(NUM_JOBS)]
+    fail_queued = [timedelta2hours(timedelta()) for _ in range(NUM_JOBS)]
+    wallclocks = [float(i) for i in range(NUM_JOBS)]
+    threshold = 0.0 if len(wallclocks) == 0 else max(wallclocks)
+    max_queue = 0.0 if len(queued) == 0 else max(queued)
+    max_run = 0.0 if len(run) == 0 else max(run)
+    max_fail_queue = 0.0 if len(fail_queued) == 0 else max(fail_queued)
+    max_fail_run = 0.0 if len(fail_run) == 0 else max(fail_run)
+    max_time = max(max_queue, max_run, max_fail_queue, max_fail_run, threshold)
 
-    return_dict["start_times"] = [datetime(2023, 1, 1, 10, 30, 0) for _ in range(NUM_JOBS)]
-    return_dict["end_times"] = [datetime(2023, 1, 1, 11, 0, 0) for _ in range(NUM_JOBS)]
-    return_dict["queued"] = [timedelta2hours(timedelta()) for _ in range(NUM_JOBS)]
-    return_dict["run"] = [timedelta2hours(timedelta()) for _ in range(NUM_JOBS)]
-    return_dict["failed_jobs"] = [i for i in range(NUM_JOBS)]
-    return_dict["max_fail"] = 0 if len(return_dict["failed_jobs"]) == 0 else max(return_dict["failed_jobs"])
-    return_dict["fail_run"] = [timedelta2hours(timedelta()) for _ in range(NUM_JOBS)]
-    return_dict["fail_queued"] = [timedelta2hours(timedelta()) for _ in range(NUM_JOBS)]
-    return_dict["wallclocks"] = [float(i) for i in range(NUM_JOBS)]
-    return_dict["threshold"] = 0.0 if len(return_dict["wallclocks"]) == 0 else max(return_dict["wallclocks"])
-    max_queue = 0.0 if len(return_dict["queued"]) == 0 else max(return_dict["queued"])
-    max_run = 0.0 if len(return_dict["run"]) == 0 else max(return_dict["run"])
-    max_fail_queue = 0.0 if len(return_dict["fail_queued"]) == 0 else max(return_dict["fail_queued"])
-    max_fail_run = 0.0 if len(return_dict["fail_run"]) == 0 else max(return_dict["fail_run"])
-    return_dict["max_time"] = max(max_queue, max_run, max_fail_queue, max_fail_run, return_dict["threshold"])
-
-    return return_dict
+    return {
+        'start_times': start_times,
+        'end_times': end_times,
+        'queued': queued,
+        'run': run,
+        'failed_jobs': failed_jobs,
+        'max_fail': max_fail,
+        'fail_run': fail_run,
+        'fail_queued': fail_queued,
+        'wallclocks': wallclocks,
+        'threshold': threshold,
+        'max_queue': max_queue,
+        'max_run': max_run,
+        'max_fail_queue': max_fail_queue,
+        'max_fail_run': max_fail_run,
+        'max_time': max_time
+    }
 
 
 @pytest.fixture()
-def failed_jobs_only_list_instance(job_stats_instance):
-    failed_jobs_only_list = [i for i in range(NUM_JOBS)]
-    return_dict = {}
-    for i in range(NUM_JOBS):
-        if failed_jobs_only_list[i] > 0:
-            return_dict[job_stats_instance[i].name] = failed_jobs_only_list[i]
-    return return_dict
+def failed_jobs(job_stats) -> Dict[str, int]:
+    """Describe me..."""
+    # BRUNO: This was a bit confusing to me... it was creating an array of NUM_JOBS length
+    #        with integers, and then using that to create a dictionary with the k, v being
+    #        job_stat_name -> idx, starting from the second element in the array (i.e. excluding
+    #        the first job_stat), I think?
+    #        I put a breakpoint, compared variables, and came up with a variation that I think
+    #        does the same, but a bit more straightforward to others, I think? With a comment...
+    #        p.s. I think you are doing this to match/assert the failed element created in
+    #        another fixture, if so, describe it above, in the pydoc, so other devs know
+    #        what the code is doing without having to think too much about it.
+
+    # We consider everything failed, except for the very first element (idx=0), skipped.
+    return {
+        job_stats.name: idx
+        for idx, job_stats in enumerate(job_stats)
+        if idx > 0
+    }
 
 
-def test_working_functions(jobs_instances):
-    # type: (List[Job]) -> None
-    exp_stats = Statistics(jobs=jobs_instances, start=datetime(2023, 1, 1, 10, 0, 0),
-                           end=datetime(2023, 1, 1, 11, 0, 0), queue_time_fix={})
-    exp_stats.calculate_statistics()
-    exp_stats.calculate_summary()
-    exp_stats.get_summary_as_list()
-    exp_stats.get_statistics()
-    exp_stats.make_old_format()
-    exp_stats.build_failed_jobs_only_list()
+# -- tests
 
 
-def test_calculate_statistics(statistics_instance, job_with_different_retrials):
-    # type: (Statistics, Tuple[List[Job], JobStat]) -> None
-    statistics_instance._jobs = job_with_different_retrials[0]
+def test_build_statistics_object(jobs: List[Job]) -> None:
+    """Test that building a statistics object by chaining build calls works as expected."""
+    exp_stats = (
+        Statistics(
+            jobs=jobs,
+            start=datetime(2023, 1, 1, 10, 0, 0),
+            end=datetime(2023, 1, 1, 11, 0, 0),
+            queue_time_fix={}).
+        calculate_statistics().
+        calculate_summary().
+        make_old_format().
+        build_failed_jobs()
+    )
+    assert exp_stats.summary_list is not None
 
-    job_stats = statistics_instance.calculate_statistics()
 
+def test_calculate_statistics(statistics: Statistics, job_with_different_retrials: Tuple[List[Job], JobStat]) -> None:
+    """TODO: describe me..."""
+    statistics._jobs = job_with_different_retrials[0]
+
+    statistics.calculate_statistics()
+
+    # BRUNO: This is a common approach to avoid accessing array elements, but also
+    #        to make it clear you are "comparing this with that" :), or "a" and "b",
+    #        etc.
+    this = statistics.jobs_stat[0]
+    that = job_with_different_retrials[1]
+
+    # BRUNO: This may look a bit boring to do, to access these properties dynamically,
+    #        but it saves you time from typing, or updating the code when new vars are
+    #        added. Furthermore, it reduces the chances of an accidental comparison of
+    #        ``a.int_is_zero == b.ops_also_zero_maybe_not_later`` typo bug, that occurs
+    #        later.
     # Times
-    assert job_stats[0].submit_time == job_with_different_retrials[1].submit_time
-    assert job_stats[0].start_time == job_with_different_retrials[1].start_time
-    assert job_stats[0].finish_time == job_with_different_retrials[1].finish_time
+    time_vars = ['submit_time', 'start_time', 'finish_time']
+    for var in time_vars:
+        assert getattr(this, var) == getattr(that, var)
     # Retrials
-    assert job_stats[0].retrial_count == job_with_different_retrials[1].retrial_count
-    assert job_stats[0].completed_retrial_count == job_with_different_retrials[1].completed_retrial_count
-    assert job_stats[0].failed_retrial_count == job_with_different_retrials[1].failed_retrial_count
+    retrials_vars = ['retrial_count', 'completed_retrial_count', 'failed_retrial_count']
+    for var in retrials_vars:
+        assert getattr(this, var) == getattr(that, var)
     # Queue/run times
-    assert job_stats[0].completed_queue_time == job_with_different_retrials[1].completed_queue_time
-    assert job_stats[0].completed_run_time == job_with_different_retrials[1].completed_run_time
-    assert job_stats[0].failed_queue_time == job_with_different_retrials[1].failed_queue_time
-    assert job_stats[0].failed_run_time == job_with_different_retrials[1].failed_run_time
+    queue_run_vars = [
+        'completed_queue_time', 'completed_queue_time', 'completed_run_time',
+        'failed_queue_time', 'failed_run_time'
+    ]
+    for var in queue_run_vars:
+        assert getattr(this, var) == getattr(that, var)
 
 
-def test_calculate_summary(statistics_instance, summary_instance):
-    # type: (Statistics, StatsSummary) -> None
-    statistics_instance.calculate_summary()
-    summary = statistics_instance.summary
+def test_calculate_summary(statistics: Statistics, summary: StatsSummary) -> None:
+    """TODO: describe me..."""
+    statistics.calculate_summary()
+    statistics_summary = statistics.summary
 
     # Counter
-    assert summary.submitted_count == summary_instance.submitted_count
-    assert summary.run_count == summary_instance.run_count
-    assert summary.completed_count == summary_instance.completed_count
+    counter_vars = ['submitted_count', 'run_count', 'completed_count']
+    for var in counter_vars:
+        assert getattr(statistics_summary, var) == getattr(summary, var)
     # Consumption
-    assert summary.expected_consumption == summary_instance.expected_consumption
-    assert summary.real_consumption == summary_instance.real_consumption
-    assert summary.failed_real_consumption == summary_instance.failed_real_consumption
+    consumption_vars = ['expected_consumption', 'real_consumption', 'failed_real_consumption']
+    for var in consumption_vars:
+        assert getattr(statistics_summary, var) == getattr(summary, var)
     # CPU Consumption
-    assert summary.expected_cpu_consumption == summary_instance.expected_cpu_consumption
-    assert summary.cpu_consumption == summary_instance.cpu_consumption
-    assert summary.failed_cpu_consumption == summary_instance.failed_cpu_consumption
-    assert summary.total_queue_time == summary_instance.total_queue_time
-    assert summary.cpu_consumption_percentage == summary_instance.cpu_consumption_percentage
+    cpu_consumption_vars = [
+        'expected_cpu_consumption', 'cpu_consumption', 'failed_cpu_consumption', 'total_queue_time',
+        'cpu_consumption_percentage'
+    ]
+    for var in cpu_consumption_vars:
+        assert getattr(statistics_summary, var) == getattr(summary, var)
 
 
-def test_get_summary_as_list(statistics_instance, summary_instance_as_list):
-    # type: (Statistics, List[str]) -> None
-    statistics_instance.calculate_summary()
-    summary_as_list = statistics_instance.summary.get_as_list()
+def test_get_summary_as_list(statistics: Statistics, summary_as_list: List[str]) -> None:
+    """TODO: describe me..."""
+    statistics.calculate_summary()
+    summary_as_list = statistics.summary_list
 
-    assert summary_as_list == summary_instance_as_list
-
-
-def test_make_old_format(statistics_instance, make_old_format_instance):
-    # type: (Statistics, Dict[str, Any]) -> None
-    statistics_instance.make_old_format()
-    assert statistics_instance.start_times == make_old_format_instance["start_times"]
-    assert statistics_instance.end_times == make_old_format_instance["end_times"]
-    assert statistics_instance.queued == make_old_format_instance["queued"]
-    assert statistics_instance.run == make_old_format_instance["run"]
-    assert statistics_instance.failed_jobs == make_old_format_instance["failed_jobs"]
-    assert statistics_instance.max_fail == make_old_format_instance["max_fail"]
-    assert statistics_instance.fail_run == make_old_format_instance["fail_run"]
-    assert statistics_instance.fail_queued == make_old_format_instance["fail_queued"]
-    assert statistics_instance.wallclocks == make_old_format_instance["wallclocks"]
-    assert statistics_instance.threshold == make_old_format_instance["threshold"]
-    assert statistics_instance.max_time == make_old_format_instance["max_time"]
+    assert summary_as_list == summary_as_list
 
 
-def test_build_failed_job_only(statistics_instance, failed_jobs_only_list_instance):
-    # type: (Statistics, Dict[str, int]) -> None
-    statistics_instance.make_old_format()
-    statistics_instance.build_failed_jobs_only_list()
+def test_make_old_format(statistics: Statistics, statistics_old_format) -> None:
+    """Test that attributes of old and new statistics objects have the same value.
 
-    assert statistics_instance.failed_jobs_dict == failed_jobs_only_list_instance
+    Old is a dictionary. New is an object. Check the access method in the assertion.
+    """
+    statistics.make_old_format()
+    for var in [
+        'start_times', 'end_times', 'queued', 'run', 'failed_jobs', 'max_fail',
+        'fail_run', 'fail_queued', 'wallclocks', 'threshold', 'max_time'
+    ]:
+        assert getattr(statistics, var) == statistics_old_format[var]
+
+
+def test_build_failed_job_only(statistics: Statistics, failed_jobs) -> None:
+    """TODO: describe me..."""
+    statistics.make_old_format()
+    statistics.build_failed_jobs()
+
+    assert statistics.failed_jobs_dict == failed_jobs

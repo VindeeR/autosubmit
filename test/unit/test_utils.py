@@ -42,7 +42,7 @@ def test_aslock(mock_basic_config):
 
 def test_aslock_error(mock_basic_config):
     expid = "test_expid"
-    lock_file_path = Path("/tmp") / expid / "tmp" / "autosubmit.lock"
+    lock_file_path = Path(MockBasicConfig.LOCAL_ROOT_DIR) / expid / "tmp" / "autosubmit.lock"
 
     # Ensure the directory exists
     lock_file_path.parent.mkdir(parents=True, exist_ok=True)

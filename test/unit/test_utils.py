@@ -1,6 +1,5 @@
 import os
 import socket
-import psutil
 import pytest
 from pathlib import Path
 from autosubmit.helpers.utils import ASLock
@@ -13,7 +12,6 @@ def utils_tmp_path(tmp_path_factory):
     return tmp_path_factory.mktemp("utils")
 
 class MockBasicConfig(BasicConfig):
-
     def read(self):
         pass
 

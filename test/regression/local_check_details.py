@@ -41,10 +41,7 @@ def perform_test(expids):
     to_exclude = []
     for expid in expids:
         try:
-            start = time.time()
             output,error = run_test(expid)
-            end = time.time()
-            print(f"Time taken for {expid}: {end-start}")
             # output to str
             output = output.decode("UTF-8")
             output = output.split("Job list created successfully[0m[39m")[1]

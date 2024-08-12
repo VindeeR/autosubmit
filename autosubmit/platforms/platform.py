@@ -13,6 +13,8 @@ from autosubmit.helpers.parameters import autosubmit_parameter
 from log.log import AutosubmitCritical, AutosubmitError, Log
 from multiprocessing import Process, Queue, Event
 
+import time
+
 # stop the background task gracefully before exit
 def stop_background(stop_event, process):
     # request the background thread stop
@@ -833,6 +835,7 @@ class Platform(object):
         self.restore_connection(None)
         # check if id of self.main_process exists with ps ax | grep self.main_process_id
         while not event.is_set() and os.system(f"ps ax | grep {str(self.main_process_id)} | grep -v grep > /dev/null 2>&1") == 0:
+            time.sleep(10)
             try:
                 job,children = self.recovery_queue.get(block=False)
                 if job.wrapper_type != "vertical":

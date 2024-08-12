@@ -173,7 +173,7 @@ class Job(object):
         self.wchunkinc = None
         self._tasks = None
         self._nodes = None
-        self.default_parameters = None
+        self.skipped_parameters = None
         self._threads = None
         self._processors = None
         self._memory = None
@@ -260,8 +260,8 @@ class Job(object):
         self.parameters = dict()
         self._tasks = '0'
         self._nodes = ""
-        self.default_parameters = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
-                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}
+        self.skipped_parameters = {'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
+                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%', 'Y-':'%Y-%', 'M-':'%M-%', 'm-':'%m-%', 'd-':'%d-%'}
         self._threads = '1'
         self._processors = '1'
         self._memory = ''
@@ -1937,27 +1937,54 @@ class Job(object):
         self.retrials = parameters["RETRIALS"]
         self.reservation = parameters["RESERVATION"]
 
-    def update_parameters(self, as_conf, parameters,
-                          default_parameters={'d': '%d%', 'd_': '%d_%', 'Y': '%Y%', 'Y_': '%Y_%',
-                                              'M': '%M%', 'M_': '%M_%', 'm': '%m%', 'm_': '%m_%'}):
+    def parse_skipped_parameters(self, as_conf):
         """
-        Refresh parameters value
+        Parses the skipped parameters from the configuration and updates the `skipped_parameters` attribute.
 
-        :param default_parameters:
-        :type default_parameters: dict
-        :param as_conf:
-        :type as_conf: AutosubmitConfig
-        :param parameters:
-        :type parameters: dict
+        This function retrieves the skipped parameters section from the configuration and processes the list of parameters.
+        Each parameter can be in the format `key:value`, `key=value`, or just `key`. The function then updates the
+        `skipped_parameters` attribute based on the specified behavior (either "append" or "replace").
+
+        Args:
+            self: The instance of the class.
+            as_conf: The configuration object containing the experiment data.
+
+        Returns:
+            None
+        """
+        skipped_parameters_section = as_conf.experiment_data["DEFAULT"].get("SKIPPED_PARAMETERS", {})
+        if skipped_parameters_section:
+            new_skipped_parameters = {}
+            parameter_list = skipped_parameters_section.get("PARAMETER_LIST", [])
+            if parameter_list is str:
+                if "," in parameter_list:
+                    parameter_list = [ p.strip() for p in parameter_list.split(",")]
+                else:
+                    parameter_list = [ p.strip() for p in parameter_list.split(",")]
+            for key in parameter_list:
+                new_skipped_parameters[key.strip()] = f"%{key.strip()}%"
+            behavior = skipped_parameters_section.get("BEHAVIOR", "append")
+            if behavior == "append":
+                self.skipped_parameters.update(new_skipped_parameters)
+            elif behavior == "replace":
+                self.skipped_parameters = new_skipped_parameters
+
+    def update_parameters(self, as_conf, parameters):
+        """
+        Update the parameters dictionary with the values of the job
+        :param as_conf: as_conf
+        :param parameters: parameters
+        :return: parameters
         """
         as_conf.reload()
         self._init_runtime_parameters()
+        self.parse_skipped_parameters(as_conf)
         # Parameters that affect to all the rest of parameters
         self.update_dict_parameters(as_conf)
         parameters = parameters.copy()
         if hasattr(as_conf,"parameters"):
             parameters.update(as_conf.parameters)
-        parameters.update(default_parameters)
+        parameters.update(self.skipped_parameters)
         parameters = as_conf.substitute_dynamic_variables(parameters,25)
         parameters['ROOTDIR'] = os.path.join(
             BasicConfig.LOCAL_ROOT_DIR, self.expid)
@@ -1968,9 +1995,9 @@ class Job(object):
         parameters = self.update_platform_parameters(as_conf, parameters, self._platform)
         parameters = self.update_platform_associated_parameters(as_conf, parameters, self._platform, parameters['CHUNK'])
         parameters = self.update_wrapper_parameters(as_conf, parameters)
-        parameters = as_conf.normalize_parameters_keys(parameters,default_parameters)
+        parameters = as_conf.normalize_parameters_keys(parameters,self.skipped_parameters)
         parameters = as_conf.substitute_dynamic_variables(parameters,80)
-        parameters = as_conf.normalize_parameters_keys(parameters,default_parameters)
+        parameters = as_conf.normalize_parameters_keys(parameters,self.skipped_parameters)
         self.update_job_variables_final_values(parameters)
         # For some reason, there is return but the assignee is also necessary
         self.parameters = parameters
@@ -2119,7 +2146,7 @@ class Job(object):
             # append to a list all names don't matter the location, inside additional_template_content that  starts with % and ends with %
             placeholders_inside_additional_template = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', additional_template_content,flags=re.IGNORECASE)
             for placeholder in placeholders_inside_additional_template:
-                if placeholder in self.default_parameters.values():
+                if placeholder in self.skipped_parameters.values():
                     continue
                 placeholder = placeholder[1:-1]
                 value = str(parameters.get(placeholder.upper(),""))
@@ -2196,11 +2223,11 @@ class Job(object):
         if template_content is not False:
             variables = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', template_content,flags=re.IGNORECASE)
             variables = [variable[1:-1] for variable in variables]
-            variables = [variable for variable in variables if variable not in self.default_parameters]
+            variables = [variable for variable in variables if variable not in self.skipped_parameters]
             for template in additional_templates:
                 variables_tmp = re.findall('%(?<!%%)[a-zA-Z0-9_.-]+%(?!%%)', template,flags=re.IGNORECASE)
                 variables_tmp = [variable[1:-1] for variable in variables_tmp]
-                variables_tmp = [variable for variable in variables_tmp if variable not in self.default_parameters]
+                variables_tmp = [variable for variable in variables_tmp if variable not in self.skipped_parameters]
                 variables.extend(variables_tmp)
 
             out = set(parameters).issuperset(set(variables))

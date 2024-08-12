@@ -13,6 +13,7 @@ from autosubmit.helpers.parameters import autosubmit_parameter
 from log.log import AutosubmitCritical, AutosubmitError, Log
 from multiprocessing import Process, Queue, Event
 
+
 # stop the background task gracefully before exit
 def stop_background(stop_event, process):
     # request the background thread stop

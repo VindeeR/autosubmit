@@ -1249,19 +1249,16 @@ class ParamikoPlatform(Platform):
             )
         return command
 
-
     @staticmethod
-    def get_pscall(job_id):
-        """
-        Gets command to check if a job is running given process identifier
+    def get_pscall(job_id: int) -> str:
+        """Gets a command to check whether a process is running or not.
 
-        :param job_id: process identifier
+        :param job_id: process identifier (PID)
         :type job_id: int
-        :return: command to check job status script
+        :return: command to check whether a process is running or not
         :rtype: str
         """
-        return 'nohup kill -0 {0} > /dev/null 2>&1; echo $?'.format(job_id)
-
+        return 'nohup ps -p {0} > /dev/null 2>&1; echo $?'.format(job_id)
 
     def get_submitted_job_id(self, output, x11 = False):
         """

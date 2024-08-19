@@ -335,7 +335,8 @@ class SqlAlchemyDbManager:
         #       backward compatibility with the old API for SQLite.
         table = get_table_from_name(schema=self.schema, table_name=table_name)
         with self.engine.connect() as conn:
-            conn.execute(CreateSchema(self.schema, if_not_exists=True))
+            if self.schema:
+                conn.execute(CreateSchema(self.schema, if_not_exists=True))
             conn.execute(CreateTable(table, if_not_exists=True))
             conn.commit()
 
@@ -470,7 +471,7 @@ def create_db_manager(db_engine: str, **options) -> DatabaseManager:
     :raises KeyError: If the ``options`` dictionary is missing a required parameter for an engine.
     """
     if db_engine == "postgres":
-        return cast(DatabaseManager, SqlAlchemyDbManager(options['schema']))
+        return cast(DatabaseManager, SqlAlchemyDbManager(options.get('schema', None)))
     elif db_engine == "sqlite":
         return cast(DatabaseManager, DbManager(options['root_path'], options['db_name'], options['db_version']))
     else:

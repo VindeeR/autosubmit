@@ -45,8 +45,11 @@ from .git.autosubmit_git import AutosubmitGit
 from .job.job_common import Status
 from .job.job_grouping import JobGrouping
 from .job.job_list import JobList
-from .job.job_list_persistence import JobListPersistenceDb
-from .job.job_list_persistence import JobListPersistencePkl
+from .job.job_list_persistence import (
+    JobListPersistence,
+    JobListPersistenceDb,
+    JobListPersistencePkl,
+)
 from .job.job_package_persistence import JobPackagePersistence
 from .job.job_packager import JobPackager
 from .job.job_utils import SubJob, SubJobManager
@@ -4019,6 +4022,8 @@ class Autosubmit:
         :return:
         :rtype: 
         """
+        if BasicConfig.DATABASE_BACKEND != 'sqlite':
+            raise AutosubmitCritical("This operation is only available when Autosubmit database backend is set to sqlite", 7000)
         exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
         tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
         pkl_folder_path = os.path.join(exp_path, "pkl")
@@ -4494,8 +4499,7 @@ class Autosubmit:
                             "The plot folder doesn't exists. Make sure that the 'plot' folder exists in the following path: {}".format(
                                 exp_path), code=6013)
 
-                    update_job = not os.path.exists(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "pkl",
-                                                                 "job_list_" + expid + ".pkl"))
+                    update_job = not Autosubmit._get_job_list_persistence(expid, as_conf).pkl_exists()
                     Autosubmit._create_project_associated_conf(
                         as_conf, False, update_job)
 
@@ -5534,19 +5538,11 @@ class Autosubmit:
             return ParamikoSubmitter()
 
     @staticmethod
-    def _get_job_list_persistence(expid, as_conf):
-        """
-        Returns the JobListPersistence corresponding to the storage type defined on autosubmit's config file
-
-        :return: job_list_persistence
-        :rtype: JobListPersistence
-        """
-        storage_type = as_conf.get_storage_type()
-        if storage_type == 'pkl':
+    def _get_job_list_persistence(expid, as_conf) -> JobListPersistence:
+        if BasicConfig.DATABASE_BACKEND == 'sqlite':
             return JobListPersistencePkl()
-        elif storage_type == 'db':
+        else:
             return JobListPersistenceDb(expid)
-        raise AutosubmitCritical('Storage type not known', 7014)
 
     @staticmethod
     def _create_json(text):
@@ -5744,8 +5740,9 @@ class Autosubmit:
     @staticmethod
     def load_logs_from_previous_run(expid,as_conf):
         logs = None
-        if Path(f'{BasicConfig.LOCAL_ROOT_DIR}/{expid}/pkl/job_list_{expid}.pkl').exists():
-            job_list = JobList(expid, BasicConfig, YAMLParserFactory(),Autosubmit._get_job_list_persistence(expid, as_conf), as_conf)
+        job_list_persistence = Autosubmit._get_job_list_persistence(expid, as_conf)
+        if job_list_persistence.pkl_exists():
+            job_list = JobList(expid, BasicConfig, YAMLParserFactory(), job_list_persistence, as_conf)
             with suppress(BaseException):
                 graph = job_list.load()
                 if len(graph.nodes) > 0:

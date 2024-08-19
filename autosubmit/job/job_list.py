@@ -44,6 +44,7 @@ from autosubmit.helpers.data_transfer import JobRow
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status, bcolors
 from autosubmit.job.job_dict import DicJobs
+from autosubmit.job.job_list_persistence import JobListPersistence
 from autosubmit.job.job_package_persistence import JobPackagePersistence
 from autosubmit.job.job_packages import JobPackageThread
 from autosubmit.job.job_utils import Dependency, _get_submitter
@@ -70,7 +71,7 @@ class JobList(object):
 
     """
 
-    def __init__(self, expid, config, parser_factory, job_list_persistence, as_conf):
+    def __init__(self, expid, config, parser_factory, job_list_persistence: JobListPersistence, as_conf):
         self._persistence_path = os.path.join(
             config.LOCAL_ROOT_DIR, expid, "pkl")
         self._update_file = "updated_list_" + expid + ".txt"

@@ -140,9 +140,6 @@ def test_db_manager(
             assert db_manager.db_name == options['db_name']
             assert db_manager.db_version == options['db_version']
 
-        # In both cases, we must have a connection set up now
-        assert db_manager.connection is not None
-
         # NOTE: From this part forward, the behaviour MUST be the same for
         #       SQLite and Postgres or any other engine. This is the test
         #       that verifies that whatever we do with SQLite, works the

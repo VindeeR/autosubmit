@@ -5,6 +5,7 @@ from sqlalchemy import (
     Table,
     Text,
     Float,
+    LargeBinary,
     UniqueConstraint,
     Column,
 )
@@ -155,6 +156,14 @@ JobListTable = Table(
     Column('remote_err', String)
 )
 
+JobPklTable = Table(
+    'job_pkl',
+    metadata_obj,
+    Column('expid', String, primary_key=True),
+    Column('pkl', LargeBinary),
+    Column('modified', String)
+)
+
 TABLES = (ExperimentTable,
           ExperimentStatusTable,
           ExperimentStructureTable,
@@ -163,7 +172,8 @@ TABLES = (ExperimentTable,
           JobPackageTable,
           JobDataTable,
           JobListTable,
-          WrapperJobPackageTable)
+          WrapperJobPackageTable,
+          JobPklTable)
 """The tables available in the Autosubmit databases."""
 
 

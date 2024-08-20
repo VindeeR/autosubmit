@@ -20,8 +20,8 @@
 import sqlite3
 import os
 
-from typing import Optional, Protocol, Union, cast
-from sqlalchemy import Connection, Engine, delete, insert, select
+from typing import Dict, Iterable, List, Optional, Protocol, Union, cast
+from sqlalchemy import Connection, Engine, Table, delete, insert, select, text
 from autosubmit.database import session
 from autosubmit.database.tables import get_table_from_name
 from sqlalchemy.schema import CreateTable, CreateSchema,  DropTable
@@ -99,6 +99,18 @@ class DbManager(object):
         cursor = self.connection.cursor()
         insert_many_command = self.generate_insert_many_command(table_name, len(data[0]))
         cursor.executemany(insert_many_command, data)
+        self.connection.commit()
+
+    def delete_where(self, table_name: str, where: list[str]):
+        """
+        Deletes the rows of the given table that matches the given where conditions
+        :param table_name: str
+        :param where: [str]
+
+        """
+        cursor = self.connection.cursor()
+        delete_command = self.generate_delete_command(table_name, where[:])
+        cursor.execute(delete_command)
         self.connection.commit()
 
     def select_first(self, table_name):
@@ -241,7 +253,13 @@ class DbManager(object):
         for condition in where:
             select_command += ' AND ' + condition
         return select_command
-
+    
+    @staticmethod
+    def generate_delete_command(table_name: str, where: list[str] = []):
+        delete_command = "DELETE FROM " + table_name + " WHERE " + where.pop(0)
+        for condition in where:
+            delete_command += " AND " + condition
+        return delete_command
 
 class DatabaseManager(Protocol):
     """Common interface for database managers.
@@ -257,15 +275,16 @@ class DatabaseManager(Protocol):
     def backup(self): ...
     def restore(self): ...
     def disconnect(self): ...
-    def create_table(self, table_name, fields): ...
-    def drop_table(self, table_name): ...
-    def insert(self, table_name, columns, values): ...
-    def insertMany(self, table_name, data): ...
-    def select_first(self, table_name): ...
-    def select_first_where(self, table_name, where): ...
-    def select_all(self, table_name): ...
-    def select_all_where(self, table_name, where): ...
-    def count(self, table_name): ...
+    def create_table(self, table_name: str, fields: List[str]): ...
+    def drop_table(self, table_name: str): ...
+    def insert(self, table_name: str, columns: List[str], values: List[str]): ...
+    def insertMany(self, table_name: str, data: List[Union[Iterable, Dict]]): ...
+    def delete_where(self, table_name: str, where: List[str]): ...
+    def select_first(self, table_name: str): ...
+    def select_first_where(self, table_name: str, where: List[str]): ...
+    def select_all(self, table_name: str): ...
+    def select_all_where(self, table_name: str, where: List[str]): ...
+    def count(self, table_name: str): ...
     def drop(self): ...
 
 
@@ -295,9 +314,10 @@ class SqlAlchemyDbManager:
     def __init__(self, schema: Optional[str] = None) -> None:
         self.engine: Engine = session.create_engine()
         self.schema = schema
-        # TODO: if we cannot do that (too long-lived conns?), then we can open for each operation...
-        self.connection: Connection = self.engine.connect()
-        # TODO: in SQLite-land, it creates the tables if they do not exist... what about here?
+        # Each time we self.engine.connect(),
+        # the engine will create or reuse a connection from the pool
+        # Using the connection as a context (with) will safely release it
+        self.connection: Connection = None 
 
     def backup(self):
         pass
@@ -306,23 +326,26 @@ class SqlAlchemyDbManager:
         pass
 
     def disconnect(self):
-        self.connection.close()
+        if self.connection and not self.connection.closed:
+            self.connection.close()
 
-    def create_table(self, table_name, fields):
+    def create_table(self, table_name: str, fields: List[str]):
         # NOTE: ``fields`` is ignored as they are defined in the SQLAlchemy
         #       tables definitions (see ``.database.tables``). Kept for
         #       backward compatibility with the old API for SQLite.
         table = get_table_from_name(schema=self.schema, table_name=table_name)
-        self.connection.execute(CreateSchema(self.schema, if_not_exists=True))
-        self.connection.execute(CreateTable(table, if_not_exists=True))
-        self.connection.commit()
+        with self.engine.connect() as conn:
+            conn.execute(CreateSchema(self.schema, if_not_exists=True))
+            conn.execute(CreateTable(table, if_not_exists=True))
+            conn.commit()
 
-    def drop_table(self, table_name):
+    def drop_table(self, table_name: str):
         table = get_table_from_name(schema=self.schema, table_name=table_name)
-        self.connection.execute(DropTable(table, if_exists=True))
-        self.connection.commit()
+        with self.engine.connect() as conn:
+            conn.execute(DropTable(table, if_exists=True))
+            conn.commit()
 
-    def insert(self, table_name, columns, values):
+    def insert(self, table_name: str, columns: List[str], values: List[str]):
         """Not implemented.
 
         In the original ``DbManager`` (SQLite), this function is used
@@ -330,7 +353,7 @@ class SqlAlchemyDbManager:
         """
         raise NotImplementedError()
 
-    def insertMany(self, table_name, data):
+    def insertMany(self, table_name: str, data: List[Union[Iterable, Dict]]):
         """
         N.B.: One difference between SQLite and SQLAlchemy here;
               whereas with SQLite you insert a list of values
@@ -342,12 +365,12 @@ class SqlAlchemyDbManager:
               prefer to send a dictionary!
 
         :type table_name: str
-        :type data: Union[List, Dict]
+        :type data: List[Union[Iterable, Dict]]
         """
-        if len(data) == 0:  # type: ignore
+        if len(data) == 0:
             return 0
         table = get_table_from_name(schema=self.schema, table_name=table_name)
-        if type(data[0]) == list:
+        if type(data[0]) is list or type(data[0]) is tuple:
             # Convert into a dictionary; we know the keys from the
             # table metadata columns.
             columns = [column.name for column in cast(list, table.columns)]
@@ -357,28 +380,41 @@ class SqlAlchemyDbManager:
                 zip(columns, values)
             }, cast(list, data))
             data = list(data)
-        result = self.connection.execute(insert(table), data)
-        self.connection.commit()
+
+        with self.engine.connect() as conn:
+            result = conn.execute(insert(table), data)
+            conn.commit()
+
+        return cast(int, result.rowcount)
+    
+    def delete_where(self, table_name: str, where: List[str]):
+        command = DbManager.generate_delete_command(table_name, where)
+        with self.engine.connect() as conn:
+            result = conn.execute(text(command))
+            conn.commit()
         return cast(int, result.rowcount)
 
-    def select_first(self, table_name):
+    def select_first(self, table_name: str):
         """Not used in the original ``DbManager``!"""
         raise NotImplementedError()
 
-    def select_first_where(self, table_name, where):
-        """Not used in the original ``DbManager``!"""
-        raise NotImplementedError()
+    def select_first_where(self, table_name: str, where: List[str]):
+        command = DbManager.generate_select_command(table_name, where)
+        with self.engine.connect() as conn:
+            row = conn.execute(text(command)).first()
+        return row.tuple()
 
-    def select_all(self, table_name):
+    def select_all(self, table_name: str):
         table = get_table_from_name(schema=self.schema, table_name=table_name)
-        rows = self.connection.execute(select(table)).all()
-        return rows
+        with self.engine.connect() as conn:
+            rows = conn.execute(select(table)).all()
+        return [row.tuple() for row in rows]
 
-    def select_all_where(self, table_name, where):
+    def select_all_where(self, table_name: str, where: List[str]):
         """Not used in the original ``DbManager``!"""
         raise NotImplementedError()
 
-    def count(self, table_name):
+    def count(self, table_name: str):
         """Not used in the original ``DbManager``!"""
         raise NotImplementedError()
 
@@ -395,8 +431,9 @@ class SqlAlchemyDbManager:
         :return: number of tables modified.
         """
         table = get_table_from_name(schema=self.schema, table_name=table_name)
-        result = self.connection.execute(delete(table))
-        self.connection.commit()
+        with self.engine.connect() as conn:
+            result = conn.execute(delete(table))
+            conn.commit()
         return cast(int, result.rowcount)
 
 

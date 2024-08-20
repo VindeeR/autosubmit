@@ -801,15 +801,17 @@ class Autosubmit:
             if not BasicConfig.CONFIG_FILE_FOUND:
                 raise AutosubmitCritical('No configuration file(autosubmitrc) found in this filesystem. Please run "autosubmit configure" first.',7006)
             if args.command != "install":
-                if not os.path.exists(BasicConfig.DB_PATH):
-                    raise AutosubmitCritical('Experiments database not found in this filesystem. Please run "autosubmit install" first.',7072)
-                else:
-                    permissions = os.access(BasicConfig.DB_PATH, os.R_OK)  # Check for read access
-                    if not permissions:
-                        raise AutosubmitCritical('Experiments database {0} not readable. Please check permissions.'.format(BasicConfig.DB_PATH),7007)
-                    permissions = os.access(BasicConfig.DB_PATH, os.W_OK)  # Check for write access
-                    if not permissions:
-                        raise AutosubmitCritical('Experiments database {0} not writable. Please check permissions.'.format(BasicConfig.DB_PATH),7007)
+                # Only check for database file if database backend is set to sqlite
+                if BasicConfig.DATABASE_BACKEND == 'sqlite':
+                    if not os.path.exists(BasicConfig.DB_PATH):
+                        raise AutosubmitCritical('Experiments database not found in this filesystem. Please run "autosubmit install" first.',7072)
+                    else:
+                        permissions = os.access(BasicConfig.DB_PATH, os.R_OK)  # Check for read access
+                        if not permissions:
+                            raise AutosubmitCritical('Experiments database {0} not readable. Please check permissions.'.format(BasicConfig.DB_PATH),7007)
+                        permissions = os.access(BasicConfig.DB_PATH, os.W_OK)  # Check for write access
+                        if not permissions:
+                            raise AutosubmitCritical('Experiments database {0} not writable. Please check permissions.'.format(BasicConfig.DB_PATH),7007)
 
 
 
@@ -869,7 +871,10 @@ class Autosubmit:
                 tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
                 aslogs_path = os.path.join(tmp_path, BasicConfig.LOCAL_ASLOG_DIR)
                 if not os.path.exists(exp_path):
-                    raise AutosubmitCritical("Experiment does not exist", 7012)
+                    if BasicConfig.DATABASE_BACKEND == 'sqlite':
+                        raise AutosubmitCritical("Experiment does not exist", 7012)
+                    else:
+                        os.mkdir(exp_path)
                 # delete is treated differently
                 if args.command not in ["monitor", "describe", "delete", "report", "stats", "dbfix"]:
                     owner, eadmin, currentOwner = Autosubmit._check_ownership(expid, raise_error=True)
@@ -945,7 +950,10 @@ class Autosubmit:
             if args.command not in expid_less:
                 exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
                 if not os.path.exists(exp_path):
-                    raise AutosubmitCritical("Experiment does not exist", 7012)
+                    if BasicConfig.DATABASE_BACKEND == 'sqlite':
+                        raise AutosubmitCritical("Experiment does not exist", 7012)
+                    else:
+                        os.mkdir(exp_path)
             Log.set_file(os.path.join(BasicConfig.GLOBAL_LOG_DIR,
                                       args.command + exp_id + '.log'), "out", log_level)
             Log.set_file(os.path.join(BasicConfig.GLOBAL_LOG_DIR,
@@ -4101,15 +4109,20 @@ class Autosubmit:
 
     @staticmethod
     def database_backup(expid):
-        try:
-            database_path= os.path.join(BasicConfig.JOBDATA_DIR, "job_data_{0}.db".format(expid))
-            backup_path = os.path.join(BasicConfig.JOBDATA_DIR, "job_data_{0}.sql".format(expid))
-            command = "sqlite3 {0} .dump > {1} ".format(database_path, backup_path)
-            Log.debug("Backing up jobs_data...")
-            out = subprocess.call(command, shell=True)
-            Log.debug("Jobs_data database backup completed.")
-        except BaseException as e:
-            Log.debug("Jobs_data database backup failed.")
+        if BasicConfig.DATABASE_BACKEND == 'sqlite':
+            try:
+                database_path= os.path.join(BasicConfig.JOBDATA_DIR, "job_data_{0}.db".format(expid))
+                backup_path = os.path.join(BasicConfig.JOBDATA_DIR, "job_data_{0}.sql".format(expid))
+                command = "sqlite3 {0} .dump > {1} ".format(database_path, backup_path)
+                Log.debug("Backing up jobs_data...")
+                out = subprocess.call(command, shell=True)
+                Log.debug("Jobs_data database backup completed.")
+            except BaseException as e:
+                Log.debug("Jobs_data database backup failed.")
+        elif BasicConfig.DATABASE_BACKEND == 'postgres':
+            # TODO: Implement Postgres backup
+            Log.debug("Postgres database backup not implemented yet.")
+            
     @staticmethod
     def database_fix(expid):
         """

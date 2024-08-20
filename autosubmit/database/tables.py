@@ -191,7 +191,7 @@ def get_table_with_schema(schema: str, table: Table) -> Table:
     return dest_table
 
 
-def get_table_from_name(*, schema: str, table_name: str) -> Optional[Table]:
+def get_table_from_name(*, schema: str, table_name: str) -> Table:
     """Get the table from a given table name.
 
     :param schema: The schema name.

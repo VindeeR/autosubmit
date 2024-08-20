@@ -52,7 +52,8 @@ install_requires = [
     'autosubmitconfigparser==1.0.67',
     'configparser',
     'pathlib',
-    'setproctitle'
+    'setproctitle',
+    'SQLAlchemy~=2.0.23',
 ]
 
 pg_require = [

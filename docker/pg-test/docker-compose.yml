@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+  test-as-postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: autosubmit
+      POSTGRES_PASSWORD: autosubmit
+      POSTGRES_DB: autosubmit_dev
+    ports:
+      - "5432:5432"
+
+  test-as-pg-node-1:
+    image: pg-as-node1
+  
+  # test-as-pg-node-2:
+  #   image: pg-as-node1

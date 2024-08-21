@@ -229,12 +229,24 @@ def get_structure_sqlalchemy(exp_id: str, structures_path: str) -> Dict[str, Lis
 
 def save_structure_sqlalchemy(graph, exp_id, structures_path):
     """
-    Saves structure if path is valid
+    Saves structure using SQLAlchemy.
+    This overwrites the old structure if it exists.
     """
     db_manager: Optional[DatabaseManager] = None
     options = {'schema': exp_id}
     try:
         db_manager = create_db_manager('postgres', **options)
+
+        # Create table if it doesn't exist
+        db_manager.create_table(
+            table_name='experiment_structure',
+            fields=['e_from text NOT NULL',
+                    'e_to text NOT NULL',
+                    'UNIQUE(e_from,e_to)']
+        )
+
+        # Delete all rows in the table
+        db_manager.delete_all('experiment_structure')
 
         # Save structure
         nodes_edges = {u for u, v in graph.edges()}

@@ -256,9 +256,12 @@ class SlurmPlatform(ParamikoPlatform):
             cmd = self.get_submit_cmd(script_name, job, hold=hold, export=export)
             if cmd is None:
                 return None
-            if self.send_command(cmd,x11=x11):
-                job_id = self.get_submitted_job_id(self.get_ssh_output(),x11=x11)
-                Log.debug("Job ID: {0}", job_id)
+            if self.send_command(cmd, x11=x11):
+                job_id = self.get_submitted_job_id(self.get_ssh_output(), x11=x11)
+                if job:
+                    Log.result(f"Job: {job.name} submitted with job_id: {job_id}")
+                else:
+                    Log.result(f"Job submitted with job_id: {job_id}")
                 return int(job_id)
             else:
                 return None
@@ -653,7 +656,20 @@ class SlurmPlatform(ParamikoPlatform):
     def allocated_nodes():
         return """os.system("scontrol show hostnames $SLURM_JOB_NODELIST > node_list_{0}".format(node_id))"""
 
-    def check_file_exists(self, filename, wrapper_failed=False, sleeptime=5, max_retries=3):
+    def check_file_exists(self, filename: str, wrapper_failed: bool = False, sleeptime: int = 5, max_retries: int = 3) -> bool:
+        """
+        Checks if a file exists on the FTP server.
+
+        Args:
+            filename (str): The name of the file to check.
+            wrapper_failed (bool): Whether the wrapper has failed. Defaults to False.
+            sleeptime (int): Time to sleep between retries in seconds. Defaults to 5.
+            max_retries (int): Maximum number of retries. Defaults to 3.
+
+        Returns:
+            bool: True if the file exists, False otherwise.
+        """
+        # Todo in a future refactor, check the sleeptime retrials of these function, previously it was waiting a lot of time
         file_exist = False
         retries = 0
         while not file_exist and retries < max_retries:
@@ -671,8 +687,7 @@ class SlurmPlatform(ParamikoPlatform):
                     retries = retries + 1
             except BaseException as e:  # Unrecoverable error
                 if str(e).lower().find("garbage") != -1:
-                    sleep(sleeptime)
-                    sleeptime = sleeptime + 5
+                    sleep(2)
                     retries = retries + 1
                 else:
                     file_exist = False  # won't exist

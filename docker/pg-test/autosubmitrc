@@ -1,0 +1,21 @@
+[database]
+path = /app
+filename = autosubmit.db
+backend = postgres
+connection_url = postgresql://autosubmit:autosubmit@test-as-postgres:5432/autosubmit_dev
+
+[local]
+path = /app
+
+[globallogs]
+path = /app/logs
+
+[structures]
+path = /app/structures
+
+[historicdb]
+path = /app/data
+
+[historiclog]
+path = /app/logs
+

@@ -139,7 +139,7 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World"
-                sleep 1
+                sleep 2
             PLATFORM: local
             DEPENDENCIES: job-1
             RUNNING: chunk
@@ -152,7 +152,7 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World"
-                sleep 1
+                sleep 2
             DEPENDENCIES: job-1
             PLATFORM: local
             RUNNING: chunk
@@ -169,7 +169,7 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World"
-                sleep 1
+                sleep 2
                 exit 1
             DEPENDENCIES: job-1
             PLATFORM: local
@@ -183,7 +183,7 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World"
-                sleep 1
+                sleep 2
                 exit 1
             PLATFORM: local
             DEPENDENCIES: job-1
@@ -247,9 +247,9 @@ def test_db(db_tmpdir, prepare_db, jobs_data, expected_count, final_status, mock
     for row_dict in rows_as_dicts:
         # Check that all fields contain data, except extra_data, children, and platform_output
         # Check that submit, start and finish are > 0
-        assert int(row_dict["submit"]) > 0 and int(row_dict["finish"]) != 1970010101
-        assert int(row_dict["start"]) > 0 and int(row_dict["finish"]) != 1970010101
-        assert int(row_dict["finish"]) > 0 and int(row_dict["finish"]) != 1970010101
+        assert row_dict["submit"] > 0 and row_dict["finish"] != 1970010101
+        assert row_dict["start"] > 0 and row_dict["finish"] != 1970010101
+        assert row_dict["finish"] > 0 and row_dict["finish"] != 1970010101
         assert row_dict["status"] == final_status
         for key in [key for key in row_dict.keys() if
                     key not in ["status", "finish", "submit", "start", "extra_data", "children", "platform_output"]]:
@@ -258,7 +258,7 @@ def test_db(db_tmpdir, prepare_db, jobs_data, expected_count, final_status, mock
     c.execute("SELECT job_name, COUNT(*) as count FROM job_data GROUP BY job_name")
     count_rows = c.fetchall()
     for row in count_rows:
-        assert int(row["count"]) == expected_count
+        assert row["count"] == expected_count
     # Close the cursor and connection
     c.close()
     conn.close()

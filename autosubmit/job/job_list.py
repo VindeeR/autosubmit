@@ -2587,30 +2587,39 @@ class JobList(object):
         """
         Updates the log err and log out.
         """
-        if not hasattr(job,"updated_log") or not job.updated_log:  # hasattr for backward compatibility (job.updated_logs is only for newer jobs, as the loaded ones may not have this set yet)
-            # order path_to_logs by name and get the two last element
-            log_file = False
-            if hasattr(job, "x11") and job.x11:
-                job.updated_log = True
-                return
+        if not hasattr(job, "updated_log"): # hasattr for backward compatibility (job.updated_logs is only for newer jobs, as the loaded ones may not have this set yet)
+            job.updated_log = False
+        if hasattr(job, "x11") and job.x11: # X11 has it log writted in the run.out file. No need to check for log files as there are none
+            job.updated_log = True
+            return
+        log_recovered = self.check_if_log_is_recovered(job)
+
+        if log_recovered:  # hasattr for backward compatibility
+            job.local_logs = (log_recovered.name, log_recovered.name[:-4] + ".err") # we only want the last one
+            job.updated_log = True
+        elif not job.updated_log and str(as_conf.platforms_data.get(job.platform.name, {}).get('DISABLE_RECOVERY_THREADS', "false")).lower() == "false":
+            job.platform.add_job_to_log_recover(job)
+
+    def check_if_log_is_recovered(self, job):
+        """
+        Check if the log is recovered.
+        Conditions:
+        - File must exist
+        - File timestamp should be greater than the job ready_start_date, otherwise is from a previous run.
+
+        """
+        if not hasattr(job, "updated_log") or not job.updated_log:
             if job.wrapper_type == "vertical" and job.fail_count > 0:
                 for log_recovered in self.path_to_logs.glob(f"{job.name}.*._{job.fail_count}.out"):
                     if job.local_logs[0][-4] in log_recovered.name:
-                        log_file = True
-                        break
+                        if log_recovered.stat().st_mtime > job.ready_start_date:
+                            return log_recovered
             else:
                 for log_recovered in self.path_to_logs.glob(f"{job.name}.*.out"):
                     if job.local_logs[0] == log_recovered.name:
-                        log_file = True
-                        break
-
-            if log_file:
-                if not hasattr(job, "ready_start_date") or not job.ready_start_date or job.local_logs[0] >= job.ready_start_date:  # hasattr for backward compatibility
-                    job.local_logs = (log_recovered.name, log_recovered.name[:-4] + ".err")
-                    job.updated_log = True
-            if not job.updated_log and str(as_conf.platforms_data.get(job.platform.name, {}).get('DISABLE_RECOVERY_THREADS', "false")).lower() == "false":
-                job.platform.add_job_to_log_recover(job)
-
+                        if log_recovered.stat().st_mtime > job.ready_start_date:
+                            return log_recovered
+        return None
     def update_list(self, as_conf, store_change=True, fromSetStatus=False, submitter=None, first_time=False):
         # type: (AutosubmitConfig, bool, bool, object, bool) -> bool
         """

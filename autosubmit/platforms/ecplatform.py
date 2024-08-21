@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import atexit
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
 # This file is part of Autosubmit.
@@ -169,12 +169,8 @@ class EcPlatform(ParamikoPlatform):
                 self.connected = False
         except:
             self.connected = False
-        if not self.log_retrieval_process_active and (
-                as_conf is None or str(as_conf.platforms_data.get(self.name, {}).get('DISABLE_RECOVERY_THREADS',
-                                                                                 "false")).lower() == "false"):
-            self.log_retrieval_process_active = True
-            if as_conf and as_conf.misc_data.get("AS_COMMAND","").lower() == "run":
-                self.recover_job_logs()
+        self.spawn_log_retrieval_process(as_conf)
+
 
     def restore_connection(self,as_conf):
         """
@@ -208,12 +204,8 @@ class EcPlatform(ParamikoPlatform):
         try:
             if output.lower().find("yes") != -1:
                 self.connected = True
-                if not self.log_retrieval_process_active and (
-                        as_conf is None or str(as_conf.platforms_data.get(self.name, {}).get('DISABLE_RECOVERY_THREADS',
-                                                                                             "false")).lower() == "false"):
-                    self.log_retrieval_process_active = True
-                    if as_conf and as_conf.misc_data.get("AS_COMMAND", "").lower() == "run":
-                        self.recover_job_logs()
+                self.spawn_log_retrieval_process(as_conf)
+
                 return "OK"
             else:
                 self.connected = False

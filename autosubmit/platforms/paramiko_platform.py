@@ -1,3 +1,4 @@
+import atexit
 import copy
 import threading
 
@@ -23,7 +24,6 @@ from threading import Thread
 import threading
 import getpass
 from paramiko.agent import Agent
-from autosubmit.helpers.utils import terminate_child_process
 
 def threaded(fn):
     def wrapper(*args, **kwargs):
@@ -116,7 +116,6 @@ class ParamikoPlatform(Platform):
             display = "localhost:0"
         self.local_x11_display = xlib_connect.get_display(display)
         self.log_retrieval_process_active = False
-        terminate_child_process(self.expid, self.name)
     def test_connection(self,as_conf):
         """
         Test if the connection is still alive, reconnect if not.
@@ -150,6 +149,7 @@ class ParamikoPlatform(Platform):
             self.connected = False
             raise AutosubmitCritical(str(e),7051)
             #raise AutosubmitError("[{0}] connection failed for host: {1}".format(self.name, self.host), 6002, e.message)
+
 
     def restore_connection(self, as_conf):
         try:
@@ -306,10 +306,9 @@ class ParamikoPlatform(Platform):
             self._ftpChannel = paramiko.SFTPClient.from_transport(self.transport,window_size=pow(4, 12) ,max_packet_size=pow(4, 12) )
             self._ftpChannel.get_channel().settimeout(120)
             self.connected = True
-            if not self.log_retrieval_process_active and (as_conf is None or str(as_conf.platforms_data.get(self.name, {}).get('DISABLE_RECOVERY_THREADS', "false")).lower() == "false"):
-                self.log_retrieval_process_active = True
-                if as_conf and as_conf.misc_data.get("AS_COMMAND", "").lower() == "run":
-                    self.recover_job_logs()
+            self.spawn_log_retrieval_process(as_conf)
+
+
         except SSHException:
             raise
         except IOError as e:

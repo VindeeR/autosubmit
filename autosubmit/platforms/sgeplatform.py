@@ -122,12 +122,9 @@ class SgePlatform(ParamikoPlatform):
         :rtype: bool
         """
         self.connected = True
-        if not self.log_retrieval_process_active and (
-                as_conf is None or str(as_conf.platforms_data.get(self.name, {}).get('DISABLE_RECOVERY_THREADS',
-                                                                                 "false")).lower() == "false"):
-            self.log_retrieval_process_active = True
-            if as_conf and as_conf.misc_data.get("AS_COMMAND","").lower() == "run":
-                self.recover_job_logs()
+        self.spawn_log_retrieval_process(as_conf)
+
+
     def restore_connection(self,as_conf):
         """
         In this case, it does nothing because connection is established for each command

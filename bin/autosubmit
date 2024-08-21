@@ -51,7 +51,7 @@ def exit_from_error(e: BaseException):
         args = [str(e)]
         Log.critical(msg.format(*args))
     Log.info("More info at https://autosubmit.readthedocs.io/en/master/troubleshooting/error-codes.html")
-    os._exit(1)
+    return 1
 
 # noinspection PyProtectedMember
 def main():
@@ -60,8 +60,8 @@ def main():
         if os.path.exists(os.path.join(Log.file_path, "autosubmit.lock")):
             os.remove(os.path.join(Log.file_path, "autosubmit.lock"))
         if type(return_value) is int:
-            os._exit(return_value)
-        os._exit(0)
+            return return_value
+        return 0
     except AutosubmitError as e:
         exit_from_error(e)
     except AutosubmitCritical as e:
@@ -70,4 +70,5 @@ def main():
         exit_from_error(e)
 
 if __name__ == "__main__":
-    main()
+    exit_code = main()
+    sys.exit(exit_code) # Sys.exit ensures a proper cleanup of the program, while os._exit() does not.

@@ -86,7 +86,7 @@ from typing import List
 import autosubmit.history.utils as HUtils
 import autosubmit.helpers.autosubmit_helper as AutosubmitHelper
 import autosubmit.statistics.utils as StatisticsUtils
-from autosubmit.helpers.utils import proccess_id, terminate_child_process, check_jobs_file_exists
+from autosubmit.helpers.utils import proccess_id, check_jobs_file_exists
 
 from contextlib import suppress
 
@@ -1703,25 +1703,6 @@ class Autosubmit:
         for job in job_list.get_job_list():
             job.status = Status.WAITING
 
-
-    @staticmethod
-    def terminate_child_process(expid, platform = None):
-        # get pid of the main process
-        pid = os.getpid()
-        # In case some one used 4.1.6 or 4.1.5
-        process_ids = proccess_id(expid,"run", single_instance = False, platform = platform)
-        if process_ids:
-            for process_id in [ process_id for process_id in process_ids if process_id != pid]:
-                # force kill
-                os.kill(process_id, signal.SIGKILL)
-        process_ids = proccess_id(expid,"log", single_instance = False, platform = platform)
-        # 4.1.7 +
-        if process_ids:
-            for process_id in [ process_id for process_id in process_ids if process_id != pid]:
-                # force kill
-                os.kill(process_id, signal.SIGKILL)
-
-
     @staticmethod
     def terminate(all_threads):
         # Closing threads on Ctrl+C
@@ -2188,7 +2169,6 @@ class Autosubmit:
                     did_run = True
                     try:
                         if Autosubmit.exit:
-                            terminate_child_process(expid)
                             Autosubmit.terminate(threading.enumerate())
                             if job_list.get_failed():
                                 return 1
@@ -2363,7 +2343,7 @@ class Autosubmit:
                 # get all threads
                 threads = threading.enumerate()
                 # print name
-                timeout = as_conf.experiment_data.get("CONFIG",{}).get("LAST_LOGS_TIMEOUT", 180)
+                timeout = as_conf.experiment_data.get("CONFIG",{}).get("LAST_LOGS_TIMEOUT", 1)
                 for remaining in range(timeout, 0, -1):
                     if len(job_list.get_completed_without_logs()) == 0:
                         break
@@ -2385,7 +2365,6 @@ class Autosubmit:
                         Autosubmit.database_fix(expid)
                     except Exception as e:
                         pass
-                terminate_child_process(expid)
                 for platform in platforms_to_test:
                     platform.closeConnection()
                 if len(job_list.get_failed()) > 0:
@@ -2400,13 +2379,10 @@ class Autosubmit:
                         Log.warning("Database is locked")
         except (portalocker.AlreadyLocked, portalocker.LockException) as e:
             message = "We have detected that there is another Autosubmit instance using the experiment\n. Stop other Autosubmit instances that are using the experiment or delete autosubmit.lock file located on tmp folder"
-            terminate_child_process(expid)
             raise AutosubmitCritical(message, 7000)
         except AutosubmitCritical as e:
-            terminate_child_process(expid)
             raise
         except BaseException as e:
-            terminate_child_process(expid)
             raise
         finally:
             if profile:
@@ -6111,7 +6087,6 @@ class Autosubmit:
                     if status in Status.VALUE_TO_KEY.values():
                         job.status = Status.KEY_TO_VALUE[status]
                 job_list.save()
-            terminate_child_process(expid)
 
 
 

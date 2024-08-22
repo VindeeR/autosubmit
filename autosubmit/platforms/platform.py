@@ -11,21 +11,12 @@ from log.log import AutosubmitCritical, AutosubmitError, Log
 from multiprocessing import Process, Queue, Event
 import atexit
 import time
-def processed(*decorator_args, **decorator_kwargs):
-    def decorator(fn):
-        def wrapper(*args, **kwargs):
-            stop_event = decorator_kwargs.get('stop_event', Event())
-            args = (args[0], stop_event)
-            process = Process(target=fn, args=args, kwargs=kwargs, name=f"{args[0].name}_platform")
-            if decorator_kwargs.get('daemon', False):
-                process.daemon = True
-            process.start()
-
-            return process
-        return wrapper
-    return decorator
-
-
+def processed(fn):
+    def wrapper(*args, **kwargs):
+        process = Process(target=fn, args=args, kwargs=kwargs, name=f"{args[0].name}_platform")
+        process.start()
+        return process
+    return wrapper
 
 class Platform(object):
     """
@@ -833,23 +824,24 @@ class Platform(object):
                                                                                      "false")).lower() == "false"):
             self.log_retrieval_process_active = True
             if as_conf and as_conf.misc_data.get("AS_COMMAND", "").lower() == "run":
-                process = self.recover_job_logs_parent(self.stop_event)
+                process = self.recover_job_logs_parent()
                 process.join()
-                atexit.register(self.send_stop_signal, self.stop_event)
-
-    @processed(stop_event=Event(),daemon=False)
-    def recover_job_logs_parent(self, stop_event):
+                self.stop_event.set()
+    @processed
+    def recover_job_logs_parent(self):
         """
         This function, spawn some processes to recover the logs of the jobs that have been submitted and exits.
         The main_process call to this function and waits until all process are spawn. ( which avoids to this process to zombify )
         This ensures that the recover_job_logs process is inherited by the init process, which reaps it automatically thus avoiding zombies.
         """
         Log.get_logger("Autosubmit")
-        self.recover_job_logs(stop_event)
-        return self
+        self.recover_job_logs()
+        #self.stop_event.set()
+        return 0
 
-    @processed(stop_event=Event(),daemon=False)
-    def recover_job_logs(self, stop_event):
+
+    @processed
+    def recover_job_logs(self):
         """
         This function, recovers the logs of the jobs that have been submitted.
         This is an independent process that will be spawned by the recover_job_logs_parent function.
@@ -864,9 +856,9 @@ class Platform(object):
         self.restore_connection(None)
         # check if id of self.main_process exists with ps ax | grep self.main_process_id
         max_logs_without_waiting_to_process = 60
-        Log.info(f"Thread: stop_event: {stop_event.is_set()} - main_process_id: {psutil.pid_exists(int(self.main_process_id))}")
-        while not stop_event.is_set() and psutil.pid_exists(int(self.main_process_id)):  # psutil, is a protection against kill -9.
-            Log.info(f"Thread: stop_event: {stop_event.is_set()} - main_process_id: {psutil.pid_exists(int(self.main_process_id))}")
+        Log.info(f"Thread: stop_event: {self.stop_event.is_set()} - main_process_id: {psutil.pid_exists(int(self.main_process_id))}")
+        while not self.stop_event.is_set() and psutil.pid_exists(int(self.main_process_id)):  # psutil, is a protection against kill -9.
+            Log.info(f"Thread: stop_event: {self.stop_event.is_set()} - main_process_id: {psutil.pid_exists(int(self.main_process_id))}")
             try:
                 logs_tried_to_retrieve = 0
                 while not self.recovery_queue.empty() and logs_tried_to_retrieve < max_logs_without_waiting_to_process:
@@ -890,13 +882,13 @@ class Platform(object):
                 try:
                     if job:
                         jobs_pending_to_process.add(job)
-                    if not stop_event.is_set() and psutil.pid_exists(int(self.main_process_id)):
+                    if not self.stop_event.is_set() and psutil.pid_exists(int(self.main_process_id)):
                         self.connected = False
                         self.restore_connection(None)
                 except:
                     pass
         self.recovery_queue.close()
         Log.info(
-            f"Thread: stop_event: {stop_event.is_set()} - main_process_id: {psutil.pid_exists(int(self.main_process_id))}")
+            f"Thread: stop_event: {self.stop_event.is_set()} - main_process_id: {psutil.pid_exists(int(self.main_process_id))}")
 
         Log.info(f"Thread: Exiting log recovery for {self.name} platform")

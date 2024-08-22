@@ -20,10 +20,10 @@
 import os
 import textwrap
 import time
-from .database_manager import DatabaseManager, DEFAULT_LOCAL_ROOT_DIR
+from autosubmit.history.database_managers.database_manager import DatabaseManager, DEFAULT_LOCAL_ROOT_DIR
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 import autosubmit.history.utils as HUtils
-from . import database_models as Models
+from autosubmit.history.database_managers import database_models as Models
 
 from typing import Optional, Protocol, cast
 from sqlalchemy import Engine, delete, insert, select, update
@@ -182,12 +182,11 @@ class SqlAlchemyExperimentStatusDbManager:
     delete that code -- for later).
     """
 
-    def __init__(self, schema: Optional[str] = None) -> None:
+    def __init__(self) -> None:
         self.engine: Engine = session.create_engine()
-        self.schema = schema
         with self.engine.connect() as conn:
-            conn.execute(CreateSchema(self.schema, if_not_exists=True))
-            conn.execute(CreateTable(get_table_with_schema(self.schema, ExperimentRunTable), if_not_exists=True))
+            conn.execute(CreateTable(ExperimentStatusTable, if_not_exists=True))
+            conn.commit()
 
     def print_current_table(self):
         """Not used!"""
@@ -212,22 +211,22 @@ class SqlAlchemyExperimentStatusDbManager:
             select(ExperimentTable).
             where(ExperimentTable.c.name == expid)
         )
-        with session.create_engine() as conn:
-            current_rows = conn.execute(query).all()
-            if len(current_rows) <= 0:
+        with self.engine.connect() as conn:
+            row = conn.execute(query).first()
+            if not row:
                 raise ValueError("Experiment {0} not found in Postgres {1}".format(expid, expid))
-        return Models.ExperimentRow(*current_rows[0])
+        return Models.ExperimentRow(*row)
 
     def get_experiment_status_row_by_exp_id(self, exp_id: int) -> Optional[Models.ExperimentStatusRow]:
         query = (
             select(ExperimentStatusTable).
             where(ExperimentStatusTable.c.exp_id == exp_id)
         )
-        with session.create_engine() as conn:
-            current_rows = conn.execute(query).all()
-            if len(current_rows) <= 0:
+        with self.engine.connect() as conn:
+            row = conn.execute(query).first()
+            if not row:
                 return None
-        return Models.ExperimentStatusRow(*current_rows[0])
+        return Models.ExperimentStatusRow(*row)
 
     def create_exp_status(self, exp_id: int, expid: str, status: str) -> int:
         query = (
@@ -240,7 +239,7 @@ class SqlAlchemyExperimentStatusDbManager:
                 modified=HUtils.get_current_datetime()
             )
         )
-        with session.create_engine() as conn:
+        with self.engine.connect() as conn:
             result = conn.execute(query)
             lastrow_id = result.lastrowid
             conn.commit()
@@ -256,7 +255,7 @@ class SqlAlchemyExperimentStatusDbManager:
                 modified=HUtils.get_current_datetime()
             )
         )
-        with session.create_engine() as conn:
+        with self.engine.connect() as conn:
             conn.execute(query)
             conn.commit()
 
@@ -265,7 +264,7 @@ class SqlAlchemyExperimentStatusDbManager:
             delete(ExperimentStatusTable).
             where(ExperimentStatusTable.c.name == expid)
         )
-        with session.create_engine() as conn:
+        with self.engine.connect() as conn:
             conn.execute(query)
             conn.commit()
 
@@ -285,13 +284,13 @@ def create_experiment_status_db_manager(db_engine: str, **options) -> Experiment
     :raises KeyError: If the ``options`` dictionary is missing a required parameter for an engine.
     """
     if db_engine == "postgres":
-        return cast(ExperimentStatusDatabaseManager, SqlAlchemyExperimentStatusDbManager(options['schema']))
+        return cast(ExperimentStatusDatabaseManager, SqlAlchemyExperimentStatusDbManager())
     elif db_engine == "sqlite":
         return cast(ExperimentStatusDatabaseManager,
                     ExperimentStatusDbManager(
-                        expid=options['schema'],
-                        db_dir_path=options['root_path'],
-                        main_db_name=options['db_name'],
+                        expid=options['expid'],
+                        db_dir_path=options['db_dir_path'],
+                        main_db_name=options['main_db_name'],
                         local_root_dir_path=options['local_root_dir_path']))
     else:
         raise ValueError(f"Invalid database engine: {db_engine}")

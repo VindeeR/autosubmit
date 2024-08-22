@@ -86,8 +86,8 @@ def test_db_manager(
         db_engine: str,
         options: dict,
         clazz: Type,
-        expected_exception: BaseException,
-        request
+        expected_exception: Optional[BaseException],
+        request: pytest.FixtureRequest
 ):
     """Regression tests for ``DbManager`` and ``SqlAlchemy``.
 

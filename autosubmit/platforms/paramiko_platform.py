@@ -1,7 +1,3 @@
-import atexit
-import copy
-import threading
-
 import locale
 from contextlib import suppress
 from time import sleep
@@ -120,7 +116,6 @@ class ParamikoPlatform(Platform):
         """
         Test if the connection is still alive, reconnect if not.
         """
-        self.main_process_id = os.getpid()
 
         try:
             if not self.connected:

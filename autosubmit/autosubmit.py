@@ -1696,6 +1696,7 @@ class Autosubmit:
         for job in job_list.get_active():
             if job.status != Status.WAITING:
                 job.status = Status.READY
+                job.ready_start_date = strftime("%Y%m%d%H%M%S")
         while job_list.get_active():
             Autosubmit.submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence, True,
                                          only_wrappers, hold=False)
@@ -2340,10 +2341,8 @@ class Autosubmit:
                 # Wait for all remaining threads of I/O, close remaining connections
                 # search hint - finished run
                 Log.info("Waiting for all logs to be updated")
-                # get all threads
-                threads = threading.enumerate()
                 # print name
-                timeout = as_conf.experiment_data.get("CONFIG",{}).get("LAST_LOGS_TIMEOUT", 1)
+                timeout = as_conf.experiment_data.get("CONFIG",{}).get("LAST_LOGS_TIMEOUT", 20)
                 for remaining in range(timeout, 0, -1):
                     if len(job_list.get_completed_without_logs()) == 0:
                         break
@@ -2352,7 +2351,7 @@ class Autosubmit:
                         job_list.update_log_status(job, as_conf)
                     sleep(1)
                     if remaining % 10 == 0:
-                        Log.info(f"Timeout: {remaining}")
+                        Log.info(f"Still logs remaining, Timeout: {remaining}")
 
                 # Updating job data header with current information when experiment ends
                 try:

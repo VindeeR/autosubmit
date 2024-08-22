@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import atexit
 # Copyright 2017-2020 Earth Sciences Department, BSC-CNS
 
 # This file is part of Autosubmit.
@@ -197,7 +196,6 @@ class EcPlatform(ParamikoPlatform):
         :return: True
         :rtype: bool
         """
-        self.main_process_id = os.getpid()
         output = subprocess.check_output(self._checkvalidcert_cmd, shell=True).decode(locale.getlocale()[1])
         if not output:
             output = ""

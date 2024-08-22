@@ -30,10 +30,10 @@ class ExperimentStatus:
     BasicConfig.read()
     try:
       options = {
-        'root_path': BasicConfig.DB_DIR,
-        'db_name': BasicConfig.DB_FILE,
+        'expid': self.expid,
+        'db_dir_path': BasicConfig.DB_DIR,
+        'main_db_name': BasicConfig.DB_FILE,
         'local_root_dir_path': BasicConfig.LOCAL_ROOT_DIR,
-        'schema': self.expid
       }
       self.manager = create_experiment_status_db_manager(BasicConfig.DATABASE_BACKEND, **options)
     except Exception as exp:

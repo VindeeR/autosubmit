@@ -20,7 +20,7 @@ def test_db_structure(
         db_engine: str,
         options: dict,
         clazz: Type,
-        request
+        request: pytest.FixtureRequest
 ):
     # Load dynamically the fixture,
     # ref: https://stackoverflow.com/a/64348247.

@@ -1696,7 +1696,7 @@ class Autosubmit:
         for job in job_list.get_active():
             if job.status != Status.WAITING:
                 job.status = Status.READY
-                job.ready_start_date = strftime("%Y%m%d%H%M%S")
+                job.set_ready_date()
         while job_list.get_active():
             Autosubmit.submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence, True,
                                          only_wrappers, hold=False)
@@ -2341,17 +2341,19 @@ class Autosubmit:
                 # Wait for all remaining threads of I/O, close remaining connections
                 # search hint - finished run
                 Log.info("Waiting for all logs to be updated")
-                # print name
-                timeout = as_conf.experiment_data.get("CONFIG",{}).get("LAST_LOGS_TIMEOUT", 20)
+                # One cycle log recovery is sys_timeout seconds ( default 60 )
+                # The 20 seconds are a grace period to download these logs if the cycle just started.
+                sys_timeout = int(as_conf.experiment_data.get("LOG_RECOVERY_TIMEOUT",60)) + 20 # 20 is a gracetime period to download the last logs
+                timeout = as_conf.experiment_data.get("CONFIG",{}).get("LAST_LOGS_TIMEOUT", sys_timeout)
+                for job in job_list.get_completed_without_logs():
+                    job.platform = submitter.platforms[job.platform_name.upper()]
+                    job_list.update_log_status(job, as_conf)  # request an update of the log status
                 for remaining in range(timeout, 0, -1):
                     if len(job_list.get_completed_without_logs()) == 0:
                         break
-                    for job in job_list.get_completed_without_logs():
-                        job.platform = submitter.platforms[job.platform_name.upper()]
-                        job_list.update_log_status(job, as_conf)
-                    sleep(1)
+                    sleep(1) # sleeps of one to ensure the fastest exit possible
                     if remaining % 10 == 0:
-                        Log.info(f"Still logs remaining, Timeout: {remaining}")
+                        Log.info(f"Logs are being recovered... max time left: {remaining}")
 
                 # Updating job data header with current information when experiment ends
                 try:

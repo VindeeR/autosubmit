@@ -22,6 +22,7 @@ Main module for Autosubmit. Only contains an interface class to all functionalit
 """
 
 from collections import OrderedDict
+from pathlib import Path
 
 from autosubmit.job import job_utils
 from contextlib import suppress
@@ -248,12 +249,13 @@ class Job(object):
         # hetjobs
         self.het = None
         self.updated_log = False
-        self.ready_start_date = None
+        self.ready_start_date = {}
         self.log_retrieved = False
         self.start_time_written = False
         self.submit_time_timestamp = None # for wrappers, all jobs inside a wrapper are submitted at the same time
         self.finish_time_timestamp = None # for wrappers, with inner_retrials, the submission time should be the last finish_time of the previous retrial
         self._script = None # Inline code to be executed
+        self._log_recovery_retries = None
     def _init_runtime_parameters(self):
         # hetjobs
         self.het = {'HETSIZE': 0}
@@ -1132,6 +1134,15 @@ class Job(object):
                     except BaseException:
                         log_retrieved = False
             self.log_retrieved = log_retrieved
+
+    def set_ready_date(self):
+        """
+        Sets the ready start date for the job
+        """
+        if self.fail_count == 0:
+            self.ready_start_date = {}
+        self.ready_start_date[self.fail_count] = int(time.strftime("%Y%m%d%H%M%S"))
+
     def retrieve_logfiles(self, platform, raise_error=False):
         """
         Retrieves log files from remote host meant to be used inside a process.
@@ -1139,8 +1150,8 @@ class Job(object):
         :param raise_error: boolean to raise an error if the logs are not retrieved
         :return:
         """
-        backup_logname = copy.copy(self.local_logs)
 
+        backup_logname = copy.copy(self.local_logs)
         if self.wrapper_type == "vertical":
             stat_file = self.script_name[:-4] + "_STAT_"
             self.retrieve_internal_retrials_logfiles(platform)

@@ -2165,6 +2165,8 @@ class Autosubmit:
                 max_recovery_retrials = as_conf.experiment_data.get("CONFIG",{}).get("RECOVERY_RETRIALS",3650)  # (72h - 122h )
                 recovery_retrials = 0
                 while job_list.get_active():
+                    for platform in platforms_to_test:  # This can be a long process, so we need to tell to the log workers to keep alive.
+                        platform.work_event.set()
                     for job in [job for job in job_list.get_job_list() if job.status == Status.READY]:
                         job.update_parameters(as_conf, {})
                     did_run = True

@@ -1139,9 +1139,7 @@ class Job(object):
         """
         Sets the ready start date for the job
         """
-        if self.fail_count == 0:
-            self.ready_start_date = {}
-        self.ready_start_date[self.fail_count] = int(time.strftime("%Y%m%d%H%M%S"))
+        self.ready_start_date = int(time.strftime("%Y%m%d%H%M%S"))
 
     def retrieve_logfiles(self, platform, raise_error=False):
         """

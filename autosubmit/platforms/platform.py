@@ -14,12 +14,6 @@ from multiprocessing import Process, Event
 from multiprocessing.queues import Queue
 import time
 
-def processed(fn: Callable) -> Callable[..., Process]:
-    def wrapper(*args, **kwargs) -> Process:
-        process = Process(target=fn, args=args, kwargs=kwargs, name=f"{args[0].name}_platform")
-        process.start()
-        return process
-    return wrapper
 
 
 class UniqueQueue(Queue): # The reason of this class is to avoid duplicates in the queue during the same run. That can happen if the log retrieval process didn't process it yet.
@@ -40,7 +34,7 @@ class Platform(object):
     """
     Class to manage the connections to the different platforms.
     """
-
+    worker_events = list()
     def __init__(self, expid, name, config, auth_password = None):
         """
         :param config:
@@ -109,9 +103,12 @@ class Platform(object):
         self.recovery_queue = UniqueQueue()
         self.log_retrieval_process_active = False
         self.main_process_id = None
-        self.stop_event = Event()
+        self.work_event = Event()
+        self.log_recovery_process = None
 
-
+    @classmethod
+    def update_workers(cls, event_worker):
+        cls.worker_events.append(event_worker)
 
     @property
     @autosubmit_parameter(name='current_arch')
@@ -233,9 +230,8 @@ class Platform(object):
     def root_dir(self, value):
         self._root_dir = value
 
-    def send_stop_signal(self,stop_event):
-        Log.info(f"Sending stop signal to {self.name} platform to stop log recovery process")
-        stop_event.set()
+    def send_work_signal(self):
+        self.work_event.set()
 
     def get_exclusive_directive(self, job):
         """
@@ -840,37 +836,31 @@ class Platform(object):
         """
         This function, spawn a process that spawns another process to recover the logs of the jobs that have been submitted in this platform.
         """
-        if not self.log_retrieval_process_active:
-            self.main_process_id = os.getpid()
         if not self.log_retrieval_process_active and (
                 as_conf is None or str(as_conf.platforms_data.get(self.name, {}).get('DISABLE_RECOVERY_THREADS',
                                                                                      "false")).lower() == "false"):
             self.log_retrieval_process_active = True
             if as_conf and as_conf.misc_data.get("AS_COMMAND", "").lower() == "run":
-                process = self.recover_job_logs_parent()
-                process.join() # Wait until the process is spawned. ( Avoids to zombify the process )
-                atexit.register(self.send_stop_signal, self.stop_event) # Register the stop signal to be sent when Autosubmit ends correctly. ( Doesn't help with kill -9 )
+                Platform.update_workers(self.work_event)
+                self.log_recovery_process = Process(target=self.recover_job_logs, args=(), name=f"{self.name}_log_recovery")
+                self.log_recovery_process.daemon = True
+                self.log_recovery_process.start()
+                time.sleep(1)
+                os.waitpid(self.log_recovery_process.pid, os.WNOHANG)
+                Log.result(f"Process {self.log_recovery_process.name} started with pid {self.log_recovery_process.pid}")
+                atexit.register(self.send_stop_signal)
 
-    @processed
-    def recover_job_logs_parent(self):
-        """
-        This function, spawn some processes to recover the logs of the jobs that have been submitted and exits.
-        The main_process call to this function and waits until all process are spawn. ( which avoids to this process to zombify )
-        This ensures that the recover_job_logs process is inherited by the init process, which reaps it automatically thus avoiding zombies.
-        """
-        Log.get_logger("Autosubmit")  # Log needs to be initialized in the new process
-        self.recover_job_logs()  # will run without block
-        os._exit(0)  # needed so the event/queue is not closed. ( no cleanup )
+    def send_stop_signal(self):
+        self.work_event.clear()
+        self.log_recovery_process.join()
 
-    @processed
     def recover_job_logs(self):
         """
         This function, recovers the logs of the jobs that have been submitted.
         This is an independent process that will be spawned by the recover_job_logs_parent function.
-        The exit of this process is controlled by the stop_event or if the main process is killed.
+        The exit of this process is controlled by the work_event.
         Once a job is get from the queue, it will try to recover these log files until the end of the execution.
         """
-
         setproctitle.setproctitle(f"autosubmit log {self.expid} recovery {self.name.lower()}")
         identifier = f"{self.name.lower()}(log_recovery):"
         Log.get_logger("Autosubmit")  # Log needs to be initialized in the new process
@@ -880,14 +870,10 @@ class Platform(object):
         self.connected = False
         self.restore_connection(None)
         Log.result(f"{identifier} Sucessfully connected.")
-        # check if id of self.main_process exists with ps ax | grep self.main_process_id
-        max_logs_without_waiting_to_process = 60
-        while not self.stop_event.is_set() and psutil.pid_exists(int(self.main_process_id)):  # stop_event is set by atexit, whenever Autosubmit ends correctly. psutil, is a protection against kill -9.
+        while not self.work_event.wait(60):
             try:
-                logs_tried_to_retrieve = 0
-                while not self.recovery_queue.empty() and logs_tried_to_retrieve < max_logs_without_waiting_to_process:
+                while not self.recovery_queue.empty():
                     try:
-                        logs_tried_to_retrieve += 1
                         job = self.recovery_queue.get(timeout=1)  # Should be non-empty, but added a timeout for other possible errors.
                         job.children = set() # Children can't be serialized, so we set it to an empty set for this process.
                         job.platform = self # change original platform to this process platform.
@@ -906,19 +892,22 @@ class Platform(object):
                     Log.debug(f"{identifier} (Retrial number: {job._log_recovery_retries}) Recovering log files for job {job.name}")
                     job.retrieve_logfiles(self, raise_error=True)
                     Log.result(f"{identifier} (Retrial) Successfully recovered log files for job {job.name}")
-                time.sleep(self.config.get("LOG_RECOVERY_TIMEOUT", 60))
-
             except Exception as e:
+                time.sleep(10)
                 Log.warning(f"{identifier} Error while recovering logs: {str(e)}")
                 try:
                     if job and job._log_recovery_retries < 5: # If log retrieval failed, add it to the pending jobs to process. Avoids to keep trying the same job forever.
                         jobs_pending_to_process.add(job)
-
-                    if not self.stop_event.is_set() and psutil.pid_exists(int(self.main_process_id)): # The main process may be terminated already.
-                        self.connected = False
-                        Log.info(f"{identifier} Attempting to restore connection")
-                        self.restore_connection(None) # Always restore the connection on a failure.
-                        Log.result(f"{identifier} Sucessfully reconnected.")
+                    self.connected = False
+                    Log.info(f"{identifier} Attempting to restore connection")
+                    self.restore_connection(None) # Always restore the connection on a failure.
+                    Log.result(f"{identifier} Sucessfully reconnected.")
                 except:
                     pass
-        #os._exit(0)
+            self.work_event.clear()  # Clear, if the event is never set again it means that the main process has finished and is waiting for this process to finish.
+            if self.recovery_queue.empty():
+                if not self.work_event.wait(120): # While main process is active, it will set this signal to keep this process alive.
+                    Log.info(f"{identifier} Exiting...")
+                    break
+            time.sleep(self.config.get("LOG_RECOVERY_TIMEOUT", 1))
+            Log.info(f"{identifier} Waiting for new jobs to recover logs...")

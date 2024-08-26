@@ -2609,16 +2609,15 @@ class JobList(object):
         - File timestamp should be greater than the job ready_start_date, otherwise is from a previous run.
 
         """
-        if type(job.ready_start_date) is not dict:  # retrocompatibility
-            job.ready_start_date[job.fail_count] = int(job.ready_date)
+
         if not hasattr(job, "updated_log") or not job.updated_log:
             if job.wrapper_type == "vertical" and job.fail_count > 0:
                 for log_recovered in self.path_to_logs.glob(f"{job.name}.*._{job.fail_count}.out"):
-                    if job.ready_start_date[job.fail_count] and int(datetime.datetime.fromtimestamp(log_recovered.stat().st_mtime).strftime("%Y%m%d%H%M%S")) > int(job.ready_start_date[job.fail_count]):
+                    if job.ready_start_date  and int(datetime.datetime.fromtimestamp(log_recovered.stat().st_mtime).strftime("%Y%m%d%H%M%S")) > int(job.ready_start_date):
                         return log_recovered
             else:
                 for log_recovered in self.path_to_logs.glob(f"{job.name}.*.out"):
-                    if job.ready_start_date[job.fail_count] and int(datetime.datetime.fromtimestamp(log_recovered.stat().st_mtime).strftime("%Y%m%d%H%M%S")) > int(job.ready_start_date[job.fail_count]):
+                    if job.ready_start_date and int(datetime.datetime.fromtimestamp(log_recovered.stat().st_mtime).strftime("%Y%m%d%H%M%S")) > int(job.ready_start_date):
                         return log_recovered
         return None
 

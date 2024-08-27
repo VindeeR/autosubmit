@@ -145,15 +145,3 @@ def restore_platforms(platform_to_test, mail_notify=False, as_conf=None, expid=N
             raise AutosubmitCritical("Issues while checking the connectivity of platforms.", 7010, issues + "\n" + ssh_config_issues)
 
 
-class AutosubmitUtils:
-    def __init__(self):
-        self.active_platforms = None
-
-    def set_work_pending(self):
-        """
-        This method will set the work_pending event to True for all active platforms. To indicate to the child processes that there is work to be done.
-        """
-        for platform in self.active_platforms:
-            platform.send_work_signal()
-
-

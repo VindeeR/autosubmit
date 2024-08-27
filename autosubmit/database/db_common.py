@@ -29,7 +29,7 @@ Log.get_logger("Autosubmit")
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 
 from autosubmit.database import tables, session
-from sqlalchemy import delete, select, Connection, insert, update, func
+from sqlalchemy import delete, select, Connection, insert, text, update, func
 from sqlalchemy.schema import CreateTable
 from typing import List, Optional, cast
 
@@ -780,10 +780,22 @@ def _delete_experiment_sqlalchemy(experiment_id: str) -> bool:
         return True
 
     with _get_sqlalchemy_conn() as conn:
+        # Delete from experiment table
         query = delete(tables.ExperimentTable).where(
             tables.ExperimentTable.c.name == experiment_id
         )
         result = conn.execute(query)
+
+        # Delete from experiment_status table
+        query = delete(tables.ExperimentStatusTable).where(
+            tables.ExperimentStatusTable.c.name == experiment_id
+        )
+        conn.execute(query)
+
+        # Drop schema
+        conn.execute(text(f'DROP SCHEMA IF EXISTS "{experiment_id}" CASCADE'))
+
+        # Commit changes
         conn.commit()
 
         if cast(int, result.rowcount) > 0:

@@ -249,13 +249,14 @@ class Job(object):
         # hetjobs
         self.het = None
         self.updated_log = False
-        self.ready_start_date = {}
         self.log_retrieved = False
         self.start_time_written = False
         self.submit_time_timestamp = None # for wrappers, all jobs inside a wrapper are submitted at the same time
         self.finish_time_timestamp = None # for wrappers, with inner_retrials, the submission time should be the last finish_time of the previous retrial
         self._script = None # Inline code to be executed
         self._log_recovery_retries = None
+        self.ready_date = None
+
     def _init_runtime_parameters(self):
         # hetjobs
         self.het = {'HETSIZE': 0}
@@ -873,6 +874,13 @@ class Job(object):
         """Number of processors per node that the job can use."""
         self._processors_per_node = value
 
+    def set_ready_date(self):
+        """
+        Sets the ready start date for the job
+        """
+        self.updated_log = False
+        self.ready_date = int(time.strftime("%Y%m%d%H%M%S"))
+
     def inc_fail_count(self):
         """
         Increments fail count
@@ -1135,12 +1143,6 @@ class Job(object):
                         log_retrieved = False
             self.log_retrieved = log_retrieved
 
-    def set_ready_date(self):
-        """
-        Sets the ready start date for the job
-        """
-        self.ready_start_date = int(time.strftime("%Y%m%d%H%M%S"))
-
     def retrieve_logfiles(self, platform, raise_error=False):
         """
         Retrieves log files from remote host meant to be used inside a process.
@@ -1285,8 +1287,7 @@ class Job(object):
             # after checking the jobs , no job should have the status "submitted"
             Log.printlog("Job {0} in SUBMITTED status. This should never happen on this step..".format(
                 self.name), 6008)
-        if self.status in [Status.COMPLETED, Status.FAILED]:
-            self.updated_log = False
+
 
         # # Write start_time() if not already written and job is running, completed or failed
         # if self.status in [Status.RUNNING, Status.COMPLETED, Status.FAILED] and not self.start_time_written:
@@ -1963,6 +1964,11 @@ class Job(object):
         """
         as_conf.reload()
         self._init_runtime_parameters()
+        if hasattr(self, "start_time"):
+            self.start_time = time.time()
+        for event in self.platform.worker_events:  # keep alive log retrieval workers.
+            if not event.is_set():
+                event.set()
         # Parameters that affect to all the rest of parameters
         self.update_dict_parameters(as_conf)
         parameters = parameters.copy()

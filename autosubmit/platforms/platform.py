@@ -1,6 +1,6 @@
 import atexit
 import multiprocessing
-import queue # only for the exception
+import queue  # only for the exception
 import psutil
 import setproctitle
 import locale
@@ -15,13 +15,13 @@ from multiprocessing.queues import Queue
 import time
 
 
-
-class UniqueQueue(Queue): # The reason of this class is to avoid duplicates in the queue during the same run. That can happen if the log retrieval process didn't process it yet.
+class UniqueQueue(
+    Queue):  # The reason of this class is to avoid duplicates in the queue during the same run. That can happen if the log retrieval process didn't process it yet.
 
     def __init__(self, maxsize=-1, block=True, timeout=None):
         self.block = block
         self.timeout = timeout
-        self.all_items = set() # Won't be popped, so even if it is being processed by the log retrieval process, it won't be added again.
+        self.all_items = set()  # Won't be popped, so even if it is being processed by the log retrieval process, it won't be added again.
         super().__init__(maxsize, ctx=multiprocessing.get_context())
 
     def put(self, job, block=True, timeout=None):
@@ -35,15 +35,16 @@ class Platform(object):
     Class to manage the connections to the different platforms.
     """
     worker_events = list()
-    def __init__(self, expid, name, config, auth_password = None):
+
+    def __init__(self, expid, name, config, auth_password=None):
         """
         :param config:
         :param expid:
         :param name:
         """
         self.connected = False
-        self.expid = expid # type: str
-        self._name = name # type: str
+        self.expid = expid  # type: str
+        self._name = name  # type: str
         self.config = config
         self.tmp_path = os.path.join(
             self.config.get("LOCAL_ROOT_DIR"), self.expid, self.config.get("LOCAL_TMP_DIR"))
@@ -88,9 +89,9 @@ class Platform(object):
         self.cancel_cmd = None
         self.otp_timeout = None
         self.two_factor_auth = None
-        self.otp_timeout = self.config.get("PLATFORMS", {}).get(self.name.upper(),{}).get("2FA_TIMEOUT", 60*5)
-        self.two_factor_auth = self.config.get("PLATFORMS", {}).get(self.name.upper(),{}).get("2FA", False)
-        self.two_factor_method = self.config.get("PLATFORMS", {}).get(self.name.upper(),{}).get("2FA_METHOD", "token")
+        self.otp_timeout = self.config.get("PLATFORMS", {}).get(self.name.upper(), {}).get("2FA_TIMEOUT", 60 * 5)
+        self.two_factor_auth = self.config.get("PLATFORMS", {}).get(self.name.upper(), {}).get("2FA", False)
+        self.two_factor_method = self.config.get("PLATFORMS", {}).get(self.name.upper(), {}).get("2FA_METHOD", "token")
         if not self.two_factor_auth:
             self.pw = None
         elif auth_password is not None and self.two_factor_auth:
@@ -104,6 +105,7 @@ class Platform(object):
         self.log_retrieval_process_active = False
         self.main_process_id = None
         self.work_event = Event()
+        self.cleanup_event = Event()
         self.log_recovery_process = None
 
     @classmethod
@@ -230,9 +232,6 @@ class Platform(object):
     def root_dir(self, value):
         self._root_dir = value
 
-    def send_work_signal(self):
-        self.work_event.set()
-
     def get_exclusive_directive(self, job):
         """
         Returns exclusive directive for the specified job
@@ -243,9 +242,10 @@ class Platform(object):
         """
         # only implemented for slurm
         return ""
-    def get_multiple_jobids(self,job_list,valid_packages_to_submit,failed_packages,error_message="",hold=False):
-        return False,valid_packages_to_submit
-        #raise NotImplementedError
+
+    def get_multiple_jobids(self, job_list, valid_packages_to_submit, failed_packages, error_message="", hold=False):
+        return False, valid_packages_to_submit
+        # raise NotImplementedError
 
     def process_batch_ready_jobs(self, valid_packages_to_submit, failed_packages, error_message="", hold=False):
         return True, valid_packages_to_submit
@@ -475,7 +475,6 @@ class Platform(object):
         parameters['{0}EC_QUEUE'.format(prefix)] = self.ec_queue
         parameters['{0}PARTITION'.format(prefix)] = self.partition
 
-
         parameters['{0}USER'.format(prefix)] = self.user
         parameters['{0}PROJ'.format(prefix)] = self.project
         parameters['{0}BUDG'.format(prefix)] = self.budget
@@ -578,10 +577,12 @@ class Platform(object):
         if job.current_checkpoint_step < job.max_checkpoint_step:
             remote_checkpoint_path = f'{self.get_files_path()}/CHECKPOINT_'
             self.get_file(f'{remote_checkpoint_path}{str(job.current_checkpoint_step)}', False, ignore_log=True)
-            while self.check_file_exists(f'{remote_checkpoint_path}{str(job.current_checkpoint_step)}') and job.current_checkpoint_step < job.max_checkpoint_step:
+            while self.check_file_exists(
+                    f'{remote_checkpoint_path}{str(job.current_checkpoint_step)}') and job.current_checkpoint_step < job.max_checkpoint_step:
                 self.remove_checkpoint_file(f'{remote_checkpoint_path}{str(job.current_checkpoint_step)}')
                 job.current_checkpoint_step += 1
                 self.get_file(f'{remote_checkpoint_path}{str(job.current_checkpoint_step)}', False, ignore_log=True)
+
     def get_completed_files(self, job_name, retries=0, recovery=False, wrapper_failed=False):
         """
         Get the COMPLETED file of the given job
@@ -653,6 +654,7 @@ class Platform(object):
             Log.debug('{0} been removed', filename)
             return True
         return False
+
     def remove_checkpoint_file(self, filename):
         """
         Removes *CHECKPOINT* files from remote
@@ -666,7 +668,7 @@ class Platform(object):
     def check_file_exists(self, src, wrapper_failed=False, sleeptime=5, max_retries=3, first=True):
         return True
 
-    def get_stat_file(self, job_name, retries=0, count = -1):
+    def get_stat_file(self, job_name, retries=0, count=-1):
         """
         Copies *STAT* files from remote to local
 
@@ -677,7 +679,7 @@ class Platform(object):
         :return: True if successful, False otherwise
         :rtype: bool
         """
-        if count == -1: # No internal retrials
+        if count == -1:  # No internal retrials
             filename = job_name + '_STAT'
         else:
             filename = job_name + '_STAT_{0}'.format(str(count))
@@ -691,7 +693,6 @@ class Platform(object):
                 return True
         Log.debug('{0}_STAT file not found', job_name)
         return False
-
 
     @autosubmit_parameter(name='current_logdir')
     def get_files_path(self):
@@ -724,9 +725,11 @@ class Platform(object):
         :rtype: int
         """
         raise NotImplementedError
+
     def check_Alljobs(self, job_list, as_conf, retries=5):
-        for job,job_prev_status in job_list:
+        for job, job_prev_status in job_list:
             self.check_job(job)
+
     def check_job(self, job, default_status=Status.COMPLETED, retries=5, submit_hold_check=False, is_wrapper=False):
         """
         Checks job running status
@@ -815,7 +818,7 @@ class Platform(object):
         # type: () -> None
         """ Opens Submit script file """
         raise NotImplementedError
-    
+
     def submit_Script(self, hold=False):
         # type: (bool) -> Union[List[str], str]
         """
@@ -829,12 +832,12 @@ class Platform(object):
     def connect(self, as_conf, reconnect=False):
         raise NotImplementedError
 
-    def restore_connection(self,as_conf):
+    def restore_connection(self, as_conf):
         raise NotImplementedError
 
-    def spawn_log_retrieval_process(self,as_conf):
+    def spawn_log_retrieval_process(self, as_conf):
         """
-        This function, spawn a process that spawns another process to recover the logs of the jobs that have been submitted in this platform.
+        This function, spawn a process to recover the logs of the jobs that have been submitted in this platform.
         """
         if not self.log_retrieval_process_active and (
                 as_conf is None or str(as_conf.platforms_data.get(self.name, {}).get('DISABLE_RECOVERY_THREADS',
@@ -842,72 +845,89 @@ class Platform(object):
             self.log_retrieval_process_active = True
             if as_conf and as_conf.misc_data.get("AS_COMMAND", "").lower() == "run":
                 Platform.update_workers(self.work_event)
-                self.log_recovery_process = Process(target=self.recover_job_logs, args=(), name=f"{self.name}_log_recovery")
+                self.log_recovery_process = Process(target=self.recover_platform_job_logs, args=(),
+                                                    name=f"{self.name}_log_recovery")
                 self.log_recovery_process.daemon = True
                 self.log_recovery_process.start()
                 time.sleep(1)
                 os.waitpid(self.log_recovery_process.pid, os.WNOHANG)
                 Log.result(f"Process {self.log_recovery_process.name} started with pid {self.log_recovery_process.pid}")
-                atexit.register(self.send_stop_signal)
+                atexit.register(self.send_cleanup_signal)
 
-    def send_stop_signal(self):
-        self.work_event.clear()
-        self.log_recovery_process.join()
+    def send_cleanup_signal(self):
+        if self.log_recovery_process and self.log_recovery_process.is_alive():
+            self.work_event.clear()
+            self.cleanup_event.set()
+            self.log_recovery_process.join()
 
-    def recover_job_logs(self):
+    def wait_for_work(self, timeout=60):
+        """
+        This function, waits for the work_event to be set by the main process. If it is not set, it returns False and the log recovery process ends.
+        """
+        finish = False
+        for remaining in range(timeout, 0, -2): # Wait the full timeout to not hammer the CPU.
+            if not finish and not self.work_event.is_set():
+                finish = True
+            time.sleep(2)
+        return finish
+
+    def recover_job_log(self, identifier, jobs_pending_to_process):
+        job = None
+        try:
+            while not self.recovery_queue.empty():
+                try:
+                    job = self.recovery_queue.get(
+                        timeout=1)  # Should be non-empty, but added a timeout for other possible errors.
+                    job.children = set()  # Children can't be serialized, so we set it to an empty set for this process.
+                    job.platform = self  # change the original platform to this process platform.
+                    job._log_recovery_retries = 0  # reset the log recovery retries.
+                    Log.debug(f"{identifier} Recovering log files for job {job.name}")
+                    job.retrieve_logfiles(self, raise_error=True)
+                    Log.result(f"{identifier} Sucessfully recovered log files for job {job.name}")
+                except queue.Empty:
+                    pass
+            # This second while is to keep retring the failed jobs.
+            while len(jobs_pending_to_process) > 0:  # jobs that had any issue during the log retrieval
+                job = jobs_pending_to_process.pop()
+                job.children = set()
+                job.platform = self
+                job._log_recovery_retries += 1
+                Log.debug(
+                    f"{identifier} (Retrial number: {job._log_recovery_retries}) Recovering log files for job {job.name}")
+                job.retrieve_logfiles(self, raise_error=True)
+                Log.result(f"{identifier} (Retrial) Successfully recovered log files for job {job.name}")
+        except Exception as e:
+            Log.warning(f"{identifier} Error while recovering logs: {str(e)}")
+            try:
+                if job and job._log_recovery_retries < 5:  # If log retrieval failed, add it to the pending jobs to process. Avoids to keep trying the same job forever.
+                    jobs_pending_to_process.add(job)
+                self.connected = False
+                Log.info(f"{identifier} Attempting to restore connection")
+                self.restore_connection(None)  # Always restore the connection on a failure.
+                Log.result(f"{identifier} Sucessfully reconnected.")
+            except:
+                pass
+        return jobs_pending_to_process
+    def recover_platform_job_logs(self):
         """
         This function, recovers the logs of the jobs that have been submitted.
-        This is an independent process that will be spawned by the recover_job_logs_parent function.
-        The exit of this process is controlled by the work_event.
-        Once a job is get from the queue, it will try to recover these log files until the end of the execution.
+        The exit of this process is controlled by the work_event and cleanup_events of the main process.
         """
         setproctitle.setproctitle(f"autosubmit log {self.expid} recovery {self.name.lower()}")
         identifier = f"{self.name.lower()}(log_recovery):"
-        Log.get_logger("Autosubmit")  # Log needs to be initialized in the new process
         Log.info(f"{identifier} Starting...")
-        job = None
         jobs_pending_to_process = set()
         self.connected = False
         self.restore_connection(None)
+        Log.get_logger("Autosubmit")  # Log needs to be initialised in the new process
         Log.result(f"{identifier} Sucessfully connected.")
-        while not self.work_event.wait(60):
-            try:
-                while not self.recovery_queue.empty():
-                    try:
-                        job = self.recovery_queue.get(timeout=1)  # Should be non-empty, but added a timeout for other possible errors.
-                        job.children = set() # Children can't be serialized, so we set it to an empty set for this process.
-                        job.platform = self # change original platform to this process platform.
-                        job._log_recovery_retries = 0 # reset the log recovery retries.
-                        Log.debug(f"{identifier} Recovering log files for job {job.name}")
-                        job.retrieve_logfiles(self, raise_error=True)
-                        Log.result(f"{identifier} Sucessfully recovered log files for job {job.name}")
-                    except queue.Empty:
-                        pass
-                # This second while is to keep retring the failed jobs.
-                while len(jobs_pending_to_process) > 0: # jobs that had any issue during the log retrieval
-                    job = jobs_pending_to_process.pop()
-                    job.children = set()
-                    job.platform = self
-                    job._log_recovery_retries += 1
-                    Log.debug(f"{identifier} (Retrial number: {job._log_recovery_retries}) Recovering log files for job {job.name}")
-                    job.retrieve_logfiles(self, raise_error=True)
-                    Log.result(f"{identifier} (Retrial) Successfully recovered log files for job {job.name}")
-            except Exception as e:
-                time.sleep(10)
-                Log.warning(f"{identifier} Error while recovering logs: {str(e)}")
-                try:
-                    if job and job._log_recovery_retries < 5: # If log retrieval failed, add it to the pending jobs to process. Avoids to keep trying the same job forever.
-                        jobs_pending_to_process.add(job)
-                    self.connected = False
-                    Log.info(f"{identifier} Attempting to restore connection")
-                    self.restore_connection(None) # Always restore the connection on a failure.
-                    Log.result(f"{identifier} Sucessfully reconnected.")
-                except:
-                    pass
-            self.work_event.clear()  # Clear, if the event is never set again it means that the main process has finished and is waiting for this process to finish.
-            if self.recovery_queue.empty():
-                if not self.work_event.wait(120): # While main process is active, it will set this signal to keep this process alive.
-                    Log.info(f"{identifier} Exiting...")
-                    break
-            time.sleep(self.config.get("LOG_RECOVERY_TIMEOUT", 1))
-            Log.info(f"{identifier} Waiting for new jobs to recover logs...")
+        default_timeout = 60
+        timeout = max(self.config.get("LOG_RECOVERY_TIMEOUT", default_timeout), default_timeout)
+        while self.wait_for_work(timeout=timeout):
+            self.work_event.clear()
+            jobs_pending_to_process = self.recover_job_log(identifier, jobs_pending_to_process)
+            if self.cleanup_event.is_set(): # Check if main process is waiting for this child to end.
+                self.recover_job_log(identifier, jobs_pending_to_process)
+                break
+        Log.info(f"{identifier} Exiting.")
+

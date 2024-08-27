@@ -1696,7 +1696,6 @@ class Autosubmit:
         for job in job_list.get_active():
             if job.status != Status.WAITING:
                 job.status = Status.READY
-                job.set_ready_date()
         while job_list.get_active():
             Autosubmit.submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence, True,
                                          only_wrappers, hold=False)
@@ -2165,7 +2164,7 @@ class Autosubmit:
                 max_recovery_retrials = as_conf.experiment_data.get("CONFIG",{}).get("RECOVERY_RETRIALS",3650)  # (72h - 122h )
                 recovery_retrials = 0
                 while job_list.get_active():
-                    for platform in platforms_to_test:  # This can be a long process, so we need to tell to the log workers to keep alive.
+                    for platform in platforms_to_test:  # Main loop, there will be logs to recover
                         platform.work_event.set()
                     for job in [job for job in job_list.get_job_list() if job.status == Status.READY]:
                         job.update_parameters(as_conf, {})
@@ -2330,34 +2329,34 @@ class Autosubmit:
                         raise AutosubmitCritical(message, 7000)
                     except BaseException as e:
                         raise # If this happens, there is a bug in the code or an exception not-well caught
+                time.sleep(5)
                 Log.result("No more jobs to run.")
+                # search hint - finished run
+                for job in job_list.get_completed_without_logs():
+                    job_list.update_log_status(job, as_conf)
+                job_list.save()
                 if not did_run and len(job_list.get_completed_without_logs()) > 0:
-                    #connect to platforms
                     Log.info(f"Connecting to the platforms, to recover missing logs")
                     submitter = Autosubmit._get_submitter(as_conf)
                     submitter.load_platforms(as_conf)
                     if submitter.platforms is None:
                         raise AutosubmitCritical("No platforms configured!!!", 7014)
-                    platforms = [value for value in submitter.platforms.values()]
-                    Autosubmit.restore_platforms(platforms, as_conf=as_conf, expid=expid)
-                # Wait for all remaining threads of I/O, close remaining connections
-                # search hint - finished run
+                    platforms_to_test = [value for value in submitter.platforms.values()]
+                    Autosubmit.restore_platforms(platforms_to_test, as_conf=as_conf, expid=expid)
                 Log.info("Waiting for all logs to be updated")
-                # One cycle log recovery is sys_timeout seconds ( default 60 )
-                # The 20 seconds are a grace period to download these logs if the cycle just started.
-                sys_timeout = int(as_conf.experiment_data.get("LOG_RECOVERY_TIMEOUT",60)) + 20 # 20 is a gracetime period to download the last logs
-                timeout = as_conf.experiment_data.get("CONFIG",{}).get("LAST_LOGS_TIMEOUT", sys_timeout)
+                if len(job_list.get_completed_without_logs()) > 0:
+                    for p in platforms_to_test:
+                        if p.log_recovery_process:
+                            p.cleanup_event.set()
+                for p in platforms_to_test:
+                    p.log_recovery_process.join()
                 for job in job_list.get_completed_without_logs():
-                    job.platform = submitter.platforms[job.platform_name.upper()]
-                    job_list.update_log_status(job, as_conf)  # request an update of the log status
-                for remaining in range(timeout, 0, -1):
-                    if len(job_list.get_completed_without_logs()) == 0:
-                        break
-                    sleep(1) # sleeps of one to ensure the fastest exit possible
-                    if remaining % 10 == 0:
-                        Log.info(f"Logs are being recovered... max time left: {remaining}")
-
-                # Updating job data header with current information when experiment ends
+                    job_list.update_log_status(job, as_conf)
+                job_list.save()
+                if len(job_list.get_completed_without_logs()) == 0:
+                    Log.result(f"Autosubmit recovered all job logs.")
+                else:
+                    Log.warning(f"Autosubmit couldn't recover the following job logs: {[job.name for job in job_list.get_completed_without_logs()]}")
                 try:
                     exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR,
                                                     historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)

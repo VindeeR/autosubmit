@@ -526,6 +526,8 @@ class JobPackager(object):
         for package in packages_to_submit:
             self.max_jobs = self.max_jobs - 1
             package.hold = self.hold
+            for job in package.jobs:
+                job.set_ready_date()
 
         return packages_to_submit
 
@@ -728,9 +730,6 @@ class JobPackagerVertical(object):
             job, level = stack.pop()
             if level % 50 == 0 and level > 0:
                 Log.info(f"Wrapper package creation is still ongoing. So far {level} jobs have been wrapped.")
-                for event in job.platform.worker_events: # This can be a long process, so we need to tell to the log workers to keep alive.
-                    if not event.is_set():
-                        event.set()
             if len(self.jobs_list) >= self.wrapper_limits["max_v"] or len(self.jobs_list) >= \
                     self.wrapper_limits["max_by_section"][job.section] or len(self.jobs_list) >= self.wrapper_limits[
                 "max"]:
@@ -924,9 +923,6 @@ class JobPackagerHorizontal(object):
             for job in jobs_by_section[section]:
                 if jobs_processed % 50 == 0 and jobs_processed > 0:
                     Log.info(f"Wrapper package creation is still ongoing. So far {jobs_processed} jobs have been wrapped.")
-                    for event in job.platform.worker_events:  # This can be a long process, so we need to tell to the log workers to keep alive.
-                        if not event.is_set():
-                            event.set()
                 job.update_parameters(wrapper_info[-1], {})
                 if str(job.processors).isdigit() and str(job.nodes).isdigit() and int(job.nodes) > 1 and int(job.processors) <= 1:
                     job.processors = 0

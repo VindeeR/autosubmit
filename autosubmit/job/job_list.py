@@ -305,7 +305,6 @@ class JobList(object):
                 job.parameters = parameters
                 if not job.has_parents():
                     job.status = Status.READY
-                    job.set_ready_date()
                     job.packed = False
                 else:
                     job.status = Status.WAITING
@@ -2590,10 +2589,11 @@ class JobList(object):
         """
         if not hasattr(job, "updated_log"): # hasattr for backward compatibility (job.updated_logs is only for newer jobs, as the loaded ones may not have this set yet)
             job.updated_log = False
+        elif job.updated_log:
+            return
         if hasattr(job, "x11") and job.x11: # X11 has it log writted in the run.out file. No need to check for log files as there are none
             job.updated_log = True
             return
-
         log_recovered = self.check_if_log_is_recovered(job)
         if log_recovered:
             job.local_logs = (log_recovered.name, log_recovered.name[:-4] + ".err") # we only want the last one
@@ -2606,19 +2606,15 @@ class JobList(object):
         Check if the log is recovered.
         Conditions:
         - File must exist
-        - File timestamp should be greater than the job ready_start_date, otherwise is from a previous run.
+        - File timestamp should be greater than the job ready_date, otherwise is from a previous run.
 
         """
 
         if not hasattr(job, "updated_log") or not job.updated_log:
-            if job.wrapper_type == "vertical" and job.fail_count > 0:
-                for log_recovered in self.path_to_logs.glob(f"{job.name}.*._{job.fail_count}.out"):
-                    if job.ready_start_date  and int(datetime.datetime.fromtimestamp(log_recovered.stat().st_mtime).strftime("%Y%m%d%H%M%S")) > int(job.ready_start_date):
-                        return log_recovered
-            else:
-                for log_recovered in self.path_to_logs.glob(f"{job.name}.*.out"):
-                    if job.ready_start_date and int(datetime.datetime.fromtimestamp(log_recovered.stat().st_mtime).strftime("%Y%m%d%H%M%S")) > int(job.ready_start_date):
-                        return log_recovered
+            for log_recovered in self.path_to_logs.glob(f"{job.name}.*.out"):
+                date = int(datetime.datetime.fromtimestamp(log_recovered.stat().st_mtime).strftime("%Y%m%d%H%M%S"))
+                if job.ready_date and int(datetime.datetime.fromtimestamp(log_recovered.stat().st_mtime).strftime("%Y%m%d%H%M%S")) > int(job.ready_date):
+                    return log_recovered
         return None
 
     def update_list(self, as_conf, store_change=True, fromSetStatus=False, submitter=None, first_time=False):
@@ -2680,7 +2676,6 @@ class JobList(object):
                                 "Resetting job: {0} status to: DELAYED for retrial...".format(job.name))
                         else:
                             job.status = Status.READY
-                            job.set_ready_date()
                             job.packed = False
                             Log.debug(
                                 "Resetting job: {0} status to: READY for retrial...".format(job.name))
@@ -2706,7 +2701,6 @@ class JobList(object):
         for job in self.check_special_status():
             job.status = Status.READY
             # Run start time in format (YYYYMMDDHH:MM:SS) from current time
-            job.set_ready_date()
             job.id = None
             job.packed = False
             job.wrapper_type = None
@@ -2746,7 +2740,6 @@ class JobList(object):
             for job in self.get_delayed():
                 if datetime.datetime.now() >= job.delay_end:
                     job.status = Status.READY
-                    job.set_ready_date()
                     job.packed = False
             for job in self.get_waiting():
                 tmp = [parent for parent in job.parents if
@@ -2758,7 +2751,6 @@ class JobList(object):
                 failed_ones = [parent for parent in job.parents if parent.status == Status.FAILED]
                 if job.parents is None or len(tmp) == len(job.parents):
                     job.status = Status.READY
-                    job.set_ready_date()
                     job.packed = False
                     job.hold = False
                     Log.debug(
@@ -2779,8 +2771,6 @@ class JobList(object):
                                     break
                             if not strong_dependencies_failure and weak_dependencies_failure:
                                 job.status = Status.READY
-                                job.set_ready_date()
-
                                 job.packed = False
                                 job.hold = False
                                 Log.debug(
@@ -2794,7 +2784,6 @@ class JobList(object):
                             for parent in job.parents:
                                 if parent.name in job.edge_info and job.edge_info[parent.name].get('optional', False):
                                     job.status = Status.READY
-                                    job.set_ready_date()
                                     job.packed = False
                                     job.hold = False
                                     Log.debug(
@@ -2811,7 +2800,6 @@ class JobList(object):
                             parent.status == Status.SKIPPED or parent.status == Status.FAILED]
                     if len(tmp2) == len(job.parents) and len(tmp3) != len(job.parents):
                         job.status = Status.READY
-                        job.set_ready_date()
                         job.packed = False
                         # Run start time in format (YYYYMMDDHH:MM:SS) from current time
                         job.packed = False

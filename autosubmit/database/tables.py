@@ -53,18 +53,18 @@ ExperimentStatusTable = Table(
 JobPackageTable = Table(
     'job_package',
     metadata_obj,
+    Column('exp_id', Text),
     Column('package_name', Text, primary_key=True),
-    Column('job_name', Text, primary_key=True),
-    Column('exp_id', Text)
+    Column('job_name', Text, primary_key=True)
 )
 """Stores a mapping between the wrapper name and the actual job in SLURM."""
 
 WrapperJobPackageTable = Table(
     'wrapper_job_package',
     metadata_obj,
+    Column('exp_id', Text),
     Column('package_name', Text, primary_key=True),
-    Column('job_name', Text, primary_key=True),
-    Column('exp_id', Text)
+    Column('job_name', Text, primary_key=True)
 )
 """It is a replication.
 

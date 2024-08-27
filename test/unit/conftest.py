@@ -17,18 +17,8 @@ from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 import os
 from pytest import MonkeyPatch
 from sqlalchemy import Connection, create_engine, text
-from sqlalchemy.orm import sessionmaker, scoped_session
-from autosubmit.database import session
-from test.unit.utils import custom_return_value
-from pathlib import Path
-from pytest import MonkeyPatch
-from sqlalchemy import Connection, text
 from testcontainers.postgres import PostgresContainer
 from typing import Type
-
-from autosubmit.database.session import create_engine
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-
 
 @dataclass
 class AutosubmitExperiment:

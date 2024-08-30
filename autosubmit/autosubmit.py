@@ -18,6 +18,7 @@ import collections
 import locale
 import platform
 import requests
+import re
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import threading
@@ -4677,7 +4678,6 @@ class Autosubmit:
         :return: True if successful, False if not
         :rtype: bool
         """
-        Log.info(" **** INSIDE _copy_code")
         project_destination = as_conf.get_project_destination()
         if project_destination is None or len(project_destination) == 0:
             if project_type.lower() != "none":
@@ -4732,27 +4732,19 @@ class Autosubmit:
             Log.debug("{0}", output)
 
         elif project_type == "local":
-            Log.info(" **** project_type : local")
             local_project_path = as_conf.get_local_project_path()
             if local_project_path is None or len(local_project_path) == 0:
                 raise AutosubmitCritical("Empty project path! please change this parameter to a valid one.", 7014)
-            ### check if local_project_path is a valid path
+            # check if local_project_path is a valid path
             if not Path(local_project_path).is_dir():
                 raise AutosubmitCritical("Local project path is not a valid path and/or it doesnt exist.", 7014)
-            ###
-            #project_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, BasicConfig.LOCAL_PROJ_DIR)
-            #local_destination = os.path.join(project_path, project_destination)
-            project_path = BasicConfig.LOCAL_ROOT_DIR.joinpath(expid,BasicConfig.LOCAL_PROJ_DIR)
+            
+            project_path = Path(BasicConfig.LOCAL_ROOT_DIR).joinpath(expid,BasicConfig.LOCAL_PROJ_DIR)
             local_destination = project_path.joinpath(project_destination)
-            Log.info(" **** project_type : local check vars: \n{0} - local_project_path (as_conf)\n{2} - project_path (basic config) \n{3} - project_destination (as_conf.get_project_destination)\n{1} - local_destination (project_path + project_destination)\n\n",local_project_path,local_destination,project_path,project_destination)
 
-            #if os.path.exists(project_path):
             if project_path.exists():
-                Log.info(" **** if path exist: project path")
                 Log.info("Using project folder: {0}", project_path)
-                #if os.path.exists(local_destination):
-                if local_destination.exists():
-                    Log.info(" **** if path exist: local destination")
+                if local_destination.is_dir(): # it will accept a dir with ext name... but we asume that it is already created, we should accept it, is it?
                     if force:
                         try:
                             cmd = ["rsync -ach --info=progress2 " +
@@ -4762,13 +4754,17 @@ class Autosubmit:
                             raise AutosubmitCritical("Can not rsync {0} into {1}. Exiting...".format(
                                 local_project_path, project_path), 7063)
                 else:
-                    Log.info(" **** else path exist: local destination")
-                    # os.makedirs(local_destination) #to create intermediate dirs            #os.mkdir(local_destination)
+                    invalid_char_pattern = re.compile(r'[^a-zA-Z0-9/_\\-]')
+                    # check local_destination is a well formet path & create it
+                    # if local_destination.suffix : 
+                    #    raise AutosubmitCritical("Local destination path is not a valid path: ", 7014, local_destination)
+                    if invalid_char_pattern.search(str(local_destination)):
+                        raise AutosubmitCritical("Local destination path contains invalid characters ", 7014)
+                    
                     Path(local_destination).mkdir(parents=True)     #this will create parents dirs if its needed
                     try:
-                        Log.info(" **** try cp -R {0} & {1}",local_project_path, local_destination)
                         output = subprocess.check_output(
-                            "cp -R " + local_project_path + "/* " + local_destination, shell=True)
+                            "cp -R " + str(local_project_path) + "/* " + str(local_destination), shell=True)
                     except subprocess.CalledProcessError:
                         try:
                             shutil.rmtree(project_path)
@@ -4777,18 +4773,15 @@ class Autosubmit:
                         raise AutosubmitCritical("Can not copy {0} into {1}. Exiting...".format(
                             local_project_path, project_path), 7063)
             else:
-                Log.info(" **** else path exist: project path")
-                # os.makedirs(xxxx) #to create intermediate dirs            
-                Path(project_path).mkdir(parents=True)     #this will vreate parents dirs if its needed
+                Path(project_path).mkdir(parents=True)
                 Path(local_destination).mkdir(parents=True) 
                 Log.debug(
                     "The project folder {0} has been created.", project_path)
                 Log.info("Copying {0} into {1}",
                          local_project_path, project_path)
                 try:
-                    Log.info(" **** else try cp -R {0} & {1}",local_project_path, local_destination)
                     output = subprocess.check_output(
-                        "cp -R " + local_project_path + "/* " + local_destination, shell=True)
+                        "cp -R " + str(local_project_path) + "/* " + str(local_destination), shell=True)
                 except subprocess.CalledProcessError:
                     try:
                         shutil.rmtree(project_path)

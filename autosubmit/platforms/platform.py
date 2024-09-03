@@ -867,7 +867,6 @@ class Platform(object):
         for remaining in range(timeout, 0, -1): # Wait the full timeout to not hammer the CPU.
             time.sleep(1)
             if not keep_working and self.work_event.is_set():
-                Log.info(f"{self.name.lower()}(log_recovery): Work event set.")
                 keep_working = True
         self.work_event.clear()
         return keep_working

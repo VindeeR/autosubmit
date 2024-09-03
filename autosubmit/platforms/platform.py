@@ -865,9 +865,13 @@ class Platform(object):
         """
         keep_working = False
         for remaining in range(timeout, 0, -1): # Wait the full timeout to not hammer the CPU.
-            time.sleep(1)
-            if not keep_working and self.work_event.is_set():
-                keep_working = True
+            if keep_working:
+                time.sleep(remaining)
+                break
+            else:
+                time.sleep(1)
+                if self.work_event.is_set():
+                    keep_working = True
         self.work_event.clear()
         return keep_working
 

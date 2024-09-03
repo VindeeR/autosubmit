@@ -270,7 +270,7 @@ class Job(object):
         self._memory = ''
         self._memory_per_task = ''
         self.log_retrieved = False
-        self.start_time_placeholder = ""
+        self.start_time_placeholder = time.time()
         self.processors_per_node = ""
 
 
@@ -1143,6 +1143,25 @@ class Job(object):
                         log_retrieved = False
             self.log_retrieved = log_retrieved
 
+    def write_stats(self, stat_file, platform):
+        # Update the logs with Autosubmit Job ID Brand
+        try:
+            for local_log in self.local_logs:
+                platform.write_jobid(self.id, os.path.join(
+                    self._tmp_path, 'LOG_' + str(self.expid), local_log))
+        except BaseException as e:
+            Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(str(e), self.name))
+        # write stats
+        if self.wrapper_type == "vertical":  # Disable AS retrials for vertical wrappers to use internal ones
+            for i in range(0, int(self.retrials + 1)):
+                if self.platform.get_stat_file(self.name, stat_file, count=i):
+                    self.write_vertical_time(i)
+                    self.inc_fail_count()
+        else:
+            self.platform.get_stat_file(self.name, stat_file)
+            self.write_start_time(from_stat_file=True)
+            self.write_end_time(self.status == Status.COMPLETED)
+
     def retrieve_logfiles(self, platform, raise_error=False):
         """
         Retrieves log files from remote host meant to be used inside a process.
@@ -1165,25 +1184,9 @@ class Job(object):
                 raise AutosubmitCritical("Failed to retrieve logs for job {0}".format(self.name), 6000)
             else:
                 Log.printlog("Failed to retrieve logs for job {0}".format(self.name), 6000)
-
         else:
-            # Update the logs with Autosubmit Job ID Brand
-            try:
-                for local_log in self.local_logs:
-                    platform.write_jobid(self.id, os.path.join(
-                        self._tmp_path, 'LOG_' + str(self.expid), local_log))
-            except BaseException as e:
-                Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(str(e), self.name))
-            # write stats
-            if self.wrapper_type == "vertical": # Disable AS retrials for vertical wrappers to use internal ones
-                for i in range(0,int(self.retrials+1)):
-                    if self.platform.get_stat_file(self.name, stat_file, count=i):
-                        self.write_vertical_time(i)
-                        self.inc_fail_count()
-            else:
-                self.platform.get_stat_file(self.name, stat_file)
-                self.write_start_time(from_stat_file=True)
-                self.write_end_time(self.status == Status.COMPLETED)
+            self.write_stats(stat_file, platform)
+
 
     def parse_time(self,wallclock):
         regex = re.compile(r'(((?P<hours>\d+):)((?P<minutes>\d+)))(:(?P<seconds>\d+))?')

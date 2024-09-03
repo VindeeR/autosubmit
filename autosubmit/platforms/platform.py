@@ -865,13 +865,11 @@ class Platform(object):
         """
         keep_working = False
         for remaining in range(timeout, 0, -1): # Wait the full timeout to not hammer the CPU.
-            if keep_working:
-                time.sleep(remaining)
+            time.sleep(1)
+            if self.work_event.is_set() or not self.recovery_queue.empty():
+                keep_working = True
+            if not self.recovery_queue.empty() or self.cleanup_event.is_set():
                 break
-            else:
-                time.sleep(1)
-                if self.work_event.is_set():
-                    keep_working = True
         self.work_event.clear()
         return keep_working
 
@@ -934,4 +932,3 @@ class Platform(object):
                 self.recover_job_log(identifier, jobs_pending_to_process)
                 break
         Log.info(f"{identifier} Exiting.")
-

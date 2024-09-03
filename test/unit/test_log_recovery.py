@@ -3,8 +3,12 @@ import pytest
 from pathlib import Path
 import os
 import pwd
+
+from autosubmit.job.job_common import Status
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
+from autosubmit.job.job import Job
+
 
 def _get_script_files_path() -> Path:
     return Path(__file__).resolve().parent / 'files'
@@ -14,7 +18,6 @@ def _get_script_files_path() -> Path:
 def current_tmpdir(tmpdir_factory):
     folder = tmpdir_factory.mktemp(f'tests')
     os.mkdir(folder.join('scratch'))
-    os.mkdir(folder.join('scheduler_tmp_dir'))
     file_stat = os.stat(f"{folder.strpath}")
     file_owner_id = file_stat.st_uid
     file_owner = pwd.getpwuid(file_owner_id).pw_name
@@ -30,6 +33,9 @@ def prepare_test(current_tmpdir):
     project = "whatever"
     scratch_dir = f"{current_tmpdir.strpath}/scratch"
     Path(f"{scratch_dir}/{project}/{current_tmpdir.owner}").mkdir(parents=True, exist_ok=True)
+    Path(f"{scratch_dir}/LOG_t000").mkdir(parents=True, exist_ok=True)
+    Path(f"{scratch_dir}/LOG_t000/t000.cmd.out.0").touch()
+    Path(f"{scratch_dir}/LOG_t000/t000.cmd.err.0").touch()
 
     # Add each platform to test
     with platforms_path.open('w') as f:
@@ -125,3 +131,27 @@ def test_log_recovery_keep_alive_cleanup(prepare_test, local, mocker, as_conf):
     local.cleanup_event.set()
     time.sleep(3)
     assert local.log_recovery_process.is_alive() is False
+
+
+def test_log_recovery_recover_log(prepare_test, local, mocker, as_conf):
+    mocker.patch('autosubmit.platforms.platform.max', return_value=20)
+    mocker.patch('autosubmit.job.job.Job.write_stats')  # not sure how to test this
+    local.spawn_log_retrieval_process(as_conf)
+    local.work_event.set()
+    job = Job('t000', '0000', Status.COMPLETED, 0)
+    job.name = 'test_job'
+    job.platform = local
+    job.platform_name = 'local'
+    job.local_logs = ("t000.cmd.out.moved","t000.cmd.err.moved")
+    job._init_runtime_parameters()
+    local.work_event.set()
+    local.add_job_to_log_recover(job)
+    local.cleanup_event.set()
+    local.log_recovery_process.join(30)  # should exit earlier.
+    assert local.log_recovery_process.is_alive() is False
+    assert Path(f"{prepare_test.strpath}/scratch/LOG_t000/t000.cmd.out.moved").exists()
+    assert Path(f"{prepare_test.strpath}/scratch/LOG_t000/t000.cmd.err.moved").exists()
+
+
+
+

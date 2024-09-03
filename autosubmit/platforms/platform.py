@@ -849,7 +849,6 @@ class Platform(object):
                                                     name=f"{self.name}_log_recovery")
                 self.log_recovery_process.daemon = True
                 self.log_recovery_process.start()
-                time.sleep(1)
                 os.waitpid(self.log_recovery_process.pid, os.WNOHANG)
                 Log.result(f"Process {self.log_recovery_process.name} started with pid {self.log_recovery_process.pid}")
                 atexit.register(self.send_cleanup_signal)
@@ -864,12 +863,14 @@ class Platform(object):
         """
         This function, waits for the work_event to be set by the main process. If it is not set, it returns False and the log recovery process ends.
         """
-        finish = False
-        for remaining in range(timeout, 0, -2): # Wait the full timeout to not hammer the CPU.
-            if not finish and not self.work_event.is_set():
-                finish = True
-            time.sleep(2)
-        return finish
+        keep_working = False
+        for remaining in range(timeout, 0, -1): # Wait the full timeout to not hammer the CPU.
+            time.sleep(1)
+            if not keep_working and self.work_event.is_set():
+                Log.info(f"{self.name.lower()}(log_recovery): Work event set.")
+                keep_working = True
+        self.work_event.clear()
+        return keep_working
 
     def recover_job_log(self, identifier, jobs_pending_to_process):
         job = None
@@ -908,6 +909,7 @@ class Platform(object):
             except:
                 pass
         return jobs_pending_to_process
+
     def recover_platform_job_logs(self):
         """
         This function, recovers the logs of the jobs that have been submitted.
@@ -922,9 +924,8 @@ class Platform(object):
         Log.get_logger("Autosubmit")  # Log needs to be initialised in the new process
         Log.result(f"{identifier} Sucessfully connected.")
         default_timeout = 60
-        timeout = max(self.config.get("LOG_RECOVERY_TIMEOUT", default_timeout), default_timeout)
+        timeout = max(int(self.config.get("LOG_RECOVERY_TIMEOUT", default_timeout)), default_timeout)
         while self.wait_for_work(timeout=timeout):
-            self.work_event.clear()
             jobs_pending_to_process = self.recover_job_log(identifier, jobs_pending_to_process)
             if self.cleanup_event.is_set(): # Check if main process is waiting for this child to end.
                 self.recover_job_log(identifier, jobs_pending_to_process)

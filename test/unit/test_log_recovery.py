@@ -3,9 +3,7 @@ import pytest
 from pathlib import Path
 import os
 import pwd
-
 from autosubmit.job.job_common import Status
-from autosubmitconfigparser.config.basicconfig import BasicConfig
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from autosubmit.job.job import Job
 
@@ -93,7 +91,8 @@ def local(prepare_test):
 @pytest.fixture
 def as_conf(prepare_test):
     as_conf = AutosubmitConfig("t000")
-    as_conf.experiment_data = as_conf.load_config_file(as_conf.experiment_data, Path(prepare_test.join('platforms_t000.yml')))
+    as_conf.experiment_data = as_conf.load_config_file(as_conf.experiment_data,
+                                                       Path(prepare_test.join('platforms_t000.yml')))
     as_conf.misc_data = {"AS_COMMAND": "run"}
     return as_conf
 
@@ -142,7 +141,7 @@ def test_log_recovery_recover_log(prepare_test, local, mocker, as_conf):
     job.name = 'test_job'
     job.platform = local
     job.platform_name = 'local'
-    job.local_logs = ("t000.cmd.out.moved","t000.cmd.err.moved")
+    job.local_logs = ("t000.cmd.out.moved", "t000.cmd.err.moved")
     job._init_runtime_parameters()
     local.work_event.set()
     local.add_job_to_log_recover(job)
@@ -151,7 +150,3 @@ def test_log_recovery_recover_log(prepare_test, local, mocker, as_conf):
     assert local.log_recovery_process.is_alive() is False
     assert Path(f"{prepare_test.strpath}/scratch/LOG_t000/t000.cmd.out.moved").exists()
     assert Path(f"{prepare_test.strpath}/scratch/LOG_t000/t000.cmd.err.moved").exists()
-
-
-
-

@@ -111,7 +111,6 @@ class ParamikoPlatform(Platform):
         if display is None:
             display = "localhost:0"
         self.local_x11_display = xlib_connect.get_display(display)
-        self.log_retrieval_process_active = False
     def test_connection(self,as_conf):
         """
         Test if the connection is still alive, reconnect if not.

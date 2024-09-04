@@ -1924,7 +1924,7 @@ class Autosubmit:
         return exp_history
     @staticmethod
     def prepare_run(expid, notransitive=False, start_time=None, start_after=None,
-                       run_only_members=None, recover = False, check_scripts= False):
+                       run_only_members=None, recover = False, check_scripts= False, submitter=None):
         """
         Prepare the run of the experiment.
         :param expid: a string with the experiment id.
@@ -1933,6 +1933,7 @@ class Autosubmit:
         :param start_after: a string with the experiment id to start after.
         :param run_only_members: a string with the members to run.
         :param recover: a boolean to indicate if the experiment is recovering from a failure.
+        :param submitter: the actual loaded platforms if any
         :return: a tuple
         """
         host = platform.node()
@@ -1967,8 +1968,9 @@ class Autosubmit:
 
         # Loads the communication lib, always paramiko.
         # Paramiko is the only way to communicate with the remote machines. Previously we had also Saga.
-        submitter = Autosubmit._get_submitter(as_conf)
-        submitter.load_platforms(as_conf)
+        if not submitter:
+            submitter = Autosubmit._get_submitter(as_conf)
+            submitter.load_platforms(as_conf)
         # Tries to load the job_list from disk, discarding any changes in running time ( if recovery ).
         # Could also load a backup from previous iteration.
         # The submit ready functions will cancel all job submitted if one submitted in that iteration had issues, so it should be safe to recover from a backup without losing job ids
@@ -2081,7 +2083,7 @@ class Autosubmit:
             Autosubmit.restore_platforms(platforms_to_test,as_conf=as_conf)
             return job_list, submitter , exp_history, host , as_conf, platforms_to_test, packages_persistence, False
         else:
-            return job_list, submitter , None, None, as_conf , platforms_to_test, packages_persistence, True
+            return job_list, submitter, None, None, as_conf, platforms_to_test, packages_persistence, True
     @staticmethod
     def get_iteration_info(as_conf,job_list):
         """
@@ -2276,7 +2278,7 @@ class Autosubmit:
                                                                                                 start_time,
                                                                                                 start_after,
                                                                                                 run_only_members,
-                                                                                                recover=True)
+                                                                                                recover=True, submitter = submitter)
                             except AutosubmitError as e:
                                 recovery = False
                                 Log.result("Recover of job_list has fail {0}".format(e.message))
@@ -2329,7 +2331,6 @@ class Autosubmit:
                         raise AutosubmitCritical(message, 7000)
                     except BaseException as e:
                         raise # If this happens, there is a bug in the code or an exception not-well caught
-                time.sleep(5)
                 Log.result("No more jobs to run.")
                 # search hint - finished run
                 for job in job_list.get_completed_without_logs():

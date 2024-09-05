@@ -89,8 +89,9 @@ def local(prepare_test):
 
 
 @pytest.fixture
-def as_conf(prepare_test):
-    as_conf = AutosubmitConfig("t000")
+def as_conf(prepare_test, mocker):
+    mocker.patch('pathlib.Path.exists', return_value=True)
+    as_conf = AutosubmitConfig("test")
     as_conf.experiment_data = as_conf.load_config_file(as_conf.experiment_data,
                                                        Path(prepare_test.join('platforms_t000.yml')))
     as_conf.misc_data = {"AS_COMMAND": "run"}
@@ -103,6 +104,7 @@ def test_log_recovery_no_keep_alive(prepare_test, local, mocker, as_conf):
     assert local.log_recovery_process.is_alive()
     time.sleep(2)
     assert local.log_recovery_process.is_alive() is False
+    local.cleanup_event.set()
 
 
 def test_log_recovery_keep_alive(prepare_test, local, mocker, as_conf):
@@ -117,6 +119,7 @@ def test_log_recovery_keep_alive(prepare_test, local, mocker, as_conf):
     assert local.log_recovery_process.is_alive()
     time.sleep(3)
     assert local.log_recovery_process.is_alive() is False
+    local.cleanup_event.set()
 
 
 def test_log_recovery_keep_alive_cleanup(prepare_test, local, mocker, as_conf):
@@ -130,6 +133,7 @@ def test_log_recovery_keep_alive_cleanup(prepare_test, local, mocker, as_conf):
     local.cleanup_event.set()
     time.sleep(3)
     assert local.log_recovery_process.is_alive() is False
+    local.cleanup_event.set()
 
 
 def test_log_recovery_recover_log(prepare_test, local, mocker, as_conf):

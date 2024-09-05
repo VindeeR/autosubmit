@@ -108,30 +108,30 @@ def test_log_recovery_no_keep_alive(prepare_test, local, mocker, as_conf):
 
 
 def test_log_recovery_keep_alive(prepare_test, local, mocker, as_conf):
-    mocker.patch('autosubmit.platforms.platform.max', return_value=3)
+    mocker.patch('autosubmit.platforms.platform.max', return_value=1)
     local.spawn_log_retrieval_process(as_conf)
     assert local.log_recovery_process.is_alive()
     local.work_event.set()
-    time.sleep(3)
+    time.sleep(1)
     assert local.log_recovery_process.is_alive()
     local.work_event.set()
-    time.sleep(3)
+    time.sleep(1)
     assert local.log_recovery_process.is_alive()
-    time.sleep(3)
+    time.sleep(1)
     assert local.log_recovery_process.is_alive() is False
     local.cleanup_event.set()
 
 
 def test_log_recovery_keep_alive_cleanup(prepare_test, local, mocker, as_conf):
-    mocker.patch('autosubmit.platforms.platform.max', return_value=3)
+    mocker.patch('autosubmit.platforms.platform.max', return_value=1)
     local.spawn_log_retrieval_process(as_conf)
     assert local.log_recovery_process.is_alive()
     local.work_event.set()
-    time.sleep(3)
+    time.sleep(1)
     assert local.log_recovery_process.is_alive()
     local.work_event.set()
     local.cleanup_event.set()
-    time.sleep(3)
+    time.sleep(1)
     assert local.log_recovery_process.is_alive() is False
     local.cleanup_event.set()
 

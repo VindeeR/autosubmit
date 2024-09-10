@@ -842,8 +842,8 @@ class Platform(object):
         if not self.log_retrieval_process_active and (
                 as_conf is None or str(as_conf.platforms_data.get(self.name, {}).get('DISABLE_RECOVERY_THREADS',
                                                                                      "false")).lower() == "false"):
-            self.log_retrieval_process_active = True
             if as_conf and as_conf.misc_data.get("AS_COMMAND", "").lower() == "run":
+                self.log_retrieval_process_active = True
                 Platform.update_workers(self.work_event)
                 self.log_recovery_process = Process(target=self.recover_platform_job_logs, args=(),
                                                     name=f"{self.name}_log_recovery")

@@ -1268,8 +1268,6 @@ class Job(object):
             if not failed_file:
                 Log.printlog("Job {0} is FAILED. Checking completed files to confirm the failure...".format(
                     self.name), 3000)
-                self._platform.get_completed_files(
-                    self.name, wrapper_failed=self.packed)
                 self.check_completion()
                 if self.status == Status.COMPLETED:
                     Log.result("Job {0} is COMPLETED", self.name)

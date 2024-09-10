@@ -263,7 +263,6 @@ class JobPackageSimple(JobPackageBase):
                 continue
             Log.info("{0} submitted", job.name)
             job.status = Status.SUBMITTED            
-            job.write_submit_time(hold=self.hold)
 
 
 class JobPackageSimpleWrapped(JobPackageSimple):

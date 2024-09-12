@@ -208,6 +208,7 @@ class Job(object):
         self._local_logs = ('', '')
         self._remote_logs = ('', '')
         self.script_name = self.name + ".cmd"
+        self.stat_file = self.script_name[:-4] + "_STAT"
         self.status = status
         self.prev_status = status
         self.old_status = self.status
@@ -272,6 +273,7 @@ class Job(object):
         self.log_retrieved = False
         self.start_time_placeholder = time.time()
         self.processors_per_node = ""
+        self.stat_file = self.script_name[:-4] + "_STAT"
 
 
     @property
@@ -1143,7 +1145,7 @@ class Job(object):
                         log_retrieved = False
             self.log_retrieved = log_retrieved
 
-    def write_stats(self, stat_file, platform):
+    def write_stats(self, platform):
         # Update the logs with Autosubmit Job ID Brand
         try:
             for local_log in self.local_logs:
@@ -1154,11 +1156,11 @@ class Job(object):
         # write stats
         if self.wrapper_type == "vertical":  # Disable AS retrials for vertical wrappers to use internal ones
             for i in range(0, int(self.retrials + 1)):
-                if self.platform.get_stat_file(self.name, stat_file, count=i):
+                if self.platform.get_stat_file(self, count=i):
                     self.write_vertical_time(i)
                     self.inc_fail_count()
         else:
-            self.platform.get_stat_file(self.name, stat_file)
+            self.platform.get_stat_file(self)
             self.write_start_time(from_stat_file=True)
             self.write_end_time(self.status == Status.COMPLETED)
 
@@ -1172,10 +1174,8 @@ class Job(object):
 
         backup_logname = copy.copy(self.local_logs)
         if self.wrapper_type == "vertical":
-            stat_file = self.script_name[:-4] + "_STAT_"
             self.retrieve_internal_retrials_logfiles(platform)
         else:
-            stat_file = self.script_name[:-4] + "_STAT"
             self.retrieve_external_retrials_logfiles(platform)
 
         if not self.log_retrieved:
@@ -1185,7 +1185,7 @@ class Job(object):
             else:
                 Log.printlog("Failed to retrieve logs for job {0}".format(self.name), 6000)
         else:
-            self.write_stats(stat_file, platform)
+            self.write_stats(platform)
 
 
     def parse_time(self,wallclock):
@@ -1266,9 +1266,6 @@ class Job(object):
             Log.result("Job {0} is COMPLETED", self.name)
         elif self.status == Status.FAILED:
             if not failed_file:
-                Log.printlog("Job {0} is FAILED. Checking completed files to confirm the failure...".format(
-                    self.name), 3000)
-                self.check_completion()
                 if self.status == Status.COMPLETED:
                     Log.result("Job {0} is COMPLETED", self.name)
                 else:
@@ -1886,6 +1883,7 @@ class Job(object):
         self.shape = as_conf.jobs_data[self.section].get("SHAPE", "")
         self.script = as_conf.jobs_data[self.section].get("SCRIPT", "")
         self.x11 = False if str(as_conf.jobs_data[self.section].get("X11", False)).lower() == "false" else True
+        self.stat_file = f"{self.script_name[:-4]}_STAT_{self.fail_count}"
         if self.checkpoint: # To activate placeholder sustitution per <empty> in the template
             parameters["AS_CHECKPOINT"] = self.checkpoint
         parameters['JOBNAME'] = self.name
@@ -2506,6 +2504,7 @@ class WrapperJob(Job):
         self.checked_time = datetime.datetime.now()
         self.hold = hold
         self.inner_jobs_running = list()
+
 
     def _queuing_reason_cancel(self, reason):
         try:

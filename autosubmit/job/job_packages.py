@@ -256,7 +256,7 @@ class JobPackageSimple(JobPackageBase):
                 os.remove(log_completed)
             if os.path.exists(log_stat):
                 os.remove(log_stat)
-            self.platform.remove_stat_file(job.name)
+            self.platform.remove_stat_file(job)
             self.platform.remove_completed_file(job.name)
             job.id = self.platform.submit_job(job, job_scripts[job.name], hold=hold, export = self.export)
             if job.id is None or not job.id:
@@ -342,7 +342,7 @@ class JobPackageArray(JobPackageBase):
 
     def _do_submission(self, job_scripts=None, hold=False):
         for job in self.jobs:
-            self.platform.remove_stat_file(job.name)
+            self.platform.remove_stat_file(job)
             self.platform.remove_completed_file(job.name)
 
         package_id = self.platform.submit_job(None, self._common_script, hold=hold, export = self.export)
@@ -578,7 +578,7 @@ class JobPackageThread(JobPackageBase):
 
         else:
             for job in self.jobs:
-                self.platform.remove_stat_file(job.name)
+                self.platform.remove_stat_file(job)
                 self.platform.remove_completed_file(job.name)
                 if hold:
                     job.hold = hold
@@ -658,7 +658,7 @@ class JobPackageThreadWrapped(JobPackageThread):
 
     def _do_submission(self, job_scripts=None, hold=False):
         for job in self.jobs:
-            self.platform.remove_stat_file(job.name)
+            self.platform.remove_stat_file(job)
             self.platform.remove_completed_file(job.name)
             if hold:
                 job.hold = hold

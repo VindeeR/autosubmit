@@ -6,6 +6,7 @@ from autosubmit.autosubmit import Autosubmit
 from log.log import Log
 import os
 import pwd
+from autosubmit.platforms.locplatform import LocalPlatform
 
 from test.unit.utils.common import create_database, init_expid
 import sqlite3
@@ -173,7 +174,7 @@ def failure_jobs_file(db_tmpdir):
 
 
 @pytest.fixture
-def run_experiment_success(prepare_db, db_tmpdir):
+def run_experiment_success(prepare_db, db_tmpdir, success_jobs_file):
     init_expid(os.environ["AUTOSUBMIT_CONFIGURATION"], platform='local', expid='t000', create=True)
     # job_list, submitter, exp_history, host, as_conf, platforms_to_test, packages_persistence, _ = Autosubmit.prepare_run("t000")
     as_misc = Path(f"{db_tmpdir.strpath}/t000/conf/as_misc.yml")
@@ -208,8 +209,7 @@ AS_COMMAND: run
         """)
     # Completed
     # mock platform.localplatform.check_exists
-    with mocker.patch('platforms.localplatform.LocalPlatform.check_exists') as check_exists:
-        check_exists.return_value = False
+    with mocker.patch('autosubmit.platforms.platform.Platform.get_completed_files', return_value=False):
         Autosubmit.run_experiment(expid='t000')
     # Access to the job_historical.db
     job_data = Path(f"{db_tmpdir.strpath}/job_data_t000.db")
@@ -256,40 +256,40 @@ def test_db_success(run_experiment_success, db_tmpdir):
     c.close()
     conn.close()
 
-# Need to improve the performance of this test 
-# def test_db_failure(run_experiment_failure, db_tmpdir):
-#     job_data = Path(f"{db_tmpdir.strpath}/job_data_t000.db")
-#     conn = sqlite3.connect(job_data)
-#     conn.row_factory = sqlite3.Row
-#     c = conn.cursor()
-#     c.execute("SELECT * FROM job_data")
-#     rows = c.fetchall()
-#     # Convert rows to a list of dictionaries
-#     rows_as_dicts = [dict(row) for row in rows]
-#     # Tune the print so it is more readable, so it is easier to debug in case of failure
-#     column_names = rows_as_dicts[0].keys() if rows_as_dicts else []
-#     column_widths = [max(len(str(row[col])) for row in rows_as_dicts + [dict(zip(column_names, column_names))]) for col
-#                      in column_names]
-#     header = " | ".join(f"{name:<{width}}" for name, width in zip(column_names, column_widths))
-#     print(f"\n{header}")
-#     print("-" * len(header))
-#     # Print the rows
-#     for row_dict in rows_as_dicts:
-#         print(" | ".join(f"{str(row_dict[col]):<{width}}" for col, width in zip(column_names, column_widths)))
-#         # Check that all fields contain data, except extra_data, children, and platform_output
-#         # Check that submit, start and finish are > 0
-#         # assert row_dict["submit"] > 0 and row_dict["finish"] != 1970010101
-#         # assert row_dict["start"] > 0 and row_dict["finish"] != 1970010101
-#         # assert row_dict["finish"] > 0 and row_dict["finish"] != 1970010101
-#         # assert row_dict["status"] == "FAILED"
-#         # for key in [key for key in row_dict.keys() if
-#         #             key not in ["status", "finish", "submit", "start", "extra_data", "children", "platform_output"]]:
-#         #     assert str(row_dict[key]) != ""
-#     # Check that the job_data table has the expected number of entries
-#     c.execute("SELECT job_name, COUNT(*) as count FROM job_data GROUP BY job_name")
-#     count_rows = c.fetchall()
-#     for row in count_rows:
-#         assert row["count"] == 1
-#     # Close the cursor and connection
-#     c.close()
-#     conn.close()
+#Need to improve the performance of this test
+def test_db_failure(run_experiment_failure, db_tmpdir):
+    job_data = Path(f"{db_tmpdir.strpath}/job_data_t000.db")
+    conn = sqlite3.connect(job_data)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM job_data")
+    rows = c.fetchall()
+    # Convert rows to a list of dictionaries
+    rows_as_dicts = [dict(row) for row in rows]
+    # Tune the print so it is more readable, so it is easier to debug in case of failure
+    column_names = rows_as_dicts[0].keys() if rows_as_dicts else []
+    column_widths = [max(len(str(row[col])) for row in rows_as_dicts + [dict(zip(column_names, column_names))]) for col
+                     in column_names]
+    header = " | ".join(f"{name:<{width}}" for name, width in zip(column_names, column_widths))
+    print(f"\n{header}")
+    print("-" * len(header))
+    # Print the rows
+    for row_dict in rows_as_dicts:
+        print(" | ".join(f"{str(row_dict[col]):<{width}}" for col, width in zip(column_names, column_widths)))
+        # Check that all fields contain data, except extra_data, children, and platform_output
+        # Check that submit, start and finish are > 0
+        # assert row_dict["submit"] > 0 and row_dict["finish"] != 1970010101
+        # assert row_dict["start"] > 0 and row_dict["finish"] != 1970010101
+        # assert row_dict["finish"] > 0 and row_dict["finish"] != 1970010101
+        # assert row_dict["status"] == "FAILED"
+        # for key in [key for key in row_dict.keys() if
+        #             key not in ["status", "finish", "submit", "start", "extra_data", "children", "platform_output"]]:
+        #     assert str(row_dict[key]) != ""
+    # Check that the job_data table has the expected number of entries
+    c.execute("SELECT job_name, COUNT(*) as count FROM job_data GROUP BY job_name")
+    count_rows = c.fetchall()
+    for row in count_rows:
+        assert row["count"] == 2 # two retrials
+    # Close the cursor and connection
+    c.close()
+    conn.close()

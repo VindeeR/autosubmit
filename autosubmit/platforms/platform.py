@@ -25,8 +25,9 @@ class UniqueQueue(
         super().__init__(maxsize, ctx=multiprocessing.get_context())
 
     def put(self, job, block=True, timeout=None):
-        if job.name not in self.all_items:
-            self.all_items.add(job.name)
+        name_with_retrial = job.name+str(job.fail_count)
+        if name_with_retrial not in self.all_items:
+            self.all_items.add(name_with_retrial)
             Queue.put(self, job, block, timeout)
 
 
@@ -611,18 +612,14 @@ class Platform(object):
         else:
             return False
 
-    def remove_stat_file(self, job_name):
+    def remove_stat_file(self, job):
         """
         Removes *STAT* files from remote
-
-        :param job_name: name of job to check
-        :type job_name: str
-        :return: True if successful, False otherwise
-        :rtype: bool
+        param job: job to check
+        type job: Job
         """
-        filename = job_name + '_STAT'
-        if self.delete_file(filename):
-            Log.debug('{0}_STAT have been removed', job_name)
+        if self.delete_file(job.stat_file):
+            Log.debug(f"{job.stat_file} have been removed")
             return True
         return False
 
@@ -668,30 +665,21 @@ class Platform(object):
     def check_file_exists(self, src, wrapper_failed=False, sleeptime=5, max_retries=3, first=True):
         return True
 
-    def get_stat_file(self, job_name, retries=0, count=-1):
-        """
-        Copies *STAT* files from remote to local
+    def get_stat_file(self, job, count=-1):
 
-        :param retries: number of intents to get the completed files
-        :type retries: int
-        :param job_name: name of job to check
-        :type job_name: str
-        :return: True if successful, False otherwise
-        :rtype: bool
-        """
         if count == -1:  # No internal retrials
-            filename = job_name + '_STAT'
+            filename = job.stat_file
         else:
-            filename = job_name + '_STAT_{0}'.format(str(count))
+            filename = job.name + '_STAT_{0}'.format(str(count))
         stat_local_path = os.path.join(
             self.config.get("LOCAL_ROOT_DIR"), self.expid, self.config.get("LOCAL_TMP_DIR"), filename)
         if os.path.exists(stat_local_path):
             os.remove(stat_local_path)
         if self.check_file_exists(filename):
             if self.get_file(filename, True):
-                Log.debug('{0}_STAT file have been transferred', job_name)
+                Log.debug('{0}_STAT file have been transferred', job.name)
                 return True
-        Log.debug('{0}_STAT file not found', job_name)
+        Log.debug('{0}_STAT file not found', job.name)
         return False
 
     @autosubmit_parameter(name='current_logdir')
@@ -870,6 +858,10 @@ class Platform(object):
                 keep_working = True
             if not self.recovery_queue.empty() or self.cleanup_event.is_set():
                 break
+        interruptible_additional_timeout = 60
+        while not self.work_event.is_set() and not self.cleanup_event.is_set() and interruptible_additional_timeout > 0:
+            time.sleep(1)
+            interruptible_additional_timeout -= 1
         self.work_event.clear()
         return keep_working
 

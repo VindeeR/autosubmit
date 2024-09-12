@@ -180,39 +180,25 @@ class LocalPlatform(ParamikoPlatform):
         return True
 
     # Moves .err .out
-    def check_file_exists(self, src, wrapper_failed=False, sleeptime=5, max_retries=3, first=True):
+    def check_file_exists(self, src, wrapper_failed=False, sleeptime=None, max_retries=None, first=None):
         """
-        Moves a file on the platform
+        Checks if a file exists in the platform
         :param src: source name
         :type src: str
-        :param: wrapper_failed: if True, the wrapper failed.
+        :param wrapper_failed: if the wrapper failed
         :type wrapper_failed: bool
-
+        :param sleeptime: time to sleep
+        :type sleeptime: int
+        :param max_retries: maximum number of retries
+        :type max_retries: int
+        :param first: if it is the first time
+        :type first: bool
+        :return: True if the file exists, False otherwise
+        :rtype: bool
         """
-        file_exist = False
-        remote_path = os.path.join(self.get_files_path(), src)
-        retries = 0
-        # Not first is meant for vertical_wrappers. There you have to download STAT_{MAX_LOGS} then STAT_{MAX_LOGS-1} and so on
-        if not first:
-            max_retries = 1
-            sleeptime = 0
-        while not file_exist and retries < max_retries:
-            try:
-                file_exist = os.path.isfile(os.path.join(self.get_files_path(),src))
-                if not file_exist:  # File doesn't exist, retry in sleep-time
-                    if first:
-                        Log.debug("{2} File does not exist.. waiting {0}s for a new retry (retries left: {1})", sleeptime,
-                                 max_retries - retries, remote_path)
-                    if not wrapper_failed:
-                        sleep(sleeptime)
-                        sleeptime = sleeptime + 5
-                        retries = retries + 1
-                    else:
-                        retries = 9999
-            except BaseException as e:  # Unrecoverable error
-                Log.printlog("File does not exist, logs {0} {1}".format(self.get_files_path(),src),6001)
-                file_exist = False  # won't exist
-                retries = 999  # no more retries
+        file_exist = os.path.isfile(os.path.join(self.get_files_path(), src))
+        if not file_exist:
+            Log.debug(f"File {self.get_files_path()}/{src} does not exist")
         return file_exist
 
     def delete_file(self, filename,del_cmd  = False):

@@ -352,7 +352,7 @@ class Platform(object):
                         raise
 
             except AutosubmitCritical as e:
-                raise AutosubmitCritical(e.message, e.code, e.trace)
+                raise
             except AutosubmitError as e:
                 raise
             except Exception as e:

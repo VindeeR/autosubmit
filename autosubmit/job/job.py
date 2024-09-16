@@ -1960,9 +1960,6 @@ class Job(object):
         self._init_runtime_parameters()
         if hasattr(self, "start_time"):
             self.start_time = time.time()
-        for event in self.platform.worker_events:  # keep alive log retrieval workers.
-            if not event.is_set():
-                event.set()
         # Parameters that affect to all the rest of parameters
         self.update_dict_parameters(as_conf)
         parameters = parameters.copy()
@@ -1986,6 +1983,9 @@ class Job(object):
         # For some reason, there is return but the assignee is also necessary
         self.parameters = parameters
         # This return is only being used by the mock , to change the mock
+        for event in self.platform.worker_events:  # keep alive log retrieval workers.
+            if not event.is_set():
+                event.set()
         return parameters
 
     def update_content_extra(self,as_conf,files):

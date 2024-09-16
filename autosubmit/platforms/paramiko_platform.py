@@ -526,7 +526,8 @@ class ParamikoPlatform(Platform):
         if cmd is None:
             return None
         if self.send_command(cmd,x11=x11):
-            job_id = self.get_submitted_job_id(self.get_ssh_output(),x11=job.x11)
+            x11 = False if job is None else job.x11
+            job_id = self.get_submitted_job_id(self.get_ssh_output(),x11=x11)
             Log.debug("Job ID: {0}", job_id)
             return int(job_id)
         else:
@@ -1216,18 +1217,23 @@ class ParamikoPlatform(Platform):
         :return: command to execute script
         :rtype: str
         """
-        executable = ''
-        if job.type == Type.BASH:
-            executable = 'bash'
-        elif job.type == Type.PYTHON:
-            executable = 'python3'
-        elif job.type == Type.PYTHON2:
-            executable = 'python2'
-        elif job.type == Type.R:
-            executable = 'Rscript'
-        if job.executable != '':
-            executable = '' # Alternative: use job.executable with substituted placeholders
-        remote_logs = (job.script_name + ".out."+str(job.fail_count), job.script_name + ".err."+str(job.fail_count))
+        if job: # If job is None, it is a wrapper
+            executable = ''
+            if job.type == Type.BASH:
+                executable = 'bash'
+            elif job.type == Type.PYTHON:
+                executable = 'python3'
+            elif job.type == Type.PYTHON2:
+                executable = 'python2'
+            elif job.type == Type.R:
+                executable = 'Rscript'
+            if job.executable != '':
+                executable = '' # Alternative: use job.executable with substituted placeholders
+            remote_logs = (job.script_name + ".out."+str(job.fail_count), job.script_name + ".err."+str(job.fail_count))
+        else:
+            executable = 'python3' # wrappers are always python3
+            remote_logs = (f"{job_script}.out", f"{job_script}.err")
+
         if timeout < 1:
             command = export + ' nohup ' + executable + ' {0} > {1} 2> {2} & echo $!'.format(
                 os.path.join(self.remote_log_dir, job_script),

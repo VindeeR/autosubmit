@@ -491,14 +491,12 @@ class JobPackager(object):
                 current_info.append(param[self.current_wrapper_section])
             current_info.append(self._as_config)
 
-            if self.wrapper_type[self.current_wrapper_section] == 'vertical':
-                built_packages_tmp = self._build_vertical_packages(jobs, wrapper_limits,wrapper_info=current_info)
-            elif self.wrapper_type[self.current_wrapper_section] == 'horizontal':
-                built_packages_tmp = self._build_horizontal_packages(jobs, wrapper_limits, section,wrapper_info=current_info)
+            if self.wrapper_type[self.current_wrapper_section] == 'horizontal':
+                built_packages_tmp = self._build_horizontal_packages(jobs, wrapper_limits, section, wrapper_info=current_info)
             elif self.wrapper_type[self.current_wrapper_section] in ['vertical-horizontal', 'horizontal-vertical']:
-                built_packages_tmp.append(self._build_hybrid_package(jobs, wrapper_limits, section,wrapper_info=current_info))
+                built_packages_tmp.append(self._build_hybrid_package(jobs, wrapper_limits, section, wrapper_info=current_info))
             else:
-                built_packages_tmp = self._build_vertical_packages(jobs, wrapper_limits)
+                built_packages_tmp = self._build_vertical_packages(jobs, wrapper_limits, wrapper_info=current_info)
             Log.result(f"Built {len(built_packages_tmp)} wrappers for {wrapper_name}")
             packages_to_submit,max_jobs_to_submit = self.check_packages_respect_wrapper_policy(built_packages_tmp,packages_to_submit,max_jobs_to_submit,wrapper_limits,any_simple_packages)
 
@@ -738,7 +736,7 @@ class JobPackagerVertical(object):
             if child is not None and len(str(child)) > 0:
                 child.update_parameters(wrapper_info[-1], {})
                 self.total_wallclock = sum_str_hours(self.total_wallclock, child.wallclock)
-                if self.total_wallclock <= self.max_wallclock:
+                if self.total_wallclock <= self.max_wallclock or not self.max_wallclock:
                     child.packed = True
                     child.level = level
                     self.jobs_list.append(child)
@@ -850,22 +848,14 @@ class JobPackagerVerticalMixed(JobPackagerVertical):
         :rtype: Job Object
         """
         sorted_jobs = self.sorted_jobs
-
+        child = None
         for index in range(self.index, len(sorted_jobs)):
-            child = sorted_jobs[index]
-            if self._is_wrappable(child):
+            child_ = sorted_jobs[index]
+            if child_.name != job.name and self._is_wrappable(child_):
+                child = child_
                 self.index = index + 1
-                return child
-            continue
-        return None
-        # Not passing tests but better wrappers result to check
-        # for child in job.children:
-        #     if child.name != job.name:
-        #         if self._is_wrappable(child):
-        #             self.index = self.index + 1
-        #             return child
-        #     continue
-        # return None
+                break
+        return child
 
     def _is_wrappable(self, job):
         """

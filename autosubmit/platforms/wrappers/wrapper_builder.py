@@ -60,8 +60,10 @@ class WrapperBuilder(object):
         self.exit_thread = ''
         if "wallclock_by_level" in list(kwargs.keys()):
             self.wallclock_by_level = kwargs['wallclock_by_level']
+
     def build_header(self):
         return textwrap.dedent(self.header_directive) + self.build_imports()
+
     def build_imports(self):
         pass
     def build_job_thread(self):

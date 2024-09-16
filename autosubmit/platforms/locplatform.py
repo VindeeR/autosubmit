@@ -18,12 +18,15 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import locale
 import os
+from pathlib import Path
 from xml.dom.minidom import parseString
 import subprocess
 
+from matplotlib.patches import PathPatch
 
 from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.headers.local_header import LocalHeader
+from autosubmit.platforms.wrappers.wrapper_factory import LocalWrapperFactory
 
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 from time import sleep
@@ -64,6 +67,9 @@ class LocalPlatform(ParamikoPlatform):
         self.job_status['RUNNING'] = ['0']
         self.job_status['QUEUING'] = []
         self.job_status['FAILED'] = []
+        self._allow_wrappers = True
+        self._wrapper = LocalWrapperFactory(self)
+
         self.update_cmds()
 
     def update_cmds(self):
@@ -100,8 +106,11 @@ class LocalPlatform(ParamikoPlatform):
         return [int(element.firstChild.nodeValue) for element in jobs_xml]
 
     def get_submit_cmd(self, job_script, job, hold=False, export=""):
-        wallclock = self.parse_time(job.wallclock)
-        seconds = int(wallclock.days * 86400 + wallclock.seconds * 60)
+        if job:
+            wallclock = self.parse_time(job.wallclock)
+            seconds = int(wallclock.days * 86400 + wallclock.seconds * 60)
+        else:
+            seconds = 24 * 3600
         if export == "none" or export == "None" or export is None or export == "":
             export = ""
         else:
@@ -144,10 +153,7 @@ class LocalPlatform(ParamikoPlatform):
         return True
 
     def send_file(self, filename, check=True):
-        self.check_remote_log_dir()
-        self.delete_file(filename,del_cmd=True)
-        command = '{0} {1} {2}'.format(self.put_cmd, os.path.join(self.tmp_path, filename),
-                                       os.path.join(self.tmp_path, 'LOG_' + self.expid, filename))
+        command = f'{self.put_cmd} {os.path.join(self.tmp_path, Path(filename).name)} {os.path.join(self.tmp_path, "LOG_" + self.expid, Path(filename).name)}'
         try:
             subprocess.check_call(command, shell=True)
         except subprocess.CalledProcessError:
@@ -157,6 +163,17 @@ class LocalPlatform(ParamikoPlatform):
             raise
         return True
 
+    def remove_multiple_files(self, filenames):
+        log_dir = os.path.join(self.tmp_path, 'LOG_{0}'.format(self.expid))
+        multiple_delete_previous_run = os.path.join(
+            log_dir, "multiple_delete_previous_run.sh")
+        if os.path.exists(log_dir):
+            lang = locale.getlocale()[1]
+            if lang is None:
+                lang = 'UTF-8'
+            open(multiple_delete_previous_run, 'wb+').write(("rm -f" + filenames).encode(lang))
+            os.chmod(multiple_delete_previous_run, 0o770)
+        return ""
 
     def get_file(self, filename, must_exist=True, relative_path='',ignore_log = False,wrapper_failed=False):
         local_path = os.path.join(self.tmp_path, relative_path)

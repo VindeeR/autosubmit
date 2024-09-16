@@ -2579,7 +2579,6 @@ class JobList(object):
         if hasattr(job, "x11") and job.x11: # X11 has it log writted in the run.out file. No need to check for log files as there are none
             job.updated_log = True
             return
-        Log.result(f"Sending job {job.stat_file} to the log recovery thread")
 
         log_recovered = self.check_if_log_is_recovered(job)
         if log_recovered:

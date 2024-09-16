@@ -1725,35 +1725,20 @@ class JobList(object):
         else:
             return completed_jobs
 
-    def get_completed_without_logs(self, platform=None):
+    def get_completed_failed_without_logs(self, platform=None):
         """
         Returns a list of completed jobs without updated logs
 
         :param platform: job platform
         :type platform: HPCPlatform
-        :return: completed jobs
+        :return: completed and failed jobs without logs
         :rtype: list
         """
 
-        completed_jobs = [job for job in self._job_list if (platform is None or job.platform.name == platform.name) and
-                          job.status == Status.COMPLETED and job.updated_log is False ]
+        completed_failed_jobs = [job for job in self._job_list if (platform is None or job.platform.name == platform.name) and
+                                 (job.status == Status.COMPLETED or job.status == Status.FAILED) and job.updated_log is False ]
 
-        return completed_jobs
-
-    def get_completed_without_logs(self, platform=None):
-        """
-        Returns a list of completed jobs without updated logs
-
-        :param platform: job platform
-        :type platform: HPCPlatform
-        :return: completed jobs
-        :rtype: list
-        """
-
-        completed_jobs = [job for job in self._job_list if (platform is None or job.platform.name == platform.name) and
-                          job.status == Status.COMPLETED and job.updated_log is False ]
-
-        return completed_jobs
+        return completed_failed_jobs
 
     def get_uncompleted(self, platform=None, wrapper=False):
         """
@@ -2602,6 +2587,7 @@ class JobList(object):
             job.updated_log = True
         elif not job.updated_log and str(as_conf.platforms_data.get(job.platform.name, {}).get('DISABLE_RECOVERY_THREADS', "false")).lower() == "false":
             job.platform.add_job_to_log_recover(job)
+        return log_recovered
 
     def check_if_log_is_recovered(self, job):
         """
@@ -2639,6 +2625,8 @@ class JobList(object):
             save = store_change
         Log.debug('Updating FAILED jobs')
         write_log_status = False
+        for job in self.get_completed_failed_without_logs():
+            save = self.update_log_status(job, as_conf) if not save else save
         if not first_time:
             for job in self.get_failed():
                 job.packed = False
@@ -2714,8 +2702,6 @@ class JobList(object):
             # Log name has this format:
                 # a02o_20000101_fc0_2_SIM.20240212115021.err
                 # $jobname.$(YYYYMMDDHHMMSS).err or .out
-            if not first_time:
-                self.update_log_status(job, as_conf)
             if job.synchronize is not None and len(str(job.synchronize)) > 0:
                 tmp = [parent for parent in job.parents if parent.status == Status.COMPLETED]
                 if len(tmp) != len(job.parents):

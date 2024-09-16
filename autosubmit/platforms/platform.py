@@ -36,6 +36,7 @@ class Platform(object):
     Class to manage the connections to the different platforms.
     """
     worker_events = list()
+    lock = multiprocessing.Lock()
 
     def __init__(self, expid, name, config, auth_password=None):
         """
@@ -852,55 +853,63 @@ class Platform(object):
         This function, waits for the work_event to be set by the main process. If it is not set, it returns False and the log recovery process ends.
         """
         keep_working = False
-        for remaining in range(timeout, 0, -1): # Wait the full timeout to not hammer the CPU.
+        # The whole point of this if is to make the regression tests faster to run.
+        if timeout >= 60:
+            unstoppable_timeout = 60
+            timeout = timeout - 60
+        else:
+            unstoppable_timeout = timeout
+            timeout = 0
+        for remaining in range(unstoppable_timeout, 0, -1):
             time.sleep(1)
             if self.work_event.is_set() or not self.recovery_queue.empty():
                 keep_working = True
             if not self.recovery_queue.empty() or self.cleanup_event.is_set():
                 break
-        interruptible_additional_timeout = 60
-        while not self.work_event.is_set() and not self.cleanup_event.is_set() and interruptible_additional_timeout > 0:
-            time.sleep(1)
-            interruptible_additional_timeout -= 1
+        if not keep_working:
+            while timeout > 0 and self.recovery_queue.empty() and not self.cleanup_event.is_set() and not self.work_event.is_set():
+                time.sleep(1)
+                timeout -= 1
+            if not self.recovery_queue.empty() or self.cleanup_event.is_set() or self.work_event.is_set():
+                keep_working = True
         self.work_event.clear()
         return keep_working
 
     def recover_job_log(self, identifier, jobs_pending_to_process):
         job = None
-        try:
-            while not self.recovery_queue.empty():
-                try:
-                    job = self.recovery_queue.get(
-                        timeout=1)  # Should be non-empty, but added a timeout for other possible errors.
-                    job.children = set()  # Children can't be serialized, so we set it to an empty set for this process.
-                    job.platform = self  # change the original platform to this process platform.
-                    job._log_recovery_retries = 0  # reset the log recovery retries.
-                    Log.debug(f"{identifier} Recovering log files for job {job.name}")
-                    job.retrieve_logfiles(self, raise_error=True)
-                    Log.result(f"{identifier} Sucessfully recovered log files for job {job.name}")
-                except queue.Empty:
-                    pass
-            # This second while is to keep retring the failed jobs.
-            while len(jobs_pending_to_process) > 0:  # jobs that had any issue during the log retrieval
-                job = jobs_pending_to_process.pop()
-                job.children = set()
-                job.platform = self
-                job._log_recovery_retries += 1
-                Log.debug(
-                    f"{identifier} (Retrial number: {job._log_recovery_retries}) Recovering log files for job {job.name}")
-                job.retrieve_logfiles(self, raise_error=True)
-                Log.result(f"{identifier} (Retrial) Successfully recovered log files for job {job.name}")
-        except Exception as e:
-            Log.warning(f"{identifier} Error while recovering logs: {str(e)}")
+        # try:
+        while not self.recovery_queue.empty():
             try:
-                if job and job._log_recovery_retries < 5:  # If log retrieval failed, add it to the pending jobs to process. Avoids to keep trying the same job forever.
-                    jobs_pending_to_process.add(job)
-                self.connected = False
-                Log.info(f"{identifier} Attempting to restore connection")
-                self.restore_connection(None)  # Always restore the connection on a failure.
-                Log.result(f"{identifier} Sucessfully reconnected.")
-            except:
+                job = self.recovery_queue.get(
+                    timeout=1)  # Should be non-empty, but added a timeout for other possible errors.
+                job.children = set()  # Children can't be serialized, so we set it to an empty set for this process.
+                job.platform = self  # change the original platform to this process platform.
+                job._log_recovery_retries = 0  # reset the log recovery retries.
+                Log.debug(f"{identifier} Recovering log files for job {job.name}")
+                job.retrieve_logfiles(self, raise_error=True)
+                if job.status == Status.FAILED:
+                    Log.result(f"{identifier} Sucessfully recovered log files for job {job.name} and retrial:{job.fail_count}")
+            except queue.Empty:
                 pass
+        # This second while is to keep retring the failed jobs.
+        while len(jobs_pending_to_process) > 0:  # jobs that had any issue during the log retrieval
+            job = jobs_pending_to_process.pop()
+            job._log_recovery_retries += 1
+            Log.debug(
+                f"{identifier} (Retrial number: {job._log_recovery_retries}) Recovering log files for job {job.name}")
+            job.retrieve_logfiles(self, raise_error=True)
+            Log.result(f"{identifier} (Retrial) Successfully recovered log files for job {job.name}")
+        # except Exception as e:
+        #     Log.info(f"{identifier} Error while recovering logs: {str(e)}")
+        #     try:
+        #         if job and job._log_recovery_retries < 5:  # If log retrieval failed, add it to the pending jobs to process. Avoids to keep trying the same job forever.
+        #             jobs_pending_to_process.add(job)
+        #         self.connected = False
+        #         Log.info(f"{identifier} Attempting to restore connection")
+        #         self.restore_connection(None)  # Always restore the connection on a failure.
+        #         Log.result(f"{identifier} Sucessfully reconnected.")
+        #     except:
+        #         pass
         return jobs_pending_to_process
 
     def recover_platform_job_logs(self):

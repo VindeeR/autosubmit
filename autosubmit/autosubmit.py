@@ -191,7 +191,7 @@ class Autosubmit:
                                 default='DEBUG', type=str,
                                 help="sets file's log level.")
             parser.add_argument('-lc', '--logconsole', choices=('NO_LOG', 'INFO', 'WARNING', 'DEBUG'),
-                                default='INFO', type=str,
+                                default='DEBUG', type=str,
                                 help="sets console's log level")
 
             subparsers = parser.add_subparsers(dest='command')
@@ -2333,10 +2333,10 @@ class Autosubmit:
                         raise # If this happens, there is a bug in the code or an exception not-well caught
                 Log.result("No more jobs to run.")
                 # search hint - finished run
-                for job in job_list.get_completed_without_logs():
+                for job in job_list.get_completed_failed_without_logs():
                     job_list.update_log_status(job, as_conf)
                 job_list.save()
-                if not did_run and len(job_list.get_completed_without_logs()) > 0:
+                if not did_run and len(job_list.get_completed_failed_without_logs()) > 0:
                     Log.info(f"Connecting to the platforms, to recover missing logs")
                     submitter = Autosubmit._get_submitter(as_conf)
                     submitter.load_platforms(as_conf)
@@ -2345,19 +2345,19 @@ class Autosubmit:
                     platforms_to_test = [value for value in submitter.platforms.values()]
                     Autosubmit.restore_platforms(platforms_to_test, as_conf=as_conf, expid=expid)
                 Log.info("Waiting for all logs to be updated")
-                if len(job_list.get_completed_without_logs()) > 0:
+                if len(job_list.get_completed_failed_without_logs()) > 0:
                     for p in platforms_to_test:
                         if p.log_recovery_process:
                             p.cleanup_event.set()
                 for p in platforms_to_test:
                     p.log_recovery_process.join()
-                for job in job_list.get_completed_without_logs():
+                for job in job_list.get_completed_failed_without_logs():
                     job_list.update_log_status(job, as_conf)
                 job_list.save()
-                if len(job_list.get_completed_without_logs()) == 0:
+                if len(job_list.get_completed_failed_without_logs()) == 0:
                     Log.result(f"Autosubmit recovered all job logs.")
                 else:
-                    Log.warning(f"Autosubmit couldn't recover the following job logs: {[job.name for job in job_list.get_completed_without_logs()]}")
+                    Log.warning(f"Autosubmit couldn't recover the following job logs: {[job.name for job in job_list.get_completed_failed_without_logs()]}")
                 try:
                     exp_history = ExperimentHistory(expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR,
                                                     historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)

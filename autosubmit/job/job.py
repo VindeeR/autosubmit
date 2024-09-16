@@ -208,7 +208,7 @@ class Job(object):
         self._local_logs = ('', '')
         self._remote_logs = ('', '')
         self.script_name = self.name + ".cmd"
-        self.stat_file = self.script_name[:-4] + "_STAT"
+        self.stat_file = self.script_name[:-4] + "_STAT_0"
         self.status = status
         self.prev_status = status
         self.old_status = self.status
@@ -986,7 +986,7 @@ class Job(object):
         :rtype: int
         """
         if fail_count == -1:
-            logname = os.path.join(self._tmp_path, self.name + '_STAT')
+            logname = os.path.join(self._tmp_path, self.stat_file)
         else:
             fail_count = str(fail_count)
             logname = os.path.join(self._tmp_path, self.name + '_STAT_' + fail_count)
@@ -1145,11 +1145,12 @@ class Job(object):
                         log_retrieved = False
             self.log_retrieved = log_retrieved
 
-    def write_stats(self, platform):
+    def write_stats(self):
         # Update the logs with Autosubmit Job ID Brand
+
         try:
             for local_log in self.local_logs:
-                platform.write_jobid(self.id, os.path.join(
+                self.platform.write_jobid(self.id, os.path.join(
                     self._tmp_path, 'LOG_' + str(self.expid), local_log))
         except BaseException as e:
             Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(str(e), self.name))
@@ -1163,6 +1164,7 @@ class Job(object):
             self.platform.get_stat_file(self)
             self.write_start_time(from_stat_file=True)
             self.write_end_time(self.status == Status.COMPLETED)
+            Log.result(f"{self.fail_count} retrials of job:{self.name} and {self.id} has been inserted in the db")
 
     def retrieve_logfiles(self, platform, raise_error=False):
         """
@@ -1171,7 +1173,6 @@ class Job(object):
         :param raise_error: boolean to raise an error if the logs are not retrieved
         :return:
         """
-
         backup_logname = copy.copy(self.local_logs)
         if self.wrapper_type == "vertical":
             self.retrieve_internal_retrials_logfiles(platform)
@@ -1185,8 +1186,7 @@ class Job(object):
             else:
                 Log.printlog("Failed to retrieve logs for job {0}".format(self.name), 6000)
         else:
-            self.write_stats(platform)
-
+            self.write_stats()
 
     def parse_time(self,wallclock):
         regex = re.compile(r'(((?P<hours>\d+):)((?P<minutes>\d+)))(:(?P<seconds>\d+))?')
@@ -1285,11 +1285,6 @@ class Job(object):
             # after checking the jobs , no job should have the status "submitted"
             Log.printlog("Job {0} in SUBMITTED status. This should never happen on this step..".format(
                 self.name), 6008)
-
-
-        # # Write start_time() if not already written and job is running, completed or failed
-        # if self.status in [Status.RUNNING, Status.COMPLETED, Status.FAILED] and not self.start_time_written:
-        #     self.write_start_time()
 
         # Updating logs
         if self.status in [Status.COMPLETED, Status.FAILED, Status.UNKNOWN]:

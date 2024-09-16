@@ -169,12 +169,12 @@ def failure_jobs_file(db_tmpdir):
             PLATFORM: local
             RUNNING: chunk
             wallclock: 00:01
-            retrials: 1
+            retrials: 2
     """)
 
 
 @pytest.fixture
-def run_experiment_success(prepare_db, db_tmpdir, success_jobs_file):
+def run_experiment_success(prepare_db, db_tmpdir, success_jobs_file, mocker):
     init_expid(os.environ["AUTOSUBMIT_CONFIGURATION"], platform='local', expid='t000', create=True)
     # job_list, submitter, exp_history, host, as_conf, platforms_to_test, packages_persistence, _ = Autosubmit.prepare_run("t000")
     as_misc = Path(f"{db_tmpdir.strpath}/t000/conf/as_misc.yml")
@@ -186,7 +186,8 @@ ASMISC:
 AS_COMMAND: run
         """)
     # Completed
-    Autosubmit.run_experiment(expid='t000')
+    with mocker.patch('autosubmit.platforms.platform.max', return_value=50):
+        Autosubmit.run_experiment(expid='t000')
     # Access to the job_historical.db
     job_data = Path(f"{db_tmpdir.strpath}/job_data_t000.db")
     autosubmit_db = Path(f"{db_tmpdir.strpath}/tests.db")
@@ -209,8 +210,9 @@ AS_COMMAND: run
         """)
     # Completed
     # mock platform.localplatform.check_exists
-    with mocker.patch('autosubmit.platforms.platform.Platform.get_completed_files', return_value=False):
-        Autosubmit.run_experiment(expid='t000')
+    with mocker.patch('autosubmit.platforms.platform.max', return_value=10):
+        with mocker.patch('autosubmit.platforms.platform.Platform.get_completed_files', return_value=False):
+            Autosubmit.run_experiment(expid='t000')
     # Access to the job_historical.db
     job_data = Path(f"{db_tmpdir.strpath}/job_data_t000.db")
     autosubmit_db = Path(f"{db_tmpdir.strpath}/tests.db")
@@ -256,7 +258,6 @@ def test_db_success(run_experiment_success, db_tmpdir):
     c.close()
     conn.close()
 
-#Need to improve the performance of this test
 def test_db_failure(run_experiment_failure, db_tmpdir):
     job_data = Path(f"{db_tmpdir.strpath}/job_data_t000.db")
     conn = sqlite3.connect(job_data)
@@ -278,18 +279,18 @@ def test_db_failure(run_experiment_failure, db_tmpdir):
         print(" | ".join(f"{str(row_dict[col]):<{width}}" for col, width in zip(column_names, column_widths)))
         # Check that all fields contain data, except extra_data, children, and platform_output
         # Check that submit, start and finish are > 0
-        # assert row_dict["submit"] > 0 and row_dict["finish"] != 1970010101
-        # assert row_dict["start"] > 0 and row_dict["finish"] != 1970010101
-        # assert row_dict["finish"] > 0 and row_dict["finish"] != 1970010101
-        # assert row_dict["status"] == "FAILED"
-        # for key in [key for key in row_dict.keys() if
-        #             key not in ["status", "finish", "submit", "start", "extra_data", "children", "platform_output"]]:
-        #     assert str(row_dict[key]) != ""
+        assert row_dict["submit"] > 0 and row_dict["finish"] != 1970010101
+        assert row_dict["start"] > 0 and row_dict["finish"] != 1970010101
+        assert row_dict["finish"] > 0 and row_dict["finish"] != 1970010101
+        assert row_dict["status"] == "FAILED"
+        for key in [key for key in row_dict.keys() if
+                    key not in ["status", "finish", "submit", "start", "extra_data", "children", "platform_output"]]:
+            assert str(row_dict[key]) != ""
     # Check that the job_data table has the expected number of entries
     c.execute("SELECT job_name, COUNT(*) as count FROM job_data GROUP BY job_name")
     count_rows = c.fetchall()
     for row in count_rows:
-        assert row["count"] == 2 # two retrials
+        assert row["count"] == 3 # three retrials
     # Close the cursor and connection
     c.close()
     conn.close()

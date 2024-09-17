@@ -2350,7 +2350,8 @@ class Autosubmit:
                         if p.log_recovery_process:
                             p.cleanup_event.set()
                 for p in platforms_to_test:
-                    p.log_recovery_process.join()
+                    if p.log_recovery_process:
+                        p.log_recovery_process.join()
                 for job in job_list.get_completed_failed_without_logs():
                     job_list.update_log_status(job, as_conf)
                 job_list.save()

@@ -109,6 +109,7 @@ class Platform(object):
         self.work_event = Event()
         self.cleanup_event = Event()
         self.log_recovery_process = None
+        self.keep_alive_timeout = 60 * 5 # Useful in case of kill -9
 
     @classmethod
     def update_workers(cls, event_worker):
@@ -848,32 +849,27 @@ class Platform(object):
             self.cleanup_event.set()
             self.log_recovery_process.join()
 
-    def wait_for_work(self, timeout=60):
+    def wait_for_work(self, sleep_time=60):
         """
-        This function, waits for the work_event to be set by the main process. If it is not set, it returns False and the log recovery process ends.
+        This function waits for the work_event to be set or the cleanup_event to be set.
         """
-        keep_working = False
-        # The whole point of this if is to make the regression tests faster to run.
-        if timeout >= 60:
-            unstoppable_timeout = 60
-            timeout = timeout - 60
-        else:
-            unstoppable_timeout = timeout
-            timeout = 0
-        for remaining in range(unstoppable_timeout, 0, -1):
+        process_log = False
+        for remaining in range(sleep_time, 0, -1):  # Min time to wait unless clean-up signal is set
             time.sleep(1)
             if self.work_event.is_set() or not self.recovery_queue.empty():
-                keep_working = True
-            if not self.recovery_queue.empty() or self.cleanup_event.is_set():
+                process_log = True
+            if self.cleanup_event.is_set():
+                process_log = True
                 break
-        if not keep_working:
+        if not process_log: # If no work, wait until the keep_alive_timeout is reached or any signal is set to end the process.
+            timeout = self.keep_alive_timeout - sleep_time
             while timeout > 0 and self.recovery_queue.empty() and not self.cleanup_event.is_set() and not self.work_event.is_set():
                 time.sleep(1)
                 timeout -= 1
             if not self.recovery_queue.empty() or self.cleanup_event.is_set() or self.work_event.is_set():
-                keep_working = True
+                process_log = True
         self.work_event.clear()
-        return keep_working
+        return process_log
 
     def recover_job_log(self, identifier, jobs_pending_to_process):
         job = None
@@ -925,9 +921,7 @@ class Platform(object):
         self.restore_connection(None)
         Log.get_logger("Autosubmit")  # Log needs to be initialised in the new process
         Log.result(f"{identifier} Sucessfully connected.")
-        default_timeout = 60
-        timeout = max(int(self.config.get("LOG_RECOVERY_TIMEOUT", default_timeout)), default_timeout)
-        while self.wait_for_work(timeout=timeout):
+        while self.wait_for_work(sleep_time=max(int(self.config.get("LOG_RECOVERY_TIMEOUT", 60)), 60)):
             jobs_pending_to_process = self.recover_job_log(identifier, jobs_pending_to_process)
             if self.cleanup_event.is_set(): # Check if main process is waiting for this child to end.
                 self.recover_job_log(identifier, jobs_pending_to_process)

@@ -258,6 +258,7 @@ def test_db_success(run_experiment_success, db_tmpdir):
     c.close()
     conn.close()
 
+
 def test_db_failure(run_experiment_failure, db_tmpdir):
     job_data = Path(f"{db_tmpdir.strpath}/job_data_t000.db")
     conn = sqlite3.connect(job_data)

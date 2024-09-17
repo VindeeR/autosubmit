@@ -100,6 +100,7 @@ def as_conf(prepare_test, mocker):
 
 def test_log_recovery_no_keep_alive(prepare_test, local, mocker, as_conf):
     mocker.patch('autosubmit.platforms.platform.max', return_value=1)
+    local.keep_alive_timeout = 0
     local.spawn_log_retrieval_process(as_conf)
     assert local.log_recovery_process.is_alive()
     time.sleep(2)
@@ -109,6 +110,7 @@ def test_log_recovery_no_keep_alive(prepare_test, local, mocker, as_conf):
 
 def test_log_recovery_keep_alive(prepare_test, local, mocker, as_conf):
     mocker.patch('autosubmit.platforms.platform.max', return_value=1)
+    local.keep_alive_timeout = 0
     local.spawn_log_retrieval_process(as_conf)
     assert local.log_recovery_process.is_alive()
     local.work_event.set()
@@ -124,6 +126,7 @@ def test_log_recovery_keep_alive(prepare_test, local, mocker, as_conf):
 
 def test_log_recovery_keep_alive_cleanup(prepare_test, local, mocker, as_conf):
     mocker.patch('autosubmit.platforms.platform.max', return_value=1)
+    local.keep_alive_timeout = 0
     local.spawn_log_retrieval_process(as_conf)
     assert local.log_recovery_process.is_alive()
     local.work_event.set()
@@ -137,8 +140,9 @@ def test_log_recovery_keep_alive_cleanup(prepare_test, local, mocker, as_conf):
 
 
 def test_log_recovery_recover_log(prepare_test, local, mocker, as_conf):
-    mocker.patch('autosubmit.platforms.platform.max', return_value=20)
-    mocker.patch('autosubmit.job.job.Job.write_stats')  # not sure how to test this
+    mocker.patch('autosubmit.platforms.platform.max', return_value=0)
+    local.keep_alive_timeout = 20
+    mocker.patch('autosubmit.job.job.Job.write_stats')  # Tested in test_database_regression.py
     local.spawn_log_retrieval_process(as_conf)
     local.work_event.set()
     job = Job('t000', '0000', Status.COMPLETED, 0)

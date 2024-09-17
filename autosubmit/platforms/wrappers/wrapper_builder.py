@@ -448,8 +448,11 @@ class PythonVerticalWrapperBuilder(PythonWrapperBuilder):
         sequential_threads_launcher = textwrap.dedent("""
         failed_wrapper = os.path.join(os.getcwd(),wrapper_id)
         retrials = {2}
-        total_steps = 0 
-        print("JOB.ID:"+ os.getenv('SLURM_JOBID'))
+        total_steps = 0
+        try: 
+            print("JOB.ID:"+ os.getenv('SLURM_JOBID'))
+        except:
+            print("JOB.ID")
         for i in range(len({0})):
             job_retrials = retrials
             completed = False

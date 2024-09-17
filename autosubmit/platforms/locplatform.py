@@ -277,3 +277,18 @@ class LocalPlatform(ParamikoPlatform):
         :type remote_logs: (str, str)
         """
         return
+
+    def check_completed_files(self, sections=None):
+        command = "find %s " % self.remote_log_dir
+        if sections:
+            for i, section in enumerate(sections.split()):
+                command += " -name *%s_COMPLETED" % section
+                if i < len(sections.split()) - 1:
+                    command += " -o "
+        else:
+            command += " -name *_COMPLETED"
+
+        if self.send_command(command, True):
+            return self._ssh_output
+        else:
+            return None

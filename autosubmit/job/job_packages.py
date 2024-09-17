@@ -588,12 +588,11 @@ class JobPackageThread(JobPackageBase):
 
         if package_id is None or not package_id:
             return
-        wrapper_time = None
         for i in range(0, len(self.jobs)):
             Log.info("{0} submitted", self.jobs[i].name)
             self.jobs[i].id = str(package_id)
             self.jobs[i].status = Status.SUBMITTED
-            self.jobs[i].write_submit_time(hold=hold,wrapper_submit_time=wrapper_time)
+            self.jobs[i].write_submit_time(hold=hold,wrapper_submit_time=self.jobs[0].submit_time_timestamp)
             wrapper_time = self.jobs[i].write_submit_time
 
     def _common_script_content(self):
@@ -752,7 +751,7 @@ class JobPackageVertical(JobPackageThread):
                 self._wallclock = "{0}:{1}".format(hh_str,mm_str)
                 Log.info("Submitting {2} with wallclock {0}:{1}".format(hh_str,mm_str,self._name))
         else:
-            wallclock_by_level = None
+            wallclock_by_level = 0 # command: "timeout 0 sleep 2" == command: "sleep 2"
 
         return self._wrapper_factory.get_wrapper(self._wrapper_factory.vertical_wrapper, name=self._name,
                                                  queue=self._queue, project=self._project, wallclock=self._wallclock,

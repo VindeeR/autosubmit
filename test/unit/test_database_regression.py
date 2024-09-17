@@ -76,16 +76,7 @@ def prepare_db(db_tmpdir):
         f.write(f"""
 PLATFORMS:
     dummy:
-        type: pjm
-        host: 127.0.0.1
-        user: {db_tmpdir.owner}
-        project: whatever
-        scratch_dir: {db_tmpdir}/scratch   
-        MAX_WALLCLOCK: 48:00
-        TEMP_DIR: ''
-        MAX_PROCESSORS: 99999
-        queue: dummy
-        DISABLE_RECOVERY_THREADS: True
+        type: dummy
         """)
 
     with main_path.open('w') as f:
@@ -129,7 +120,7 @@ project:
     expid_dir = Path(f"{db_tmpdir.strpath}/scratch/whatever/{db_tmpdir.owner}/t000")
     dummy_dir = Path(f"{db_tmpdir.strpath}/scratch/whatever/{db_tmpdir.owner}/t000/dummy_dir")
     real_data = Path(f"{db_tmpdir.strpath}/scratch/whatever/{db_tmpdir.owner}/t000/real_data")
-    # write some dummy data inside scratch dir
+    # We write some dummy data inside the scratch_dir
     os.makedirs(expid_dir, exist_ok=True)
     os.makedirs(dummy_dir, exist_ok=True)
     os.makedirs(real_data, exist_ok=True)
@@ -141,26 +132,35 @@ project:
     return db_tmpdir
 
 
-@pytest.fixture
-def success_jobs_file(db_tmpdir):
-    jobs_path = Path(f"{db_tmpdir.strpath}/t000/conf/jobs.yml")
-    with jobs_path.open('w') as f:
-        f.write(f"""
-        JOBS:
-            job:
-                SCRIPT: |
-                    echo "Hello World"
-                PLATFORM: local
-                RUNNING: chunk
-                wallclock: 00:01
-        """)
-
-
-@pytest.fixture
-def failure_jobs_file(db_tmpdir):
-    jobs_path = Path(f"{db_tmpdir.strpath}/t000/conf/jobs.yml")
-    with jobs_path.open('w') as f:
-        f.write(f"""
+@pytest.mark.parametrize("jobs_data, expected_count, final_status", [
+    # Success
+    ("""
+    JOBS:
+        job:
+            SCRIPT: |
+                echo "Hello World"
+            PLATFORM: local
+            RUNNING: chunk
+            wallclock: 00:01
+            retrials: 2
+    """, 1, "COMPLETED"),
+    # Success wrapper
+    ("""
+    JOBS:
+        job:
+            SCRIPT: |
+                echo "Hello World"
+            PLATFORM: local
+            RUNNING: chunk
+            wallclock: 00:01
+            retrials: 2
+    wrappers:
+        wrapper:
+            JOBS_IN_WRAPPER: job
+            TYPE: vertical
+    """, 1, "COMPLETED"),
+    # Failure
+    ("""
     JOBS:
         job:
             SCRIPT: |
@@ -170,59 +170,54 @@ def failure_jobs_file(db_tmpdir):
             RUNNING: chunk
             wallclock: 00:01
             retrials: 2
-    """)
+    """, 3, "FAILURE"),
+    # Failure wrappers
+    ("""
+    JOBS:
+        job:
+            SCRIPT: |
+                echo "Hello World"
+                exit 1
+            PLATFORM: local
+            RUNNING: chunk
+            wallclock: 00:01
+            retrials: 2
+    wrappers:
+        wrapper:
+            JOBS_IN_WRAPPER: job
+            TYPE: vertical
+    """, 3, "FAILURE"),
+], ids=["Success", "Success with wrapper", "Failure", "Failure with wrapper"])
+def test_db(db_tmpdir, prepare_db, jobs_data, expected_count, final_status, mocker):
+    # write jobs_data
+    jobs_path = Path(f"{db_tmpdir.strpath}/t000/conf/jobs.yml")
+    with jobs_path.open('w') as f:
+        f.write(jobs_data)
 
-
-@pytest.fixture
-def run_experiment_success(prepare_db, db_tmpdir, success_jobs_file, mocker):
+    # Create
     init_expid(os.environ["AUTOSUBMIT_CONFIGURATION"], platform='local', expid='t000', create=True)
-    # job_list, submitter, exp_history, host, as_conf, platforms_to_test, packages_persistence, _ = Autosubmit.prepare_run("t000")
+
+    # This is set in _init_log which is not called
     as_misc = Path(f"{db_tmpdir.strpath}/t000/conf/as_misc.yml")
     with as_misc.open('w') as f:
         f.write(f"""
-AS_MISC: True
-ASMISC:
-    COMMAND: run
-AS_COMMAND: run
-        """)
-    # Completed
-    with mocker.patch('autosubmit.platforms.platform.max', return_value=50):
+    AS_MISC: True
+    ASMISC:
+        COMMAND: run
+    AS_COMMAND: run
+            """)
+
+    # Run the experiment
+    with mocker.patch('autosubmit.platforms.platform.max', return_value=20):
         Autosubmit.run_experiment(expid='t000')
-    # Access to the job_historical.db
+
+    # Test database exists.
     job_data = Path(f"{db_tmpdir.strpath}/job_data_t000.db")
     autosubmit_db = Path(f"{db_tmpdir.strpath}/tests.db")
     assert job_data.exists()
     assert autosubmit_db.exists()
-    return prepare_db
 
-
-@pytest.fixture
-def run_experiment_failure(prepare_db, db_tmpdir, failure_jobs_file, mocker):
-    init_expid(os.environ["AUTOSUBMIT_CONFIGURATION"], platform='local', expid='t000', create=True)
-    # job_list, submitter, exp_history, host, as_conf, platforms_to_test, packages_persistence, _ = Autosubmit.prepare_run("t000")
-    as_misc = Path(f"{db_tmpdir.strpath}/t000/conf/as_misc.yml")
-    with as_misc.open('w') as f:
-        f.write(f"""
-AS_MISC: True
-ASMISC:
-    COMMAND: run
-AS_COMMAND: run
-        """)
-    # Completed
-    # mock platform.localplatform.check_exists
-    with mocker.patch('autosubmit.platforms.platform.max', return_value=10):
-        with mocker.patch('autosubmit.platforms.platform.Platform.get_completed_files', return_value=False):
-            Autosubmit.run_experiment(expid='t000')
-    # Access to the job_historical.db
-    job_data = Path(f"{db_tmpdir.strpath}/job_data_t000.db")
-    autosubmit_db = Path(f"{db_tmpdir.strpath}/tests.db")
-    assert job_data.exists()
-    assert autosubmit_db.exists()
-    return prepare_db
-
-
-def test_db_success(run_experiment_success, db_tmpdir):
-    job_data = Path(f"{db_tmpdir.strpath}/job_data_t000.db")
+    # Check job_data info
     conn = sqlite3.connect(job_data)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
@@ -238,60 +233,23 @@ def test_db_success(run_experiment_success, db_tmpdir):
     print(f"\n{header}")
     print("-" * len(header))
     # Print the rows
-    for row_dict in rows_as_dicts:
+    for row_dict in rows_as_dicts:  # always print, for debug proposes
         print(" | ".join(f"{str(row_dict[col]):<{width}}" for col, width in zip(column_names, column_widths)))
+    for row_dict in rows_as_dicts:
         # Check that all fields contain data, except extra_data, children, and platform_output
         # Check that submit, start and finish are > 0
         assert row_dict["submit"] > 0 and row_dict["finish"] != 1970010101
         assert row_dict["start"] > 0 and row_dict["finish"] != 1970010101
         assert row_dict["finish"] > 0 and row_dict["finish"] != 1970010101
-        assert row_dict["status"] == "COMPLETED"
+        assert row_dict["status"] == final_status
         for key in [key for key in row_dict.keys() if
                     key not in ["status", "finish", "submit", "start", "extra_data", "children", "platform_output"]]:
-            assert str(row_dict[key]) != ""
+            assert str(row_dict[key]) != str("")
     # Check that the job_data table has the expected number of entries
     c.execute("SELECT job_name, COUNT(*) as count FROM job_data GROUP BY job_name")
     count_rows = c.fetchall()
     for row in count_rows:
-        assert row["count"] == 1
-    # Close the cursor and connection
-    c.close()
-    conn.close()
-
-
-def test_db_failure(run_experiment_failure, db_tmpdir):
-    job_data = Path(f"{db_tmpdir.strpath}/job_data_t000.db")
-    conn = sqlite3.connect(job_data)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    c.execute("SELECT * FROM job_data")
-    rows = c.fetchall()
-    # Convert rows to a list of dictionaries
-    rows_as_dicts = [dict(row) for row in rows]
-    # Tune the print so it is more readable, so it is easier to debug in case of failure
-    column_names = rows_as_dicts[0].keys() if rows_as_dicts else []
-    column_widths = [max(len(str(row[col])) for row in rows_as_dicts + [dict(zip(column_names, column_names))]) for col
-                     in column_names]
-    header = " | ".join(f"{name:<{width}}" for name, width in zip(column_names, column_widths))
-    print(f"\n{header}")
-    print("-" * len(header))
-    # Print the rows
-    for row_dict in rows_as_dicts:
-        print(" | ".join(f"{str(row_dict[col]):<{width}}" for col, width in zip(column_names, column_widths)))
-        # Check that all fields contain data, except extra_data, children, and platform_output
-        # Check that submit, start and finish are > 0
-        assert row_dict["submit"] > 0 and row_dict["finish"] != 1970010101
-        assert row_dict["start"] > 0 and row_dict["finish"] != 1970010101
-        assert row_dict["finish"] > 0 and row_dict["finish"] != 1970010101
-        assert row_dict["status"] == "FAILED"
-        for key in [key for key in row_dict.keys() if
-                    key not in ["status", "finish", "submit", "start", "extra_data", "children", "platform_output"]]:
-            assert str(row_dict[key]) != ""
-    # Check that the job_data table has the expected number of entries
-    c.execute("SELECT job_name, COUNT(*) as count FROM job_data GROUP BY job_name")
-    count_rows = c.fetchall()
-    for row in count_rows:
-        assert row["count"] == 3 # three retrials
+        assert row["count"] == expected_count
     # Close the cursor and connection
     c.close()
     conn.close()

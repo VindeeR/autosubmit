@@ -921,7 +921,9 @@ class Platform(object):
         self.restore_connection(None)
         Log.get_logger("Autosubmit")  # Log needs to be initialised in the new process
         Log.result(f"{identifier} Sucessfully connected.")
-        while self.wait_for_work(sleep_time=max(int(self.config.get("LOG_RECOVERY_TIMEOUT", 60)), 60)):
+        log_recovery_timeout = self.config.get("LOG_RECOVERY_TIMEOUT", 60)
+        self.keep_alive_timeout = max(log_recovery_timeout*5, 60*5)
+        while self.wait_for_work(sleep_time=max(log_recovery_timeout, 60)):
             jobs_pending_to_process = self.recover_job_log(identifier, jobs_pending_to_process)
             if self.cleanup_event.is_set(): # Check if main process is waiting for this child to end.
                 self.recover_job_log(identifier, jobs_pending_to_process)

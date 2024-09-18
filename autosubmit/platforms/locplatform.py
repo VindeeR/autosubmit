@@ -115,14 +115,15 @@ class LocalPlatform(ParamikoPlatform):
             export = ""
         else:
             export += " ; "
-        return self.get_call(job_script, job, export=export,timeout=seconds)
-
+        command = self.get_call(job_script, job, export=export,timeout=seconds)
+        return f"cd {self.remote_log_dir} ; {command}"
     def get_checkjob_cmd(self, job_id):
         return self.get_pscall(job_id)
 
     def connect(self, as_conf={}, reconnect=False):
         self.connected = True
         self.spawn_log_retrieval_process(as_conf)
+
     def test_connection(self,as_conf):
         if not self.connected:
             self.connect(as_conf)

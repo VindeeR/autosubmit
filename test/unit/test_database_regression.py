@@ -150,6 +150,7 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World"
+            DEPENDENCIES: job-1
             PLATFORM: local
             RUNNING: chunk
             wallclock: 00:01
@@ -166,11 +167,12 @@ project:
             SCRIPT: |
                 echo "Hello World"
                 exit 1
+            DEPENDENCIES: job-1
             PLATFORM: local
             RUNNING: chunk
             wallclock: 00:01
             retrials: 2
-    """, 3, "FAILURE"),
+    """, 3, "FAILED"),
     # Failure wrappers
     ("""
     JOBS:
@@ -186,7 +188,7 @@ project:
         wrapper:
             JOBS_IN_WRAPPER: job
             TYPE: vertical
-    """, 3, "FAILURE"),
+    """, 3, "FAILED"),
 ], ids=["Success", "Success with wrapper", "Failure", "Failure with wrapper"])
 def test_db(db_tmpdir, prepare_db, jobs_data, expected_count, final_status, mocker):
     # write jobs_data

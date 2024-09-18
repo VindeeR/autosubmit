@@ -20,6 +20,7 @@ from threading import Thread
 import threading
 import getpass
 from paramiko.agent import Agent
+import time
 
 def threaded(fn):
     def wrapper(*args, **kwargs):
@@ -651,8 +652,14 @@ class ParamikoPlatform(Platform):
             Log.error(
                 'check_job() The job id ({0}) status is {1}.', job_id, job_status)
 
-        if job_status in [Status.FAILED, Status.COMPLETED]:
+        if job_status in [Status.FAILED, Status.COMPLETED, Status.UNKNOWN]:
             job.updated_log = False
+            # backup for end time in case that the stat file is not found
+            job.end_time_placeholder = int(time.time())
+        if job_status in [Status.RUNNING, Status.COMPLETED] and job.new_status in [Status.QUEUING, Status.SUBMITTED]:
+            # backup for start time in case that the stat file is not found
+            job.start_time_placeholder = int(time.time())
+
         if submit_hold_check:
             return job_status
         else:

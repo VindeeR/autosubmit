@@ -681,7 +681,7 @@ class Platform(object):
             if self.get_file(filename, True):
                 Log.debug('{0}_STAT file have been transferred', job.name)
                 return True
-        Log.debug('{0}_STAT file not found', job.name)
+        Log.warning('{0}_STAT file not found', job.name)
         return False
 
     @autosubmit_parameter(name='current_logdir')
@@ -863,7 +863,7 @@ class Platform(object):
                 break
         if not process_log: # If no work, wait until the keep_alive_timeout is reached or any signal is set to end the process.
             timeout = self.keep_alive_timeout - sleep_time
-            while timeout > 0 and self.recovery_queue.empty() and not self.cleanup_event.is_set() and not self.work_event.is_set():
+            while timeout > 0 or not self.recovery_queue.empty() or self.cleanup_event.is_set() or self.work_event.is_set():
                 time.sleep(1)
                 timeout -= 1
             if not self.recovery_queue.empty() or self.cleanup_event.is_set() or self.work_event.is_set():

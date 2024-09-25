@@ -25,10 +25,13 @@ class UniqueQueue(
         super().__init__(maxsize, ctx=multiprocessing.get_context())
 
     def put(self, job, block=True, timeout=None):
-        name_with_retrial = job.name+str(job.fail_count)
-        if name_with_retrial not in self.all_items:
-            self.all_items.add(name_with_retrial)
-            Queue.put(self, job, block, timeout)
+        if job.wrapper_type == "vertical":
+            unique_name = job.name
+        else:
+            unique_name = job.name+str(job.fail_count)
+        if unique_name not in self.all_items:
+            self.all_items.add(unique_name)
+            super().put(job, block, timeout)
 
 
 class Platform(object):
@@ -110,7 +113,7 @@ class Platform(object):
         self.cleanup_event = Event()
         self.log_recovery_process = None
         self.keep_alive_timeout = 60 * 5 # Useful in case of kill -9
-
+        self.processed_wrapper_logs = set()
     @classmethod
     def update_workers(cls, event_worker):
         cls.worker_events.append(event_worker)
@@ -664,7 +667,7 @@ class Platform(object):
         if self.check_file_exists(filename):
             self.delete_file(filename)
 
-    def check_file_exists(self, src, wrapper_failed=False, sleeptime=5, max_retries=3, first=True):
+    def check_file_exists(self, src, wrapper_failed=False, sleeptime=5, max_retries=3):
         return True
 
     def get_stat_file(self, job, count=-1):
@@ -873,39 +876,39 @@ class Platform(object):
 
     def recover_job_log(self, identifier, jobs_pending_to_process):
         job = None
-        # try:
-        while not self.recovery_queue.empty():
-            try:
-                job = self.recovery_queue.get(
-                    timeout=1)  # Should be non-empty, but added a timeout for other possible errors.
-                job.children = set()  # Children can't be serialized, so we set it to an empty set for this process.
-                job.platform = self  # change the original platform to this process platform.
-                job._log_recovery_retries = 0  # reset the log recovery retries.
-                Log.debug(f"{identifier} Recovering log files for job {job.name}")
+        try:
+            while not self.recovery_queue.empty():
+                try:
+                    job = self.recovery_queue.get(
+                        timeout=1)  # Should be non-empty, but added a timeout for other possible errors.
+                    job.children = set()  # Children can't be serialized, so we set it to an empty set for this process.
+                    job.platform = self  # change the original platform to this process platform.
+                    job._log_recovery_retries = 0  # reset the log recovery retries.
+                    Log.debug(f"{identifier} Recovering log files for job {job.name} and retrial:{job.fail_count}")
+                    job.retrieve_logfiles(self, raise_error=True)
+                    if job.status == Status.FAILED:
+                        Log.result(f"{identifier} Sucessfully recovered log files for job {job.name} and retrial:{job.fail_count}")
+                except queue.Empty:
+                    pass
+            # This second while is to keep retring the failed jobs.
+            while len(jobs_pending_to_process) > 0:  # jobs that had any issue during the log retrieval
+                job = jobs_pending_to_process.pop()
+                job._log_recovery_retries += 1
+                Log.debug(
+                    f"{identifier} (Retrial number: {job._log_recovery_retries}) Recovering log files for job {job.name}")
                 job.retrieve_logfiles(self, raise_error=True)
-                if job.status == Status.FAILED:
-                    Log.result(f"{identifier} Sucessfully recovered log files for job {job.name} and retrial:{job.fail_count}")
-            except queue.Empty:
+                Log.result(f"{identifier} (Retrial) Successfully recovered log files for job {job.name}")
+        except Exception as e:
+            Log.info(f"{identifier} Error while recovering logs: {str(e)}")
+            try:
+                if job and job._log_recovery_retries < 5:  # If log retrieval failed, add it to the pending jobs to process. Avoids to keep trying the same job forever.
+                    jobs_pending_to_process.add(job)
+                self.connected = False
+                Log.info(f"{identifier} Attempting to restore connection")
+                self.restore_connection(None)  # Always restore the connection on a failure.
+                Log.result(f"{identifier} Sucessfully reconnected.")
+            except:
                 pass
-        # This second while is to keep retring the failed jobs.
-        while len(jobs_pending_to_process) > 0:  # jobs that had any issue during the log retrieval
-            job = jobs_pending_to_process.pop()
-            job._log_recovery_retries += 1
-            Log.debug(
-                f"{identifier} (Retrial number: {job._log_recovery_retries}) Recovering log files for job {job.name}")
-            job.retrieve_logfiles(self, raise_error=True)
-            Log.result(f"{identifier} (Retrial) Successfully recovered log files for job {job.name}")
-        # except Exception as e:
-        #     Log.info(f"{identifier} Error while recovering logs: {str(e)}")
-        #     try:
-        #         if job and job._log_recovery_retries < 5:  # If log retrieval failed, add it to the pending jobs to process. Avoids to keep trying the same job forever.
-        #             jobs_pending_to_process.add(job)
-        #         self.connected = False
-        #         Log.info(f"{identifier} Attempting to restore connection")
-        #         self.restore_connection(None)  # Always restore the connection on a failure.
-        #         Log.result(f"{identifier} Sucessfully reconnected.")
-        #     except:
-        #         pass
         return jobs_pending_to_process
 
     def recover_platform_job_logs(self):
@@ -925,7 +928,7 @@ class Platform(object):
         self.keep_alive_timeout = max(log_recovery_timeout*5, 60*5)
         while self.wait_for_work(sleep_time=max(log_recovery_timeout, 60)):
             jobs_pending_to_process = self.recover_job_log(identifier, jobs_pending_to_process)
-            if self.cleanup_event.is_set(): # Check if main process is waiting for this child to end.
+            if self.cleanup_event.is_set():  # Check if main process is waiting for this child to end.
                 self.recover_job_log(identifier, jobs_pending_to_process)
                 break
         Log.info(f"{identifier} Exiting.")

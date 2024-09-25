@@ -249,6 +249,7 @@ class JobPackageSimple(JobPackageBase):
         if len(job_scripts) == 0:
             job_scripts = self._job_scripts
         for job in self.jobs:
+            job.update_local_logs()
             #CLEANS PREVIOUS RUN ON LOCAL
             log_completed = os.path.join(self._tmp_path, job.name + '_COMPLETED')
             log_stat = os.path.join(self._tmp_path, job.name + '_STAT')
@@ -262,7 +263,9 @@ class JobPackageSimple(JobPackageBase):
             if job.id is None or not job.id:
                 continue
             Log.info("{0} submitted", job.name)
-            job.status = Status.SUBMITTED            
+            job.status = Status.SUBMITTED
+            job.wrapper_name = job.name
+
 
 
 class JobPackageSimpleWrapped(JobPackageSimple):
@@ -342,6 +345,7 @@ class JobPackageArray(JobPackageBase):
 
     def _do_submission(self, job_scripts=None, hold=False):
         for job in self.jobs:
+            job.update_local_logs()
             self.platform.remove_stat_file(job)
             self.platform.remove_completed_file(job.name)
 
@@ -353,9 +357,8 @@ class JobPackageArray(JobPackageBase):
         for i in range(0, len(self.jobs)): # platforms without a submit.cmd
             Log.info("{0} submitted", self.jobs[i].name)
             self.jobs[i].id = str(package_id) + '[{0}]'.format(i)
-            self.jobs[i].status = Status.SUBMITTED            
-            self.jobs[i].write_submit_time(hold=hold,wrapper_submit_time=wrapper_time)
-            wrapper_time = self.jobs[i].write_submit_time
+            self.jobs[i].status = Status.SUBMITTED
+            self.jobs[i].wrapper_name = self.name
 
 
 class JobPackageThread(JobPackageBase):
@@ -572,12 +575,14 @@ class JobPackageThread(JobPackageBase):
         if callable(getattr(self.platform, 'remove_multiple_files')):
             filenames = str()
             for job in self.jobs:
+                job.update_local_logs()
                 filenames += " " + self.platform.remote_log_dir + "/" + job.name + "_STAT " + \
                              self.platform.remote_log_dir + "/" + job.name + "_COMPLETED"
             self.platform.remove_multiple_files(filenames)
 
         else:
             for job in self.jobs:
+                job.update_local_logs()
                 self.platform.remove_stat_file(job)
                 self.platform.remove_completed_file(job.name)
                 if hold:
@@ -592,8 +597,8 @@ class JobPackageThread(JobPackageBase):
             Log.info("{0} submitted", self.jobs[i].name)
             self.jobs[i].id = str(package_id)
             self.jobs[i].status = Status.SUBMITTED
-            self.jobs[i].write_submit_time(hold=hold,wrapper_submit_time=self.jobs[0].submit_time_timestamp)
-            wrapper_time = self.jobs[i].write_submit_time
+            self.jobs[i].wrapper_name = self.name
+
 
     def _common_script_content(self):
         pass
@@ -657,6 +662,7 @@ class JobPackageThreadWrapped(JobPackageThread):
 
     def _do_submission(self, job_scripts=None, hold=False):
         for job in self.jobs:
+            job.update_local_logs()
             self.platform.remove_stat_file(job)
             self.platform.remove_completed_file(job.name)
             if hold:
@@ -667,13 +673,13 @@ class JobPackageThreadWrapped(JobPackageThread):
 
         if package_id is None or not package_id:
             raise Exception('Submission failed')
-        wrapper_time = None
         for i in range(0, len(self.jobs)):
             Log.info("{0} submitted", self.jobs[i].name)
             self.jobs[i].id = str(package_id)
             self.jobs[i].status = Status.SUBMITTED
-            self.jobs[i].write_submit_time(hold=hold,wrapper_submit_time=wrapper_time)
-            wrapper_time = self.jobs[i].write_submit_time
+            self.jobs[i].wrapper_name = self.name
+
+
 
 class JobPackageVertical(JobPackageThread):
     """

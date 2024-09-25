@@ -1,5 +1,6 @@
 import locale
 from contextlib import suppress
+from pathlib import Path
 from time import sleep
 import sys
 import socket
@@ -620,7 +621,19 @@ class ParamikoPlatform(Platform):
                 self.get_ssh_output()).strip("\n")
             # URi: define status list in HPC Queue Class
             if job_status in self.job_status['COMPLETED'] or retries == 0:
-                job_status = Status.COMPLETED
+                # The Local platform has only 0 or 1, so it neccesary to look for the completed file.
+                # Not sure why it is called over_wallclock but is the only way to return a value
+                if self.type == "local":  # wrapper has a different check completion
+                    if not job.is_wrapper:
+                        job_status = job.check_completion(over_wallclock=True)
+                    else:
+                        if Path(f"{self.remote_log_dir}/WRAPPER_FAILED").exists():
+                            job_status = Status.FAILED
+                        else:
+                            job_status = Status.COMPLETED
+                else:
+                    job_status = Status.COMPLETED
+
             elif job_status in self.job_status['RUNNING']:
                 job_status = Status.RUNNING
                 if not is_wrapper:
@@ -658,7 +671,7 @@ class ParamikoPlatform(Platform):
             job.end_time_placeholder = int(time.time())
         if job_status in [Status.RUNNING, Status.COMPLETED] and job.new_status in [Status.QUEUING, Status.SUBMITTED]:
             # backup for start time in case that the stat file is not found
-            job.start_time_placeholder = int(time.time())
+            job.start_time_timestamp = int(time.time())
 
         if submit_hold_check:
             return job_status

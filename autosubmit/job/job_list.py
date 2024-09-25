@@ -2599,8 +2599,8 @@ class JobList(object):
 
         if not hasattr(job, "updated_log") or not job.updated_log:
             for log_recovered in self.path_to_logs.glob(f"{job.name}.*.out"):
-                date = int(datetime.datetime.fromtimestamp(log_recovered.stat().st_mtime).strftime("%Y%m%d%H%M%S"))
-                if job.ready_date and int(datetime.datetime.fromtimestamp(log_recovered.stat().st_mtime).strftime("%Y%m%d%H%M%S")) > int(job.ready_date):
+                file_timestamp = int(datetime.datetime.fromtimestamp(log_recovered.stat().st_mtime).strftime("%Y%m%d%H%M%S"))
+                if job.ready_date and file_timestamp >= int(job.ready_date):
                     return log_recovered
         return None
 

@@ -97,7 +97,7 @@ class ExperimentHistory:
                          member="", section="", chunk=0, platform="NA", job_id=0, wrapper_queue=None, wrapper_code=None,
                          children=""):
         try:
-            job_data_dc_last = self.manager.get_job_data_by_job_id(job_id)
+            job_data_dc_last = self.manager.get_job_data_by_job_id_name(job_id, job_name)
             if not job_data_dc_last:
                 raise Exception("Job {0} has not been found in the database.".format(job_name))
             job_data_dc_last.start = start
@@ -106,7 +106,7 @@ class ExperimentHistory:
             job_data_dc_last.rowtype = self._get_defined_rowtype(wrapper_code)
             job_data_dc_last.job_id = job_id
             job_data_dc_last.children = children
-            return self.manager.update_job_data_dc_by_job_id(job_data_dc_last)
+            return self.manager.update_job_data_dc_by_job_id_name(job_data_dc_last)
         except Exception as exp:
             self._log.log(str(exp), traceback.format_exc())
             Log.debug(f'Historical Database error: {str(exp)} {traceback.format_exc()}')
@@ -115,7 +115,7 @@ class ExperimentHistory:
                           member="", section="", chunk=0, platform="NA", job_id=0, out_file=None, err_file=None,
                           wrapper_queue=None, wrapper_code=None, children=""):
         try:
-            job_data_dc_last = self.manager.get_job_data_by_job_id(job_id)
+            job_data_dc_last = self.manager.get_job_data_by_job_id_name(job_id, job_name)
             if not job_data_dc_last:
                 raise Exception("Job {0} has not been found in the database.".format(job_name))
             job_data_dc_last.finish = finish if finish > 0 else int(time())
@@ -124,7 +124,7 @@ class ExperimentHistory:
             job_data_dc_last.rowstatus = Models.RowStatus.PENDING_PROCESS
             job_data_dc_last.out = out_file if out_file else ""
             job_data_dc_last.err = err_file if err_file else ""
-            return self.manager.update_job_data_dc_by_job_id(job_data_dc_last)
+            return self.manager.update_job_data_dc_by_job_id_name(job_data_dc_last)
 
         except Exception as exp:
             self._log.log(str(exp), traceback.format_exc())

@@ -139,7 +139,9 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World"
+                sleep 1
             PLATFORM: local
+            DEPENDENCIES: job-1
             RUNNING: chunk
             wallclock: 00:01
             retrials: 2
@@ -150,6 +152,7 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World"
+                sleep 1
             DEPENDENCIES: job-1
             PLATFORM: local
             RUNNING: chunk
@@ -166,6 +169,7 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World"
+                sleep 1
                 exit 1
             DEPENDENCIES: job-1
             PLATFORM: local
@@ -179,8 +183,10 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World"
+                sleep 1
                 exit 1
             PLATFORM: local
+            DEPENDENCIES: job-1
             RUNNING: chunk
             wallclock: 00:01
             retrials: 2
@@ -231,6 +237,7 @@ def test_db(db_tmpdir, prepare_db, jobs_data, expected_count, final_status, mock
     column_names = rows_as_dicts[0].keys() if rows_as_dicts else []
     column_widths = [max(len(str(row[col])) for row in rows_as_dicts + [dict(zip(column_names, column_names))]) for col
                      in column_names]
+    print(f"Experiment folder: {db_tmpdir.strpath}")
     header = " | ".join(f"{name:<{width}}" for name, width in zip(column_names, column_widths))
     print(f"\n{header}")
     print("-" * len(header))

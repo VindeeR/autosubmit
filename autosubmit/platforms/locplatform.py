@@ -198,26 +198,28 @@ class LocalPlatform(ParamikoPlatform):
         return True
 
     # Moves .err .out
-    def check_file_exists(self, src, wrapper_failed=False, sleeptime=None, max_retries=None, first=None):
+    def check_file_exists(self, src, wrapper_failed=False, sleeptime=1, max_retries=1):
         """
         Checks if a file exists in the platform
         :param src: source name
         :type src: str
-        :param wrapper_failed: if the wrapper failed
+        :param wrapper_failed: checks inner jobs files
         :type wrapper_failed: bool
         :param sleeptime: time to sleep
         :type sleeptime: int
         :param max_retries: maximum number of retries
         :type max_retries: int
-        :param first: if it is the first time
-        :type first: bool
         :return: True if the file exists, False otherwise
         :rtype: bool
         """
-        file_exist = os.path.isfile(os.path.join(self.get_files_path(), src))
-        if not file_exist:
-            Log.debug(f"File {self.get_files_path()}/{src} does not exist")
-        return file_exist
+        sleeptime = 1
+        for i in range(max_retries):
+            if os.path.isfile(os.path.join(self.get_files_path(), src)):
+                return True
+            sleep(sleeptime)
+        Log.warning("File {0} does not exist".format(src))
+        return False
+
 
     def delete_file(self, filename,del_cmd  = False):
         if del_cmd:

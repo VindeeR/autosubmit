@@ -495,6 +495,7 @@ class PythonVerticalWrapperBuilder(PythonWrapperBuilder):
                 
             if os.path.exists(failed_wrapper):
                 os.remove(os.path.join(os.getcwd(),wrapper_id))
+                print("WRAPPER_FAILED")
                 wrapper_failed = os.path.join(os.getcwd(),"WRAPPER_FAILED")
                 open(wrapper_failed, 'wb').close()
                 os._exit(1)
@@ -518,8 +519,8 @@ class PythonVerticalWrapperBuilder(PythonWrapperBuilder):
                 err = str(self.template) + ".err." + str(self.fail_count)
                 out_path = os.path.join(os.getcwd(), out)
                 err_path = os.path.join(os.getcwd(), err)
-                print(out_path)
-                command = f"timeout {0} {{str(self.template)}} > {{out_path}} 2> {{err_path}}"
+                template_path = os.path.join(os.getcwd(), self.template)
+                command = f"timeout {0} {{template_path}} > {{out_path}} 2> {{err_path}}"
                 print(command)
                 getstatusoutput(command)
                 

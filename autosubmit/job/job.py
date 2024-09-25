@@ -1133,6 +1133,7 @@ class Job(object):
         last_retrial = 0
         try:
             for i in range(0, int(self.retrials + 1)):
+                self.update_local_logs(count=i, update_submit_time=False)
                 backup_log = copy.copy(self.remote_logs)
                 self.remote_logs = self.get_new_remotelog_name(i)
                 if self.check_remote_log_exists(platform):
@@ -1167,6 +1168,7 @@ class Job(object):
                 except BaseException as e:
                     Log.printlog("Trace {0} \n Failed to write the {1} e=6001".format(str(e), self.name))
         else:
+            self.update_local_logs(update_submit_time=False)
             self.platform.get_stat_file(self)
             self.write_submit_time()
             self.write_start_time()
@@ -1187,9 +1189,8 @@ class Job(object):
         :param raise_error: boolean, if True, raises an error if the log files are not retrieved
         :return: dict with finish timestamps per job
         """
-        #self.update_local_logs()
         backup_logname = copy.copy(self.local_logs)
-        if self.wrapper_type == "vertical" and self.packed:
+        if self.wrapper_type == "vertical":
             last_retrial = self.retrieve_internal_retrials_logfiles(platform)
         else:
             self.retrieve_external_retrials_logfiles(platform)
@@ -2242,8 +2243,8 @@ class Job(object):
                         str(set(parameters) - set(variables))), 5013)
         return out
 
-    def update_local_logs(self, count=-1):
-        if not self.submit_time_timestamp:
+    def update_local_logs(self, count=-1, update_submit_time=True):
+        if update_submit_time:
             self.submit_time_timestamp = date2str(datetime.datetime.now(), 'S')
         if count > 0:
             self.local_logs = (f"{self.name}.{self.submit_time_timestamp}.out_retrial_{count}",
@@ -2279,7 +2280,7 @@ class Job(object):
         else:
             Log.warning(f"Start time for job {self.name} not found in the .cmd file, using last known time.")
             self.start_time_timestamp = self.start_time_timestamp if self.start_time_timestamp else time.time()
-        if self.wrapper_type == "vertical" and count > 0:
+        if count > 0 or self.wrapper_name in self.platform.processed_wrapper_logs:
             self.submit_time_timestamp = date2str(datetime.datetime.fromtimestamp(self.start_time_timestamp),'S')
 
     def write_start_time(self, count=-1, vertical_wrapper=False):
@@ -2304,8 +2305,8 @@ class Job(object):
         return True
 
     def write_vertical_time(self, count=-1):
-        self.update_start_time(count)
-        self.update_local_logs(count)
+        self.update_start_time(count=count)
+        self.update_local_logs(update_submit_time=False)
         self.write_submit_time()
         self.write_start_time(count=count, vertical_wrapper=True)
         self.write_end_time(self.status == Status.COMPLETED, count=count)
@@ -2740,9 +2741,9 @@ class WrapperJob(Job):
                 if content == '':
                     sleep(wait)
                 retries = retries - 1
-            temp_list = self.inner_jobs_running
-            self.inner_jobs_running = [
-                job for job in temp_list if job.status == Status.RUNNING]
+            # temp_list = self.inner_jobs_running
+            # self.inner_jobs_running = [
+            #     job for job in temp_list if job.status == Status.RUNNING]
             if retries == 0 or over_wallclock:
                 self.status = Status.FAILED
 
@@ -2791,10 +2792,12 @@ class WrapperJob(Job):
                     self._platform.cancel_cmd + " " + str(self.id))
         except:
             Log.debug(f'Job with {self.id} was finished before canceling it')
-
+        self._check_running_jobs()
+        for job in self.inner_jobs_running:
+            job.status = Status.FAILED
         for job in self.job_list:
+            job.packed = False
             if job.status not in [Status.COMPLETED, Status.FAILED]:
-                job.packed = False
                 job.status = Status.WAITING
             else:
                 if job.wrapper_type == "vertical":  # job is being retrieved internally by the wrapper

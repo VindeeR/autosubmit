@@ -356,7 +356,7 @@ class ExperimentHistoryDbManager(DatabaseManager):
     statement = self.get_built_select_statement("job_data", "job_id=? AND job_name=?")
     arguments = (int(job_id), str(job_name),)
     job_data_rows = self.get_from_statement_with_arguments(self.historicaldb_file_path, statement, arguments)
-    models = [Models.JobDataRow(*row) for row in job_data_rows][0]
+    models = [Models.JobDataRow(*row) for row in job_data_rows][-1]
     return JobData.from_model(models)
 
   def get_job_data_max_counter(self):

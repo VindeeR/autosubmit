@@ -353,7 +353,7 @@ class ExperimentHistoryDbManager(DatabaseManager):
 
   def get_job_data_by_job_id_name(self, job_id, job_name):
     """ Get List of Models.JobDataRow for job_id """
-    statement = self.get_built_select_statement("job_data", "job_id=? AND job_name=?")
+    statement = self.get_built_select_statement("job_data", "job_id=? AND job_name=? ORDER BY counter")
     arguments = (int(job_id), str(job_name),)
     job_data_rows = self.get_from_statement_with_arguments(self.historicaldb_file_path, statement, arguments)
     models = [Models.JobDataRow(*row) for row in job_data_rows][-1]

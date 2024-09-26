@@ -473,10 +473,11 @@ class PythonVerticalWrapperBuilder(PythonWrapperBuilder):
                 failed_wrapper = os.path.join(os.getcwd(), wrapper_id)
                 finish = int(time.time())
                 stat_filename = {0}[i].replace(".cmd", f"_STAT_{{fail_count}}")
-                stat_path = os.path.join(os.getcwd(),stat_filename)
+                stat_path_tmp = os.path.join(os.getcwd(),f"{{stat_filename}}.tmp")
                 print(f"Completed_file:{{completed_path}}")
-                print(f"Writting:{{stat_path}}")
-                with open(f"{{stat_path}}", "w") as file:
+                print(f"Writting:{{stat_path_tmp}}")
+                print(f"[Start:{{start}}, Finish:{{finish}}, Fail_count:{{fail_count}}]")
+                with open(f"{{stat_path_tmp}}", "w") as file:
                     file.write(f"{{start}}\\n")
                     file.write(f"{{finish}}\\n")
                 if os.path.exists(completed_path):
@@ -489,6 +490,16 @@ class PythonVerticalWrapperBuilder(PythonWrapperBuilder):
 
             """).format(jobs_list, self.exit_thread, '\n'.ljust(13)), 8)
             sequential_threads_launcher += self._indent(textwrap.dedent("""
+            from pathlib import Path
+            fail_count = 0 
+            while fail_count <= job_retrials:
+                try:
+                    stat_filename = {0}[i].replace(".cmd", f"_STAT_{{fail_count}}")
+                    stat_path_tmp = os.path.join(os.getcwd(),f"{{stat_filename}}.tmp")
+                    Path(stat_path_tmp).replace(stat_path_tmp.replace(".tmp",""))
+                except:
+                    print(f"Couldn't write the stat file:{{stat_path_tmp}}")
+                fail_count = fail_count + 1
             if not os.path.exists(completed_path):
                 open(failed_wrapper,'wb').close()
                 open(failed_path, 'wb').close()

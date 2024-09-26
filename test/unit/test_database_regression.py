@@ -188,7 +188,7 @@ project:
             PLATFORM: local
             DEPENDENCIES: job-1
             RUNNING: chunk
-            wallclock: 00:01
+            wallclock: 00:10
             retrials: 2
     wrappers:
         wrapper:

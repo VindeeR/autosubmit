@@ -6,45 +6,68 @@ import signal
 import subprocess
 from itertools import zip_longest
 from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmit.database.repositories.locks import create_locks_repository
 from autosubmit.notifications.mail_notifier import MailNotifier
 from autosubmit.notifications.notifier import Notifier
-from pathlib import Path
 from log.log import AutosubmitCritical, Log
 import socket
 import psutil
 
 
 class ASLock:
-    def __init__(self, expid):
-        self.expid = expid
-        self.basic_config = BasicConfig()
-        self.basic_config.read()
+    def __init__(self, lock_id: str):
+        """
+        Autosubmit Lock implementation
+
+        :param lock_id: The lock identifier
+
+        ### Usage:
+        ```python
+        with ASLock("lock_id"):
+            # Do something
+        ```
+        """
+        self.locks_repository = create_locks_repository()
+
+        # Lock data
+        self.lock_id = lock_id
         self.current_hostname = socket.gethostname()
         self.current_pid = os.getpid()
-        self.file_path = Path(self.basic_config.LOCAL_ROOT_DIR) / expid / "tmp" / "autosubmit.lock"
 
     def __enter__(self):
-        if not self.file_path.exists():
-            self.file_path.touch()
-        if os.stat(self.file_path).st_size == 0:
-            with open(self.file_path, "w") as f:
-                f.write(f"{self.current_hostname},{self.current_pid}")
-        else:
-            with open(self.file_path, "r") as f:
-                hostname, pid = f.read().split(",")
-            if hostname == self.current_hostname:
-                if psutil.pid_exists(int(pid)):
-                    raise AutosubmitCritical(f"Lock file {self.file_path} already exists and is being used by process with PID {pid} on host {hostname}", 7000)
+        """
+        Acquire the lock
+        """
+        # Check if there is a lock exisitng with the same lock_id
+        curr_lock = self.locks_repository.get_lock(self.lock_id)
+        if curr_lock:
+            if curr_lock.hostname == self.current_hostname:
+                if psutil.pid_exists(curr_lock.pid):
+                    raise AutosubmitCritical(
+                        f"Lock {self.lock_id} already exists and is being used by "
+                        "process with PID {curr_lock.pid} on host {curr_lock.hostname}",
+                        7000,
+                    )
             else:
-                raise AutosubmitCritical(f"Lock file {self.file_path} already exists and is being used by process with PID {pid} on host {hostname}.\n Please, use the previous hostname and try again or delete this file:{self.file_path} if the experiment is not running and was terminated with a kill -9", 7000)
-            with open(self.file_path, "w") as f:
-                f.write(f"{self.current_hostname},{self.current_pid}")
-            Log.info(f"Lock file {self.file_path} created")
-        return True
+                raise AutosubmitCritical(
+                    f"Lock {self.lock_id} already exists and is being used by process with PID {curr_lock.pid} "
+                    f"on host {curr_lock.hostname}.\nPlease, use the previous hostname and try again",
+                    7000,
+                )
+                # TODO: Include a way to force the lock release e.g. autosubmit force-release-lock <lock_id>
+
+        # Create the lock
+        self.locks_repository.insert_lock(
+            self.lock_id, self.current_hostname, self.current_pid
+        )
+        Log.info(f"Lock {self.lock_id} created")
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.file_path.exists():
-            self.file_path.unlink()
+        """
+        Release the lock
+        """
+        self.locks_repository.delete_lock(self.lock_id)
 
 
 def check_jobs_file_exists(as_conf, current_section_name=None):

@@ -23,6 +23,7 @@ import datetime
 import json
 import mimetypes
 import os
+import time
 import subprocess
 from pathlib import Path
 from textwrap import dedent
@@ -545,7 +546,7 @@ def create_rocrate_archive(
                 encoding_format=None,
                 exampleOfWork={'@id': formal_parameter['@id']})
             create_action.append_to('result', {'@id': file_entity['@id']})
-
+    
     # Merge with user provided values.
     # NOTE: It is important that this call happens after the JSON-LD has
     #       been constructed by ro-crate-py, as methods like ``add`` will
@@ -555,7 +556,7 @@ def create_rocrate_archive(
         patch = json.loads(rocrate_json['PATCH'])
         for jsonld_node in patch['@graph']:
             crate.add_or_update_jsonld(jsonld_node)
-
+    
     # Write RO-Crate ZIP.
     date = datetime.datetime.today().strftime('%Y%m%d-%H%M%S')
     crate.write_zip(Path(path, f"{expid}-{date}.zip"))

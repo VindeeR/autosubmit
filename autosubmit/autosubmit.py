@@ -655,7 +655,7 @@ class Autosubmit:
             subparser.add_argument('-v', '--update_version', action='store_true',
                                    default=False, help='Update experiment version')
             subparser.add_argument('--rocrate', action='store_true', default=False,
-                                   help='Unarchive an RO-Crate file')
+                                  help='Unarchive an RO-Crate file')
             # update proj files
             subparser = subparsers.add_parser('upgrade', description='Updates autosubmit 3 proj files to autosubmit 4')
             subparser.add_argument('expid', help='experiment identifier')
@@ -778,8 +778,8 @@ class Autosubmit:
         elif args.command == 'archive':
             return Autosubmit.archive(args.expid, noclean=args.noclean, uncompress=args.uncompress, rocrate=args.rocrate)
         elif args.command == 'unarchive':
-            return Autosubmit.unarchive(args.expid, uncompressed=args.uncompressed, rocrate=args.rocrate)
-        
+            return Autosubmit.unarchive(args.expid, uncompressed=args.uncompressed) #, rocrate=args.rocrate)
+
         elif args.command == 'readme':
             if os.path.isfile(Autosubmit.readme_path):
                 with open(Autosubmit.readme_path) as f:
@@ -4225,18 +4225,13 @@ class Autosubmit:
         return create_rocrate_archive(as_conf, rocrate_json, jobs, start_time, end_time, path)
     
     @staticmethod
-    def provenance(expid: str, rocrate: bool = False) -> None:
-        """
+    def provenance(expid, rocrate=False): 
+        """"
         :param expid: experiment identifier
         :type expid: str
         :param rocrate: flag to enable RO-Crate
         :type rocrate: bool
-        """
-        
-        if not rocrate:
-            msg = "Can not create RO-Crate ZIP file. Argument '--rocrate' required"
-            raise AutosubmitCritical(msg, 7012)
-
+        """""
         aslogs_folder = Path(
             BasicConfig.LOCAL_ROOT_DIR,
             expid,
@@ -4244,11 +4239,43 @@ class Autosubmit:
             BasicConfig.LOCAL_ASLOG_DIR
         )
 
-        try:
+        if rocrate:
+          try:
             Autosubmit.rocrate(expid, Path(aslogs_folder))
             Log.info('RO-Crate ZIP file created!')
-        except Exception as e:
-            raise AutosubmitCritical(f"Error creating RO-Crate ZIP file: {str(e)}", 7012)
+          except Exception as e:
+            raise AutosubmitCritical(
+                f"Error creating RO-Crate ZIP file: {str(e)}", 7012)
+        else:
+           raise AutosubmitCritical(
+                    "Can not create RO-Crate ZIP file. Argument '--rocrate' required", 7012) 
+    
+    @staticmethod
+    def provenance(expid, rocrate = False): 
+        """""
+        :param expid: experiment identifier
+        :type expid: str
+        :param rocrate: flag to enable RO-Crate
+        :type rocrate: bool
+        """""
+        exp_folder = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
+
+        tmp_folder = os.path.join(exp_folder, BasicConfig.LOCAL_TMP_DIR) #Join experiment folder dir with tmp dir
+        
+        aslogs_folder = os.path.join(tmp_folder, BasicConfig.LOCAL_ASLOG_DIR) #Join tmp directory with aslogs 
+        
+        if rocrate:
+          try:
+            Autosubmit.rocrate(expid, Path(aslogs_folder))
+            Log.info('RO-Crate ZIP file created!')
+          except Exception as e:
+            raise AutosubmitCritical(
+                f"Error creating RO-Crate ZIP file: {str(e)}", 7012)
+
+
+        else :
+           raise AutosubmitCritical(
+                    "Can not create RO-Crate ZIP file", 7012) 
     
     @staticmethod
     def archive(expid, noclean=True, uncompress=True, rocrate=False):
@@ -4344,6 +4371,7 @@ class Autosubmit:
         Log.result("Experiment archived successfully")
         return True
 
+
     @staticmethod
     def unarchive(experiment_id, uncompressed=True, rocrate=False):
         """
@@ -4412,6 +4440,7 @@ class Autosubmit:
 
         Log.result("Experiment {0} unarchived successfully", experiment_id)
         return True
+
 
     @staticmethod
     def _create_project_associated_conf(as_conf, force_model_conf, force_jobs_conf):

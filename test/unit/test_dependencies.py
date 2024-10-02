@@ -475,7 +475,7 @@ class TestJobList(unittest.TestCase):
         job_list._job_list = [job, job_two, parent]
 
         dependency = MagicMock()
-        dependency.relationships = {'CHUNKS_FROM': {'1': {'FROM_STEP': '1'}, '2': {'FROM_STEP': '2'}, '3': {'FROM_STEP': '3'}, '4': {'FROM_STEP': '4'}}, 'STATUS': 'RUNNING'}
+        dependency.relationships = {'CHUNKS_FROM': {'1': {'FROM_STEP': '1'}, '2': {'FROM_STEP': '2'}, }, 'STATUS': 'RUNNING'}
         filters_to_apply = job_list.get_filters_to_apply(job, dependency)
         filters_to_apply_two = job_list.get_filters_to_apply(job_two, dependency)
 

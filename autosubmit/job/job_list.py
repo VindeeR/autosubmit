@@ -1343,7 +1343,14 @@ class JobList(object):
                 continue
             filters_to_apply = self._filter_current_job(job, copy.deepcopy(dependency.relationships))
             filters_to_apply.pop("STATUS", None)
+            # Don't do perform special filter if only "FROM_STEP" is applied
+            if "FROM_STEP" in filters_to_apply:
+                if filters_to_apply["CHUNKS_TO"] == "none" and filters_to_apply["MEMBERS_TO"] == "none" and \
+                        filters_to_apply["DATES_TO"] == "none":
+                    filters_to_apply = {}
+
             filters_to_apply.pop("FROM_STEP", None)
+
             if len(filters_to_apply) > 0:
                 dependencies_of_that_section = dic_jobs.as_conf.jobs_data[dependency.section].get("DEPENDENCIES", {})
                 ## Adds the dependencies to the job, and if not possible, adds the job to the problematic_dependencies

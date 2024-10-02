@@ -1207,6 +1207,16 @@ class JobList(object):
 
         return special_dependencies, problematic_dependencies
 
+    def get_filters_to_apply(self, job, dependency):
+        filters_to_apply = self._filter_current_job(job, copy.deepcopy(dependency.relationships))
+        filters_to_apply.pop("STATUS", None)
+        # Don't do perform special filter if only "FROM_STEP" is applied
+        if "FROM_STEP" in filters_to_apply:
+            if filters_to_apply.get("CHUNKS_TO","none") == "none" and filters_to_apply.get("MEMBERS_TO","none") == "none" and filters_to_apply.get("DATES_TO","none") == "none" and filters_to_apply.get("SPLITS_TO","none") == "none":
+                filters_to_apply = {}
+        filters_to_apply.pop("FROM_STEP", None)
+        return filters_to_apply
+
     def _manage_job_dependencies(self, dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys,
                                  dependencies,
                                  graph):
@@ -1341,15 +1351,7 @@ class JobList(object):
                                                                                  dependency)
             if skip:
                 continue
-            filters_to_apply = self._filter_current_job(job, copy.deepcopy(dependency.relationships))
-            filters_to_apply.pop("STATUS", None)
-            # Don't do perform special filter if only "FROM_STEP" is applied
-            if "FROM_STEP" in filters_to_apply:
-                if filters_to_apply["CHUNKS_TO"] == "none" and filters_to_apply["MEMBERS_TO"] == "none" and \
-                        filters_to_apply["DATES_TO"] == "none":
-                    filters_to_apply = {}
-
-            filters_to_apply.pop("FROM_STEP", None)
+            filters_to_apply = self.get_filters_to_apply(job, dependency)
 
             if len(filters_to_apply) > 0:
                 dependencies_of_that_section = dic_jobs.as_conf.jobs_data[dependency.section].get("DEPENDENCIES", {})

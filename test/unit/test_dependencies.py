@@ -485,6 +485,17 @@ class TestJobList(unittest.TestCase):
         job_list.add_special_conditions(job, special_conditions, filters_to_apply, parent)
         job_list.add_special_conditions(job_two, special_conditions_two, filters_to_apply_two, parent)
 
+        dependency = MagicMock()
+        dependency.relationships = {'CHUNKS_FROM': {'1': {'FROM_STEP': '1', 'CHUNKS_TO':'natural'}, '2': {'FROM_STEP': '2', 'CHUNKS_TO':'natural'}, }, 'STATUS': 'RUNNING'}
+        filters_to_apply = job_list.get_filters_to_apply(job, dependency)
+        filters_to_apply_two = job_list.get_filters_to_apply(job_two, dependency)
+
+        assert filters_to_apply == {}
+        assert filters_to_apply_two == {}
+
+        job_list.add_special_conditions(job, special_conditions, filters_to_apply, parent)
+        job_list.add_special_conditions(job_two, special_conditions_two, filters_to_apply_two, parent)
+
         self.assertEqual(job.max_checkpoint_step, 1)
         self.assertEqual(job_two.max_checkpoint_step, 2)
 

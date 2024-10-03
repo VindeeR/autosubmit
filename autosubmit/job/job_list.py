@@ -1190,7 +1190,9 @@ class JobList(object):
                     edge_added = True
             if parent.section == job.section:
                 self.actual_job_depends_on_special_chunk = True
-            if edge_added:
+
+            # Only fill this if, per example, jobs.A.Dependencies.A or jobs.A.Dependencies.A-N is set.
+            if edge_added and job.section in dependencies_keys_without_special_chars:
                 if job.name not in self.depends_on_previous_special_section:
                     self.depends_on_previous_special_section[job.name] = set()
                 if job.section not in self.depends_on_previous_special_section:
@@ -1215,6 +1217,15 @@ class JobList(object):
             if filters_to_apply.get("CHUNKS_TO","none") == "none" and filters_to_apply.get("MEMBERS_TO","none") == "none" and filters_to_apply.get("DATES_TO","none") == "none" and filters_to_apply.get("SPLITS_TO","none") == "none":
                 filters_to_apply = {}
         filters_to_apply.pop("FROM_STEP", None)
+
+        # If the selected filter is "natural" for all filters_to, trigger the natural dependency calculation
+        all_natural = True
+        for f_value in filters_to_apply.values():
+            if f_value.lower() != "natural":
+                all_natural = False
+                break
+        if all_natural:
+            filters_to_apply = {}
         return filters_to_apply
 
     def _manage_job_dependencies(self, dic_jobs, job, date_list, member_list, chunk_list, dependencies_keys,

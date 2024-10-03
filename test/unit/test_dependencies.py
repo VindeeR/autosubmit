@@ -507,6 +507,13 @@ class TestJobList(unittest.TestCase):
         self.assertEqual((value_two[0].name, value_two[1]), (parent.name, "2"))
         self.assertEqual(len(job_two.edge_info.get("RUNNING", "")), 1)
 
+        dependency = MagicMock()
+        dependency.relationships = {'CHUNKS_FROM': {'1': {'FROM_STEP': '1', 'CHUNKS_TO':'natural', 'DATES_TO': "dummy"}, '2': {'FROM_STEP': '2', 'CHUNKS_TO':'natural', 'DATES_TO': "dummy"}, }, 'STATUS': 'RUNNING'}
+        filters_to_apply = job_list.get_filters_to_apply(job, dependency)
+        filters_to_apply_two = job_list.get_filters_to_apply(job_two, dependency)
+
+        assert filters_to_apply == {'CHUNKS_TO': 'natural', 'DATES_TO': 'dummy'}
+        assert filters_to_apply_two == {'CHUNKS_TO': 'natural', 'DATES_TO': 'dummy'}
 
     @patch('autosubmit.job.job_dict.date2str')
     def test_jobdict_get_jobs_filtered(self, mock_date2str):

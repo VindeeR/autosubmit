@@ -642,8 +642,8 @@ class Autosubmit:
                                    help='Only does a container without compress')
             subparser.add_argument('-v', '--update_version', action='store_true',
                                    default=False, help='Update experiment version')
-            #subparser.add_argument('--rocrate', action='store_true', default=False,
-            #                       help='Produce an RO-Crate file')
+            subparser.add_argument('--rocrate', action='store_true', default=False,
+                                   help='Produce an RO-Crate file')
             # Unarchive
             subparser = subparsers.add_parser(
                 'unarchive', description='unarchives an experiment')
@@ -4265,17 +4265,21 @@ class Autosubmit:
 
         tmp_folder = os.path.join(exp_folder, BasicConfig.LOCAL_TMP_DIR) #Join experiment folder dir with tmp dir
         
-        aslogs_folder = os.path.joinj(tmp_folder, BasicConfig.LOCAL_ASLOG_DIR)
+        aslogs_folder = os.path.join(tmp_folder, BasicConfig.LOCAL_ASLOG_DIR) #Join tmp directory with aslogs 
         
         if rocrate:
+          try:
             Autosubmit.rocrate(expid, Path(aslogs_folder))
-            Log.info('RO-Crate ZIP file created!') 
+            Log.info('RO-Crate ZIP file created!')
+          except Exception as e: 
+                raise(f"Error creating RO-Crate ZIP file: {str(e)}", 7012)
+
         else :
            raise AutosubmitCritical(
                     "Can not create RO-Crate ZIP file", 7012) 
     
     @staticmethod
-    def archive(expid, noclean=True, uncompress=True):
+    def archive(expid, noclean=True, uncompress=True, rocrate=False):
         """
         Archives an experiment: call clean (if experiment is of version 3 or later), compress folder
         to tar.gz and moves to year's folder
@@ -4325,23 +4329,27 @@ class Autosubmit:
             raise AutosubmitCritical(f"Failed to create year-directory {str(year)} for experiment {expid}", 7012, str(e))
         Log.info(f"Archiving in year {str(year)}")
 
-        # Creating tar file
-        Log.info("Creating tar file ... ")
-        try:
-            if not uncompress:
-                compress_type = "w:gz"
-                output_filepath = '{0}.tar.gz'.format(expid)
-            else:
-                compress_type = "w"
-                output_filepath = '{0}.tar'.format(expid)
-            with tarfile.open(os.path.join(year_path, output_filepath), compress_type) as tar:
-                tar.add(exp_folder, arcname='')
-                tar.close()
-                os.chmod(os.path.join(year_path, output_filepath), 0o775)
-        except Exception as e:
-            raise AutosubmitCritical("Can not write tar file", 7012, str(e))
+        if rocrate:
+            Autosubmit.rocrate(expid, Path(year_path))
+            Log.info('RO-Crate ZIP file created!')
+        else:
+            # Creating tar file
+            Log.info("Creating tar file ... ")
+            try:
+                if not uncompress:
+                    compress_type = "w:gz"
+                    output_filepath = '{0}.tar.gz'.format(expid)
+                else:
+                    compress_type = "w"
+                    output_filepath = '{0}.tar'.format(expid)
+                with tarfile.open(os.path.join(year_path, output_filepath), compress_type) as tar:
+                    tar.add(exp_folder, arcname='')
+                    tar.close()
+                    os.chmod(os.path.join(year_path, output_filepath), 0o775)
+            except Exception as e:
+                raise AutosubmitCritical("Can not write tar file", 7012, str(e))
 
-        Log.info("Tar file created!")
+            Log.info("Tar file created!")
 
         try:
             shutil.rmtree(exp_folder)

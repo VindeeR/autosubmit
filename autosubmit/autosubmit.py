@@ -2790,7 +2790,7 @@ class Autosubmit:
                 monitor_autosubmit.clean_stats(expid)
         except BaseException as e:
             raise AutosubmitCritical("Couldn't clean this experiment, check if you have the correct permisions", 7012,
-                                     e.messagee)
+                                     e.message)
         return True
 
     @staticmethod

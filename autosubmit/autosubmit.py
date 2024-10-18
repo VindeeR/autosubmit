@@ -778,7 +778,7 @@ class Autosubmit:
         elif args.command == 'archive':
             return Autosubmit.archive(args.expid, noclean=args.noclean, uncompress=args.uncompress, rocrate=args.rocrate)
         elif args.command == 'unarchive':
-            return Autosubmit.unarchive(args.expid, uncompressed=args.uncompressed) #, rocrate=args.rocrate)
+            return Autosubmit.unarchive(args.expid, uncompressed=args.uncompressed, rocrate=args.rocrate)
 
         elif args.command == 'readme':
             if os.path.isfile(Autosubmit.readme_path):
@@ -4260,9 +4260,9 @@ class Autosubmit:
         """""
         exp_folder = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
 
-        tmp_folder = os.path.join(exp_folder, BasicConfig.LOCAL_TMP_DIR) #Join experiment folder dir with tmp dir
-        
-        aslogs_folder = os.path.join(tmp_folder, BasicConfig.LOCAL_ASLOG_DIR) #Join tmp directory with aslogs 
+        tmp_folder = os.path.join(exp_folder, BasicConfig.LOCAL_TMP_DIR) 
+
+        aslogs_folder = os.path.join(tmp_folder, BasicConfig.LOCAL_ASLOG_DIR) 
         
         if rocrate:
           try:
@@ -4271,11 +4271,9 @@ class Autosubmit:
           except Exception as e:
             raise AutosubmitCritical(
                 f"Error creating RO-Crate ZIP file: {str(e)}", 7012)
-
-
         else :
            raise AutosubmitCritical(
-                    "Can not create RO-Crate ZIP file", 7012) 
+                    "Can not create RO-Crate ZIP file. Argument '--rocrate' required", 7012) 
     
     @staticmethod
     def archive(expid, noclean=True, uncompress=True, rocrate=False):

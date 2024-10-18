@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from autosubmit.autosubmit import Autosubmit
-from log.log import AutosubmitCritical, Log
+from log.log import AutosubmitCritical
 import os
 from unittest.mock import patch
 

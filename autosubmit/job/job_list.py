@@ -24,7 +24,7 @@ import traceback
 from contextlib import suppress
 from shutil import move
 from threading import Thread
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from pathlib import Path
 
 import math
@@ -2574,11 +2574,14 @@ class JobList(object):
         """ Check if a checkpoint step exists for this edge"""
         return job.get_checkpoint_files(parent.name)
 
-    def check_special_status(self):
+    def check_special_status(self) -> List[Job]:
         """
-        Check if all parents of a job have the correct status for checkpointing
-        :return: jobs that fullfill the special conditions """
+        Check if all parents of a job have the correct status for checkpointing.
+
+        :returns: jobs_to_check - Jobs that fulfill the special conditions.
+        """
         jobs_to_check = []
+        jobs_to_skip = []
         for target_status, sorted_job_list in self.jobs_edges.items():
             if target_status == "ALL":
                 continue
@@ -2586,23 +2589,44 @@ class JobList(object):
                 if job.status != Status.WAITING:
                     continue
                 if target_status in ["RUNNING", "FAILED"]:
-                    # check checkpoint if any
-                    if job.platform and job.platform.connected:  # This will be true only when used under setstatus/run
-                        job.get_checkpoint_files()
-                non_completed_parents_current = []
-                completed_parents = [parent for parent in job.parents if parent.status == Status.COMPLETED]
-                for parent in job.edge_info[target_status].values():
-                    if target_status in ["RUNNING", "FAILED"] and parent[1] and int(parent[1]) >= job.current_checkpoint_step:
-                        continue
-                    else:
-                        current_status = Status.VALUE_TO_KEY[parent[0].status]
-                        if Status.LOGICAL_ORDER.index(current_status) >= Status.LOGICAL_ORDER.index(target_status):
-                            if parent[0] not in completed_parents:
-                                non_completed_parents_current.append(parent[0])
+                    self._check_checkpoint(job)
+                non_completed_parents_current, completed_parents = self._count_parents_status(job, target_status)
                 if (len(non_completed_parents_current) + len(completed_parents)) == len(job.parents):
-                    jobs_to_check.append(job)
-
+                    if job not in jobs_to_skip:
+                        jobs_to_check.append(job)
         return jobs_to_check
+
+    @staticmethod
+    def _check_checkpoint(job: Job) -> None:
+        """
+        Check if a job has a checkpoint.
+
+        :param job: The job to check.
+        """
+        if job.platform and job.platform.connected:  # This will be true only when used under setstatus/run
+            job.get_checkpoint_files()
+
+    @staticmethod
+    def _count_parents_status(job: Job, target_status: str) -> Tuple[List[Job], List[Job]]:
+        """
+        Count the number of completed and non-completed parents.
+
+        :param job: The job to check.
+        :param target_status: The target status to compare against.
+        :return: A tuple containing two lists:
+            - non_completed_parents_current: Non-completed parents.
+            - completed_parents: Completed parents.
+        """
+        non_completed_parents_current = []
+        completed_parents = [parent for parent in job.parents if parent.status == Status.COMPLETED]
+        for parent in job.edge_info[target_status].values():
+            if target_status in ["RUNNING", "FAILED"] and parent[1] and int(parent[1]) >= job.current_checkpoint_step:
+                continue
+            current_status = Status.VALUE_TO_KEY[parent[0].status]
+            if Status.LOGICAL_ORDER.index(current_status) >= Status.LOGICAL_ORDER.index(target_status):
+                if parent[0] not in completed_parents:
+                    non_completed_parents_current.append(parent[0])
+        return non_completed_parents_current, completed_parents
 
     def update_log_status(self, job, as_conf):
         """

@@ -107,9 +107,9 @@ class TestJobList(TestCase):
         special_conditions = dict()
         special_conditions["STATUS"] = Status.VALUE_TO_KEY[Status.COMPLETED]
         special_conditions["FROM_STEP"] = 0
-        self.job_list._add_edge_info(self.waiting_job, special_conditions["STATUS"])
+        self.job_list._add_edges_map_info(self.waiting_job, special_conditions["STATUS"])
         self.assertEqual(len(self.job_list.jobs_edges.get(Status.VALUE_TO_KEY[Status.COMPLETED],[])),1)
-        self.job_list._add_edge_info(self.waiting_job2, special_conditions["STATUS"])
+        self.job_list._add_edges_map_info(self.waiting_job2, special_conditions["STATUS"])
         self.assertEqual(len(self.job_list.jobs_edges.get(Status.VALUE_TO_KEY[Status.COMPLETED],[])),2)
 
     def test_check_special_status(self):
@@ -117,12 +117,12 @@ class TestJobList(TestCase):
 
         self.job_list.jobs_edges = dict()
         # Adds edge info for waiting_job in the list
-        self.job_list._add_edge_info(self.waiting_job, Status.VALUE_TO_KEY[Status.COMPLETED])
-        self.job_list._add_edge_info(self.waiting_job, Status.VALUE_TO_KEY[Status.READY])
-        self.job_list._add_edge_info(self.waiting_job, Status.VALUE_TO_KEY[Status.RUNNING])
-        self.job_list._add_edge_info(self.waiting_job, Status.VALUE_TO_KEY[Status.SUBMITTED])
-        self.job_list._add_edge_info(self.waiting_job, Status.VALUE_TO_KEY[Status.QUEUING])
-        self.job_list._add_edge_info(self.waiting_job, Status.VALUE_TO_KEY[Status.FAILED])
+        self.job_list._add_edges_map_info(self.waiting_job, Status.VALUE_TO_KEY[Status.COMPLETED])
+        self.job_list._add_edges_map_info(self.waiting_job, Status.VALUE_TO_KEY[Status.READY])
+        self.job_list._add_edges_map_info(self.waiting_job, Status.VALUE_TO_KEY[Status.RUNNING])
+        self.job_list._add_edges_map_info(self.waiting_job, Status.VALUE_TO_KEY[Status.SUBMITTED])
+        self.job_list._add_edges_map_info(self.waiting_job, Status.VALUE_TO_KEY[Status.QUEUING])
+        self.job_list._add_edges_map_info(self.waiting_job, Status.VALUE_TO_KEY[Status.FAILED])
         # Adds edge info for waiting_job
         special_variables = dict()
         for p in self.waiting_job.parents:

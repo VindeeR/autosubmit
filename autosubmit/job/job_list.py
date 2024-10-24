@@ -929,7 +929,7 @@ class JobList(object):
                 filters_to_apply = relationships
         return filters_to_apply
 
-    def _add_edge_info(self, job, special_status):
+    def _add_edges_map_info(self, job, special_status):
         """
         Special relations to be check in the update_list method
         :param job: Current job
@@ -957,7 +957,7 @@ class JobList(object):
             if special_conditions.get("FROM_STEP", None):
                 job.max_checkpoint_step = int(special_conditions.get("FROM_STEP", 0)) if int(
                     special_conditions.get("FROM_STEP", 0)) > job.max_checkpoint_step else job.max_checkpoint_step
-            self._add_edge_info(job, special_conditions["STATUS"])  # job_list map
+            self._add_edges_map_info(job, special_conditions["STATUS"])  # job_list map
             job.add_edge_info(parent, special_conditions)  # this job
 
     def _apply_jobs_edge_info(self, job, dependencies):
@@ -2579,26 +2579,27 @@ class JobList(object):
         Check if all parents of a job have the correct status for checkpointing
         :return: jobs that fullfill the special conditions """
         jobs_to_check = []
-        for status, sorted_job_list in self.jobs_edges.items():
-            if status == "ALL":
+        for target_status, sorted_job_list in self.jobs_edges.items():
+            if target_status == "ALL":
                 continue
             for job in sorted_job_list:
                 if job.status != Status.WAITING:
                     continue
-                if status in ["RUNNING", "FAILED"]:
+                if target_status in ["RUNNING", "FAILED"]:
                     # check checkpoint if any
                     if job.platform and job.platform.connected:  # This will be true only when used under setstatus/run
                         job.get_checkpoint_files()
-                non_completed_parents_current = 0
-                completed_parents = len([parent for parent in job.parents if parent.status == Status.COMPLETED])
-                for parent in job.edge_info[status].values():
-                    if status in ["RUNNING", "FAILED"] and parent[1] and int(parent[1]) >= job.current_checkpoint_step:
+                non_completed_parents_current = []
+                completed_parents = [parent for parent in job.parents if parent.status == Status.COMPLETED]
+                for parent in job.edge_info[target_status].values():
+                    if target_status in ["RUNNING", "FAILED"] and parent[1] and int(parent[1]) >= job.current_checkpoint_step:
                         continue
                     else:
-                        status_str = Status.VALUE_TO_KEY[parent[0].status]
-                        if Status.LOGICAL_ORDER.index(status_str) >= Status.LOGICAL_ORDER.index(status):
-                            non_completed_parents_current += 1
-                if (non_completed_parents_current + completed_parents) == len(job.parents):
+                        current_status = Status.VALUE_TO_KEY[parent[0].status]
+                        if Status.LOGICAL_ORDER.index(current_status) >= Status.LOGICAL_ORDER.index(target_status):
+                            if parent[0] not in completed_parents:
+                                non_completed_parents_current.append(parent[0])
+                if (len(non_completed_parents_current) + len(completed_parents)) == len(job.parents):
                     jobs_to_check.append(job)
 
         return jobs_to_check

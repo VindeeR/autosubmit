@@ -30,7 +30,7 @@ def prepare_basic_config(tmpdir):
     return basic_conf
 
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def setup_job_list(create_as_conf, tmpdir, mocker, prepare_basic_config):
     experiment_id = 'random-id'
     as_conf = create_as_conf
@@ -93,24 +93,32 @@ def test_add_edge_info_joblist(setup_job_list):
 
 
 def test_check_special_status(setup_job_list):
-    job_list, waiting_job, jobs = setup_job_list
-    waiting_job.edge_info = dict()
+    job_list, _, jobs = setup_job_list
     job_list.jobs_edges = dict()
-    statuses = [Status.VALUE_TO_KEY[Status.COMPLETED], Status.VALUE_TO_KEY[Status.READY], Status.VALUE_TO_KEY[Status.RUNNING], Status.VALUE_TO_KEY[Status.SUBMITTED], Status.VALUE_TO_KEY[Status.QUEUING], Status.VALUE_TO_KEY[Status.FAILED]]
-    for status in statuses:
-        job_list._add_edges_map_info(waiting_job, status)
-    special_variables = dict()
-    for p in waiting_job.parents:
-        special_variables["STATUS"] = Status.VALUE_TO_KEY[p.status]
-        special_variables["FROM_STEP"] = 0
-        waiting_job.add_edge_info(p, special_variables)
-    jobs_to_check = job_list.check_special_status()
-    for job in jobs_to_check:
-        tmp = [parent for parent in job.parents if parent.status == Status.COMPLETED or parent in job_list.jobs_edges["ALL"]]
-        assert len(tmp) == len(job.parents)
-    waiting_job.add_parent(jobs["waiting"][1])
-    for job in jobs_to_check:
-        tmp = [parent for parent in job.parents if parent.status == Status.COMPLETED or parent in job_list.jobs_edges["ALL"]]
-        assert len(tmp) == len(job.parents)
-
-
+    job_a = jobs["completed"][0]
+    job_b = jobs["running"][0]
+    job_c = jobs["waiting"][0]
+    job_c.parents = set()
+    job_c.parents.add(job_a)
+    job_c.parents.add(job_b)
+    # C can start when A is completed and B is running
+    job_c.edge_info = {Status.VALUE_TO_KEY[Status.COMPLETED]: {job_a.name: (job_a, 0)}, Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0)}}
+    special_conditions = {"STATUS": Status.VALUE_TO_KEY[Status.RUNNING], "FROM_STEP": 0}
+    # Test: { A: COMPLETED, B: RUNNING }
+    job_list._add_edges_map_info(job_c, special_conditions["STATUS"])
+    assert job_c in job_list.check_special_status()
+    # Test: { A: RUNNING, B: RUNNING }
+    job_a.status = Status.RUNNING
+    assert job_c not in job_list.check_special_status()
+    # Test: { A: RUNNING, B: RUNNING }
+    job_c.edge_info = {Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0), job_a.name: (job_a, 0)}}
+    assert job_c in job_list.check_special_status()
+    # Test: { A: COMPLETED, B: COMPLETED }
+    job_a.status = Status.COMPLETED
+    job_b.status = Status.COMPLETED
+    assert job_c in job_list.check_special_status()
+    # Test: { A: FAILED, B: COMPLETED }
+    job_a.status = Status.FAILED
+    job_b.status = Status.COMPLETED
+    # This may change in #1316
+    assert job_c in job_list.check_special_status()

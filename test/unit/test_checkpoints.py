@@ -106,14 +106,14 @@ def test_check_special_status(setup_job_list):
     special_conditions = {"STATUS": Status.VALUE_TO_KEY[Status.RUNNING], "FROM_STEP": 0}
     # Test: { A: COMPLETED, B: RUNNING }
     job_list._add_edges_map_info(job_c, special_conditions["STATUS"])
-    assert job_c in job_list.check_special_status()
-    # Test: { A: RUNNING, B: RUNNING }
+    assert job_c in job_list.check_special_status()  # This function should return the jobs that can start ( they will be put in Status.ready in the update_list funtion )
+    # Test: { A: RUNNING, B: RUNNING }, A condition is default ( completed ) and B is running
     job_a.status = Status.RUNNING
     assert job_c not in job_list.check_special_status()
-    # Test: { A: RUNNING, B: RUNNING }
+    # Test: { A: RUNNING, B: RUNNING }, setting B and A condition to running
     job_c.edge_info = {Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0), job_a.name: (job_a, 0)}}
     assert job_c in job_list.check_special_status()
-    # Test: { A: COMPLETED, B: COMPLETED }
+    # Test: { A: COMPLETED, B: COMPLETED } # This should always work.
     job_a.status = Status.COMPLETED
     job_b.status = Status.COMPLETED
     assert job_c in job_list.check_special_status()

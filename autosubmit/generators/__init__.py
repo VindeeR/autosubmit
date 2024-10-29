@@ -1,0 +1,31 @@
+
+from enum import Enum
+from importlib import import_module
+from typing import Callable, cast
+
+"""This module provides generators to produce workflow configurations for different backend engines."""
+
+class Engine(Enum):
+    """Workflow Manager engine flavors."""
+    aiida = 'aiida'
+
+    def __str__(self):
+        return self.value
+
+
+# TODO: use typing.Protocol instead of object when Py>=3.8
+class GenerateProto:
+    """Need a protocol to define the type returned by importlib."""
+    generate: Callable
+
+
+def get_engine_generator(engine: Engine) -> Callable:
+    """Dynamically loads the engine generate function."""
+    generator_function = cast(GenerateProto, import_module(f'autosubmit.generators.{engine.value}'))
+    return generator_function.generate
+
+
+__all__ = [
+    'Engine',
+    'get_engine_generator'
+]

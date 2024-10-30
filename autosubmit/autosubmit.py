@@ -687,19 +687,14 @@ class Autosubmit:
 
             # Generate
             subparser = subparsers.add_parser(
-                'generate', description='Generate a workflow definition for a different Workflow Manager',
+                'generate', description='Generate a workflow definition for a different workflow engine',
                 argument_default=argparse.SUPPRESS)
             subparser.add_argument('expid', help='experiment identifier')
-            subparser.add_argument('-e', '--engine', type=str.lower,
-                                   help='The target Workflow Manager engine', choices=[engine.value for engine in Engine])
-            #subparser.add_argument('args', nargs='?')
-
-            # Needed? We need to expose subcommands for each engine 
-            #if len(sys.argv) > 1 and len(sys.argv[1]) > 1 and sys.argv[1] in ['generate']:
-            #    args, options = parser.parse_known_args()
-            #else:
-            #    options = []
-            #    args = parser.parse_args()
+            subsubparser = subparser.add_subparsers(title="engines", dest='engine', required=True, description='Workflow engine identifier')
+            for engine in Engine:
+                generator_class = get_engine_generator(engine)
+                parser_engine = subsubparser.add_parser(engine.value, help=f"{generator_class.get_engine_name()}")
+                generator_class.add_parse_args(parser_engine)
 
             args, unknown = parser.parse_known_args()
             if args.version:
@@ -808,7 +803,7 @@ class Autosubmit:
         elif args.command == 'stop':
             return Autosubmit.stop(args.expid, args.force, args.all, args.force_all, args.cancel, args.filter_status, args.target)
         elif args.command == 'generate':
-            return Autosubmit.generate_workflow(args.expid, Engine[args.engine], options=[])
+            return Autosubmit.generate_workflow(args.expid, Engine[args.engine], args)
 
     @staticmethod
     def _init_logs(args, console_level='INFO', log_level='DEBUG', expid='None'):
@@ -6125,10 +6120,11 @@ class Autosubmit:
 
 
     @staticmethod
-    def generate_workflow(expid: str, engine: Engine, options: List[str]) -> None:
+    def generate_workflow(expid: str, engine: Engine, args: argparse.Namespace) -> None:
         """Generate the workflow configuration for a different backend engine."""
         Log.info(f'Generate workflow configuration for {engine}')
 
+        # TODO check the code below, if it makes sense, this I have not touched from original MR
         try:
             Log.info("Getting job list...")
             as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
@@ -6161,5 +6157,9 @@ class Autosubmit:
             raise AutosubmitCritical("Error while checking the configuration files or loading the job_list", 7040,
                                      str(e))
 
-        get_engine_generator(engine)(job_list, as_conf, [f'--experiment={expid}', *options])
-
+        generator_class = get_engine_generator(engine)
+        parser = argparse.ArgumentParser()
+        generator_class.add_parse_args(parser)
+        generator_input_keys = vars(parser.parse_args('')).keys()
+        generator_kwargs = {key: args.__getattribute__(key) for key in generator_input_keys} 
+        generator_class.generate(job_list, as_conf, **generator_kwargs)

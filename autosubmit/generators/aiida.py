@@ -114,40 +114,45 @@ tasks = {}
         from autosubmit.platforms.slurmplatform import SlurmPlatform
         import yaml
         if isinstance(platform, LocalPlatform):                       
+            # This a bit nasty, because we use the Builder 
+            # we need to specify these mpirun stuff
             computer_setup = {
                 "label": f"{platform.name}",
                 "hostname": f"{platform.host}",
                 "work_dir": f"{platform.scratch}",
-                "mpiprocs_per_machine": platform.processors_per_node,
-                "mpirun_command": "mpirun -np {tot_num_mpiprocs}",
-                "default_memory_per_machine": 0, # TODO not sure how aiida core.direct handles this
                 "description": "",
                 "transport": "core.local",
                 "scheduler": "core.direct",
+                "mpirun_command": "mpirun -np {tot_num_mpiprocs}",
+                "mpiprocs_per_machine": 1, # TODO not sure how aiida core.direct handles this
+                "default_memory_per_machine": None,
                 "append_text": "",
                 "prepend_text": "",
                 "use_double_quotes": False,
                 "shebang": "#!/bin/bash",
             }
         elif isinstance(platform, SlurmPlatform):
+            if platform.processors_per_node is None:
+                raise ValueError("")
             computer_setup = {
                 "label": f"{platform.name}",
                 "hostname": f"{platform.host}",
                 "work_dir": f"{platform.scratch}",
-                "mpiprocs_per_machine": {platform.processors_per_node},
-                "mpirun_command": "mpirun -np {tot_num_mpiprocs}",
-                "default_memory_per_machine": 10000, # TODO not sure how autosubmit handles this
                 "description": "",
                 "transport": "core.ssh",
                 "scheduler": "core.slurm",
+                "mpirun_command": "mpirun -np {tot_num_mpiprocs}",
+                "mpiprocs_per_machine": platform.processors_per_node,
+                "default_memory_per_machine": 10000, # TODO not sure how autosubmit handles this
                 "append_text": "",
                 "prepend_text": "",
                 "use_double_quotes": False,
                 "shebang": "#!/bin/bash",
             }
         else:
-            raise ValueError(f"Platform type {platform} not supported for engine aiida")
+            raise ValueError(f"Platform type {platform} not supported for engine aiida.")
 
+        #num_machines`, `num_mpiprocs_per_machine` or `tot_num_mpiprocs
         computer_setup_path = Path(output_path / f"{platform.name}/{platform.name}-setup.yml")
         computer_setup_path.parent.mkdir(exist_ok=True)
         computer_setup_path.write_text(yaml.dump(computer_setup))
@@ -158,6 +163,7 @@ except NotExistent:
     setup_path = Path("{computer_setup_path}")
     config_kwargs = yaml.safe_load(setup_path.read_text())
     computer = ComputerBuilder(**config_kwargs).new().store()
+    computer.configure(safe_interval=0.0)
     computer.set_minimum_job_poll_interval(0.0)
     computer.configure()
         """
@@ -219,11 +225,10 @@ except NotExistent:
 tasks["{job.name}"] = wg.add_task(
     "ShellJob",
     name = "{job.name}",
-    command = f"bash@{job.platform.name}",
+    command = orm.load_code("bash@{job.platform.name}"),
     arguments = ["{{script}}"],
     nodes = {{"script": orm.SinglefileData("{trimmed_script_path}")}}
 )
-tasks["{job.name}"].set({{"metadata.computer": computer}})
 """
         if job.parameters['MEMORY'] != "":
             create_task += f"""tasks["{job.name}"].set({{"metadata.options.max_memory_kb": {job.parameters['MEMORY']}}})
@@ -239,7 +244,7 @@ tasks["{edge[1]}"].waiting_on.add(tasks["{edge[0]}"])"""
 
 
     aiida_workflow_script_run = """
-wg.submit()"""
+wg.run()"""
     aiida_workflow_script_text = aiida_workflow_script_init + aiida_workflow_nodes_init + aiida_workflow_script_tasks + aiida_workflow_script_deps + aiida_workflow_script_run
     (output_path / "submit_aiida_workflow.py").write_text(aiida_workflow_script_text)
 

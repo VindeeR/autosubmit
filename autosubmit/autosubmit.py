@@ -4227,6 +4227,7 @@ class Autosubmit:
     @staticmethod
     def provenance(expid, rocrate=False): 
         """"
+<<<<<<< HEAD
         :param expid: experiment identifier
         :type expid: str
         :param rocrate: flag to enable RO-Crate
@@ -4253,17 +4254,20 @@ class Autosubmit:
     @staticmethod
     def provenance(expid, rocrate = False): 
         """""
+=======
+>>>>>>> d337f277 (Fixed some aspects of the code)
         :param expid: experiment identifier
         :type expid: str
         :param rocrate: flag to enable RO-Crate
         :type rocrate: bool
         """""
-        exp_folder = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
+        aslogs_folder = Path(
+            BasicConfig.LOCAL_ROOT_DIR,
+            expid,
+            BasicConfig.LOCAL_TMP_DIR,
+            BasicConfig.LOCAL_ASLOG_DIR
+        )
 
-        tmp_folder = os.path.join(exp_folder, BasicConfig.LOCAL_TMP_DIR) 
-
-        aslogs_folder = os.path.join(tmp_folder, BasicConfig.LOCAL_ASLOG_DIR) 
-        
         if rocrate:
           try:
             Autosubmit.rocrate(expid, Path(aslogs_folder))
@@ -4271,7 +4275,7 @@ class Autosubmit:
           except Exception as e:
             raise AutosubmitCritical(
                 f"Error creating RO-Crate ZIP file: {str(e)}", 7012)
-        else :
+        else:
            raise AutosubmitCritical(
                     "Can not create RO-Crate ZIP file. Argument '--rocrate' required", 7012) 
     

@@ -4247,31 +4247,6 @@ class Autosubmit:
                     "Can not create RO-Crate ZIP file. Argument '--rocrate' required", 7012) 
     
     @staticmethod
-    def provenance(expid, rocrate = False): 
-        """""
-        :param expid: experiment identifier
-        :type expid: str
-        :param rocrate: flag to enable RO-Crate
-        :type rocrate: bool
-        """""
-        exp_folder = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
-
-        tmp_folder = os.path.join(exp_folder, BasicConfig.LOCAL_TMP_DIR) 
-
-        aslogs_folder = os.path.join(tmp_folder, BasicConfig.LOCAL_ASLOG_DIR) 
-        
-        if rocrate:
-          try:
-            Autosubmit.rocrate(expid, Path(aslogs_folder))
-            Log.info('RO-Crate ZIP file created!')
-          except Exception as e:
-            raise AutosubmitCritical(
-                f"Error creating RO-Crate ZIP file: {str(e)}", 7012)
-        else :
-           raise AutosubmitCritical(
-                    "Can not create RO-Crate ZIP file. Argument '--rocrate' required", 7012) 
-    
-    @staticmethod
     def archive(expid, noclean=True, uncompress=True, rocrate=False):
         """
         Archives an experiment: call clean (if experiment is of version 3 or later), compress folder

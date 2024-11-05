@@ -1350,7 +1350,9 @@ class ParamikoPlatform(Platform):
                 header = header.replace(
                     '%HYPERTHREADING_DIRECTIVE%', self.header.get_hyperthreading_directive(job))
         return header
-    def parse_time(self,wallclock):
+
+    @staticmethod
+    def parse_time(wallclock):
         # noinspection Annotator
         regex = re.compile(r'(((?P<hours>\d+):)((?P<minutes>\d+)))(:(?P<seconds>\d+))?')
         parts = regex.match(wallclock)

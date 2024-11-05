@@ -9,8 +9,6 @@ from abc import ABC, abstractmethod
 class Engine(Enum):
     """Workflow Manager engine flavors."""
     aiida = 'aiida'
-    pyflow = 'pyflow'
-    fireworks = 'fireworks'
 
     def __str__(self):
         return self.value

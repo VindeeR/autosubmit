@@ -706,6 +706,7 @@ class Autosubmit:
         except SystemExit as e:
             return 1
         except BaseException as e:
+            raise e
             raise AutosubmitCritical(
                 "Incorrect arguments for this command", 7011)
 

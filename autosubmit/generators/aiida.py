@@ -47,22 +47,32 @@ class Generator(AbstractGenerator):
     #
     # TODO investigate platform parameters how they interact with job
     #   Can the CURRENT_* parameters be specified by the user?
+    # I think the CURRENT_* properties are just copied over from platform
+    #
+    # TODO what is "MAX_PROCESSORS" used for?
+    # do not support for the moment, need to handle warning
     #
     # 
     # TODO EXECUTABLE are not supported ATM
-    SUPPORTED_JOB_KEYWORDS = ["NUMTHREADS", "TASKS", "NODES", "CURRENT_QUEUE", "WALLCLOCK", "MEMORY", "PLATFORM",  # these we need to transfer to aiida
+    # TODO Platform.PROJECT -> sbatch -A <project>
+    # TODO in the expdef the PROJECT_TYPE should be git or local 
+    #SUPPORT_GLOBAL_KEYWORDS = ["WRAPPERS"]
+    SUPPORTED_JOB_KEYWORDS = ["NUMTHREADS", "TASKS", "NODES", "WALLCLOCK", "MEMORY", "PLATFORM",  # these we need to transfer to aiida
                               "DEPENDENCIES", "FILE", "RUNNING"]  # these are resolved by autosubmit internally
     # parameters, because in AiiDA we do not support them as computer
     # parameters so we need to overwrite them in the tasks
 
     # NOTE we cannot speciy MAX_WALLCLOCK in the platform in AiiDA so we need to overwrite it in the task
-    SUPPORTED_PLATFORM_KEYWORDS = ["TYPE", "HOST", "USER", "QUEUE", "SCRATCH_DIR", "MAX_WALLCLOCK", "MAX_PROCESSORS",  #  these we need to transfer to aiida
+    SUPPORTED_PLATFORM_KEYWORDS = ["TYPE", "HOST", "USER", "QUEUE", "SCRATCH_DIR", "MAX_WALLCLOCK",  #  these we need to transfer to aiida
                                     "PROJECT"]   # these are resolved by autosubmit internally
     
     def __init__(self, job_list: JobList, as_conf: AutosubmitConfig, output_dir: str):
         if not (output_path := Path(output_dir)).exists():
             raise ValueError(f"Given `output_dir` {output_path} does not exist.")
-        self._output_path = output_path.absolute()
+        # TODO name is ambiguous as a bit as output_path is not -> output_dir 
+        self._output_path = (output_path / job_list.expid).absolute()
+        # TODO I think here we should raise an error to not accidently overwrite
+        self._output_path.mkdir(exist_ok=True)
         self._job_list = job_list
         self._as_conf = as_conf
 
@@ -95,8 +105,8 @@ class Generator(AbstractGenerator):
         for platform_name, platform_conf in self._as_conf.starter_conf['PLATFORMS'].items():
             # only validate platforms that are used in jobs
             if platform_name in self._platforms_used_in_job.keys():
-                for key in platform_conf.keys():
-                    if key not in Generator.SUPPORTED_PLATFORM_KEYWORDS:
+                for key, value in platform_conf.items():
+                    if key not in Generator.SUPPORTED_PLATFORM_KEYWORDS and value != '':
                         msg = f"Found in platform {platform_name} configuration file key {key} that is not supported for AiiDA generator."
                         warnings.warn(msg)
 
@@ -183,6 +193,7 @@ tasks = {}
                 }
             elif isinstance(platform, SlurmPlatform):
                 # TODO Do we need to handle invalid parameters or is this done by autosubmit
+                # => Autosubmit does the validation, we do not need to worry
                 #if platform.processors_per_node is None:
                 #    raise ValueError("")
                 #if platform.max_wallclock is None:
@@ -191,19 +202,17 @@ tasks = {}
                     "label": f"{platform.name}",
                     "hostname": f"{platform.host}",
                     "work_dir": f"{platform.scratch}",
-                    "user": f"{platform.user}",
+                    #username": f"{platform.user}", does not work
                     "description": "",
                     "transport": "core.ssh",
                     "scheduler": "core.slurm",
                     "mpirun_command": "mpirun -np {tot_num_mpiprocs}",
                     "mpiprocs_per_machine": platform.processors_per_node,
                     "default_memory_per_machine": None, # This is specified in the task option
-                    "append_text": "", # TODO is this specified by EXTENDED_HEADER_PATH?
-                    "prepend_text": "", # TODO is this specified by EXTENDED_TAILER_PATH?
+                    "append_text": "", 
+                    "prepend_text": "",
                     "use_double_quotes": False,
                     "shebang": "#!/bin/bash",
-                    "wallclock_time_seconds": platform.max_wallclock,
-                    "tot_num_mpiprocs": platform.max_processors,
                 }
             else:
                 raise ValueError(f"Platform type {platform} not supported for engine aiida.")
@@ -214,14 +223,24 @@ tasks = {}
             create_computer = f"""
 try:
     computer = orm.load_computer("{platform.name}")
+    print(f"Loaded computer {{computer.label!r}}")
 except NotExistent:
     setup_path = Path("{computer_setup_path}")
     config_kwargs = yaml.safe_load(setup_path.read_text())
     computer = ComputerBuilder(**config_kwargs).new().store()
-    # TODO check if this works
+    # TODO check if we should set this
     #computer.configure(safe_interval=0.0)
     #computer.set_minimum_job_poll_interval(0.0)
-    computer.configure()"""
+
+    from aiida.transports.plugins.ssh import SshTransport
+    from aiida.transports import cli as transport_cli
+    default_kwargs = {{name: transport_cli.transport_option_default(name, computer) for name in SshTransport.get_valid_auth_params()}}
+    default_kwargs["port"] = int(default_kwargs["port"])
+    default_kwargs["timeout"] = float(default_kwargs["timeout"])
+    default_kwargs["username"] = "{platform.user}"
+    default_kwargs['key_filename'] = "/home/alexgo/.ssh/id_rsa" # TODO not sure why default kwargs don't already give this as in CLI this is the default arg
+    computer.configure(user=orm.User.collection.get_default(), **default_kwargs)
+    print(f"Created and stored computer {{computer.label}}")"""
 
             # aiida bash code to run script
             code_setup = {
@@ -275,23 +294,27 @@ tasks["{job.name}"] = wg.add_task(
     nodes = {{"script": orm.SinglefileData("{trimmed_script_path}")}}
 )"""
             # TODO is this the correct check, to check if a parameter has been specified
-            if job.parameters["MEMORY"] != "":
+            #      or should we do hasattr(job, "memory")? Then we get the default argument
+            if job.memory != "":
                 # TODO job.memory needs to be most likely converted to kb
                 # TODO job.memory_per_task?  
                 create_task += f"""
 tasks["{job.name}"].set({{"metadata.options.max_memory_kb": {job.memory}}})"""
-            if job.parameters["WALLCLOCK"] != "" or job.platform.max_wallclock is None:
+            if job.platform.max_wallclock is None:
+                # TODO is this actually needed or does autosubmit already cover this logic?
                 if job.parameters["WALLCLOCK"] != "":
                     wallclock_seconds = int(ParamikoPlatform.parse_time(job.wallclock).total_seconds())
                 else:
-                    wallclock_seconds = int(ParamikoPlatform.parse_time(job.wallclock).total_seconds())
+                    wallclock_seconds = int(ParamikoPlatform.parse_time(job.platform.wallclock).total_seconds())
                 create_task += f"""
 tasks["{job.name}"].set({{"metadata.options.max_wallclock_seconds": {wallclock_seconds}}})"""
-
-
-            if job.parameters["CURRENT_QUEUE"] != "":
+            if job.partition != "":
                 create_task += f"""
-tasks["{job.name}"].set({{"metadata.options.queue_name": {job.partition}}})"""
+tasks["{job.name}"].set({{"metadata.options.queue_name": "{job.partition}"}})"""
+            #if job.platform.user != '':
+            #    create_task += f"""
+            #tasks["{job.name}"].set({{"metadata.options.account": "{job.platform.user}"}})"""
+            
 
             code_section += create_task
         code_section += "\n\n"

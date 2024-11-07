@@ -27,7 +27,7 @@ from autosubmit.autosubmit import Autosubmit
             },
         }
     },
-], ids=["GIT_CLONE"])
+], ids=["Git clone without type defined"])
 def test_copy_code(autosubmit_config, config, mocker):
     expid = 'random-id'
     as_conf = autosubmit_config(expid, config)

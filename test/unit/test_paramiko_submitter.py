@@ -35,7 +35,7 @@ from autosubmit.platforms.paramiko_submitter import ParamikoSubmitter
         "LOCAL_TMP_DIR": 'tmp',
         "PLATFORMS": {
             "PYTEST-UNSUPPORTED": {
-                "type": "unknown",
+                "TYPE": "unknown",
                 "host": "",
                 "user": "",
                 "project": "",

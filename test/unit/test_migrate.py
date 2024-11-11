@@ -11,7 +11,8 @@ from log.log import AutosubmitCritical
 
 from test.unit.utils.common import create_database, init_expid
 
-# TODO: Write the tests without the class and self
+# TODO: Write the tests without the class and self ( to do after the transition to github)
+@pytest.mark.skip(reason="Skipping this test until Github transition is complete, ssh with paramiko is not working on the gitlab CI/CD")
 class TestMigrate:
 
     @pytest.fixture(scope='class')
@@ -164,7 +165,7 @@ PLATFORMS:
         with pytest.raises(AutosubmitCritical):
             migrate_remote_only.check_migrate_config(as_conf, platforms, as_conf.misc_data["PLATFORMS"])
 
-    # TODO: parametrize the test with the one below, but right now it's not working due not being well isolated
+    # TODO: parametrize the test with the one below, but right now it's not working due not being well isolated ( to do after the transition to github)
     def test_migrate_remote(self, migrate_remote_only, migrate_tmpdir):
         # Expected behavior: migrate everything from scratch/whatever to scratch/whatever_new
         assert migrate_tmpdir.join(f'scratch/whatever/{migrate_tmpdir.owner}/t000').check(dir=True)

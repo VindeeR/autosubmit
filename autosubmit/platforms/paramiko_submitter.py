@@ -149,10 +149,7 @@ class ParamikoSubmitter(Submitter):
                     remote_platform = PJMPlatform(
                         asconf.expid, section, config)
                 else:
-                    if platform_type == "":
-                        platform_type_value = "<not defined>"
-                    else:
-                        platform_type_value = platform_type
+                    platform_type_value = platform_type or "<not defined>"
                     raise AutosubmitCritical(f"PLATFORMS.{section.upper()}.TYPE: {platform_type_value} for {section.upper()} is not supported", 7012)
                 remote_platform.main_process_id = os.getpid()
             except ParamikoPlatformException as e:

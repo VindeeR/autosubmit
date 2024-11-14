@@ -291,7 +291,7 @@ class Monitor:
             elif job.name in child.edge_info.get("RUNNING", {}):
                 color = self._table.get(Status.RUNNING, None)
                 label = child.edge_info["RUNNING"].get(job.name, 0)[1]
-                optional = None if child.edge_info["RUNNING"].get(job.name, None) is None else child.edge_info["RUNNING"][job.name][2]
+                optional = True # Always optional if it's running
 
             elif job.name in child.edge_info.get("QUEUING", {}):
                 color = self._table.get(Status.QUEUING, None)

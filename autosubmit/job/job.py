@@ -940,7 +940,7 @@ class Job(object):
         if special_conditions["STATUS"] not in self.edge_info:
             self.edge_info[special_conditions["STATUS"]] = {}
 
-        self.edge_info[special_conditions["STATUS"]][parent.name] = (parent,special_conditions.get("FROM_STEP", 0))
+        self.edge_info[special_conditions["STATUS"]][parent.name] = (parent, special_conditions.get("FROM_STEP", 0), special_conditions.get("OPTIONAL", False))
 
     def delete_parent(self, parent):
         """

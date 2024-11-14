@@ -282,38 +282,42 @@ class Monitor:
         # order of self._table
         # the dictionary is composed by:
         label = None
+        optional = False
         if len(child.edge_info) > 0:
-            if job.name in child.edge_info.get("FAILED",{}):
-                color = self._table.get(Status.FAILED,None)
-                label = child.edge_info["FAILED"].get(job.name,0)[1]
-            elif job.name in child.edge_info.get("RUNNING",{}):
-                color =  self._table.get(Status.RUNNING,None)
-                label = child.edge_info["RUNNING"].get(job.name,0)[1]
-            elif job.name in child.edge_info.get("QUEUING",{}):
-                color =  self._table.get(Status.QUEUING,None)
-            elif job.name in child.edge_info.get("HELD",{}):
-                color =  self._table.get(Status.HELD,None)
-            elif job.name in child.edge_info.get("DELAYED",{}):
-                color =  self._table.get(Status.DELAYED,None)
-            elif job.name in child.edge_info.get("UNKNOWN",{}):
-                color =  self._table.get(Status.UNKNOWN,None)
-            elif job.name in child.edge_info.get("SUSPENDED",{}):
-                color =  self._table.get(Status.SUSPENDED,None)
-            elif job.name in child.edge_info.get("SKIPPED",{}):
-                color =  self._table.get(Status.SKIPPED,None)
-            elif job.name in child.edge_info.get("WAITING",{}):
-                color =  self._table.get(Status.WAITING,None)
-            elif job.name in child.edge_info.get("READY",{}):
-                color =  self._table.get(Status.READY,None)
-            elif job.name in child.edge_info.get("SUBMITTED",{}):
-                color =  self._table.get(Status.SUBMITTED,None)
+            if job.name in child.edge_info.get("FAILED", {}):
+                color = self._table.get(Status.FAILED, None)
+                label = None if child.edge_info["FAILED"].get(job.name, None) is None else child.edge_info["FAILED"][job.name][1]
+                optional = None if child.edge_info["FAILED"].get(job.name, None) is None else child.edge_info["FAILED"][job.name][2]
+            elif job.name in child.edge_info.get("RUNNING", {}):
+                color = self._table.get(Status.RUNNING, None)
+                label = child.edge_info["RUNNING"].get(job.name, 0)[1]
+                optional = None if child.edge_info["RUNNING"].get(job.name, None) is None else child.edge_info["RUNNING"][job.name][2]
+
+            elif job.name in child.edge_info.get("QUEUING", {}):
+                color = self._table.get(Status.QUEUING, None)
+            elif job.name in child.edge_info.get("HELD", {}):
+                color = self._table.get(Status.HELD, None)
+            elif job.name in child.edge_info.get("DELAYED", {}):
+                color = self._table.get(Status.DELAYED, None)
+            elif job.name in child.edge_info.get("UNKNOWN", {}):
+                color = self._table.get(Status.UNKNOWN, None)
+            elif job.name in child.edge_info.get("SUSPENDED", {}):
+                color = self._table.get(Status.SUSPENDED, None)
+            elif job.name in child.edge_info.get("SKIPPED", {}):
+                color = self._table.get(Status.SKIPPED, None)
+            elif job.name in child.edge_info.get("WAITING", {}):
+                color = self._table.get(Status.WAITING, None)
+            elif job.name in child.edge_info.get("READY", {}):
+                color = self._table.get(Status.READY, None)
+            elif job.name in child.edge_info.get("SUBMITTED", {}):
+                color = self._table.get(Status.SUBMITTED, None)
             else:
-                return None, None
+                return None, None, optional
             if label and label == 0:
                 label = None
-            return color,label
+            return color, label, optional
         else:
-            return None, None
+            return None, None, optional
 
     def _add_children(self, job, exp, node_job, groups, hide_groups):
         if job in self.nodes_plotted:
@@ -323,17 +327,21 @@ class Monitor:
             for child in sorted(job.children, key=lambda k: NaturalSort(k.name)):
                 node_child, skip = self._check_node_exists(
                     exp, child, groups, hide_groups)
-                color, label = self._check_final_status(job, child)
+                color, label, optional = self._check_final_status(job, child)
                 if len(node_child) == 0 and not skip:
                     node_child = self._create_node(child, groups, hide_groups)
                     if node_child:
                         exp.add_node(node_child)
+                        if optional:
+                            style = "dashed"
+                        else:
+                            style = "solid"
                         if color:
                             # label = None doesn't disable label, instead it sets it to nothing and complain about invalid syntax
                             if label:
-                                exp.add_edge(pydotplus.Edge(node_job, node_child, style="dashed", color=color, label=label))
+                                exp.add_edge(pydotplus.Edge(node_job, node_child, style=style, color=color, label=label))
                             else:
-                                exp.add_edge(pydotplus.Edge(node_job, node_child,style="dashed",color=color))
+                                exp.add_edge(pydotplus.Edge(node_job, node_child, style=style, color=color))
                         else:
                             exp.add_edge(pydotplus.Edge(node_job, node_child))
                     else:

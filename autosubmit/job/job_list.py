@@ -987,6 +987,7 @@ class JobList(object):
             special_conditions = dict()
             special_conditions["STATUS"] = filters_to_apply_by_section[key].pop("STATUS", None)
             special_conditions["FROM_STEP"] = filters_to_apply_by_section[key].pop("FROM_STEP", None)
+            special_conditions["OPTIONAL"] = filters_to_apply_by_section[key].pop("OPTIONAL", False)
             for parent in list_of_parents:
                 self.add_special_conditions(job, special_conditions, filters_to_apply_by_section[key],
                                             parent)
@@ -1213,6 +1214,7 @@ class JobList(object):
     def get_filters_to_apply(self, job, dependency):
         filters_to_apply = self._filter_current_job(job, copy.deepcopy(dependency.relationships))
         filters_to_apply.pop("STATUS", None)
+        filters_to_apply.pop("OPTIONAL", None)
         # Don't do perform special filter if only "FROM_STEP" is applied
         if "FROM_STEP" in filters_to_apply:
             if filters_to_apply.get("CHUNKS_TO","none") == "none" and filters_to_apply.get("MEMBERS_TO","none") == "none" and filters_to_apply.get("DATES_TO","none") == "none" and filters_to_apply.get("SPLITS_TO","none") == "none":
@@ -2628,7 +2630,6 @@ class JobList(object):
         :returns: jobs_to_check - Jobs that fulfill the special conditions.
         """
         jobs_to_check = []
-        jobs_to_skip = []
         for target_status, sorted_job_list in self.jobs_edges.items():
             if target_status == "ALL":
                 continue
@@ -2637,10 +2638,9 @@ class JobList(object):
                     continue
                 if target_status in ["RUNNING", "FAILED"]:
                     self._check_checkpoint(job)
-                non_completed_parents_current, completed_parents = self._count_parents_status(job, target_status)
-                if (len(non_completed_parents_current) + len(completed_parents)) == len(job.parents):
-                    if job not in jobs_to_skip:
-                        jobs_to_check.append(job)
+                relations_unsatisfated, _ = self._count_parents_status(job, target_status)
+                if not relations_unsatisfated:
+                    jobs_to_check.append(job)
         return jobs_to_check
 
     @staticmethod
@@ -2654,9 +2654,9 @@ class JobList(object):
             job.get_checkpoint_files()
 
     @staticmethod
-    def _count_parents_status(job: Job, target_status: str) -> Tuple[List[Job], List[Job]]:
+    def _count_parents_status(job: Job, target_status_key: str) -> Tuple[List[Job], List[Job]]:
         """
-        Count the number of completed and non-completed parents.
+        Count the number of relations satisfated and relations unsatisfated for a job.
 
         :param job: The job to check.
         :param target_status: The target status to compare against.
@@ -2664,16 +2664,33 @@ class JobList(object):
             - non_completed_parents_current: Non-completed parents.
             - completed_parents: Completed parents.
         """
-        non_completed_parents_current = []
-        completed_parents = [parent for parent in job.parents if parent.status == Status.COMPLETED]
-        for parent in job.edge_info[target_status].values():
-            if target_status in ["RUNNING", "FAILED"] and parent[1] and int(parent[1]) >= job.current_checkpoint_step:
+        relation_satisfated = []
+        relation_unsatisfated = []
+        target_status = Status.KEY_TO_VALUE[target_status_key]
+        for parent_edge_info in job.edge_info[target_status_key].values():
+            if target_status in [Status.FAILED, Status.RUNNING] and parent_edge_info[1] and int(parent_edge_info[1]) >= job.current_checkpoint_step:
                 continue
-            current_status = Status.VALUE_TO_KEY[parent[0].status]
-            if Status.LOGICAL_ORDER.index(current_status) >= Status.LOGICAL_ORDER.index(target_status):
-                if parent[0] not in completed_parents:
-                    non_completed_parents_current.append(parent[0])
-        return non_completed_parents_current, completed_parents
+            # If optional is True, the parent is not required to be completed, other final static status are allowed
+            if parent_edge_info[2]:  # Optional == Any final status is allowed
+                if parent_edge_info[0].status in [Status.COMPLETED, Status.FAILED, Status.SKIPPED, Status.COMPLETED, target_status]:
+                    relation_satisfated.append(parent_edge_info[0])
+                else:
+                    relation_unsatisfated.append(parent_edge_info[0])
+            else:  # not Optional
+                parent_status_key = Status.VALUE_TO_KEY[parent_edge_info[0].status]
+                if parent_edge_info[0].status in [Status.FAILED, Status.COMPLETED, Status.SKIPPED, Status.UNKNOWN]:
+                    if parent_edge_info[0].status == target_status:
+                        relation_satisfated.append(parent_edge_info[0])
+                    else:
+                        relation_unsatisfated.append(parent_edge_info[0])
+                elif Status.LOGICAL_ORDER.index(parent_status_key) >= Status.LOGICAL_ORDER.index(target_status_key):
+                    relation_satisfated.append(parent_edge_info[0])
+                elif Status.LOGICAL_ORDER.index(parent_status_key) < Status.LOGICAL_ORDER.index(target_status_key):
+                    relation_unsatisfated.append(parent_edge_info[0])
+
+        return relation_unsatisfated, relation_satisfated
+
+    #def _check_relation_is_still_valid(self, job, parent):
 
     def update_log_status(self, job, as_conf):
         """

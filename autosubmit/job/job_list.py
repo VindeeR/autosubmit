@@ -987,7 +987,7 @@ class JobList(object):
             special_conditions = dict()
             special_conditions["STATUS"] = filters_to_apply_by_section[key].pop("STATUS", None)
             special_conditions["FROM_STEP"] = filters_to_apply_by_section[key].pop("FROM_STEP", None)
-            special_conditions["OPTIONAL"] = filters_to_apply_by_section[key].pop("OPTIONAL", False)
+            special_conditions["ANY_FINAL_STATUS_IS_VALID"] = filters_to_apply_by_section[key].pop("ANY_FINAL_STATUS_IS_VALID", False)
             for parent in list_of_parents:
                 self.add_special_conditions(job, special_conditions, filters_to_apply_by_section[key],
                                             parent)
@@ -1214,7 +1214,7 @@ class JobList(object):
     def get_filters_to_apply(self, job, dependency):
         filters_to_apply = self._filter_current_job(job, copy.deepcopy(dependency.relationships))
         filters_to_apply.pop("STATUS", None)
-        filters_to_apply.pop("OPTIONAL", None)
+        filters_to_apply.pop("ANY_FINAL_STATUS_IS_VALID", None)
         # Don't do perform special filter if only "FROM_STEP" is applied
         if "FROM_STEP" in filters_to_apply:
             if filters_to_apply.get("CHUNKS_TO","none") == "none" and filters_to_apply.get("MEMBERS_TO","none") == "none" and filters_to_apply.get("DATES_TO","none") == "none" and filters_to_apply.get("SPLITS_TO","none") == "none":
@@ -2638,7 +2638,7 @@ class JobList(object):
                     continue
                 if target_status in ["RUNNING", "FAILED"]:
                     self._check_checkpoint(job)
-                relations_unsatisfated, _ = self._count_parents_status(job, target_status)
+                relations_unsatisfated, _ = self._check_relationship_is_ready(job, target_status)
                 if not relations_unsatisfated:
                     jobs_to_check.append(job)
         return jobs_to_check
@@ -2654,15 +2654,18 @@ class JobList(object):
             job.get_checkpoint_files()
 
     @staticmethod
-    def _count_parents_status(job: Job, target_status_key: str) -> Tuple[List[Job], List[Job]]:
+    def _check_relationship_is_ready(job: Job, target_status_key: str) -> Tuple[List[Job], List[Job]]:
         """
-        Count the number of relations satisfated and relations unsatisfated for a job.
+        Check the correctness of the relationship between a job and its parents.
 
-        :param job: The job to check.
-        :param target_status: The target status to compare against.
+        Default: For a relation to be satisfated, the parent must be in COMPLETED status.
+        Special: For a relation to be satisfated, the parent must be equal or superior to target status.
+
+        :param job: The job to check. job.edge_info: contains a tuple with (parent, checkpoint_number, optional)
+        :param target_status_key: The target status to compare against.
         :return: A tuple containing two lists:
-            - non_completed_parents_current: Non-completed parents.
-            - completed_parents: Completed parents.
+            - relation_unsatisfated: Parent jobs that doesn't satisfate the relationship.
+            - relation_satisfated: Parent jobs that satisfate the relationship.
         """
         relation_satisfated = []
         relation_unsatisfated = []
@@ -2689,8 +2692,6 @@ class JobList(object):
                     relation_unsatisfated.append(parent_edge_info[0])
 
         return relation_unsatisfated, relation_satisfated
-
-    #def _check_relation_is_still_valid(self, job, parent):
 
     def update_log_status(self, job, as_conf):
         """

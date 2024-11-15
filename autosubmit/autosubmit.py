@@ -2062,7 +2062,8 @@ class Autosubmit:
                 job.platform_name = hpcarch
             # noinspection PyTypeChecker
             try:
-                 job.platform = submitter.platforms[job.platform_name.upper()]
+                job.platform_name = as_conf.experiment_data["PLATFORMS"].get(job.platform_name.upper(), hpcarch)
+                job.platform = submitter.platforms[job.platform_name.upper()]
             except Exception as e:
                 raise AutosubmitCritical(
                     "hpcarch={0} not found in the platforms configuration file".format(job.platform_name),

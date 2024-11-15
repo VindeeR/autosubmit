@@ -42,7 +42,7 @@ from autosubmit.monitor.diagram import create_stats_report
 from log.log import Log, AutosubmitCritical
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 GENERAL_STATS_OPTION_MAX_LENGTH = 1000
 
@@ -278,46 +278,31 @@ class Monitor:
         Log.debug('Graph definition finalized')
         return graph
 
-    def _check_final_status(self, job, child):
-        # order of self._table
-        # the dictionary is composed by:
-        label = None
-        optional = False
-        if len(child.edge_info) > 0:
-            if job.name in child.edge_info.get("FAILED", {}):
-                color = self._table.get(Status.FAILED, None)
-                label = None if child.edge_info["FAILED"].get(job.name, None) is None else child.edge_info["FAILED"][job.name][1]
-                optional = None if child.edge_info["FAILED"].get(job.name, None) is None else child.edge_info["FAILED"][job.name][2]
-            elif job.name in child.edge_info.get("RUNNING", {}):
-                color = self._table.get(Status.RUNNING, None)
-                label = child.edge_info["RUNNING"].get(job.name, 0)[1]
-                optional = True # Always optional if it's running
+    def _check_final_status(self, job: Job, child: Job) -> Tuple[Optional[str], Optional[str], bool]:
+        """
+        Check the final status of a job in relation to its child.
 
-            elif job.name in child.edge_info.get("QUEUING", {}):
-                color = self._table.get(Status.QUEUING, None)
-            elif job.name in child.edge_info.get("HELD", {}):
-                color = self._table.get(Status.HELD, None)
-            elif job.name in child.edge_info.get("DELAYED", {}):
-                color = self._table.get(Status.DELAYED, None)
-            elif job.name in child.edge_info.get("UNKNOWN", {}):
-                color = self._table.get(Status.UNKNOWN, None)
-            elif job.name in child.edge_info.get("SUSPENDED", {}):
-                color = self._table.get(Status.SUSPENDED, None)
-            elif job.name in child.edge_info.get("SKIPPED", {}):
-                color = self._table.get(Status.SKIPPED, None)
-            elif job.name in child.edge_info.get("WAITING", {}):
-                color = self._table.get(Status.WAITING, None)
-            elif job.name in child.edge_info.get("READY", {}):
-                color = self._table.get(Status.READY, None)
-            elif job.name in child.edge_info.get("SUBMITTED", {}):
-                color = self._table.get(Status.SUBMITTED, None)
-            else:
-                return None, None, optional
-            if label and label == 0:
-                label = None
-            return color, label, optional
-        else:
-            return None, None, optional
+        :param job: The job to check.
+        :type job: Job
+        :param child: The child job to check against.
+        :type child: Job
+        :return: A tuple containing:
+            - color: The color associated with the status.
+            - label: The label associated with the status.
+            - dashed: Whether the relation line should be dashed or straight
+        :rtype: Tuple[Optional[str], Optional[str], bool]
+        """
+        color = None
+        label = None
+        dashed = False
+        if len(child.edge_info) > 0:
+            for section, data in child.edge_info.items():
+                parent_info = data.get(job.name, None)
+                if parent_info:
+                    color = self._table[Status.KEY_TO_VALUE[section]]
+                    label = parent_info[1]
+                    dashed = parent_info[2]
+        return color, label, dashed
 
     def _add_children(self, job, exp, node_job, groups, hide_groups):
         if job in self.nodes_plotted:

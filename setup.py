@@ -47,6 +47,7 @@ install_requires = [
     'autosubmitconfigparser==1.0.73',
     'configparser',
     'setproctitle',
+    'invoke>=2.0',
     # 'sqlalchemy[mypy]' # TODO: pending Postgres MR
 ]
 

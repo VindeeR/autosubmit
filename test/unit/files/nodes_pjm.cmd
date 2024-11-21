@@ -10,7 +10,6 @@
 #PJM -g whatever
 #
 
-export OMP_NUM_THREADS=40
 #
 #PJM -L node=1
 
@@ -18,6 +17,7 @@ export OMP_NUM_THREADS=40
 #PJM -e /tmp/pytest-of-dbeltran/pytest-2/scheduler_tests1/scratch/whatever/dbeltran/t000/LOG_t000/t000_NODES_PJM.cmd.err.0
 #
 #
+export OMP_NUM_THREADS=40
 ###############################################################################
 ###################
 # Autosubmit header

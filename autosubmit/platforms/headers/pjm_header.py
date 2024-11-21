@@ -175,7 +175,6 @@ class PJMHeader(object):
 #%ACCOUNT_DIRECTIVE%
 #%MEMORY_DIRECTIVE%
 %CUSTOM_DIRECTIVES%
-%THREADS_PER_TASK_DIRECTIVE%
 #%SHAPE_DIRECTIVE%
 #%NODES_DIRECTIVE%
 
@@ -183,6 +182,8 @@ class PJMHeader(object):
 #PJM -e %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ_DIR%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%ERR_LOG_DIRECTIVE%
 #%X11%
 #
+%THREADS_PER_TASK_DIRECTIVE%
+
 ###############################################################################
            """)
 
@@ -195,7 +196,6 @@ class PJMHeader(object):
 #%NODES_DIRECTIVE%
 #PJM --mpi "proc=%NUMPROC%"
 #PJM --mpi "%TASKS_PER_NODE_DIRECTIVE%"
-%THREADS_PER_TASK_DIRECTIVE%
 #PJM -L elapse=%WALLCLOCK%:00
 #%QUEUE_DIRECTIVE%
 #%ACCOUNT_DIRECTIVE%
@@ -206,5 +206,6 @@ class PJMHeader(object):
 #PJM -e %CURRENT_SCRATCH_DIR%/%CURRENT_PROJ_DIR%/%CURRENT_USER%/%DEFAULT.EXPID%/LOG_%DEFAULT.EXPID%/%ERR_LOG_DIRECTIVE%
 %CUSTOM_DIRECTIVES%
 #
+%THREADS_PER_TASK_DIRECTIVE%
 ###############################################################################
     """)

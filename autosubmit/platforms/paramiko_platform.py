@@ -242,7 +242,10 @@ class ParamikoPlatform(Platform):
             self._ssh = paramiko.SSHClient()
             self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             self._ssh_config = paramiko.SSHConfig()
-            self._user_config_file = os.path.expanduser("~/.ssh/config")
+            # get env variable
+            mapped_config_file = "~/.ssh/config" if "AS_ENV_PLATFORMS_PATH" not in os.environ else f"~/.ssh/config_{os.getenv('SUDO_USER')}"
+
+            self._user_config_file = os.path.expanduser(mapped_config_file)
             if os.path.exists(self._user_config_file):
                 with open(self._user_config_file) as f:
                     self._ssh_config.parse(f)

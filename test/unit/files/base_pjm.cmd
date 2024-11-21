@@ -12,7 +12,6 @@
 
 #
 #
-
 #PJM -o /tmp/pytest-of-dbeltran/pytest-0/scheduler_tests0/scratch/whatever/dbeltran/t000/LOG_t000/t000_BASE_PJM.cmd.out.0
 #PJM -e /tmp/pytest-of-dbeltran/pytest-0/scheduler_tests0/scratch/whatever/dbeltran/t000/LOG_t000/t000_BASE_PJM.cmd.err.0
 #

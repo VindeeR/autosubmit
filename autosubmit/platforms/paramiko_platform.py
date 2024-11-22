@@ -226,6 +226,29 @@ class ParamikoPlatform(Platform):
         #         pass
         return tuple(answers)
 
+    def map_user_config_file(self) -> None:
+        """
+        Maps the shared account user ssh config file to the current user config file.
+        Defaults to ~/.ssh/config if the mapped file does not exist.
+        """
+        self._user_config_file = os.path.expanduser("~/.ssh/config")
+        if os.environ.get('AS_ENV_PLATFORMS_PATH', None):
+            mapped_config_file = f"~/.ssh/config_{self.expid}"
+            if mapped_config_file.startswith("~"):
+                mapped_config_file = os.path.expanduser(mapped_config_file)
+            if not Path(mapped_config_file).exists():
+                Log.debug(f"{mapped_config_file} not found")
+            else:
+                Log.info(f"Using {mapped_config_file} as ssh config file")
+                self._user_config_file = mapped_config_file
+
+        if Path(self._user_config_file).exists():
+            Log.info(f"Using {self._user_config_file} as ssh config file")
+            with open(self._user_config_file) as f:
+                self._ssh_config.parse(f)
+        else:
+            Log.warning(f"SSH config file {self._user_config_file} not found")
+
     def connect(self, as_conf, reconnect=False):
         """
         Creates ssh connection to host
@@ -242,13 +265,7 @@ class ParamikoPlatform(Platform):
             self._ssh = paramiko.SSHClient()
             self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             self._ssh_config = paramiko.SSHConfig()
-            # get env variable
-            mapped_config_file = "~/.ssh/config" if "AS_ENV_PLATFORMS_PATH" not in os.environ else f"~/.ssh/config_{os.getenv('SUDO_USER')}"
-
-            self._user_config_file = os.path.expanduser(mapped_config_file)
-            if os.path.exists(self._user_config_file):
-                with open(self._user_config_file) as f:
-                    self._ssh_config.parse(f)
+            self.map_user_config_file()
             self._host_config = self._ssh_config.lookup(self.host)
             if "," in self._host_config['hostname']:
                 if reconnect:
@@ -258,7 +275,7 @@ class ParamikoPlatform(Platform):
                     self._host_config['hostname'] = self._host_config['hostname'].split(',')[0]
             if 'identityfile' in self._host_config:
                 self._host_config_id = self._host_config['identityfile']
-            port = int(self._host_config.get('port',22))
+            port = int(self._host_config.get('port', 22) )
             if not self.two_factor_auth:
                 # Agent Auth
                 if not self.agent_auth(port):

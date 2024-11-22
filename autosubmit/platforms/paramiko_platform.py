@@ -226,13 +226,13 @@ class ParamikoPlatform(Platform):
         #         pass
         return tuple(answers)
 
-    def map_user_config_file(self) -> None:
+    def map_user_config_file(self, as_conf) -> None:
         """
         Maps the shared account user ssh config file to the current user config file.
         Defaults to ~/.ssh/config if the mapped file does not exist.
         """
         self._user_config_file = os.path.expanduser("~/.ssh/config")
-        if os.environ.get('AS_ENV_PLATFORMS_PATH', None):
+        if not as_conf.is_current_real_user_owner:  # Using shared account
             mapped_config_file = f"~/.ssh/config_{self.expid}"
             if mapped_config_file.startswith("~"):
                 mapped_config_file = os.path.expanduser(mapped_config_file)
@@ -265,7 +265,7 @@ class ParamikoPlatform(Platform):
             self._ssh = paramiko.SSHClient()
             self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             self._ssh_config = paramiko.SSHConfig()
-            self.map_user_config_file()
+            self.map_user_config_file(as_conf)
             self._host_config = self._ssh_config.lookup(self.host)
             if "," in self._host_config['hostname']:
                 if reconnect:

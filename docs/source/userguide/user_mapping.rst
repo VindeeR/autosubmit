@@ -5,29 +5,29 @@ User Mapping
 About
 -----
 
-For Autosubmit, User mapping is the process of associating all the personal users account with a shared account.
+For Autosubmit, user mapping is the process of associating all the personal user accounts with a shared account.
 
-The personal user account is personal account to access to each remote platform. While the shared account is the one that is used to run the experiments on the machine where Autosubmit is deployed.
+The personal user account is the account used to access to each remote platform. While the shared account is the one that is used to run the experiments on the machine where Autosubmit is deployed.
 
 When to use
 -----------
 
-To run a set of shared experiments on a machine where Autosubmit is deployed. Using the hpc resources of the user that triggers the experiment.
+To run a set of shared experiments on a machine where Autosubmit is deployed. Using the HPC resources of the user that triggers the experiment.
 
-More specifically, this is useful to launch a testing suite on a shared machine without having redundancy of experiments for each user that wants to run the tests.
+More specifically, this can be useful to launch something like an experiment testing suite on a shared machine without having redundancy of experiments for each user that wants to run the tests.
 
-Pre-requisites
+Prerequisites
 --------------
 
 * The sysadmin of the machine where Autosubmit is deployed must have created a shared user account that will be used to run the experiments.
 
-* The sysadmin is the responsable of handling the security of the remote keys used so that the personal user accounts are not compromised.
+* The sysadmin is the responsible for handling the security of the remote keys used so that the personal user accounts are not compromised.
 
-* The personal user is reponsable of not sharing/access the ssh keys with other users.
+* The user is reponsible for keeping their personal user account details (e.g SSH keys) secure, e.g. not sharing them with others.
 
-* The platform_${SUDO_USER}.yml file for each user that has access to the shared account must be created.
+* The ``platform_${SUDO_USER}.yml`` file for each user that has access to the shared account must be created.
 
-* The ssh_config_${SUDO_USER} file for each user that has access to the shared account must be created.
+* The ``ssh_config_${SUDO_USER}`` file for each user that has access to the shared account must be created.
 
 How it works
 ------------

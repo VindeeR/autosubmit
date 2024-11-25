@@ -2682,7 +2682,7 @@ class JobList(object):
             else:  # not Optional
                 parent_status_key = Status.VALUE_TO_KEY[parent_edge_info[0].status]
                 if parent_edge_info[0].status in [Status.FAILED, Status.COMPLETED, Status.SKIPPED, Status.UNKNOWN]:
-                    if parent_edge_info[0].status == target_status:
+                    if (parent_edge_info[0].status == Status.SKIPPED and target_status in [Status.SKIPPED, Status.COMPLETED]) or parent_edge_info[0].status == target_status:
                         relation_satisfated.append(parent_edge_info[0])
                     else:
                         relation_unsatisfated.append(parent_edge_info[0])

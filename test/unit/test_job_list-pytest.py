@@ -79,3 +79,59 @@ def test_get_jobs_by_section(setup_job_list, section_list, banned_jobs, get_only
     result = setup_job_list.get_jobs_by_section(section_list, banned_jobs, get_only_non_completed)
     assert len(result) == expected_length
     assert all(job.section == expected_section for job in result)
+
+
+@pytest.mark.parametrize(
+    "job_status, parent_status, target_status_key, expected_unsatisfated, expected_satisfated",
+    [
+        (Status.WAITING, Status.COMPLETED, "COMPLETED", [], ["parent_job", "parent_job_any_final_status_is_valid"]),
+        (Status.WAITING, Status.FAILED, "COMPLETED", ["parent_job"], ["parent_job_any_final_status_is_valid"]),
+        (Status.WAITING, Status.RUNNING, "RUNNING", [], ["parent_job", "parent_job_any_final_status_is_valid"]),
+        (Status.WAITING, Status.RUNNING, "COMPLETED", ["parent_job", "parent_job_any_final_status_is_valid"], []),
+        (Status.WAITING, Status.SKIPPED, "COMPLETED", [], ["parent_job", "parent_job_any_final_status_is_valid"]),
+        (Status.RUNNING, Status.COMPLETED, "COMPLETED", [], ["parent_job", "parent_job_any_final_status_is_valid"]),
+        (Status.RUNNING, Status.FAILED, "COMPLETED", ["parent_job"], ["parent_job_any_final_status_is_valid"]),
+        (Status.RUNNING, Status.RUNNING, "RUNNING", [], ["parent_job", "parent_job_any_final_status_is_valid"]),
+        (Status.RUNNING, Status.RUNNING, "COMPLETED", ["parent_job", "parent_job_any_final_status_is_valid"], []),
+        (Status.RUNNING, Status.SKIPPED, "COMPLETED", [], ["parent_job", "parent_job_any_final_status_is_valid"]),
+        (Status.SKIPPED, Status.COMPLETED, "COMPLETED", [], ["parent_job", "parent_job_any_final_status_is_valid"]),
+        (Status.SKIPPED, Status.FAILED, "COMPLETED", ["parent_job"], ["parent_job_any_final_status_is_valid"]),
+        (Status.SKIPPED, Status.SKIPPED, "COMPLETED", [], ["parent_job", "parent_job_any_final_status_is_valid"]),
+        (Status.FAILED, Status.COMPLETED, "COMPLETED", [], ["parent_job", "parent_job_any_final_status_is_valid"]),
+        (Status.FAILED, Status.FAILED, "COMPLETED", ["parent_job"], ["parent_job_any_final_status_is_valid"]),
+        (Status.FAILED, Status.SKIPPED, "COMPLETED", [], ["parent_job", "parent_job_any_final_status_is_valid"]),
+    ],
+    ids=[
+        "JOB: WAITING <- Parent: COMPLETED | target: COMPLETED",
+        "JOB: WAITING <- Parent: FAILED | target: COMPLETED",
+        "JOB: WAITING <- Parent: RUNNING | target: RUNNING",
+        "JOB: WAITING <- Parent: RUNNING | target: COMPLETED",
+        "JOB: WAITING <- Parent: SKIPPED | target: COMPLETED",
+        "JOB: RUNNING <- Parent: COMPLETED | target: COMPLETED",
+        "JOB: RUNNING <- Parent: FAILED | target: COMPLETED",
+        "JOB: RUNNING <- Parent: RUNNING | target: RUNNING",
+        "JOB: RUNNING <- Parent: RUNNING | target: COMPLETED",
+        "JOB: RUNNING <- Parent: SKIPPED | target: COMPLETED",
+        "JOB: SKIPPED <- Parent: COMPLETED | target: COMPLETED",
+        "JOB: SKIPPED <- Parent: FAILED | target: COMPLETED",
+        "JOB: SKIPPED <- Parent: SKIPPED | target: COMPLETED",
+        "JOB: FAILED <- Parent: COMPLETED | target: COMPLETED",
+        "JOB: FAILED <- Parent: FAILED | target: COMPLETED",
+        "JOB: FAILED <- Parent: SKIPPED | target: COMPLETED",
+    ]
+)
+def test_check_relationship_is_ready(job_status, parent_status, target_status_key, expected_unsatisfated, expected_satisfated):
+    parent_job = Job("parent_job", "1", parent_status, 0)
+    parent_job_any_final_status_is_valid = Job("parent_job_any_final_status_is_valid", "2", parent_status, 0)
+    job = Job("job", "3", job_status, 0)
+    job.edge_info = {
+        target_status_key: {
+            "parent_job": (parent_job, None, False),
+            "parent_job_any_final_status_is_valid": (parent_job_any_final_status_is_valid, None, True)
+        }
+    }
+
+    unsatisfated, satisfated = JobList._check_relationship_is_ready(job, target_status_key)
+
+    assert [j.name for j in unsatisfated] == expected_unsatisfated
+    assert [j.name for j in satisfated] == expected_satisfated

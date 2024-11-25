@@ -2,6 +2,7 @@ import pytest
 from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 import os
 
+
 def add_ssh_config_file(tmpdir, user, content):
     if not tmpdir.join(".ssh").exists():
         tmpdir.mkdir(".ssh")
@@ -10,6 +11,7 @@ def add_ssh_config_file(tmpdir, user, content):
     else:
         ssh_config_file = tmpdir.join(".ssh/config")
     ssh_config_file.write(content)
+
 
 @pytest.fixture(scope="function")
 def generate_all_files(tmpdir):

@@ -230,10 +230,16 @@ class ParamikoPlatform(Platform):
         """
         Maps the shared account user ssh config file to the current user config file.
         Defaults to ~/.ssh/config if the mapped file does not exist.
+        Defaults to ~/.ssh/config_%AS_ENV_CURRENT_USER% if %AS_ENV_SSH_CONFIG_PATH% is not defined.
+        param as_conf: Autosubmit configuration
+        return: None
         """
         self._user_config_file = os.path.expanduser("~/.ssh/config")
         if not as_conf.is_current_real_user_owner:  # Using shared account
-            mapped_config_file = f"~/.ssh/config_{self.expid}"
+            if 'AS_ENV_SSH_CONFIG_PATH' not in self.config:  # if not defined in the ENV variables, use the default + current user
+                mapped_config_file = os.path.expanduser(f"~/.ssh/config_{self.config['AS_ENV_CURRENT_USER']}")
+            else:
+                mapped_config_file = self.config['AS_ENV_SSH_CONFIG_PATH']
             if mapped_config_file.startswith("~"):
                 mapped_config_file = os.path.expanduser(mapped_config_file)
             if not Path(mapped_config_file).exists():

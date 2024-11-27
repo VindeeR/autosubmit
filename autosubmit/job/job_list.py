@@ -2641,7 +2641,8 @@ class JobList(object):
                 relations_unsatisfated, relations_satisfated = self._check_relationship_is_ready(job)
                 if not relations_unsatisfated:
                     other_parents = [parent for parent in job.parents if parent not in relations_satisfated]
-                    jobs_to_check.append(job)
+                    if not [parent for parent in other_parents if parent.status != Status.COMPLETED]:
+                        jobs_to_check.append(job)
         return jobs_to_check
 
     @staticmethod

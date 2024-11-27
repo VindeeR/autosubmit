@@ -2852,7 +2852,7 @@ class JobList(object):
             for job in self.get_waiting():
                 tmp = [parent for parent in job.parents if
                        parent.status == Status.COMPLETED or parent.status == Status.SKIPPED]
-                if job.parents is None or (len(tmp) == len(job.parents) and not [parent for parent in job.parents if parent.name in job.edge_info.get("FAILED", None)]):  # TODO pytest but this function needs a refactor before, 245 lines
+                if job.parents is None or (len(tmp) == len(job.parents) and not [parent for parent in job.parents if parent.name in job.edge_info.get("FAILED", {})]):  # TODO pytest but this function needs a refactor before, 245 lines
                     job.status = Status.READY
                     job.packed = False
                     job.hold = False

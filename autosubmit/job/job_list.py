@@ -2641,6 +2641,7 @@ class JobList(object):
                 relations_unsatisfated, _ = self._check_relationship_is_ready(job, target_status)
                 if not relations_unsatisfated:
                     jobs_to_check.append(job)
+
         return jobs_to_check
 
     @staticmethod
@@ -2689,6 +2690,8 @@ class JobList(object):
                 elif Status.LOGICAL_ORDER.index(parent_status_key) >= Status.LOGICAL_ORDER.index(target_status_key):
                     relation_satisfated.append(parent_edge_info[0])
                 elif Status.LOGICAL_ORDER.index(parent_status_key) < Status.LOGICAL_ORDER.index(target_status_key):
+                    relation_unsatisfated.append(parent_edge_info[0])
+                else:
                     relation_unsatisfated.append(parent_edge_info[0])
 
         return relation_unsatisfated, relation_satisfated

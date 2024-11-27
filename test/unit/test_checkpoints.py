@@ -75,11 +75,11 @@ def create_dummy_job_with_status(status, platform):
 
 def test_add_edge_job(setup_job_list):
     _, waiting_job, _ = setup_job_list
-    special_variables = {"STATUS": Status.VALUE_TO_KEY[Status.COMPLETED], "FROM_STEP": 0}
+    special_variables = {"STATUS": Status.VALUE_TO_KEY[Status.COMPLETED], "FROM_STEP": 0, "ANY_FINAL_STATUS_IS_VALID": False}
     for p in waiting_job.parents:
         waiting_job.add_edge_info(p, special_variables)
     for parent in waiting_job.parents:
-        assert waiting_job.edge_info[special_variables["STATUS"]][parent.name] == (parent, special_variables.get("FROM_STEP", 0))
+        assert waiting_job.edge_info[special_variables["STATUS"]][parent.name] == (parent, special_variables.get("FROM_STEP", 0), False)
 
 
 def test_add_edge_info_joblist(setup_job_list):
@@ -101,8 +101,8 @@ def test_check_special_status(setup_job_list):
     job_c.parents.add(job_a)
     job_c.parents.add(job_b)
     # C can start when A is completed and B is running
-    job_c.edge_info = {Status.VALUE_TO_KEY[Status.COMPLETED]: {job_a.name: (job_a, 0)}, Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0)}}
-    special_conditions = {"STATUS": Status.VALUE_TO_KEY[Status.RUNNING], "FROM_STEP": 0}
+    job_c.edge_info = {Status.VALUE_TO_KEY[Status.COMPLETED]: {job_a.name: (job_a, 0, False)}, Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0, False)}}
+    special_conditions = {"STATUS": Status.VALUE_TO_KEY[Status.RUNNING], "FROM_STEP": 0, "ANY_FINAL_STATUS_IS_VALID": False}
     # Test: { A: COMPLETED, B: RUNNING }
     job_list._add_edges_map_info(job_c, special_conditions["STATUS"])
     assert job_c in job_list.check_special_status()  # This function should return the jobs that can start ( they will be put in Status.ready in the update_list funtion )
@@ -110,7 +110,7 @@ def test_check_special_status(setup_job_list):
     job_a.status = Status.RUNNING
     assert job_c not in job_list.check_special_status()
     # Test: { A: RUNNING, B: RUNNING }, setting B and A condition to running
-    job_c.edge_info = {Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0), job_a.name: (job_a, 0)}}
+    job_c.edge_info = {Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0, False), job_a.name: (job_a, 0, False)}}
     assert job_c in job_list.check_special_status()
     # Test: { A: COMPLETED, B: COMPLETED } # This should always work.
     job_a.status = Status.COMPLETED

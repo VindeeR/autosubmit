@@ -954,7 +954,6 @@ class JobList(object):
         :return:
         """
         if special_conditions.get("STATUS", None):
-
             if special_conditions.get("FROM_STEP", None):
                 job.max_checkpoint_step = int(special_conditions.get("FROM_STEP", 0)) if int(
                     special_conditions.get("FROM_STEP", 0)) > job.max_checkpoint_step else job.max_checkpoint_step
@@ -2634,14 +2633,15 @@ class JobList(object):
             if target_status == "ALL":
                 continue
             for job in sorted_job_list:
-                if job.status != Status.WAITING:
+                if job.status != Status.WAITING:  # Job already running
                     continue
                 if target_status in ["RUNNING", "FAILED"]:
                     self._check_checkpoint(job)
-                relations_unsatisfated, _ = self._check_relationship_is_ready(job, target_status)
+                # Now ALL parents status of the job
+                relations_unsatisfated, relations_satisfated = self._check_relationship_is_ready(job)
                 if not relations_unsatisfated:
+                    other_parents = [parent for parent in job.parents if parent not in relations_satisfated]
                     jobs_to_check.append(job)
-
         return jobs_to_check
 
     @staticmethod
@@ -2655,7 +2655,7 @@ class JobList(object):
             job.get_checkpoint_files()
 
     @staticmethod
-    def _check_relationship_is_ready(job: Job, target_status_key: str) -> Tuple[List[Job], List[Job]]:
+    def _check_relationship_is_ready(job: Job) -> Tuple[List[Job], List[Job]]:
         """
         Check the correctness of the relationship between a job and its parents.
 
@@ -2663,36 +2663,36 @@ class JobList(object):
         Special: For a relation to be satisfated, the parent must be equal or superior to target status.
 
         :param job: The job to check. job.edge_info: contains a tuple with (parent, checkpoint_number, optional)
-        :param target_status_key: The target status to compare against.
         :return: A tuple containing two lists:
             - relation_unsatisfated: Parent jobs that doesn't satisfate the relationship.
             - relation_satisfated: Parent jobs that satisfate the relationship.
         """
         relation_satisfated = []
         relation_unsatisfated = []
-        target_status = Status.KEY_TO_VALUE[target_status_key]
-        for parent_edge_info in job.edge_info[target_status_key].values():
-            if target_status in [Status.FAILED, Status.RUNNING] and parent_edge_info[1] and int(parent_edge_info[1]) >= job.current_checkpoint_step:
-                continue
-            # If optional is True, the parent is not required to be completed, other final static status are allowed
-            if parent_edge_info[2]:  # Optional == Any final status is allowed
-                if parent_edge_info[0].status in [Status.COMPLETED, Status.FAILED, Status.SKIPPED, Status.COMPLETED, target_status]:
-                    relation_satisfated.append(parent_edge_info[0])
-                else:
-                    relation_unsatisfated.append(parent_edge_info[0])
-            else:  # not Optional
-                parent_status_key = Status.VALUE_TO_KEY[parent_edge_info[0].status]
-                if parent_edge_info[0].status in [Status.FAILED, Status.COMPLETED, Status.SKIPPED, Status.UNKNOWN]:
-                    if (parent_edge_info[0].status == Status.SKIPPED and target_status in [Status.SKIPPED, Status.COMPLETED]) or parent_edge_info[0].status == target_status:
+        for target_status_key in job.edge_info.keys():
+            target_status = Status.KEY_TO_VALUE[target_status_key]
+            for parent_edge_info in job.edge_info[target_status_key].values():
+                if target_status in [Status.FAILED, Status.RUNNING] and parent_edge_info[1] and int(parent_edge_info[1]) >= job.current_checkpoint_step:
+                    continue
+                # If optional is True, the parent is not required to be completed, other final static status are allowed
+                if parent_edge_info[2]:  # Optional == Any final status is allowed
+                    if parent_edge_info[0].status in [Status.COMPLETED, Status.FAILED, Status.SKIPPED, Status.COMPLETED, target_status]:
                         relation_satisfated.append(parent_edge_info[0])
                     else:
                         relation_unsatisfated.append(parent_edge_info[0])
-                elif Status.LOGICAL_ORDER.index(parent_status_key) >= Status.LOGICAL_ORDER.index(target_status_key):
-                    relation_satisfated.append(parent_edge_info[0])
-                elif Status.LOGICAL_ORDER.index(parent_status_key) < Status.LOGICAL_ORDER.index(target_status_key):
-                    relation_unsatisfated.append(parent_edge_info[0])
-                else:
-                    relation_unsatisfated.append(parent_edge_info[0])
+                else:  # not Optional
+                    parent_status_key = Status.VALUE_TO_KEY[parent_edge_info[0].status]
+                    if parent_edge_info[0].status in [Status.FAILED, Status.COMPLETED, Status.SKIPPED, Status.UNKNOWN]:
+                        if (parent_edge_info[0].status == Status.SKIPPED and target_status in [Status.SKIPPED, Status.COMPLETED]) or parent_edge_info[0].status == target_status:
+                            relation_satisfated.append(parent_edge_info[0])
+                        else:
+                            relation_unsatisfated.append(parent_edge_info[0])
+                    elif Status.LOGICAL_ORDER.index(parent_status_key) >= Status.LOGICAL_ORDER.index(target_status_key):
+                        relation_satisfated.append(parent_edge_info[0])
+                    elif Status.LOGICAL_ORDER.index(parent_status_key) < Status.LOGICAL_ORDER.index(target_status_key):
+                        relation_unsatisfated.append(parent_edge_info[0])
+                    else:
+                        relation_unsatisfated.append(parent_edge_info[0])
 
         return relation_unsatisfated, relation_satisfated
 
@@ -2852,12 +2852,7 @@ class JobList(object):
             for job in self.get_waiting():
                 tmp = [parent for parent in job.parents if
                        parent.status == Status.COMPLETED or parent.status == Status.SKIPPED]
-                tmp2 = [parent for parent in job.parents if
-                        parent.status == Status.COMPLETED or parent.status == Status.SKIPPED or parent.status == Status.FAILED]
-                tmp3 = [parent for parent in job.parents if
-                        parent.status == Status.SKIPPED or parent.status == Status.FAILED]
-                failed_ones = [parent for parent in job.parents if parent.status == Status.FAILED]
-                if job.parents is None or len(tmp) == len(job.parents):
+                if job.parents is None or (len(tmp) == len(job.parents) and not [parent for parent in job.parents if parent.name in job.edge_info.get("FAILED", None)]):  # TODO pytest but this function needs a refactor before, 245 lines
                     job.status = Status.READY
                     job.packed = False
                     job.hold = False
@@ -2865,39 +2860,6 @@ class JobList(object):
                         "Setting job: {0} status to: READY (all parents completed)...".format(job.name))
                     if as_conf.get_remote_dependencies() == "true":
                         all_parents_completed.append(job.name)
-                if job.status != Status.READY:
-                    if len(tmp3) != len(job.parents):
-                        if len(tmp2) == len(job.parents):
-                            strong_dependencies_failure = False
-                            weak_dependencies_failure = False
-                            for parent in failed_ones:
-                                if parent.name in job.edge_info and job.edge_info[parent.name].get('optional', False):
-                                    weak_dependencies_failure = True
-                                elif parent.section in job.dependencies:
-                                    if parent.status not in [Status.COMPLETED, Status.SKIPPED]:
-                                        strong_dependencies_failure = True
-                                    break
-                            if not strong_dependencies_failure and weak_dependencies_failure:
-                                job.status = Status.READY
-                                job.packed = False
-                                job.hold = False
-                                Log.debug(
-                                    "Setting job: {0} status to: READY (conditional jobs are completed/failed)...".format(
-                                        job.name))
-                                break
-                            if as_conf.get_remote_dependencies() == "true":
-                                all_parents_completed.append(job.name)
-                    else:
-                        if len(tmp3) == 1 and len(job.parents) == 1:
-                            for parent in job.parents:
-                                if parent.name in job.edge_info and job.edge_info[parent.name].get('optional', False):
-                                    job.status = Status.READY
-                                    job.packed = False
-                                    job.hold = False
-                                    Log.debug(
-                                        "Setting job: {0} status to: READY (conditional jobs are completed/failed)...".format(
-                                            job.name))
-                                    break
             if as_conf.get_remote_dependencies() == "true":
                 for job in self.get_prepared():
                     tmp = [

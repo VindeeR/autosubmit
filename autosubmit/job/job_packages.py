@@ -150,6 +150,7 @@ class JobPackageBase(object):
             if not job.check_script(configuration, parameters, show_logs=job.check_warnings):
                 Log.warning(
                     f'Script {job.name} has some empty variables. An empty value has substituted these variables')
+
             else:
                 Log.result("Script {0} OK", job.name)
             # looking for directives on jobs
@@ -851,4 +852,3 @@ class JobPackageHorizontalVertical(JobPackageHybrid):
                                                  jobs_scripts=self._jobs_scripts, dependency=self._job_dependency,
                                                  jobs_resources=self._jobs_resources, expid=self._expid,
                                                  rootdir=self.platform.root_dir, directives=self._custom_directives,threads=self._threads,method=self.method.lower(),partition=self.partition,wrapper_data=self,num_processors_value=self._num_processors)
-

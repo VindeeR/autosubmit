@@ -290,7 +290,6 @@ class Monitor:
             - color: The color associated with the status.
             - label: The label associated with the status.
             - dashed: Whether the relation line should be dashed or straight
-        :rtype: Tuple[Optional[str], Optional[str], bool]
         """
         color = None
         label = None

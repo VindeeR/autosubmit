@@ -113,10 +113,12 @@ def test_check_special_status(setup_job_list):
     job_c.edge_info = {Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0, False), job_a.name: (job_a, 0, False)}}
     assert job_c in job_list.check_special_status()
     # Test: { A: COMPLETED, B: COMPLETED } # This should always work.
+    job_c.edge_info = {Status.VALUE_TO_KEY[Status.COMPLETED]: {job_b.name: (job_b, 0, False), job_a.name: (job_a, 0, False)}}
     job_a.status = Status.COMPLETED
     job_b.status = Status.COMPLETED
     assert job_c in job_list.check_special_status()
     # Test: { A: FAILED, B: COMPLETED }
+    job_c.edge_info = {Status.VALUE_TO_KEY[Status.COMPLETED]: {job_b.name: (job_b, 0, False)}, Status.VALUE_TO_KEY[Status.FAILED]: {job_a.name: (job_a, 0, False)}}
     job_a.status = Status.FAILED
     job_b.status = Status.COMPLETED
     # This may change in #1316

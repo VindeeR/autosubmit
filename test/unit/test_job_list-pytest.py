@@ -131,7 +131,7 @@ def test_check_relationship_is_ready(job_status, parent_status, target_status_ke
         }
     }
 
-    unsatisfated, satisfated = JobList._check_relationship_is_ready(job, target_status_key)
+    unsatisfated, satisfated = JobList._check_relationship_is_ready(job)
 
     assert [j.name for j in unsatisfated] == expected_unsatisfated
     assert [j.name for j in satisfated] == expected_satisfated

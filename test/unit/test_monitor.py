@@ -23,5 +23,5 @@ def test_check_final_status():
 
     # Assert the expected values
     assert color == monitor_instance._table[Status.KEY_TO_VALUE["COMPLETED"]]
-    assert label == "label"
+    assert label == 0
     assert dashed is True

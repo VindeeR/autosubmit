@@ -104,21 +104,21 @@ class Migrate:
         :param pickup_data: Data to migrate.
         :raises AutosubmitCritical: If there are missing or invalid platform configurations.
         """
-        missing_platforms = ""
+        missing_platforms = []
         scratch_dirs = set()
         platforms_to_migrate = {}
 
         for platform in platforms_to_test:
             if platform.name not in pickup_data:
                 if platform.name.upper() != "LOCAL" and platform.scratch not in scratch_dirs:
-                    missing_platforms += f', {platform.name}'
+                    missing_platforms.append(platform.name)
             else:
                 pickup_data[platform.name]["ROOTDIR"] = platform.root_dir
                 platforms_to_migrate[platform.name] = pickup_data[platform.name]
                 scratch_dirs.add(pickup_data[platform.name].get("SCRATCH_DIR", ""))
 
         if missing_platforms:
-            raise AutosubmitCritical(f"Missing platforms in the offer conf: {missing_platforms[1:]}", 7014)
+            raise AutosubmitCritical(f"Missing platforms in the offer conf: {','.join(missing_platforms)}", 7014)
 
         missconf_platforms = ""
         for platform_name, platform_data in platforms_to_migrate.items():

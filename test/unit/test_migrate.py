@@ -12,7 +12,7 @@ from log.log import AutosubmitCritical
 from test.unit.utils.common import create_database, init_expid
 
 # TODO: Write the tests without the class and self ( to do after the transition to github)
-@pytest.mark.skip(reason="Skipping this test until Github transition is complete, ssh with paramiko is not working on the gitlab CI/CD")
+@pytest.mark.skip('This test requires a running SSH server, with password-less authentication')
 class TestMigrate:
 
     @pytest.fixture(scope='class')
@@ -189,6 +189,7 @@ PLATFORMS:
         mocker.patch('autosubmit.platforms.paramiko_platform.ParamikoPlatform.move_file', return_value=False)
         migrate_remote_only.migrate_offer_remote()
         assert migrate_tmpdir.join('migrate_tmp_dir/t000').check(dir=True)
+        assert not migrate_tmpdir.join(f'scratch/whatever/{migrate_tmpdir.owner}/t000').check(dir=True)
         migrate_remote_only.migrate_pickup()
         assert migrate_tmpdir.join(f'scratch/whatever/{migrate_tmpdir.owner}/t000').check(dir=False)
         assert migrate_tmpdir.join(f'scratch/whatever_new/{migrate_tmpdir.owner}/t000').check(dir=True)

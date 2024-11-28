@@ -517,13 +517,13 @@ class ParamikoPlatform(Platform):
                     os.path.join(self.get_files_path(), src)), 5001)
                 return False
 
-    def move_folder_rsync(self, src: str, dest: str, retries_limit: int = 150) -> bool:
+    def move_folder_rsync(self, src: str, dest: str, retries_limit: int = 25) -> bool:
         """
         Perform a remote rsync operation with retries.
 
         :param src: Source directory to sync from.
         :param dest: Destination directory to sync to.
-        :param retries_limit: Maximum number of retries to perform.
+        :param retries_limit: Maximum number of retries to perform. If it keeps failing, user can prompt the command again.
         :return: True if the rsync operation is successful, False otherwise.
         """
         finished = False
@@ -1494,7 +1494,7 @@ class ParamikoPlatform(Platform):
                 return True
             else:
                 return False
-        except Exception as e:
+        except Exception:
             return False
 
 class ParamikoPlatformException(Exception):

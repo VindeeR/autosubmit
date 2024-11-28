@@ -92,34 +92,78 @@ def test_add_edge_info_joblist(setup_job_list):
 
 
 def test_check_special_status(setup_job_list):
+    # Init
     job_list, _, jobs = setup_job_list
     job_list.jobs_edges = dict()
     job_a = jobs["completed"][0]
     job_b = jobs["running"][0]
     job_c = jobs["waiting"][0]
+    job_d = jobs["failed"][0]
     job_c.parents = set()
     job_c.parents.add(job_a)
     job_c.parents.add(job_b)
+
     # C can start when A is completed and B is running
     job_c.edge_info = {Status.VALUE_TO_KEY[Status.COMPLETED]: {job_a.name: (job_a, 0, False)}, Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0, False)}}
     special_conditions = {"STATUS": Status.VALUE_TO_KEY[Status.RUNNING], "FROM_STEP": 0, "ANY_FINAL_STATUS_IS_VALID": False}
+
     # Test: { A: COMPLETED, B: RUNNING }
     job_list._add_edges_map_info(job_c, special_conditions["STATUS"])
     assert job_c in job_list.check_special_status()  # This function should return the jobs that can start ( they will be put in Status.ready in the update_list funtion )
+
     # Test: { A: RUNNING, B: RUNNING }, A condition is default ( completed ) and B is running
     job_a.status = Status.RUNNING
     assert job_c not in job_list.check_special_status()
+
     # Test: { A: RUNNING, B: RUNNING }, setting B and A condition to running
     job_c.edge_info = {Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0, False), job_a.name: (job_a, 0, False)}}
     assert job_c in job_list.check_special_status()
+
     # Test: { A: COMPLETED, B: COMPLETED } # This should always work.
     job_c.edge_info = {Status.VALUE_TO_KEY[Status.COMPLETED]: {job_b.name: (job_b, 0, False), job_a.name: (job_a, 0, False)}}
     job_a.status = Status.COMPLETED
     job_b.status = Status.COMPLETED
     assert job_c in job_list.check_special_status()
+
     # Test: { A: FAILED, B: COMPLETED }
     job_c.edge_info = {Status.VALUE_TO_KEY[Status.COMPLETED]: {job_b.name: (job_b, 0, False)}, Status.VALUE_TO_KEY[Status.FAILED]: {job_a.name: (job_a, 0, False)}}
     job_a.status = Status.FAILED
     job_b.status = Status.COMPLETED
     # This may change in #1316
     assert job_c in job_list.check_special_status()
+
+    # Test: { A: FAILED, B: COMPLETED } but job_c is already running
+    job_c.status = Status.RUNNING
+    assert job_c not in job_list.check_special_status()
+
+    # Testing now with a job that has no special_status
+    job_c.parents.add(job_d)
+    job_c.status = Status.WAITING
+    # Test: { A: RUNNING, B: RUNNING }, A is RUNNING, B is RUNNING D is COMPLETED
+    job_c.edge_info = {Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0, False), job_a.name: (job_a, 0, False)}}
+    job_a.status = Status.RUNNING
+    job_b.status = Status.RUNNING
+    job_d.status = Status.COMPLETED
+    assert job_c in job_list.check_special_status()
+
+    # Test: { A: RUNNING, B: RUNNING }, A is RUNNING, B is RUNNING D is FAILED
+    job_c.edge_info = {Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0, False), job_a.name: (job_a, 0, False)}}
+    job_a.status = Status.RUNNING
+    job_b.status = Status.RUNNING
+    job_d.status = Status.FAILED
+    assert job_c not in job_list.check_special_status()
+
+    # Test: { A: RUNNING, B: RUNNING }, A is WAITING, B is WAITING D is COMPLETED
+    job_c.edge_info = {Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0, False), job_a.name: (job_a, 0, False)}}
+    job_a.status = Status.WAITING
+    job_b.status = Status.RUNNING
+    job_d.status = Status.COMPLETED
+    assert job_c not in job_list.check_special_status()
+
+    # Test: { A: RUNNING, B: RUNNING }, A is WAITING, B is WAITING D is COMPLETED
+    job_c.edge_info = {Status.VALUE_TO_KEY[Status.RUNNING]: {job_b.name: (job_b, 0, False), job_a.name: (job_a, 0, False)}}
+    job_a.status = Status.WAITING
+    job_b.status = Status.WAITING
+    job_d.status = Status.FAILED
+    job_c.parents.add(job_d)
+    assert job_c not in job_list.check_special_status()

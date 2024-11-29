@@ -12,7 +12,8 @@ from log.log import AutosubmitCritical
 from test.unit.utils.common import create_database, init_expid
 
 # TODO: Write the tests without the class and self ( to do after the transition to github)
-@pytest.mark.skip('This test requires a running SSH server, with password-less authentication')
+# TODO: Isolate the tests ( to do after the transition to github) rsync one works if only it is launched
+@pytest.skip("Pipeline needs to allow to connect to itself through ssh")
 class TestMigrate:
 
     @pytest.fixture(scope='class')

@@ -553,6 +553,7 @@ class ParamikoPlatform(Platform):
         """
         try:
             self.send_command(f"rsync --timeout=3600 --bwlimit=20000 -aqz --remove-source-files {src} {dest}")
+            self.send_command(f"find {src} -type d -empty -delete")
             if self.get_ssh_output_err() == "" or "no such file or directory" not in self.get_ssh_output_err().lower():
                 return True
         except BaseException as e:

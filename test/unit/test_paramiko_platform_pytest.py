@@ -1,7 +1,7 @@
 import pytest
 from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 import os
-
+import autosubmitconfigparser.config.configcommon
 
 def add_ssh_config_file(tmpdir, user, content):
     if not tmpdir.join(".ssh").exists():
@@ -49,7 +49,7 @@ def test_map_user_config_file(tmpdir, autosubmit_config, mocker, generate_all_fi
     if env_ssh_config_defined:
         experiment_data["AS_ENV_SSH_CONFIG_PATH"] = str(tmpdir.join(f".ssh/config_{user}"))
     as_conf = autosubmit_config(expid='a000', experiment_data=experiment_data)
-    as_conf.is_current_real_user_owner = os.environ["USER"] == user
+    mocker.patch('autosubmitconfigparser.config.configcommon.AutosubmitConfig.is_current_real_user_owner', os.environ["USER"] == user)
     platform = ParamikoPlatform(expid='a000', name='ps', config=experiment_data)
     platform._ssh_config = mocker.MagicMock()
     mocker.patch('os.path.expanduser', side_effect=lambda x: x)  # Easier to test, and also not mess with the real user's config

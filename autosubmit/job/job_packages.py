@@ -224,7 +224,7 @@ class JobPackageBase(object):
             job.hold = hold
             job.id = str(jobs_id[i])
             job.status = Status.SUBMITTED
-            if hasattr(self, "name") and self.name != "simple_package": # hasattr for retrocompatibility
+            if hasattr(self, "name"): # TODO change this check for a property that checks if it is a wrapper or not, the same change has to be done in other parts of the code
                 job.wrapper_name = self.name
 
 class JobPackageSimple(JobPackageBase):
@@ -236,7 +236,7 @@ class JobPackageSimple(JobPackageBase):
         super(JobPackageSimple, self).__init__(jobs)
         self._job_scripts = {}
         self.export = jobs[0].export
-        self.name = "simple_package"
+        # self.name = "simple_package" TODO this should be possible, but it crashes accross the code. Add a property that defines what is a package with wrappers
 
     def _create_scripts(self, configuration):
         for job in self.jobs:

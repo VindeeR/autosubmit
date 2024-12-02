@@ -219,7 +219,13 @@ class JobPackageBase(object):
     def _do_submission(self,job_scripts=None, hold=False):
         """ Submit package to the platform. """
 
-
+    def process_jobs_to_submit(self, jobs_id: List[str], hold: bool = False) -> None:
+        for i, job in enumerate(self.jobs):
+            job.hold = hold
+            job.id = str(jobs_id[i])
+            job.status = Status.SUBMITTED
+            if hasattr(self, "name") and self.name != "simple_package": # hasattr for retrocompatibility
+                job.wrapper_name = self.name
 
 class JobPackageSimple(JobPackageBase):
     """
@@ -230,6 +236,7 @@ class JobPackageSimple(JobPackageBase):
         super(JobPackageSimple, self).__init__(jobs)
         self._job_scripts = {}
         self.export = jobs[0].export
+        self.name = "simple_package"
 
     def _create_scripts(self, configuration):
         for job in self.jobs:

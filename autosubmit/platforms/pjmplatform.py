@@ -147,13 +147,7 @@ class PJMPlatform(ParamikoPlatform):
                     sleep(10)
 
                 for package in valid_packages_to_submit:
-                    for job in package.jobs:
-                        job.hold = hold
-                        job.id = str(jobs_id[i])
-                        job.status = Status.SUBMITTED
-                        job.wrapper_name = package.name
-
-                    i += 1
+                    package.process_jobs_to_submit(jobs_id, hold)
             save = True
         except AutosubmitError as e:
             raise

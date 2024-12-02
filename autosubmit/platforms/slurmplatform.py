@@ -185,12 +185,7 @@ class SlurmPlatform(ParamikoPlatform):
                         except Exception as e:
                             failed_packages.append(jobs_id)
                             continue
-                    for job in package.jobs:
-                        job.hold = hold
-                        job.id = str(jobs_id[i])
-                        job.status = Status.SUBMITTED
-                        job.wrapper_name = package.name
-
+                    package.process_jobs_to_submit(jobs_id, hold)
                     # Check if there are duplicated jobnames
                     if not duplicated_jobs_already_checked:
                         job_name = package.name if hasattr(package, "name") else package.jobs[0].name
@@ -204,7 +199,6 @@ class SlurmPlatform(ParamikoPlatform):
                                 self.send_command(self.cancel_job(id_)) # This can be faster if we cancel all jobs at once but there is no cancel_all_jobs call right now so todo in future
                                 Log.debug(f'Job {id_} with the assigned name: {job_name} has been cancelled')
                             Log.debug(f'Job {package.jobs[0].id} with the assigned name: {job_name} has been submitted')
-                    i += 1
                 if len(failed_packages) > 0:
                     for job_id in failed_packages:
                         platform.send_command(platform.cancel_cmd + " {0}".format(job_id))
@@ -213,6 +207,8 @@ class SlurmPlatform(ParamikoPlatform):
         except AutosubmitError as e:
             raise
         except AutosubmitCritical as e:
+            raise
+        except AttributeError:
             raise
         except Exception as e:
             raise AutosubmitError("{0} submission failed".format(self.name), 6015, str(e))

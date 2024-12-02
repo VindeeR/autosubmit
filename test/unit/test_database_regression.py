@@ -139,7 +139,6 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World with id=Success"
-                sleep 2
             PLATFORM: local
             DEPENDENCIES: job-1
             RUNNING: chunk
@@ -152,7 +151,6 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World with id=Success + wrappers"
-                sleep 2
             DEPENDENCIES: job-1
             PLATFORM: local
             RUNNING: chunk
@@ -169,7 +167,6 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World with id=FAILED"
-                sleep 2
                 exit 1
             DEPENDENCIES: job-1
             PLATFORM: local
@@ -183,7 +180,6 @@ project:
         job:
             SCRIPT: |
                 echo "Hello World with id=FAILED + wrappers"
-                sleep 2
                 exit 1
             PLATFORM: local
             DEPENDENCIES: job-1

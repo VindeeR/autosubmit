@@ -2404,6 +2404,9 @@ class Autosubmit:
                         exp_history.finish_current_experiment_run()
                     except Exception:
                         Log.warning("Database is locked")
+                ### Create rocrate object if requested
+                if "rocrate.yml" in os.listdir(os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid, "conf")):
+                    Autosubmit.provenance(expid, rocrate = TRUE)
         except BaseLockException:
             raise
         except AutosubmitCritical:

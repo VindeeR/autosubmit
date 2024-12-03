@@ -30,9 +30,8 @@ def create_packages(mocker, autosubmit_config):
         JobPackageHorizontal(jobs, configuration=as_conf),
     ]
     for package in packages:
-        if hasattr(package, 'name'):  # Should be always True for fresh jobs/packages.
-            if not isinstance(package, JobPackageSimple):
-                package._name = "wrapped"
+        if not isinstance(package, JobPackageSimple):
+            package._name = "wrapped"
     return packages
 
 

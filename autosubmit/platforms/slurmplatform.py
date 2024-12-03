@@ -98,7 +98,6 @@ class SlurmPlatform(ParamikoPlatform):
         :return:
         """
         try:
-
             valid_packages_to_submit = [ package for package in valid_packages_to_submit if package.x11 != True]
             if len(valid_packages_to_submit) > 0:
                 duplicated_jobs_already_checked = False

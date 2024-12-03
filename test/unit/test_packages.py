@@ -25,7 +25,7 @@ def create_packages(mocker, autosubmit_config):
         job._init_runtime_parameters()
         job.wallclock = "00:01"
     packages = [
-        JobPackageSimple(jobs),
+        JobPackageSimple([jobs[0]]),
         JobPackageVertical(jobs, configuration=as_conf),
         JobPackageHorizontal(jobs, configuration=as_conf),
     ]
@@ -39,9 +39,9 @@ def create_packages(mocker, autosubmit_config):
 def test_process_jobs_to_submit(create_packages):
     packages = create_packages
     jobs_id = [1, 2, 3]
-    for package in packages:
-        package.process_jobs_to_submit(jobs_id, False)
-        for i, job in enumerate(package.jobs):
+    for i, package in enumerate(packages):  # Equivalent to valid_packages_to_submit but without the ghost jobs check etc.
+        package.process_jobs_to_submit(jobs_id[i], False)
+        for job in package.jobs:  # All jobs inside a package must have the same id.
             assert job.hold is False
             assert job.id == str(jobs_id[i])
             assert job.status == Status.SUBMITTED

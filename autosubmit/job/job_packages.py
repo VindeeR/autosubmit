@@ -219,10 +219,10 @@ class JobPackageBase(object):
     def _do_submission(self,job_scripts=None, hold=False):
         """ Submit package to the platform. """
 
-    def process_jobs_to_submit(self, jobs_id: List[str], hold: bool = False) -> None:
+    def process_jobs_to_submit(self, job_id: str, hold: bool = False) -> None:
         for i, job in enumerate(self.jobs):
             job.hold = hold
-            job.id = str(jobs_id[i])
+            job.id = str(job_id)
             job.status = Status.SUBMITTED
             if hasattr(self, "name"): # TODO change this check for a property that checks if it is a wrapper or not, the same change has to be done in other parts of the code
                 job.wrapper_name = self.name

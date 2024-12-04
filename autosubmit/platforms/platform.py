@@ -883,6 +883,7 @@ class Platform(object):
                 Log.result(f"Process {self.log_recovery_process.name} started with pid {self.log_recovery_process.pid}")
                 # Cleanup will be automatically prompt on control + c or a normal exit
                 atexit.register(self.send_cleanup_signal)
+                atexit.register(self.closeConnection)
 
     def send_cleanup_signal(self) -> None:
         """

@@ -995,4 +995,4 @@ class Platform(object):
                 break
         self.closeConnection()
         Log.info(f"{identifier} Exiting.")
-        _exit(0)  # Exit userspace, recommended for processes.
+        _exit(0)  # Exit userspace after manually closing ssh sockets, recommended for processes, the queue() and shared signals should be in charge of the main process.

@@ -1,6 +1,7 @@
 import atexit
 import multiprocessing
 import queue  # only for the exception
+from os import _exit
 import setproctitle
 import locale
 import os
@@ -992,4 +993,6 @@ class Platform(object):
             if self.cleanup_event.is_set():  # Check if the main process is waiting for this child to end.
                 self.recover_job_log(identifier, jobs_pending_to_process)
                 break
+        self.closeConnection()
         Log.info(f"{identifier} Exiting.")
+        _exit(0)  # Exit userspace, recommended for processes.

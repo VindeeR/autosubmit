@@ -2444,9 +2444,7 @@ class Autosubmit:
                 # Create rocrate object if requested
                 rocrate_data = as_conf.experiment_data.get("ROCRATE", None)
                 if rocrate_data:
-                    Autosubmit.provenance(expid, rocrate=True)
-                else:
-                    print("rocrate.yml not found in CONFIG. Can't create rocrate object. ")
+                        Autosubmit.provenance(expid, rocrate=True)
         except BaseLockException:
             terminate_child_process(expid)
             raise

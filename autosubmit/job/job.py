@@ -274,7 +274,6 @@ class Job(object):
         self._memory_per_task = ''
         self.log_retrieved = False
         self.start_time_timestamp = time.time()
-        self.end_time_placeholder = time.time()
         self.processors_per_node = ""
         self.stat_file = self.script_name[:-4] + "_STAT_0"
 

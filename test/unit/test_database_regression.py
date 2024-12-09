@@ -89,7 +89,7 @@ EXPERIMENT:
     # Unit of the chunk size. Can be hour, day, month, or year.
     CHUNKSIZEUNIT: month
     # Size of each chunk.
-    CHUNKSIZE: '4'
+    CHUNKSIZE: '2'
     # Number of chunks of the experiment.
     NUMCHUNKS: '3'  
     CHUNKINI: ''
@@ -100,10 +100,10 @@ CONFIG:
     # Current version of Autosubmit.
     AUTOSUBMIT_VERSION: ""
     # Total number of jobs in the workflow.
-    TOTALJOBS: 20
+    TOTALJOBS: 3
     # Maximum number of jobs permitted in the waiting status.
-    MAXWAITINGJOBS: 20
-    SAFETYSLEEPTIME: 1
+    MAXWAITINGJOBS: 3
+    SAFETYSLEEPTIME: 0
 DEFAULT:
     # Job experiment ID.
     EXPID: "t000"
@@ -132,7 +132,7 @@ project:
     return db_tmpdir
 
 
-@pytest.mark.parametrize("jobs_data, expected_count, final_status", [
+@pytest.mark.parametrize("jobs_data, expected_entries, final_status", [
     # Success
     ("""
     JOBS:
@@ -140,11 +140,9 @@ project:
             SCRIPT: |
                 echo "Hello World with id=Success"
             PLATFORM: local
-            DEPENDENCIES: job-1
             RUNNING: chunk
             wallclock: 00:01
-            retrials: 2
-    """, 1, "COMPLETED"),
+    """, 3, "COMPLETED"),  # Number of jobs
     # Success wrapper
     ("""
     JOBS:
@@ -155,32 +153,28 @@ project:
             PLATFORM: local
             RUNNING: chunk
             wallclock: 00:01
-            retrials: 2
     wrappers:
         wrapper:
             JOBS_IN_WRAPPER: job
             TYPE: vertical
-    """, 1, "COMPLETED"),
+    """, 3, "COMPLETED"),  # Number of jobs
     # Failure
     ("""
     JOBS:
         job:
             SCRIPT: |
-                echo "Hello World with id=FAILED"
-                exit 1
-            DEPENDENCIES: job-1
+                decho "Hello World with id=FAILED"
             PLATFORM: local
             RUNNING: chunk
             wallclock: 00:01
-            retrials: 2
-    """, 3, "FAILED"),
+            retrials: 2  # In local, it started to fail at 18 retrials.
+    """, (2+1)*3, "FAILED"),  # Retries set (N + 1) * number of jobs to run
     # Failure wrappers
     ("""
     JOBS:
         job:
             SCRIPT: |
-                echo "Hello World with id=FAILED + wrappers"
-                exit 1
+                decho "Hello World with id=FAILED + wrappers"
             PLATFORM: local
             DEPENDENCIES: job-1
             RUNNING: chunk
@@ -190,9 +184,9 @@ project:
         wrapper:
             JOBS_IN_WRAPPER: job
             TYPE: vertical
-    """, 3, "FAILED"),
+    """, (2+1)*1, "FAILED"),   # Retries set (N + 1) * job chunk 1 ( the rest shouldn't run )
 ], ids=["Success", "Success with wrapper", "Failure", "Failure with wrapper"])
-def test_db(db_tmpdir, prepare_db, jobs_data, expected_count, final_status, mocker):
+def test_db(db_tmpdir, prepare_db, jobs_data, expected_entries, final_status, mocker):
     # write jobs_data
     jobs_path = Path(f"{db_tmpdir.strpath}/t000/conf/jobs.yml")
     with jobs_path.open('w') as f:
@@ -227,6 +221,7 @@ def test_db(db_tmpdir, prepare_db, jobs_data, expected_count, final_status, mock
     c = conn.cursor()
     c.execute("SELECT * FROM job_data")
     rows = c.fetchall()
+    assert len(rows) == expected_entries
     # Convert rows to a list of dictionaries
     rows_as_dicts = [dict(row) for row in rows]
     # Tune the print so it is more readable, so it is easier to debug in case of failure
@@ -250,11 +245,6 @@ def test_db(db_tmpdir, prepare_db, jobs_data, expected_count, final_status, mock
         for key in [key for key in row_dict.keys() if
                     key not in ["status", "finish", "submit", "start", "extra_data", "children", "platform_output"]]:
             assert str(row_dict[key]) != str("")
-    # Check that the job_data table has the expected number of entries
-    c.execute("SELECT job_name, COUNT(*) as count FROM job_data GROUP BY job_name")
-    count_rows = c.fetchall()
-    for row in count_rows:
-        assert row["count"] == expected_count
-    # Close the cursor and connection
+    # TODO Tomorrow: Check log files aswell ( not ending with .1,.0... )
     c.close()
     conn.close()

@@ -2243,7 +2243,7 @@ class Autosubmit:
                         job_list.update_list(as_conf, submitter=submitter)
                         job_list.save()
                         # Submit jobs that are ready to run
-                        #Log.debug(f"FD submit: {fd_show.fd_table_status_str()}")
+                        #Log.debug(f"FD submit: {fd_show.fd_table_status_str()}")run_experiment
                         if len(job_list.get_ready()) > 0:
                             Autosubmit.submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence, hold=False)
                             job_list.update_list(as_conf, submitter=submitter)

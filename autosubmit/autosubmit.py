@@ -2445,6 +2445,8 @@ class Autosubmit:
                 rocrate_data = as_conf.experiment_data.get("ROCRATE", None)
                 if rocrate_data:
                     Autosubmit.provenance(expid, rocrate=True)
+                else:
+                    Log.warning("Can't find ROCRATE in YAML configuration")
         except BaseLockException:
             terminate_child_process(expid)
             raise

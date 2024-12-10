@@ -2,6 +2,9 @@ import shutil
 
 import pytest
 from pathlib import Path
+
+from autosubmitconfigparser.config.configcommon import AutosubmitConfig
+
 from autosubmit.autosubmit import Autosubmit
 from log.log import Log
 import os
@@ -189,6 +192,7 @@ project:
 def test_db(db_tmpdir, prepare_db, jobs_data, expected_entries, final_status, mocker):
     # write jobs_data
     jobs_path = Path(f"{db_tmpdir.strpath}/t000/conf/jobs.yml")
+    log_dir = Path(f"{db_tmpdir.strpath}/t000/tmp/LOG_t000")
     with jobs_path.open('w') as f:
         f.write(jobs_data)
 
@@ -245,6 +249,16 @@ def test_db(db_tmpdir, prepare_db, jobs_data, expected_entries, final_status, mo
         for key in [key for key in row_dict.keys() if
                     key not in ["status", "finish", "submit", "start", "extra_data", "children", "platform_output"]]:
             assert str(row_dict[key]) != str("")
-    # TODO Tomorrow: Check log files aswell ( not ending with .1,.0... )
+
+    # Check logs recovered and all stat files exists.
+    as_conf = AutosubmitConfig("t000")
+    as_conf.reload()
+    retrials = as_conf.experiment_data['JOBS']['JOB'].get('RETRIALS',0)
+    for f in log_dir.glob('*'):
+        assert not any(str(f).endswith(f".{i}.err") or str(f).endswith(f".{i}.out") for i in range(retrials + 1))
+    stat_files = [str(f).split("_")[-1] for f in log_dir.glob('*') if "STAT" in str(f)]
+    for i in range(retrials+1):
+        assert str(i) in stat_files
+
     c.close()
     conn.close()

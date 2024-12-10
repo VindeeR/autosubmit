@@ -95,6 +95,7 @@ class ParamikoPlatform(Platform):
         return self._wrapper
 
     def reset(self):
+        self.closeConnection()
         self.connected = False
         self._ssh = None
         self._ssh_config = None

@@ -1,6 +1,7 @@
 import atexit
 import multiprocessing
 import queue  # only for the exception
+from os import _exit
 import setproctitle
 import locale
 import os
@@ -882,6 +883,7 @@ class Platform(object):
                 Log.result(f"Process {self.log_recovery_process.name} started with pid {self.log_recovery_process.pid}")
                 # Cleanup will be automatically prompt on control + c or a normal exit
                 atexit.register(self.send_cleanup_signal)
+                atexit.register(self.closeConnection)
 
     def send_cleanup_signal(self) -> None:
         """
@@ -992,4 +994,6 @@ class Platform(object):
             if self.cleanup_event.is_set():  # Check if the main process is waiting for this child to end.
                 self.recover_job_log(identifier, jobs_pending_to_process)
                 break
+        self.closeConnection()
         Log.info(f"{identifier} Exiting.")
+        _exit(0)  # Exit userspace after manually closing ssh sockets, recommended for child processes, the queue() and shared signals should be in charge of the main process.

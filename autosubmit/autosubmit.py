@@ -2384,6 +2384,7 @@ class Autosubmit:
                     if p.log_recovery_process:
                         p.cleanup_event.set() # Send cleanup event
                         p.log_recovery_process.join()
+                        Log.info(f"Log recovery process for {p.name} has finished")
                 for job in job_list.get_completed_failed_without_logs(): # update the info gathered from the childs
                     job_list.update_log_status(job, as_conf)
                 job_list.save()
@@ -2401,8 +2402,8 @@ class Autosubmit:
                         Autosubmit.database_fix(expid)
                     except Exception as e:
                         pass
-                for platform in platforms_to_test:
-                    platform.closeConnection()
+                for p in platforms_to_test:
+                    p.closeConnection()
                 if len(job_list.get_failed()) > 0:
                     Log.info("Some jobs have failed and reached maximum retrials")
                 else:

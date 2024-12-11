@@ -2364,8 +2364,6 @@ class Autosubmit:
                     platforms_to_test = [value for value in submitter.platforms.values()]
                     Autosubmit.restore_platforms(platforms_to_test, as_conf=as_conf, expid=expid)
                 Log.info("Waiting for all logs to be updated")
-                # Check logs status, download missing ones
-                #Autosubmit.check_logs_status(job_list, as_conf, new_run=False)
                 for p in platforms_to_test:
                     if p.log_recovery_process:
                         p.cleanup_event.set()  # Send cleanup event

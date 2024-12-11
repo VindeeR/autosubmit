@@ -2681,9 +2681,8 @@ class JobList(object):
         if log_recovered:
             job.local_logs = (log_recovered.name, log_recovered.name[:-4] + ".err") # we only want the last one
             job.updated_log = True
-        elif not job.updated_log and str(as_conf.platforms_data.get(job.platform.name, {}).get('DISABLE_RECOVERY_THREADS', "false")).lower() == "false":
-            if new_run:
-                job.platform.add_job_to_log_recover(job)
+        elif new_run and not job.updated_log and str(as_conf.platforms_data.get(job.platform.name, {}).get('DISABLE_RECOVERY_THREADS', "false")).lower() == "false":
+            job.platform.add_job_to_log_recover(job)
         return log_recovered
 
     def check_if_log_is_recovered(self, job: Job) -> Path:

@@ -1,16 +1,10 @@
 import shutil
-
 import pytest
 from pathlib import Path
-
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-
 from autosubmit.autosubmit import Autosubmit
-from log.log import Log
 import os
 import pwd
-from autosubmit.platforms.locplatform import LocalPlatform
-
 from test.unit.utils.common import create_database, init_expid
 import sqlite3
 
@@ -19,11 +13,11 @@ def _get_script_files_path() -> Path:
     return Path(__file__).resolve().parent / 'files'
 
 
-# Maybe this should be a regression test
+# TODO expand the tests to test Slurm, PSPlatform, Ecplatform whenever possible
 
 @pytest.fixture
 def run_tmpdir(tmpdir_factory):
-    folder = tmpdir_factory.mktemp(f'run_tests')
+    folder = tmpdir_factory.mktemp('run_tests')
     os.mkdir(folder.join('scratch'))
     os.mkdir(folder.join('run_tmp_dir'))
     file_stat = os.stat(f"{folder.strpath}")
@@ -83,7 +77,7 @@ PLATFORMS:
         """)
 
     with main_path.open('w') as f:
-        f.write(f"""
+        f.write("""
 EXPERIMENT:
     # List of start dates
     DATELIST: '20000101'
@@ -179,6 +173,16 @@ def check_db_fields(run_tmpdir, expected_entries, final_status):
     conn.close()
 
 
+def check_exit_code(final_status, exit_code):
+    """
+    Check that the exit code is correct.
+    """
+    if final_status == "FAILED":
+        assert exit_code > 0
+    else:
+        assert exit_code == 0
+
+
 def check_files_recovered(run_tmpdir, log_dir):
     """
     Check that all files are recovered after a run.
@@ -217,7 +221,6 @@ def init_run(run_tmpdir, jobs_data):
     AS_COMMAND: run
             """)
     return log_dir
-
 
 @pytest.mark.parametrize("jobs_data, expected_db_entries, final_status", [
     # Success
@@ -274,10 +277,10 @@ def init_run(run_tmpdir, jobs_data):
     """, (2+1)*1, "FAILED"),   # Retries set (N + 1) * job chunk 1 ( the rest shouldn't run )
 ], ids=["Success", "Success with wrapper", "Failure", "Failure with wrapper"])
 def test_run_uninterrupted(run_tmpdir, prepare_run, jobs_data, expected_db_entries, final_status, mocker):
-
     log_dir = init_run(run_tmpdir, jobs_data)
     # Run the experiment
     with mocker.patch('autosubmit.platforms.platform.max', return_value=20):
-        Autosubmit.run_experiment(expid='t000')
+        check_exit_code(final_status, Autosubmit.run_experiment(expid='t000'))
+    # TODO: Verify job statuses are correct. Consider calling Autosubmit.load_job_list.
     check_db_fields(run_tmpdir, expected_db_entries, final_status)
     check_files_recovered(run_tmpdir, log_dir)

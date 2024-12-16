@@ -1744,27 +1744,6 @@ class Autosubmit:
             job.status = Status.WAITING
 
     @staticmethod
-    def terminate(all_threads):
-        # Closing threads on Ctrl+C
-        Log.info(
-            "Looking for active threads before closing Autosubmit. Ending the program before these threads finish may result in unexpected behavior. This procedure will last until all threads have finished or the program has waited for more than 30 seconds.")
-        timeout = 0
-        active_threads = True
-        while active_threads and timeout <= 60:
-            active_threads = False
-            for thread in all_threads:
-                if "JOB_" in thread.name:
-                    if thread.is_alive():
-                        active_threads = True
-                        Log.info("{0} is still retrieving outputs, time remaining is {1} seconds.".format(
-                            thread.name, 60 - timeout))
-                        break
-            if active_threads:
-                sleep(10)
-                timeout += 10
-
-
-    @staticmethod
     def manage_wrapper_job(as_conf, job_list, platform, wrapper_id, save=False):
         check_wrapper_jobs_sleeptime = as_conf.get_wrapper_check_time()
         Log.debug('WRAPPER CHECK TIME = {0}'.format(
@@ -2144,7 +2123,12 @@ class Autosubmit:
         Log.debug("Sleep: {0}", safetysleeptime)
         Log.debug("Number of retrials: {0}", default_retrials)
         return total_jobs, safetysleeptime, default_retrials, check_wrapper_jobs_sleeptime
-    
+
+    @staticmethod
+    def check_logs_status(job_list, as_conf, new_run):
+        for job in job_list.get_completed_failed_without_logs():
+            job_list.update_log_status(job, as_conf, new_run)
+
     @staticmethod
     def run_experiment(expid, notransitive=False, start_time=None, start_after=None, run_only_members=None, profile=False):
         """
@@ -2203,6 +2187,7 @@ class Autosubmit:
 
                 max_recovery_retrials = as_conf.experiment_data.get("CONFIG",{}).get("RECOVERY_RETRIALS",3650)  # (72h - 122h )
                 recovery_retrials = 0
+                Autosubmit.check_logs_status(job_list, as_conf, new_run=True)
                 while job_list.get_active():
                     for platform in platforms_to_test:  # Send keep_alive signal
                         platform.work_event.set()
@@ -2211,7 +2196,7 @@ class Autosubmit:
                     did_run = True
                     try:
                         if Autosubmit.exit:
-                            Autosubmit.terminate(threading.enumerate())
+                            Autosubmit.check_logs_status(job_list, as_conf, new_run=False)
                             if job_list.get_failed():
                                 return 1
                             return 0
@@ -2281,6 +2266,7 @@ class Autosubmit:
                                     "Couldn't recover the Historical database, AS will continue without it, GUI may be affected")
                         job_changes_tracker = {}
                         if Autosubmit.exit:
+                            Autosubmit.check_logs_status(job_list, as_conf, new_run=False)
                             job_list.save()
                             as_conf.save()
                         time.sleep(safetysleeptime)
@@ -2368,8 +2354,6 @@ class Autosubmit:
                         raise # If this happens, there is a bug in the code or an exception not-well caught
                 Log.result("No more jobs to run.")
                 # search hint - finished run
-                for job in job_list.get_completed_failed_without_logs():
-                    job_list.update_log_status(job, as_conf)
                 job_list.save()
                 if not did_run and len(job_list.get_completed_failed_without_logs()) > 0: # Revise if there is any log unrecovered from previous run
                     Log.info(f"Connecting to the platforms, to recover missing logs")
@@ -2382,10 +2366,9 @@ class Autosubmit:
                 Log.info("Waiting for all logs to be updated")
                 for p in platforms_to_test:
                     if p.log_recovery_process:
-                        p.cleanup_event.set() # Send cleanup event
+                        p.cleanup_event.set()  # Send cleanup event
                         p.log_recovery_process.join()
-                for job in job_list.get_completed_failed_without_logs(): # update the info gathered from the childs
-                    job_list.update_log_status(job, as_conf)
+                Autosubmit.check_logs_status(job_list, as_conf, new_run=False)
                 job_list.save()
                 if len(job_list.get_completed_failed_without_logs()) == 0:
                     Log.result(f"Autosubmit recovered all job logs.")
@@ -2401,8 +2384,8 @@ class Autosubmit:
                         Autosubmit.database_fix(expid)
                     except Exception as e:
                         pass
-                for platform in platforms_to_test:
-                    platform.closeConnection()
+                for p in platforms_to_test:
+                    p.closeConnection()
                 if len(job_list.get_failed()) > 0:
                     Log.info("Some jobs have failed and reached maximum retrials")
                 else:
@@ -2573,7 +2556,6 @@ class Autosubmit:
             raise
         except BaseException as e:
             raise
-            raise AutosubmitCritical("This seems like a bug in the code, please contact AS developers", 7070, str(e))
 
     @staticmethod
     def monitor(expid, file_format, lst, filter_chunks, filter_status, filter_section, hide, txt_only=False,
@@ -2981,9 +2963,8 @@ class Autosubmit:
                         "Experiment can't be recovered due being {0} active jobs in your experiment, If you want to recover the experiment, please use the flag -f and all active jobs will be cancelled".format(
                             len(current_active_jobs)), 7000)
             Log.debug("Job list restored from {0} files", pkl_dir)
-        except BaseException as e:
-            raise AutosubmitCritical(
-                "Couldn't restore the job_list or packages, check if the filesystem is having issues", 7040, str(e))
+        except Exception:
+            raise
         Log.info('Recovering experiment {0}'.format(expid))
         try:
             for job in job_list.get_job_list():
@@ -3017,13 +2998,8 @@ class Autosubmit:
                     job.status = Status.COMPLETED
                     Log.info(
                         "CHANGED job '{0}' status to COMPLETED".format(job.name))
-                    # Log.status("CHANGED job '{0}' status to COMPLETED".format(job.name))
-
-                    if not no_recover_logs:
-                        try:
-                            job.platform.get_logs_files(expid, job.remote_logs)
-                        except Exception as e:
-                            pass
+                    job.recover_last_ready_date()
+                    job.recover_last_log_name()
                 elif job.status != Status.SUSPENDED:
                     job.status = Status.WAITING
                     job._fail_count = 0

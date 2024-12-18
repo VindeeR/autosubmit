@@ -643,7 +643,7 @@ class JobPackager(object):
         return packages_to_submit
 
     @staticmethod
-    def _propagate_inner_jobs_ready_date(built_packages_tmp):
+    def _propagate_inner_jobs_ready_date(built_packages_tmp: List[JobPackageBase]) -> None:
         """
         Propagate the ready date of the inner jobs to the wrapper job.
 

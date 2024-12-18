@@ -658,14 +658,12 @@ class Job(object):
                             7011)
                 else:
                     raise AutosubmitCritical(
-                        "Extended {2} script: couldn't figure out script {0} type\n".format(script_name,
-                                                                                           self.script_name,
+                        "Extended {1} script: couldn't figure out script {0} type\n".format(script_name,
                                                                                            error_message_type), 7011)
 
         if not found_hashbang:
             raise AutosubmitCritical(
-                "Extended {2} script: couldn't figure out script {0} type\n".format(script_name,
-                                                                                   self.script_name,
+                "Extended {1} script: couldn't figure out script {0} type\n".format(script_name,
                                                                                    error_message_type), 7011)
 
         if is_header:
@@ -1183,7 +1181,7 @@ class Job(object):
                 else:
                     self.remote_logs = backup_log
                     break
-        except:
+        except Exception:
             pass
 
         self.log_retrieved = log_retrieved
@@ -2240,7 +2238,7 @@ class Job(object):
                 filename = os.path.basename(os.path.splitext(additional_file)[0])
                 full_path = os.path.join(self._tmp_path,filename ) + "_" + self.name[5:]
                 open(full_path, 'wb').write(additional_template_content.encode(lang))
-            except:
+            except Exception:
                 pass
         for key, value in parameters.items():
             # parameters[key] can have '\\' characters that are interpreted as escape characters
@@ -2900,7 +2898,7 @@ class WrapperJob(Job):
                 Log.warning(f"Wrapper {self.name} failed, cancelling it")
                 self._platform.send_command(
                     self._platform.cancel_cmd + " " + str(self.id))
-        except:
+        except Exception:
             Log.info(f'Job with {self.id} was finished before canceling it')
         self._check_running_jobs()
         for job in self.inner_jobs_running:

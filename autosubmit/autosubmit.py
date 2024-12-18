@@ -4101,7 +4101,7 @@ class Autosubmit:
 
         database_path = os.path.join(BasicConfig.JOBDATA_DIR, "job_data_{0}.db".format(expid))
         database_backup_path = os.path.join(BasicConfig.JOBDATA_DIR, "job_data_{0}.sql".format(expid))
-        dump_file_name = 'job_data_{0}.sql'.format(expid, current_time)
+        dump_file_name = 'job_data_{0}.sql'.format(expid)
         dump_file_path = os.path.join(BasicConfig.JOBDATA_DIR, dump_file_name)
         bash_command = 'cat {1} | sqlite3 {0}'.format(database_path, dump_file_path)
         try:

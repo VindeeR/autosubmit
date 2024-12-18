@@ -117,8 +117,8 @@ def get_allowed_members(run_members, as_conf):
         rmember = [rmember for rmember in allowed_members if rmember not in as_conf.get_member_list()]
         if len(rmember) > 0:
             raise AutosubmitCritical(
-                "Some of the members ({0}) in the list of allowed members you supplied do not exist in the current list " +
-                "of members specified in the conf files.\nCurrent list of members: {1}".format(str(rmember),
+                ("Some of the members ({0}) in the list of allowed members you supplied do not exist in the current list " +
+                "of members specified in the conf files.\nCurrent list of members: {1}").format(str(rmember),
                                                                                                str(as_conf.get_member_list())))
         if len(allowed_members) == 0:
             raise AutosubmitCritical("Not a valid -rom --run_only_members input: {0}".format(str(run_members)))

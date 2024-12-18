@@ -4,8 +4,6 @@ import time
 
 import os
 
-from bscearth.utils.date import Log
-
 from autosubmit.helpers.utils import restore_platforms
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig

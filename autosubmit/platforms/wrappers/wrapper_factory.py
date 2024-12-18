@@ -193,57 +193,6 @@ class LocalWrapperFactory(WrapperFactory):
         return ""
 
 
-class LocalWrapperFactory(WrapperFactory):
-
-    def vertical_wrapper(self, **kwargs):
-        return PythonVerticalWrapperBuilder(**kwargs)
-
-    def horizontal_wrapper(self, **kwargs):
-
-        if kwargs["method"] == 'srun':
-            return SrunHorizontalWrapperBuilder(**kwargs)
-        else:
-            return PythonHorizontalWrapperBuilder(**kwargs)
-
-    def hybrid_wrapper_horizontal_vertical(self, **kwargs):
-        return PythonHorizontalVerticalWrapperBuilder(**kwargs)
-
-    def hybrid_wrapper_vertical_horizontal(self, **kwargs):
-        if kwargs["method"] == 'srun':
-            return SrunVerticalHorizontalWrapperBuilder(**kwargs)
-        else:
-            return PythonVerticalHorizontalWrapperBuilder(**kwargs)
-
-    def reservation_directive(self, reservation):
-        return '#'
-
-    def dependency_directive(self, dependency):
-        return '#'
-
-    def queue_directive(self, queue):
-        return '#'
-
-    def processors_directive(self, processors):
-        return '#'
-
-    def nodes_directive(self, nodes):
-        return '#'
-
-    def tasks_directive(self, tasks):
-        return '#'
-
-    def partition_directive(self, partition):
-        return '#'
-
-    def exclusive_directive(self, exclusive):
-        return '#'
-
-    def threads_directive(self, threads):
-        return '#'
-
-    def header_directives(self, **kwargs):
-        return ""
-
 class SlurmWrapperFactory(WrapperFactory):
 
     def vertical_wrapper(self, **kwargs):
@@ -321,10 +270,6 @@ class PJMWrapperFactory(WrapperFactory):
     def reservation_directive(self, reservation):
         return "#" # Reservation directive doesn't exist in PJM, they're handled directly by admins
 
-    def queue_directive(self, queue):
-        return '#PJM --qos={0}'.format(queue)
-    def partition_directive(self, partition):
-        return '#PJM --partition={0}'.format(partition)
     def exclusive_directive(self, exclusive):
         return '#PJM --exclusive'
     def tasks_directive(self, tasks):

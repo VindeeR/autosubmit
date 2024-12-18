@@ -2356,7 +2356,7 @@ class Autosubmit:
                 # search hint - finished run
                 job_list.save()
                 if not did_run and len(job_list.get_completed_failed_without_logs()) > 0: # Revise if there is any log unrecovered from previous run
-                    Log.info(f"Connecting to the platforms, to recover missing logs")
+                    Log.info("Connecting to the platforms, to recover missing logs")
                     submitter = Autosubmit._get_submitter(as_conf)
                     submitter.load_platforms(as_conf)
                     if submitter.platforms is None:
@@ -2371,7 +2371,7 @@ class Autosubmit:
                 Autosubmit.check_logs_status(job_list, as_conf, new_run=False)
                 job_list.save()
                 if len(job_list.get_completed_failed_without_logs()) == 0:
-                    Log.result(f"Autosubmit recovered all job logs.")
+                    Log.result("Autosubmit recovered all job logs.")
                 else:
                     Log.warning(f"Autosubmit couldn't recover the following job logs: {[job.name for job in job_list.get_completed_failed_without_logs()]}")
                 try:
@@ -3088,7 +3088,7 @@ class Autosubmit:
             if not only_remote: # Local migrate
                 try:
                     if not Autosubmit.archive(experiment_id, True, True):
-                        raise AutosubmitCritical(f"Error archiving the experiment", 7014)
+                        raise AutosubmitCritical("Error archiving the experiment", 7014)
                     Log.result("The experiment has been successfully offered.")
                 except Exception as e:
                     # todo put the IO error code

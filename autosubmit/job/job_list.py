@@ -3237,7 +3237,7 @@ class JobList(object):
                 else:
                     results.append("Cannot find root.")
         except Exception:
-            return f'Job List object'
+            return 'Job List object'
         return "\n".join(results)
 
     def _recursion_print(self, job, level, visited=[], statusChange=None, nocolor=False):

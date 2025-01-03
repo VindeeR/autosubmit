@@ -4229,7 +4229,7 @@ class Autosubmit:
         return create_rocrate_archive(as_conf, rocrate_json, jobs, start_time, end_time, path)
     
     @staticmethod
-    def provenance(expid, rocrate=False): 
+    def provenance(expid: str, rocrate: bool = False) -> None:
         """
         :param expid: experiment identifier
         :type expid: str

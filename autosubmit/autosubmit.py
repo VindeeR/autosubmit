@@ -655,7 +655,7 @@ class Autosubmit:
             subparser.add_argument('-v', '--update_version', action='store_true',
                                    default=False, help='Update experiment version')
             subparser.add_argument('--rocrate', action='store_true', default=False,
-                                  help='Unarchive an RO-Crate file')
+                                   help='Unarchive an RO-Crate file')
             # update proj files
             subparser = subparsers.add_parser('upgrade', description='Updates autosubmit 3 proj files to autosubmit 4')
             subparser.add_argument('expid', help='experiment identifier')
@@ -2242,7 +2242,7 @@ class Autosubmit:
                         job_list.update_list(as_conf, submitter=submitter)
                         job_list.save()
                         # Submit jobs that are ready to run
-                        #Log.debug(f"FD submit: {fd_show.fd_table_status_str()}")run_experiment
+                        #Log.debug(f"FD submit: {fd_show.fd_table_status_str()}")
                         if len(job_list.get_ready()) > 0:
                             Autosubmit.submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence, hold=False)
                             job_list.update_list(as_conf, submitter=submitter)
@@ -4236,6 +4236,7 @@ class Autosubmit:
         :param rocrate: flag to enable RO-Crate
         :type rocrate: bool
         """
+        
         if not rocrate:
             msg = "Can not create RO-Crate ZIP file. Argument '--rocrate' required"
             raise AutosubmitCritical(msg, 7012)

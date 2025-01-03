@@ -1,9 +1,11 @@
-import pytest
+import os
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
 from autosubmit.autosubmit import Autosubmit
 from log.log import AutosubmitCritical
-import os
-from unittest.mock import patch
 
 @pytest.fixture
 def mock_paths(tmp_path):
@@ -14,6 +16,7 @@ def mock_paths(tmp_path):
          patch('autosubmitconfigparser.config.basicconfig.BasicConfig.LOCAL_TMP_DIR', 'tmp'), \
          patch('autosubmitconfigparser.config.basicconfig.BasicConfig.LOCAL_ASLOG_DIR', 'ASLOGS'):
         yield tmp_path  
+
 
 def test_provenance_rocrate_success(mock_paths):
     """
@@ -32,6 +35,7 @@ def test_provenance_rocrate_success(mock_paths):
 
         mock_rocrate.assert_called_once_with(expid, Path(expected_aslogs_path))
         mock_log_info.assert_called_once_with('RO-Crate ZIP file created!')
+
 
 def test_provenance_rocrate_failure():
     """

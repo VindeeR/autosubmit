@@ -1,0 +1,3 @@
+autosubmit
+log
+test

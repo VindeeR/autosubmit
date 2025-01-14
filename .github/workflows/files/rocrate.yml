@@ -1,0 +1,23 @@
+ROCRATE:
+  INPUTS: []
+  OUTPUTS:
+  - '*/*.gif'
+  PATCH: |-
+    {
+      "@graph": [
+        {
+          "@id": "./",
+          "license": "Apache-2.0",
+          "creator": {
+            "@id": "https://orcid.org/0009-0006-0707-6448"
+          }
+        },
+        {
+          "@id": "https://orcid.org/0009-0006-0707-6448",
+          "@type": "Person",
+          "affiliation": {
+            "@id": "https://ror.org/05sd8tv96"
+          }
+        }
+      ]
+    }

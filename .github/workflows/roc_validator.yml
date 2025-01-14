@@ -1,0 +1,83 @@
+name: Correct creation of rocrate objects
+run-name: ${{ github.actor }} is testing the rocrate🚀
+on: [push]
+
+jobs:
+  rocrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install system dependencies
+        run: sudo apt-get install -y graphviz rsync curl
+
+      - name: Install autosubmit
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Configure autosubmit
+        run: |
+          autosubmit configure
+          autosubmit install
+
+      - name: Create dummy experiment
+        run: autosubmit expid -H "local" -d "GitHub Action validate RO-Crate"
+
+      - name: Save rocrate.yml in experiment a000
+        run: |
+          mv .github/workflows/files/rocrate.yml /home/runner/autosubmit/a000/conf 
+
+      - name: Check that rocrate.yml is correctly created
+        run: |
+          ls /home/runner/autosubmit/a000/conf
+          cat /home/runner/autosubmit/a000/conf/rocrate.yml
+      
+      - name: Update jobs_a000.yml
+        run: |
+          python -c "
+          from pathlib import Path
+          import yaml
+
+          yaml_file_path = Path('/home/runner/autosubmit/a000/conf/jobs_a000.yml')
+
+          with open(yaml_file_path, 'r') as file:
+              yaml_content = yaml.safe_load(file)
+
+          for job in yaml_content['JOBS']:
+              yaml_content['JOBS'][job]['TASKS'] = 1
+          with open(yaml_file_path, 'w') as file:
+              yaml.safe_dump(yaml_content, file)
+          print(f\"Added 'TASKS: 1' to each job in {yaml_file_path}\")
+          "
+
+      - name: Create and run autosubmit experiment
+        run: |
+          autosubmit create a000
+          autosubmit run a000
+
+      - name: Install roc-validator
+        run: |
+          python -m pip install --upgrade pip
+          pip install roc-validator
+
+      - name: Run roc-validator
+        run: |
+          rocrate-validator validate /home/runner/autosubmit/a000/tmp/ASLOGS/*.zip
+
+      - name: Uninstall roc-validator and install specific dependencies
+        run: |
+          pip uninstall roc-validator
+
+          pip install requests<=2.31.0
+
+          pip install pyparsing==3.1.1
+
+      - name: Check autoubmit dependencies are re-set correctly
+        run: |
+         autosubmit --version

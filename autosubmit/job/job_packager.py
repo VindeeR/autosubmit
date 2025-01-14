@@ -17,17 +17,18 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 import collections
+import re
 
 from autosubmit.job.job import Job
 from log.log import Log, AutosubmitCritical
 from autosubmit.job.job_common import Status, Type
-from bscearth.utils.date import sum_str_hours
+from bscearth.utils.date import sum_str_hours, date2str
 from autosubmit.job.job_packages import JobPackageSimple, JobPackageVertical, JobPackageHorizontal, \
     JobPackageSimpleWrapped, JobPackageHorizontalVertical, JobPackageVerticalHorizontal, JobPackageBase
 from operator import attrgetter
 from math import ceil
 import operator
-from typing import List
+from typing import List, Optional, Tuple
 from contextlib import suppress
 
 class JobPackager(object):
@@ -46,6 +47,8 @@ class JobPackager(object):
     def __init__(self, as_config, platform, jobs_list, hold=False):
         self.current_wrapper_section = "WRAPPERS"
         self._as_config = as_config
+        self.datelist = str(self._as_config.experiment_data.get("EXPERIMENT", {}).get("DATELIST", "")).split(" ")
+        self.members = str(self._as_config.experiment_data.get("EXPERIMENT", {}).get("MEMBERS","")).split(" ")
         self._platform = platform
         self._jobs_list = jobs_list
         self._max_wait_jobs_to_submit = 9999999
@@ -62,7 +65,6 @@ class JobPackager(object):
         self.calculate_job_limits(platform)
         self.special_variables = dict()
         self.wrappers_with_error = {}
-
 
         #todo add default values
         #Wrapper building starts here
@@ -600,8 +602,8 @@ class JobPackager(object):
             built_packages_tmp = list()
             for param in self.wrapper_info:
                 current_info.append(param[self.current_wrapper_section])
+            current_info.append(self._set_group_by(jobs[0]))
             current_info.append(self._as_config)
-
             if self.wrapper_type[self.current_wrapper_section] == 'vertical':
                 built_packages_tmp = self._build_vertical_packages(jobs, wrapper_limits, wrapper_info=current_info)
             elif self.wrapper_type[self.current_wrapper_section] == 'horizontal':
@@ -641,6 +643,116 @@ class JobPackager(object):
             package.hold = self.hold
 
         return packages_to_submit
+
+    def _set_group_by(self, job) -> dict:
+        """
+        Set the group by values for the job.
+
+        :param job: The job object containing date, member, split, and chunk information.
+        :type job: Job
+        """
+        group_by = {}
+        group_by_string = self._as_config.experiment_data.get("WRAPPERS", {}).get(self.current_wrapper_section, {}).get(
+            "GROUP_BY", "").lower()
+        group_by["dates"] = self._get_current_group(group_by_string, "dates", date2str(job.date, ''))
+        group_by["members"] = self._get_current_group(group_by_string, "members", job.member)
+        group_by["splits"] = self._get_current_group(group_by_string, "splits", job.split)
+        group_by["chunks"] = self._get_current_group(group_by_string, "chunks", job.chunk)
+        return group_by
+    def _get_group_field_index(self, group_type: str, type_value: str) -> int:
+        """
+        Get the index of the job value (dates, member) in the datelist or memberlist.
+
+        :param group_type: The type of group (dates, member, splits, chunks).
+        :type group_type: str
+        :param type_value: The value of the group type.
+        :type type_value: str
+        :return: The index of the job value.
+        :rtype: int
+        """
+        if group_type == "dates":
+            current_index = self.datelist.index(type_value)
+        elif group_type == "members":
+            current_index = self.members.index(type_value)
+        else:
+            current_index = int(type_value) - 1
+        return current_index
+
+    @staticmethod
+    def _calculate_current_group(type_value: int, group_size: int) -> int:
+        """
+        Calculate the current group based on the type value and group size.
+
+        :param type_value: The value of the group type.
+        :type type_value: int
+        :param group_size: The size of the group.
+        :type group_size: int
+        :return: The current group.
+        :rtype: int
+        """
+        return type_value // group_size
+
+    def _get_current_group(self, group_by_string: str, group_type: str, type_value: str) -> Tuple[
+        Optional[int], Optional[int]]:
+        """
+        Calculate the group by for the jobs.
+
+        :param group_by_string: The group by string.
+        :type group_by_string: str
+        :param group_type: The type of group (dates, member, splits, chunks).
+        :type group_type: str
+        :param type_value: The value of the group type.
+        :type type_value: str
+        :return: A tuple containing the current group and group size.
+        :rtype: Tuple[Optional[int], Optional[int]]
+        """
+        final_value = self._get_group_field_index(group_type, type_value)
+        match = re.search(fr'{group_type}(\+\d+)?', group_by_string)
+        if match:
+            group_size = int(match.group(1))+1 if match.group(1) else 1
+            current_group = self._calculate_current_group(final_value, group_size)
+        else:
+            group_size = None
+            current_group = None
+        return current_group, group_size
+
+    def _current_job_field_belong_to_group(self, group_by, group_type: str, job) -> bool:
+        """
+        Check if the job field belongs to the current group.
+
+        :param group_type: The type of group (dates, member, splits, chunks).
+        :type group_type: str
+        :param job: The job object.
+        :type job: Job
+        :return: True if the job field belongs to the current group, False otherwise.
+        :rtype: bool
+        """
+        if group_by[group_type][0] is None:
+            return True
+        if group_type == "dates":
+            value_type = job.date
+        elif group_type == "members":
+            value_type = job.member
+        elif group_type == "splits":
+            value_type = job.split
+        else:
+            value_type = job.chunk
+        index = self._get_group_field_index(group_type, value_type)
+        return self._calculate_current_group(index, group_by[group_type][1]) == group_by[group_type][0]
+
+    def _current_job_belong_to_group(self, group_by, job) -> bool:
+        """
+        Check if the job belongs to the current group.
+
+        :param job: The job object.
+        :type job: Job
+        :return: True if the job belongs to the current group, False otherwise.
+        :rtype: bool
+        """
+        for group_type in group_by.keys():
+            if not self._current_job_field_belong_to_group(group_by, group_type, job):
+                return False
+        return True
 
     @staticmethod
     def _propagate_inner_jobs_ready_date(built_packages_tmp: List[JobPackageBase]) -> None:
@@ -1009,7 +1121,7 @@ class JobPackagerVerticalMixed(JobPackagerVertical):
         return False
 
 
-class JobPackagerHorizontal(object):
+class JobPackagerHorizontal(JobPackager):
     def __init__(self, job_list, max_processors, wrapper_limits, max_jobs, processors_node, method="ASThread"):
         self.processors_node = processors_node
         self.max_processors = max_processors
@@ -1035,6 +1147,8 @@ class JobPackagerHorizontal(object):
             self._current_processors = 0
         jobs_by_section = dict()
         for job in self.job_list:
+            if not self._current_job_belong_to_group(wrapper_info[-2], job):
+                continue
             if job.section not in jobs_by_section:
                 jobs_by_section[job.section] = list()
             jobs_by_section[job.section].append(job)

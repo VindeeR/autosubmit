@@ -779,6 +779,7 @@ class Autosubmit:
             return Autosubmit.archive(args.expid, noclean=args.noclean, uncompress=args.uncompress, rocrate=args.rocrate)
         elif args.command == 'unarchive':
             return Autosubmit.unarchive(args.expid, uncompressed=args.uncompressed, rocrate=args.rocrate)
+        
         elif args.command == 'readme':
             if os.path.isfile(Autosubmit.readme_path):
                 with open(Autosubmit.readme_path) as f:
@@ -2409,12 +2410,7 @@ class Autosubmit:
                     Autosubmit.provenance(expid, rocrate=True)
                 else:
                     print("rocrate.yml not found in CONFIG. Can't create rocrate object. ")
-        except (portalocker.AlreadyLocked, portalocker.LockException) as e:
-            message = "We have detected that there is another Autosubmit instance using the experiment\n. Stop other Autosubmit instances that are using the experiment or delete autosubmit.lock file located on tmp folder"
-            terminate_child_process(expid)
-            raise AutosubmitCritical(message, 7000)
-        except AutosubmitCritical as e:
-            terminate_child_process(expid)
+        except BaseLockException:
             raise
         except AutosubmitCritical:
             raise
@@ -4348,7 +4344,6 @@ class Autosubmit:
         Log.result("Experiment archived successfully")
         return True
 
-
     @staticmethod
     def unarchive(experiment_id, uncompressed=True, rocrate=False):
         """
@@ -4417,7 +4412,6 @@ class Autosubmit:
 
         Log.result("Experiment {0} unarchived successfully", experiment_id)
         return True
-
 
     @staticmethod
     def _create_project_associated_conf(as_conf, force_model_conf, force_jobs_conf):

@@ -1,3 +1,0 @@
-autosubmit
-log
-test

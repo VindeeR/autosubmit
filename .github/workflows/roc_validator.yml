@@ -42,17 +42,19 @@ jobs:
         run: |
           python -c "
           from pathlib import Path
-          import yaml
+          from ruamel.yaml import YAML
+          
+          yaml = YAML(typ='rt')
 
           yaml_file_path = Path('/home/runner/autosubmit/a000/conf/jobs_a000.yml')
 
           with open(yaml_file_path, 'r') as file:
-              yaml_content = yaml.safe_load(file)
+              yaml_content = yaml.load(file)
 
           for job in yaml_content['JOBS']:
               yaml_content['JOBS'][job]['TASKS'] = 1
           with open(yaml_file_path, 'w') as file:
-              yaml.safe_dump(yaml_content, file)
+              yaml.dump(yaml_content, file)
           print(f\"Added 'TASKS: 1' to each job in {yaml_file_path}\")
           "
 

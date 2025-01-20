@@ -602,8 +602,10 @@ class JobPackager(object):
             built_packages_tmp = list()
             for param in self.wrapper_info:
                 current_info.append(param[self.current_wrapper_section])
-            current_info.append(self._set_group_by(jobs[0]))
             current_info.append(self._as_config)
+            group_by = self._set_group_by(jobs[0])
+            jobs = self._get_grouped_jobs(group_by, jobs)
+
             if self.wrapper_type[self.current_wrapper_section] == 'vertical':
                 built_packages_tmp = self._build_vertical_packages(jobs, wrapper_limits, wrapper_info=current_info)
             elif self.wrapper_type[self.current_wrapper_section] == 'horizontal':
@@ -614,6 +616,7 @@ class JobPackager(object):
                 built_packages_tmp = self._build_vertical_packages(jobs, wrapper_limits, wrapper_info=current_info)
             if len(built_packages_tmp) > 0:
                 Log.result(f"Built {len(built_packages_tmp)} wrappers for {wrapper_name}")
+
             self._propagate_inner_jobs_ready_date(built_packages_tmp)
             packages_to_submit, max_jobs_to_submit = self.check_packages_respect_wrapper_policy(built_packages_tmp, packages_to_submit, max_jobs_to_submit, wrapper_limits, any_simple_packages)
 
@@ -654,10 +657,11 @@ class JobPackager(object):
         group_by = {}
         group_by_string = self._as_config.experiment_data.get("WRAPPERS", {}).get(self.current_wrapper_section, {}).get(
             "GROUP_BY", "").lower()
-        group_by["dates"] = self._get_current_group(group_by_string, "dates", date2str(job.date, ''))
-        group_by["members"] = self._get_current_group(group_by_string, "members", job.member)
-        group_by["splits"] = self._get_current_group(group_by_string, "splits", job.split)
-        group_by["chunks"] = self._get_current_group(group_by_string, "chunks", job.chunk)
+        if group_by_string:
+            group_by["dates"] = self._get_current_group(group_by_string, "dates", date2str(job.date, ''))
+            group_by["members"] = self._get_current_group(group_by_string, "members", job.member)
+            group_by["splits"] = self._get_current_group(group_by_string, "splits", job.split)
+            group_by["chunks"] = self._get_current_group(group_by_string, "chunks", job.chunk)
         return group_by
     def _get_group_field_index(self, group_type: str, type_value: str) -> int:
         """
@@ -677,6 +681,14 @@ class JobPackager(object):
         else:
             current_index = int(type_value) - 1
         return current_index
+
+    def _get_grouped_jobs(self, group_by, jobs: List[Job]) -> List[Job]:
+        jobs_ = jobs
+        if group_by:
+            for job in jobs:
+                if not self._current_job_belong_to_group(group_by, job):
+                    jobs_.remove(job)
+        return jobs_
 
     @staticmethod
     def _calculate_current_group(type_value: int, group_size: int) -> int:
@@ -781,7 +793,7 @@ class JobPackager(object):
         for wrapper_name,jobs_in_wrapper in self.jobs_in_wrapper.items():
             section_name = ""
             for section in jobs_in_wrapper:
-                section_name += section+"&"
+                section_name += section+" "
             section_name = section_name[:-1]
             sections_split[wrapper_name] = section_name
             jobs_by_section[wrapper_name] = list()
@@ -791,7 +803,7 @@ class JobPackager(object):
         jobs_by_section["SIMPLE"] = []
         for wrapper_name,section_name in sections_split.items():
             for job in jobs_list[:]:
-                if job.section.upper() in section_name.split("&"):
+                if job.section.upper() in section_name.split(" "):
                     jobs_by_section[wrapper_name].append(job)
                     jobs_list.remove(job)
         for job in (job for job in jobs_list):
@@ -1147,8 +1159,6 @@ class JobPackagerHorizontal(JobPackager):
             self._current_processors = 0
         jobs_by_section = dict()
         for job in self.job_list:
-            if not self._current_job_belong_to_group(wrapper_info[-2], job):
-                continue
             if job.section not in jobs_by_section:
                 jobs_by_section[job.section] = list()
             jobs_by_section[job.section].append(job)
@@ -1191,7 +1201,7 @@ class JobPackagerHorizontal(JobPackager):
         return current_package
 
     def create_sections_order(self, jobs_sections):
-        for i, section in enumerate(jobs_sections.split('&')):
+        for i, section in enumerate(jobs_sections.split(' ')):  # With Autosubmit config changes this should always be a " " (blank space) between sections
             self._sort_order_dict[section] = i
 
     # EXIT FALSE IF A SECTION EXIST AND HAVE LESS PROCESSORS

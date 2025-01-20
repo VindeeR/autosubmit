@@ -3,7 +3,7 @@ run-name: ${{ github.actor }} is testing the rocrate🚀
 on: [push]
 
 jobs:
-  rocrate:
+  setup-autosubmit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -21,6 +21,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+          
       - name: Configure autosubmit
         run: |
           autosubmit configure
@@ -31,13 +32,13 @@ jobs:
 
       - name: Save rocrate.yml in experiment a000
         run: |
-          mv .github/workflows/files/rocrate.yml /home/runner/autosubmit/a000/conf 
+          mv .github/workflows/files/rocrate.yml /home/runner/autosubmit/a000/conf
 
       - name: Check that rocrate.yml is correctly created
         run: |
           ls /home/runner/autosubmit/a000/conf
           cat /home/runner/autosubmit/a000/conf/rocrate.yml
-      
+
       - name: Update jobs_a000.yml
         run: |
           python -c "
@@ -58,10 +59,29 @@ jobs:
           print(f\"Added 'TASKS: 1' to each job in {yaml_file_path}\")
           "
 
+  run-experiment:
+    runs-on: ubuntu-latest
+    needs: setup-autosubmit
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install autosubmit
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
       - name: Create and run autosubmit experiment
         run: |
           autosubmit create a000
           autosubmit run a000
+
+  validate-rocrate:
+    runs-on: ubuntu-latest
+    needs: run-experiment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Install roc-validator
         run: |
@@ -71,15 +91,3 @@ jobs:
       - name: Run roc-validator
         run: |
           rocrate-validator validate /home/runner/autosubmit/a000/tmp/ASLOGS/*.zip
-
-      - name: Uninstall roc-validator and install specific dependencies
-        run: |
-          pip uninstall roc-validator
-
-          pip install requests<=2.31.0
-
-          pip install pyparsing==3.1.1
-
-      - name: Check autoubmit dependencies are re-set correctly
-        run: |
-         autosubmit --version

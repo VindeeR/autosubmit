@@ -23,6 +23,8 @@ import textwrap
 
 from typing import List
 
+from log.log import Log
+
 
 class WrapperDirector:
     """
@@ -720,7 +722,7 @@ class SrunWrapperBuilder(WrapperBuilder):
         return textwrap.dedent(""" """)
     # horizontal and hybrids
     def build_nodes_list(self):
-        return self.get_nodes() + self.build_cores_list()
+        return self.build_cores_list()
 
     def get_nodes(self):
         return textwrap.dedent(f"""
@@ -907,9 +909,9 @@ class SrunHorizontalWrapperBuilder(SrunWrapperBuilder):
         return srun_launcher
 
     def build_main(self):
-        nodelist = self.build_nodes_list()
+        #nodelist = self.build_nodes_list()
         srun_launcher = self.build_srun_launcher("scripts")
-        return nodelist + srun_launcher
+        return srun_launcher
 
 class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
     def build_imports(self):
@@ -953,21 +955,42 @@ class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
                 job_mask = job_mask + thr_mask
             srun_mask_values.append(str(hex(job_mask)))
             if job_id > 0:
-                    core[0]=core[0] << int(n_threads)
+                core[0]=core[0] << int(n_threads)
             else:
-                    core[0]=job_mask+0x1
+                core[0]=job_mask+0x1
 
         mask_array = "( "
         for mask in srun_mask_values:
             mask_array += str("\"" + mask + "\"") + " "
         mask_array += ")"
         scripts_bash += textwrap.dedent("""
+                # Enable debugging and exit on error
+                set -xe
                 declare -a job_mask_array={0}
                 """).format(mask_array, '\n'.ljust(13))
-
+        # masks = self.mask_cpu()
+        # Log.info(f"Mask values: {masks}")
+        # print(masks)
         return scripts_bash
 
-
+    # def mask_cpu(self):
+    #
+    #     def mask(total_cores, processes, rank):
+#           process_mask = 2 ** (int(total_cores / processes)) - 1
+#           shifter = total_cores - (len(bin(process_mask)) - 2) * (rank + 1)
+#           return hex(process_mask << shifter)
+    #
+    #     cores = int(self.threads_number)
+    #     processes = int(self.num_procs_value)
+    #     ranks = list(range(processes))
+    #     masks = []
+    #
+    #     while (len(ranks) > 0):
+    #         i = 0
+    #         print(mask(cores, processes, ranks[i]), end="")
+    #         masks.append(mask(cores, processes, ranks[i]))
+    #         del ranks[i]
+    #     return masks
 
     def build_srun_launcher(self, jobs_list, footer=True):
         srun_launcher = textwrap.dedent("""
@@ -1008,7 +1031,7 @@ class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
                             break
                         fi
                         if [ $job_index -eq 0 ] || [ -f "$completed_path" ]; then # If first horizontal wrapper or last wrapper is completed
-                            srun -N1 --ntasks=1 --cpus-per-task={1} --cpu-bind=verbose,mask_cpu:job_mask_array[$job_index]  --distribution=block:block $template > $out 2> $err &
+                            srun -N1 --ntasks=1 --cpus-per-task={1} --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}}  --distribution=block:block $template > $out 2> $err &
                             job_index=$(($job_index+1))
                         else
                             break
@@ -1041,6 +1064,6 @@ class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
         return srun_launcher
 
     def build_main(self):
-        nodelist = self.build_nodes_list()
+        #nodelist = self.build_nodes_list()
         srun_launcher = self.build_srun_launcher("scripts_list")
-        return nodelist + srun_launcher
+        return srun_launcher

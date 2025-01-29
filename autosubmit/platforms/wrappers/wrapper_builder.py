@@ -816,8 +816,8 @@ class SrunHorizontalWrapperBuilder(SrunWrapperBuilder):
             suffix=".cmd"
             for template in "${{{jobs_list}[@]}}"; do
                 jobname=${{template%"$suffix"}}
-                out="${{template}}.out"
-                err="${{template}}.err"
+                out="${{template}}.out.0"
+                err="${{template}}.err.0"
                 srun --ntasks=1 --cpu-bind=verbose,mask_cpu:${{job_mask[i]}} --distribution=block:block $template > $out 2> $err &
                 ((i=i+1))
             done

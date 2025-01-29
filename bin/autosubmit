@@ -18,8 +18,10 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 """Script for handling experiment monitoring"""
+import argparse
 import os
 import sys
+from typing import Optional
 
 script_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
 sys.path.append(script_dir)
@@ -33,14 +35,11 @@ from autosubmitconfigparser.config.configcommon import AutosubmitConfig  # noqa:
 
 # noinspection PyProtectedMember
 def main():
-    args = None
+    args = Optional[argparse.Namespace]
     try:
-        args = Autosubmit.parse_args()
-        if type(args) is not int:
+        return_value, args = Autosubmit.parse_args()
+        if args:
             return_value = Autosubmit.run_command(args)
-        else:
-            return_value = args
-        return_value = return_value if type(return_value) is int else 0
         delete_lock_file()
     except BaseException as e:
         delete_lock_file()

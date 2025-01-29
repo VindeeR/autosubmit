@@ -53,7 +53,7 @@ def main():
                 try:
                     as_conf = AutosubmitConfig(args.expid)
                     as_conf.reload()
-                    Log.error(f"Experiment version: {as_conf.experiment_data.get('CONFIG', {}).get('VERSION', 'unknown')}")
+                    Log.error(f"Experiment version: {as_conf.experiment_data.get('CONFIG', {}).get('AUTOSUBMIT_VERSION', 'unknown')}")
                 except BaseException as e2:
                     Log.debug(f"Invalid Autosubmit configuration: {e2}")
         return_value = exit_from_error(e)

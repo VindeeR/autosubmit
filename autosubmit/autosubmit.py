@@ -175,6 +175,7 @@ class Autosubmit:
         # Python output buffering delays appearance of stdout and stderr
         # when output is not directed to a terminal
         os.environ['PYTHONUNBUFFERED'] = 'true'
+
     @staticmethod
     def parse_args():
         """
@@ -700,7 +701,10 @@ class Autosubmit:
         except BaseException as e:
             raise AutosubmitCritical(
                 "Incorrect arguments for this command", 7011)
+        return args
 
+    @staticmethod
+    def run_command(args):
         expid = "None"
         if hasattr(args, 'expid'):
             expid = args.expid

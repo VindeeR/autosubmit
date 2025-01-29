@@ -25,22 +25,41 @@ script_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
 sys.path.append(script_dir)
 sys.path.append(os.path.normpath(os.path.join(script_dir, os.pardir)))
 # noinspection PyUnresolvedReferences
-from log.log import Log, AutosubmitCritical, AutosubmitError
-from autosubmit import delete_lock_file, exit_from_error
-from autosubmit.autosubmit import Autosubmit
+from log.log import Log, AutosubmitCritical, AutosubmitError  # noqa: E402
+from autosubmit import delete_lock_file, exit_from_error  # noqa: E402
+from autosubmit.autosubmit import Autosubmit  # noqa: E402
+from autosubmitconfigparser.config.configcommon import AutosubmitConfig  # noqa: E402
 
 
 # noinspection PyProtectedMember
 def main():
+    args = None
     try:
-        return_value = Autosubmit.parse_args()
-        delete_lock_file()
+        args = Autosubmit.parse_args()
+        if type(args) is not int:
+            return_value = Autosubmit.run_command(args)
+        else:
+            return_value = args
         return_value = return_value if type(return_value) is int else 0
+        delete_lock_file()
     except BaseException as e:
+        delete_lock_file()
+        if args:
+            Log.debug(f"Error in arguments: {args}")
+            if args.command:
+                Log.error(f"Error in command: {args.command}")
+            if args.expid:
+                Log.error(f"Error in experiment: {args.expid}")
+                try:
+                    as_conf = AutosubmitConfig(args.expid)
+                    as_conf.reload()
+                    Log.error(f"Experiment version: {as_conf.experiment_data.get('CONFIG', {}).get('VERSION', 'unknown')}")
+                except BaseException as e2:
+                    Log.debug(f"Invalid Autosubmit configuration: {e2}")
         return_value = exit_from_error(e)
     return return_value
 
 
 if __name__ == "__main__":
     exit_code = main()
-    sys.exit(exit_code) # Sys.exit ensures a proper cleanup of the program, while os._exit() does not.
+    sys.exit(exit_code)  # Sys.exit ensures a proper cleanup of the program, while os._exit() does not.

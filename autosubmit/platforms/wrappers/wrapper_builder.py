@@ -842,7 +842,158 @@ class SrunHorizontalWrapperBuilder(SrunWrapperBuilder):
         return srun_launcher
 
 
+class SrunVerticalWrapperBuilder(SrunWrapperBuilder):
+    def build_imports(self):
+        scripts_bash = "("
+        for script in self.job_scripts:
+            scripts_bash += f"\"{script}\" "
+        scripts_bash += ")"
+        return textwrap.dedent(f"""
+        # Defining scripts to be run
+        declare -a scripts_list={scripts_bash}
+        declare -a job_mask={self.get_mask_general(1)}
+        """).format('\n'.ljust(13))
+
+    def build_srun_launcher(self, jobs_list, footer=True):
+        srun_launcher = textwrap.dedent(f"""
+            i=0
+            suffix=".cmd"
+            for template in "${{{jobs_list}[@]}}"; do
+                jobname=${{template%"$suffix"}}
+                out="${{template}}.out.0"
+                err="${{template}}.err.0"
+                srun --ntasks=1 --cpu-bind=verbose,mask_cpu:${{job_mask[0]}} --distribution=block:block $template > $out 2> $err &
+                ((i=i+1))
+                wait
+            done
+            """)
+        if footer:
+            srun_launcher += self._indent(textwrap.dedent(f"""
+            for template in "${{{jobs_list}[@]}}"; do
+                suffix_completed=".COMPLETED"
+                completed_filename=${{template%"$suffix"}}
+                completed_filename="$completed_filename"_COMPLETED
+                completed_path=${{PWD}}/$completed_filename
+                if [ -f "$completed_path" ]; then
+                    echo "`date '+%d/%m/%Y_%H:%M:%S'` $template has been COMPLETED"
+                else
+                    echo "`date '+%d/%m/%Y_%H:%M:%S'` $template has been FAILED"
+                    touch {self.get_random_alphanumeric_string(5, 5)}_FAILED
+                    touch WRAPPER_FAILED
+                fi
+            done
+            """), 0)
+        return srun_launcher
+
+
 class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
+
+    def build_imports(self):
+        scripts_bash = textwrap.dedent("""
+        # Defining scripts to be run""")
+        list_index = 0
+        scripts_array_vars = "( "
+        scripts_array_index = "( "
+        for scripts in self.job_scripts:
+            built_array = "("
+            for script in scripts:
+                built_array += str("\"" + script + "\"") + " "
+            built_array += ")"
+            scripts_bash += textwrap.dedent("""
+            declare -a scripts_{0}={1}
+            """).format(str(list_index), str(built_array), '\n'.ljust(13))
+            scripts_array_vars += "\"scripts_{0}\" ".format(list_index)
+            scripts_array_index += "\"0\" ".format(list_index)
+            list_index += 1
+        scripts_array_vars += ")"
+        scripts_array_index += ")"
+        scripts_bash += textwrap.dedent("""
+                   declare -a scripts_list={0}
+                   declare -a scripts_index={1}
+                   """).format(str(scripts_array_vars), str(scripts_array_index), '\n'.ljust(13))
+        mask_array = self.get_mask_general(len(self.job_scripts))
+        scripts_bash += textwrap.dedent("""
+                declare -a job_mask_array={0}
+                """).format(mask_array, '\n'.ljust(13))
+        return scripts_bash
+
+    def build_srun_launcher(self, jobs_list, footer=True):
+        srun_launcher = f"""
+        suffix=".cmd"
+        suffix_completed=".COMPLETED"
+        aux_scripts=("${{{jobs_list}[@]}}")
+        prev_script="empty"
+        as_index=0
+        horizontal_size=${{#scripts_index[@]}}
+        scripts_size=${{#scripts_0[@]}}
+        job_failed=0
+        while [ "${{#aux_scripts[@]}}" -gt 0 ]; do
+            i_list=0
+            for script_list in "${{{jobs_list}[@]}}"; do
+                declare -i job_index=${{scripts_index[$i_list]}}
+                declare -n scripts=$script_list
+
+                declare -n prev_horizontal_scripts=$prev_script
+                if [ $job_index -ne -1 ]; then
+                    for horizontal_job in "${{scripts[@]:$job_index}}"; do
+                        template=$horizontal_job
+                        jobname=${{template%"$suffix"}}
+                        as_index=0
+                        multiplication_result=$(($i_list*$scripts_size))
+                        as_index=$((multiplication_result+$job_index))
+                        out="${{template}}.out"
+                        err="${{template}}.err"
+                        if [ $job_index -eq 0 ]; then
+                            prev_template=$template
+                        else
+                            prev_template=${{scripts[((job_index-1))]}}
+                        fi
+                        completed_filename=${{prev_template%"$suffix"}}
+                        completed_filename="$completed_filename"_COMPLETED
+                        completed_path=${{PWD}}/$completed_filename
+                        if [ ! $job_index -eq 0 ] && ( ! lsof "$err" > /dev/null 2>&1 && ! lsof "$out" > /dev/null 2>&1 ) && [ ! -f "$completed_path" ]; then
+                            job_failed=1
+                            break
+                        fi
+                        if [ $job_index -eq 0 ] || [ -f "$completed_path" ]; then # If first horizontal wrapper or last wrapper is completed
+                            #srun -N1 --ntasks=1 --cpus-per-task=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}}  --distribution=block:block $template > $out 2> $err &
+                            #srun --ntasks=1 --cpu-bind=verbose,mask_cpu:$cpu_mask --distribution=block:block $template > $out 2> $err &
+                            srun --ntasks=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}} --distribution=block:block $template > $out 2> $err &
+                            job_index=$(($job_index+1))
+                        else
+                            break
+                        fi
+                    done
+                    if [ "$job_failed" ]; then
+                        break
+                    fi
+                    if [ $job_index -ge "${{#scripts[@]}}" ];  then
+                        unset aux_scripts[$i_list]
+                        job_index=-1
+                    fi
+                fi
+                if [ "$job_failed" ]; then
+                    break
+                fi
+                prev_script=("${{script_list[@]}}")
+                scripts_index[$i_list]=$job_index
+                i_list=$((i_list+1)) # check next list ( needed for save list index )
+            done
+            if [ "$job_failed" ]; then
+                echo "`date '+%d/%m/%Y_%H:%M:%S'` $template has been FAILED"
+                touch {self.get_random_alphanumeric_string(5, 5)}_FAILED
+                touch WRAPPER_FAILED
+                break
+            else
+                echo "`date '+%d/%m/%Y_%H:%M:%S'` $template has COMPLETE"
+            fi
+        done
+        wait
+        """
+        return srun_launcher
+
+
+class SrunHorizontalVerticalWrapperbuilder(SrunWrapperBuilder):
 
     def build_imports(self):
         scripts_bash = textwrap.dedent("""

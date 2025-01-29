@@ -19,7 +19,8 @@
 
 from autosubmit.platforms.wrappers.wrapper_builder import WrapperDirector, PythonVerticalWrapperBuilder, \
     PythonHorizontalWrapperBuilder, PythonHorizontalVerticalWrapperBuilder, PythonVerticalHorizontalWrapperBuilder, \
-    BashHorizontalWrapperBuilder, BashVerticalWrapperBuilder, SrunHorizontalWrapperBuilder,SrunVerticalHorizontalWrapperBuilder
+    BashHorizontalWrapperBuilder, BashVerticalWrapperBuilder, SrunHorizontalWrapperBuilder, \
+    SrunVerticalHorizontalWrapperBuilder, SrunVerticalWrapperBuilder, SrunHorizontalVerticalWrapperbuilder
 import re
 
 class WrapperFactory(object):
@@ -148,7 +149,10 @@ class WrapperFactory(object):
 class LocalWrapperFactory(WrapperFactory):
 
     def vertical_wrapper(self, **kwargs):
-        return PythonVerticalWrapperBuilder(**kwargs)
+        if kwargs["method"] == "srun":
+            return SrunVerticalWrapperBuilder(**kwargs)
+        else:
+            return PythonVerticalWrapperBuilder(**kwargs)
 
     def horizontal_wrapper(self, **kwargs):
 
@@ -158,7 +162,10 @@ class LocalWrapperFactory(WrapperFactory):
             return PythonHorizontalWrapperBuilder(**kwargs)
 
     def hybrid_wrapper_horizontal_vertical(self, **kwargs):
-        return PythonHorizontalVerticalWrapperBuilder(**kwargs)
+        if kwargs["method"] == 'srun':
+            return SrunHorizontalVerticalWrapperbuilder(**kwargs)
+        else:
+            return PythonHorizontalVerticalWrapperBuilder(**kwargs)
 
     def hybrid_wrapper_vertical_horizontal(self, **kwargs):
         if kwargs["method"] == 'srun':
@@ -250,8 +257,12 @@ class LocalWrapperFactory(WrapperFactory):
 
 class SlurmWrapperFactory(WrapperFactory):
 
+
     def vertical_wrapper(self, **kwargs):
-        return PythonVerticalWrapperBuilder(**kwargs)
+        if kwargs["method"] == "srun":
+            return SrunVerticalWrapperBuilder(**kwargs)
+        else:
+            return PythonVerticalWrapperBuilder(**kwargs)
 
     def horizontal_wrapper(self, **kwargs):
 
@@ -261,13 +272,17 @@ class SlurmWrapperFactory(WrapperFactory):
             return PythonHorizontalWrapperBuilder(**kwargs)
 
     def hybrid_wrapper_horizontal_vertical(self, **kwargs):
-        return PythonHorizontalVerticalWrapperBuilder(**kwargs)
+        if kwargs["method"] == 'srun':
+            return SrunHorizontalVerticalWrapperbuilder(**kwargs)
+        else:
+            return PythonHorizontalVerticalWrapperBuilder(**kwargs)
 
     def hybrid_wrapper_vertical_horizontal(self, **kwargs):
         if kwargs["method"] == 'srun':
             return SrunVerticalHorizontalWrapperBuilder(**kwargs)
         else:
             return PythonVerticalHorizontalWrapperBuilder(**kwargs)
+
 
     def header_directives(self, **kwargs):
         return self.platform.wrapper_header(**kwargs)

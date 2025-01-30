@@ -477,11 +477,8 @@ class PJMPlatform(ParamikoPlatform):
 
     @staticmethod
     def allocated_nodes(method="ASTHREAD"):
-        if not method.upper() == "SRUN":
+        if method.upper() != "SRUN":
             return """os.system("scontrol show hostnames $SLURM_JOB_NODELIST > node_list_{0}".format(node_id))"""
-        else:
-            return f"""scontrol show hostnames $SLURM_JOB_NODELIST > node_list_${{node_id}}"""
-
     def check_file_exists(self, filename, wrapper_failed=False, sleeptime=5, max_retries=3):
         file_exist = False
         retries = 0

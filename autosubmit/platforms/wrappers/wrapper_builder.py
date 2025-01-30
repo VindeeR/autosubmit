@@ -1039,7 +1039,6 @@ class SrunHorizontalVerticalWrapperbuilder(SrunWrapperBuilder):
             for script_list in "${{{jobs_list}[@]}}"; do
                 declare -i job_index=${{scripts_index[$i_list]}}
                 declare -n scripts=$script_list
-
                 declare -n prev_horizontal_scripts=$prev_script
                 if [ $job_index -ne -1 ]; then
                     for horizontal_job in "${{scripts[@]:$job_index}}"; do
@@ -1066,6 +1065,8 @@ class SrunHorizontalVerticalWrapperbuilder(SrunWrapperBuilder):
                             #srun -N1 --ntasks=1 --cpus-per-task=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}}  --distribution=block:block $template > $out 2> $err &
                             #srun --ntasks=1 --cpu-bind=verbose,mask_cpu:$cpu_mask --distribution=block:block $template > $out 2> $err &
                             srun --ntasks=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}} --distribution=block:block $template > $out 2> $err &
+                            job_step=$(srun --ntasks=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}} --distribution=block:block $template > $out 2> $err & echo $!)
+                            echo $job_step
                             job_index=$(($job_index+1))
                         else
                             break

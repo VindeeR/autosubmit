@@ -133,6 +133,23 @@ class WrapperBuilder(object):
         padding = amount * ch
         return ''.join(padding + line for line in text.splitlines(True))
 
+    @staticmethod
+    def check_job_status_bash():
+        return textwrap.dedent("""
+            # Function to check job status
+            check_job_status() {
+                job_id=$1
+                status=$(sacct --jobs $job_id --format=State --noheader | head -n 1)
+                if [ -z "$status" ]; then
+                    echo "Job $job_id not found"
+                else
+                    echo "Job $job_id status: $status"
+                fi
+                return $status
+            }
+            
+        """).format('\n'.ljust(13))
+
 
 class PythonWrapperBuilder(WrapperBuilder):
     def build_imports(self):
@@ -753,6 +770,7 @@ class BashHorizontalWrapperBuilder(BashWrapperBuilder):
 
 # SRUN CLASSES
 class SrunWrapperBuilder(WrapperBuilder):
+
     def build_imports(self):
         raise NotImplementedError
 
@@ -764,7 +782,7 @@ class SrunWrapperBuilder(WrapperBuilder):
 
     def build_main(self):
         debug = "set -x\n"
-        return debug + self.build_srun_launcher("scripts_list")
+        return debug + self.check_job_status_bash() + self.build_srun_launcher("scripts_list")
 
     def _indent(self, text, amount, ch=' '):
         padding = amount * ch
@@ -957,7 +975,7 @@ class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
                         if [ $job_index -eq 0 ] || [ -f "$completed_path" ]; then # If first horizontal wrapper or last wrapper is completed
                             #srun -N1 --ntasks=1 --cpus-per-task=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}}  --distribution=block:block $template > $out 2> $err &
                             #srun --ntasks=1 --cpu-bind=verbose,mask_cpu:$cpu_mask --distribution=block:block $template > $out 2> $err &
-                            srun --ntasks=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}} --distribution=block:block $template > $out 2> $err &
+                            job_step=$(srun --ntasks=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}} --distribution=block:block $template > $out 2> $err & echo $!)
                             job_index=$(($job_index+1))
                         else
                             break
@@ -1033,6 +1051,10 @@ class SrunHorizontalVerticalWrapperbuilder(SrunWrapperBuilder):
         horizontal_size=${{#scripts_index[@]}}
         scripts_size=${{#scripts_0[@]}}
         job_failed=0
+        # Initialize step_ids based on horizontal_size
+        for ((i=0; i<horizontal_size; i++)); do
+            step_ids[i]=-1
+        done
         while [ "${{#aux_scripts[@]}}" -gt 0 ]; do
             i_list=0
             for script_list in "${{{jobs_list}[@]}}"; do
@@ -1056,7 +1078,8 @@ class SrunHorizontalVerticalWrapperbuilder(SrunWrapperBuilder):
                         completed_filename=${{prev_template%"$suffix"}}
                         completed_filename="$completed_filename"_COMPLETED
                         completed_path=${{PWD}}/$completed_filename
-                        if [ ! $job_index -eq 0 ] && ( ! lsof "$err" > /dev/null 2>&1 && ! lsof "$out" > /dev/null 2>&1 ) && [ ! -f "$completed_path" ]; then
+                        status=check_job_status $step_id # todo
+                        if [ ! $job_index -eq 0 ] && [ $status == "failed" [ ! -f "$completed_path" ]; then
                             job_failed=1
                             break
                         fi
@@ -1064,8 +1087,7 @@ class SrunHorizontalVerticalWrapperbuilder(SrunWrapperBuilder):
                             #srun -N1 --ntasks=1 --cpus-per-task=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}}  --distribution=block:block $template > $out 2> $err &
                             #srun --ntasks=1 --cpu-bind=verbose,mask_cpu:$cpu_mask --distribution=block:block $template > $out 2> $err &
                             srun --ntasks=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}} --distribution=block:block $template > $out 2> $err &
-                            job_step=$(srun --ntasks=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}} --distribution=block:block $template > $out 2> $err & echo $!)
-                            echo $job_step
+                            step_id=$(srun --ntasks=1 --cpu-bind=verbose,mask_cpu:${{job_mask_array[$job_index]}} --distribution=block:block $template > $out 2> $err & echo $!)
                             job_index=$(($job_index+1))
                         else
                             break

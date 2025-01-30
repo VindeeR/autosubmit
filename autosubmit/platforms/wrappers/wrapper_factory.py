@@ -255,8 +255,8 @@ class LocalWrapperFactory(WrapperFactory):
     def header_directives(self, **kwargs):
         return ""
 
-class SlurmWrapperFactory(WrapperFactory):
 
+class SlurmWrapperFactory(WrapperFactory):
 
     def vertical_wrapper(self, **kwargs):
         if kwargs["method"].upper() == "SRUN":
@@ -282,7 +282,6 @@ class SlurmWrapperFactory(WrapperFactory):
             return SrunVerticalHorizontalWrapperBuilder(**kwargs)
         else:
             return PythonVerticalHorizontalWrapperBuilder(**kwargs)
-
 
     def header_directives(self, **kwargs):
         return self.platform.wrapper_header(**kwargs)

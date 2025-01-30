@@ -149,7 +149,7 @@ class WrapperFactory(object):
 class LocalWrapperFactory(WrapperFactory):
 
     def vertical_wrapper(self, **kwargs):
-        if kwargs["method"] == "srun":
+        if kwargs["method"].upper() == "SRUN":
             return SrunVerticalWrapperBuilder(**kwargs)
         else:
             return PythonVerticalWrapperBuilder(**kwargs)
@@ -259,7 +259,7 @@ class SlurmWrapperFactory(WrapperFactory):
 
 
     def vertical_wrapper(self, **kwargs):
-        if kwargs["method"] == "srun":
+        if kwargs["method"].upper() == "SRUN":
             return SrunVerticalWrapperBuilder(**kwargs)
         else:
             return PythonVerticalWrapperBuilder(**kwargs)

@@ -463,7 +463,7 @@ class PJMPlatform(ParamikoPlatform):
         """).ljust(13)
         else:
             wr_header = self.calculate_wrapper_het_header(kwargs["wrapper_data"])
-        if kwargs["method"] == 'srun':
+        if kwargs["method"].upper() == "SRUN":
             language = kwargs["executable"]
             if language is None or len(language) == 0:
                 language = "#!/bin/bash"

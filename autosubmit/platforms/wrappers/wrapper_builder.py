@@ -790,11 +790,10 @@ class SrunWrapperBuilder(WrapperBuilder):
             else:
                 core[0] = job_mask + 0x1
 
-        mask_array = "( "
+        mask_array = "("
         for mask in srun_mask_values:
             mask_array += f"\"{mask}\" "
-        mask_array += ")"
-
+        mask_array = mask_array[:-1] + ")"
         return mask_array
 
 
@@ -803,7 +802,7 @@ class SrunHorizontalWrapperBuilder(SrunWrapperBuilder):
         scripts_bash = "("
         for script in self.job_scripts:
             scripts_bash += f"\"{script}\" "
-        scripts_bash += ")"
+        scripts_bash = scripts_bash[:-1] + ")"
         return textwrap.dedent(f"""
         # Defining scripts to be run
         declare -a scripts_list={scripts_bash}
@@ -847,7 +846,7 @@ class SrunVerticalWrapperBuilder(SrunWrapperBuilder):
         scripts_bash = "("
         for script in self.job_scripts:
             scripts_bash += f"\"{script}\" "
-        scripts_bash += ")"
+        scripts_bash = scripts_bash[:-1] + ")"
         return textwrap.dedent(f"""
         # Defining scripts to be run
         declare -a scripts_list={scripts_bash}
@@ -892,21 +891,21 @@ class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
         scripts_bash = textwrap.dedent("""
         # Defining scripts to be run""")
         list_index = 0
-        scripts_array_vars = "( "
-        scripts_array_index = "( "
+        scripts_array_vars = "("
+        scripts_array_index = "("
         for scripts in self.job_scripts:
             built_array = "("
             for script in scripts:
                 built_array += str("\"" + script + "\"") + " "
-            built_array += ")"
+            built_array = built_array[:-1] + ")"
             scripts_bash += textwrap.dedent("""
             declare -a scripts_{0}={1}
             """).format(str(list_index), str(built_array), '\n'.ljust(13))
             scripts_array_vars += "\"scripts_{0}\" ".format(list_index)
             scripts_array_index += "\"0\" ".format(list_index)
             list_index += 1
-        scripts_array_vars += ")"
-        scripts_array_index += ")"
+        scripts_array_vars = scripts_array_vars[:-1] + ")"
+        scripts_array_index = scripts_array_index[:-1] + ")"
         scripts_bash += textwrap.dedent("""
                    declare -a scripts_list={0}
                    declare -a scripts_index={1}
@@ -918,7 +917,7 @@ class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
         return scripts_bash
 
     def build_srun_launcher(self, jobs_list, footer=True):
-        srun_launcher = f"""
+        srun_launcher = textwrap.dedent(f"""
         suffix=".cmd"
         suffix_completed=".COMPLETED"
         aux_scripts=("${{{jobs_list}[@]}}")
@@ -989,7 +988,7 @@ class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
             fi
         done
         wait
-        """
+        """)
         return srun_launcher
 
 
@@ -999,21 +998,21 @@ class SrunHorizontalVerticalWrapperbuilder(SrunWrapperBuilder):
         scripts_bash = textwrap.dedent("""
         # Defining scripts to be run""")
         list_index = 0
-        scripts_array_vars = "( "
-        scripts_array_index = "( "
+        scripts_array_vars = "("
+        scripts_array_index = "("
         for scripts in self.job_scripts:
             built_array = "("
             for script in scripts:
                 built_array += str("\"" + script + "\"") + " "
-            built_array += ")"
+            built_array = built_array[:-1] + ")"
             scripts_bash += textwrap.dedent("""
             declare -a scripts_{0}={1}
             """).format(str(list_index), str(built_array), '\n'.ljust(13))
             scripts_array_vars += "\"scripts_{0}\" ".format(list_index)
             scripts_array_index += "\"0\" ".format(list_index)
             list_index += 1
-        scripts_array_vars += ")"
-        scripts_array_index += ")"
+        scripts_array_vars = scripts_array_vars[:-1] + ")"
+        scripts_array_index = scripts_array_index[:-1] + ")"
         scripts_bash += textwrap.dedent("""
                    declare -a scripts_list={0}
                    declare -a scripts_index={1}
@@ -1025,7 +1024,7 @@ class SrunHorizontalVerticalWrapperbuilder(SrunWrapperBuilder):
         return scripts_bash
 
     def build_srun_launcher(self, jobs_list, footer=True):
-        srun_launcher = f"""
+        srun_launcher = textwrap.dedent(f"""
         suffix=".cmd"
         suffix_completed=".COMPLETED"
         aux_scripts=("${{{jobs_list}[@]}}")
@@ -1097,5 +1096,5 @@ class SrunHorizontalVerticalWrapperbuilder(SrunWrapperBuilder):
             fi
         done
         wait
-        """
+        """)
         return srun_launcher

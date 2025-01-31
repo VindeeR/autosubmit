@@ -2470,14 +2470,14 @@ class Job(object):
         :type first_retrial: bool
 
         """
-        path = os.path.join(self._tmp_path, self.name + '_TOTAL_STATS')
+        path = Path(f"{self._tmp_path}/{self.name}_TOTAL_STATS")
         f = open(path, 'a')
         if first_retrial:
             f.write(" " + date2str(datetime.datetime.fromtimestamp(total_stats[0]), 'S') + ' ' + date2str(datetime.datetime.fromtimestamp(total_stats[1]), 'S') + ' ' + total_stats[2])
         else:
             f.write('\n' + date2str(datetime.datetime.fromtimestamp(total_stats[0]), 'S') + ' ' + date2str(datetime.datetime.fromtimestamp(total_stats[0]), 'S') + ' ' + date2str(datetime.datetime.fromtimestamp(total_stats[1]), 'S') + ' ' + total_stats[2])
         out, err = self.local_logs
-        path_out = os.path.join(self._tmp_path, 'LOG_' + str(self.expid), out)
+        f.close()
         # Launch first as simple non-threaded function
 
         exp_history = ExperimentHistory(self.expid, jobdata_dir_path=BasicConfig.JOBDATA_DIR, historiclog_dir_path=BasicConfig.HISTORICAL_LOG_DIR)

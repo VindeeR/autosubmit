@@ -23,6 +23,8 @@ import os
 import sys
 from typing import Optional
 
+from exceptiongroup import suppress
+
 script_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
 sys.path.append(script_dir)
 sys.path.append(os.path.normpath(os.path.join(script_dir, os.pardir)))
@@ -43,18 +45,20 @@ def main():
         delete_lock_file()
     except BaseException as e:
         delete_lock_file()
+        command = "<no command provided>"
+        expid = "<no expid provided>"
+        version = "<no version found>"
         if args:
-            Log.debug(f"Error in arguments: {args}")
-            if args.command:
-                Log.error(f"Error in command: {args.command}")
-            if args.expid:
-                Log.error(f"Error in experiment: {args.expid}")
-                try:
+            if 'command' in args and args.command:
+                command = f"<{args.command}>"
+            if 'expid' in args and args.expid:
+                expid = f"<{args.expid}>"
+                with suppress(BaseException):
                     as_conf = AutosubmitConfig(args.expid)
                     as_conf.reload()
-                    Log.error(f"Experiment version: {as_conf.experiment_data.get('CONFIG', {}).get('AUTOSUBMIT_VERSION', 'unknown')}")
-                except BaseException as e2:
-                    Log.debug(f"Invalid Autosubmit configuration: {e2}")
+                    version = f"{as_conf.experiment_data.get('CONFIG', {}).get('AUTOSUBMIT_VERSION', 'unknown')}"
+        Log.error(f"Arguments provided: {str(args)}")
+        Log.error(f"This is the experiment: {expid} which had an issue with the command: {command} and it is currently using the Autosubmit Version: {version}.")
         return_value = exit_from_error(e)
     return return_value
 

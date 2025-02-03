@@ -23,8 +23,7 @@ import os
 import sys
 from typing import Optional
 
-from exceptiongroup import suppress
-
+from contextlib import suppress
 script_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
 sys.path.append(script_dir)
 sys.path.append(os.path.normpath(os.path.join(script_dir, os.pardir)))

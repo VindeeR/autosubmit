@@ -1152,12 +1152,12 @@ class Autosubmit:
             # Copy only relevant files
             print(f'conf_file : {conf_file}')
             if conf_file.endswith((".conf", ".yml", ".yaml")):
-                print(f'Path_1_conf_file : {os.path.join(BasicConfig.LOCAL_ROOT_DIR, copy_id, "conf", conf_file)}')
-                print(f'Path_2_conf_file : {os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id, "conf", conf_file.replace(copy_id,exp_id))}')
                 shutil.copy(os.path.join(BasicConfig.LOCAL_ROOT_DIR, copy_id, "conf", conf_file),
                             os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id, "conf", conf_file.replace(copy_id,exp_id)))
             # if ends with .conf convert it to AS4 yaml file
             if conf_file.endswith(".conf"):
+                print(f'Path_1_conf_file : {Path(f"{BasicConfig.LOCAL_ROOT_DIR}/{exp_id}/conf")}')
+                print(f'Path_2_conf_file : {Path(f"{BasicConfig.LOCAL_ROOT_DIR}/{exp_id}/conf/{conf_file.replace(copy_id,exp_id)}")}')
                 try:
                     AutosubmitConfig.ini_to_yaml(Path(f"{BasicConfig.LOCAL_ROOT_DIR}/{exp_id}/conf"),
                                                  Path(f"{BasicConfig.LOCAL_ROOT_DIR}/{exp_id}/conf/{conf_file.replace(copy_id,exp_id)}"))

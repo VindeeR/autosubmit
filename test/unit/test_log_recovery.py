@@ -175,3 +175,5 @@ def test_refresh_log_retry_process(prepare_test, local, as_conf, mocker):
     assert local.log_recovery_process.is_alive() is False
     Autosubmit.refresh_log_recovery_process(platforms, as_conf)
     assert local.log_recovery_process.is_alive()
+    local.send_cleanup_signal()  # this is called by atexit function
+    assert local.log_recovery_process.is_alive() is False

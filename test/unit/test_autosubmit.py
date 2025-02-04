@@ -19,6 +19,8 @@ def test_copy_as_config(tmp_path):
     new_file = Path(tmp_path / 'a001' / 'conf')
     ini_file.mkdir(parents=True, exist_ok=True)
     new_file.mkdir(parents=True, exist_ok=True)
+    print(f'ini_file: {ini_file.exists()}')
+    print(f'new_file: {new_file.exists()}')
     ini_file = ini_file / 'jobs_a000.conf'
     new_file = new_file / 'jobs_a001.yml'
 
@@ -36,6 +38,8 @@ def test_copy_as_config(tmp_path):
         Autosubmit().copy_as_config('a001','a000')
 
         new_yaml_file = Path(new_file.parent,new_file.stem).with_suffix('.yml')
+
+        print(f'new_yaml_file: {new_yaml_file.exists()}')
 
         assert new_yaml_file.exists()
         assert new_yaml_file.stat().st_size > 0

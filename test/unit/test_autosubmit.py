@@ -1,7 +1,5 @@
 from textwrap import dedent
 from pathlib import Path
-
-import pytest
 from autosubmitconfigparser.config.basicconfig import BasicConfig
 
 from autosubmit.autosubmit import Autosubmit
@@ -17,7 +15,7 @@ def test_copy_as_config(tmp_path, autosubmit_config):
     """
     autosubmit_config('a000',{})
 
-    ini_file = Path(f'{BasicConfig.LOCAL_ROOT_DIR}/a000/conf')
+    rdd = ini_file = Path(f'{BasicConfig.LOCAL_ROOT_DIR}/a000/conf')
     rd = new_file = Path(f'{BasicConfig.LOCAL_ROOT_DIR}/a001/conf')
     ini_file.mkdir(parents=True, exist_ok=True)
     new_file.mkdir(parents=True, exist_ok=True)
@@ -36,8 +34,10 @@ def test_copy_as_config(tmp_path, autosubmit_config):
 
     new_yaml_file = Path(new_file.parent,new_file.stem).with_suffix('.yml')
 
+    for td in rdd.iterdir():
+        print(f'files a000 : {td}')
     for td in rd.iterdir():
-        print(f'files: {td}')
+        print(f'files a001 : {td}')
     print(f'new_file: {new_file}')
     print(f'new_file: {new_file.exists()}')
     print(f'new_yaml_file: {new_yaml_file}')

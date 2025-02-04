@@ -32,7 +32,7 @@ def test_copy_as_config(tmp_path, autosubmit_config):
 
     Autosubmit().copy_as_config('a001','a000')
 
-    new_yaml_file = Path(new_file.parent,new_file.stem).with_suffix('.yml')
+    new_yaml_file = Path(new_file.parent,new_file.stem).with_suffix('.conf')
 
     for td in rdd.iterdir():
         print(f'files a000 : {td}')

@@ -1150,7 +1150,10 @@ class Autosubmit:
     def copy_as_config(exp_id,copy_id):
         for conf_file in os.listdir(os.path.join(BasicConfig.LOCAL_ROOT_DIR, copy_id,"conf")):
             # Copy only relevant files
+            print(f'conf_file : {conf_file}')
             if conf_file.endswith((".conf", ".yml", ".yaml")):
+                print(f'Path_1_conf_file : {os.path.join(BasicConfig.LOCAL_ROOT_DIR, copy_id, "conf", conf_file)}')
+                print(f'Path_2_conf_file : {os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id, "conf", conf_file.replace(copy_id,exp_id))}')
                 shutil.copy(os.path.join(BasicConfig.LOCAL_ROOT_DIR, copy_id, "conf", conf_file),
                             os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id, "conf", conf_file.replace(copy_id,exp_id)))
             # if ends with .conf convert it to AS4 yaml file

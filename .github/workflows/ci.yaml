@@ -57,11 +57,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[all]
 
-      - name: Set Up SQLite Database
-        run: |
-          sqlite3 autosubmit.db "CREATE TABLE IF NOT EXISTS jobs (id INTEGER PRIMARY KEY, status TEXT);"
-          sqlite3 autosubmit.db "INSERT INTO jobs (status) VALUES ('pending');"
-
       - name: Run tests
         run: |
           pytest

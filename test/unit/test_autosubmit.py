@@ -58,7 +58,7 @@ def test_expid(autosubmit_config: Callable[[str,Dict], BasicConfig], fake_dir, r
 
     if real_dir != "":
         autosubmit_config(real_dir, {})
-    expid = Autosubmit().expid("Test", real_dir)
+    expid = Autosubmit().expid("Test")
 
     if real_dir == "":
         autosubmit_config(expid, {})

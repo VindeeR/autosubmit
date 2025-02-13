@@ -18,6 +18,9 @@ from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 
 
+FAKE_EXP_DIR = "./tests/experiments/"
+
+
 @dataclass
 class AutosubmitExperiment:
     """This holds information about an experiment created by Autosubmit."""
@@ -31,12 +34,13 @@ class AutosubmitExperiment:
 
 
 @pytest.fixture(scope="session")
-def fixture_temp_dir_copy() -> str:
+def fixture_temp_dir_copy():
     """
     Fixture that copies the contents of the FAKE_EXP_DIR to a temporary directory with rsync
     """
     with tempfile.TemporaryDirectory() as tempdir:
         # Copy all files recursively
+        # os.system(f"rsync -r {FAKE_EXP_DIR} {tempdir}")
         yield tempdir
 
 
@@ -77,8 +81,7 @@ def fixture_sqlite(fixture_gen_rc_sqlite: str, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setenv(
         "AUTOSUBMIT_CONFIGURATION", os.path.join(fixture_gen_rc_sqlite, ".autosubmitrc")
     )
-    # print(f'fixture_gen_rc_sqlite: {fixture_gen_rc_sqlite}')
-    # print(f'monkeypatch: {monkeypatch.context}')
+    print(f'fixture_gen_rc_sqlite: {fixture_gen_rc_sqlite}')
     yield fixture_gen_rc_sqlite
 
 

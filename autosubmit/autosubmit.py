@@ -1156,8 +1156,8 @@ class Autosubmit:
             # if ends with .conf convert it to AS4 yaml file
             if conf_file.endswith(".conf"):
                 try:
-                    AutosubmitConfig.ini_to_yaml(os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id,"conf"),
-                                                 os.path.join(BasicConfig.LOCAL_ROOT_DIR, exp_id,"conf",conf_file.replace(copy_id,exp_id)))
+                    AutosubmitConfig.ini_to_yaml(Path(f"{BasicConfig.LOCAL_ROOT_DIR}/{exp_id}/conf"),
+                                                 Path(f"{BasicConfig.LOCAL_ROOT_DIR}/{exp_id}/conf/{conf_file.replace(copy_id,exp_id)}"))
                 except Exception as e:
                     Log.warning("Error converting {0} to yml: {1}".format(conf_file.replace(copy_id,exp_id),str(e)))
 
@@ -1325,7 +1325,10 @@ class Autosubmit:
                     f.write(content)
 
     @staticmethod
-    def expid(description, hpc="", copy_id='', dummy=False, minimal_configuration=False, git_repo="", git_branch="", git_as_conf="", operational=False,  testcase = False,use_local_minimal=False):
+    def expid(description, hpc="", copy_id='', dummy=False, minimal_configuration=False,
+              git_repo="", git_branch="", git_as_conf="", operational=False, testcase=False,
+              use_local_minimal=False
+              ) -> str:
         """
         Creates a new experiment for given HPC
         description: description of the experiment
@@ -1345,7 +1348,7 @@ class Autosubmit:
             git_branch = ""
 
         exp_id = ""
-        root_folder = os.path.join(BasicConfig.LOCAL_ROOT_DIR)
+        root_folder = Path(BasicConfig.LOCAL_ROOT_DIR)
         if description is None:
             raise AutosubmitCritical(
                 "Check that the parameters are defined (-d) ", 7011)
@@ -1356,8 +1359,8 @@ class Autosubmit:
         try:
             # Copy another experiment from the database
             if copy_id != '' and copy_id is not None:
-                copy_id_folder = os.path.join(root_folder, copy_id)
-                if not os.path.exists(copy_id_folder):
+                copy_id_folder = root_folder / copy_id
+                if not copy_id_folder.exists():
                     raise AutosubmitCritical(
                         "Experiment {0} doesn't exists".format(copy_id), 7011)
                 exp_id = copy_experiment(copy_id, description, Autosubmit.autosubmit_version, testcase, operational)
@@ -1373,25 +1376,17 @@ class Autosubmit:
         # Create the experiment structure
         Log.info("Generating folder structure...")
 
-        exp_folder = os.path.join(root_folder, exp_id)
+        exp_folder = root_folder / Path(exp_id)
         try:
-            os.mkdir(exp_folder)
-            os.mkdir(os.path.join(exp_folder, "conf"))
-            os.mkdir(os.path.join(exp_folder, "pkl"))
-            os.mkdir(os.path.join(exp_folder, "tmp"))
-            os.mkdir(os.path.join(exp_folder, "tmp", "ASLOGS"))
-            os.mkdir(os.path.join(exp_folder, "tmp", "LOG_"+exp_id))
-            os.mkdir(os.path.join(exp_folder, "plot"))
-            os.mkdir(os.path.join(exp_folder, "status"))
-            # Setting permissions
-            os.chmod(exp_folder, 0o755)
-            os.chmod(os.path.join(exp_folder, "conf"), 0o755)
-            os.chmod(os.path.join(exp_folder, "pkl"), 0o755)
-            os.chmod(os.path.join(exp_folder, "tmp"), 0o755)
-            os.chmod(os.path.join(exp_folder, "tmp", "ASLOGS"), 0o755)
-            os.chmod(os.path.join(exp_folder, "tmp", "LOG_"+exp_id), 0o755)
-            os.chmod(os.path.join(exp_folder, "plot"), 0o755)
-            os.chmod(os.path.join(exp_folder, "status"), 0o755)
+            # Setting folders and permissions
+            exp_folder.mkdir(mode=0o755)
+            Path(exp_folder / "conf").mkdir(mode=0o755)
+            Path(exp_folder / "pkl").mkdir(mode=0o755)
+            Path(exp_folder / "tmp").mkdir(mode=0o755)
+            Path(exp_folder / "tmp" / "ASLOGS").mkdir(mode=0o755)
+            Path(exp_folder / "tmp" / f"LOG_{exp_id}").mkdir(mode=0o755)
+            Path(exp_folder / "plot").mkdir(mode=0o755)
+            Path(exp_folder / "status").mkdir(mode=0o755)
             Log.info(f"Experiment folder: {exp_folder}")
         except OSError as e:
             try:
@@ -1408,7 +1403,7 @@ class Autosubmit:
                 Autosubmit.copy_as_config(exp_id, copy_id)
             else:
                 # Create a new configuration
-                Autosubmit.generate_as_config(exp_id,dummy, minimal_configuration,use_local_minimal)
+                Autosubmit.generate_as_config(exp_id, dummy, minimal_configuration, use_local_minimal)
         except Exception as e:
             try:
                 Autosubmit._delete_expid(exp_id, True)
@@ -1417,7 +1412,7 @@ class Autosubmit:
             raise AutosubmitCritical("Error while creating the experiment configuration: {0}".format(str(e)), 7011)
         # Change template values by default values specified from the commandline
         try:
-            Autosubmit.as_conf_default_values(exp_id,hpc,minimal_configuration,git_repo,git_branch,git_as_conf)
+            Autosubmit.as_conf_default_values(exp_id, hpc, minimal_configuration, git_repo, git_branch, git_as_conf)
         except Exception as e:
             try:
                 Autosubmit._delete_expid(exp_id, True)

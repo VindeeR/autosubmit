@@ -1,4 +1,5 @@
 # Fixtures available to multiple test files must be created in this file.
+import tempfile
 from contextlib import suppress
 
 import pytest
@@ -17,6 +18,9 @@ from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 
 
+FAKE_EXP_DIR = "./tests/experiments/"
+
+
 @dataclass
 class AutosubmitExperiment:
     """This holds information about an experiment created by Autosubmit."""
@@ -27,6 +31,59 @@ class AutosubmitExperiment:
     aslogs_dir: Path
     status_dir: Path
     platform: ParamikoPlatform
+
+
+@pytest.fixture(scope="session")
+def fixture_temp_dir_copy():
+    """
+    Fixture that copies the contents of the FAKE_EXP_DIR to a temporary directory with rsync
+    """
+    with tempfile.TemporaryDirectory() as tempdir:
+        # Copy all files recursively
+        # os.system(f"rsync -r {FAKE_EXP_DIR} {tempdir}")
+        yield tempdir
+
+
+@pytest.fixture(scope="session")
+def fixture_gen_rc_sqlite(fixture_temp_dir_copy: str) -> str:
+    """
+    Fixture that generates a .autosubmitrc file in the temporary directory
+    """
+    rc_file = Path(fixture_temp_dir_copy) / ".autosubmitrc"
+    with open(rc_file, "w") as f:
+        f.write(
+            "\n".join(
+                [
+                    "[database]",
+                    f"path = {fixture_temp_dir_copy}",
+                    "filename = autosubmit.db",
+                    "backend = sqlite",
+                    "[local]",
+                    f"path = {fixture_temp_dir_copy}",
+                    "[globallogs]",
+                    f"path = {fixture_temp_dir_copy}/logs",
+                    "[historicdb]",
+                    f"path = {fixture_temp_dir_copy}/metadata/data",
+                    "[structures]",
+                    f"path = {fixture_temp_dir_copy}/metadata/structures",
+                    "[historiclog]",
+                    f"path = {fixture_temp_dir_copy}/metadata/logs",
+                    "[graph]",
+                    f"path = {fixture_temp_dir_copy}/metadata/graph",
+                ]
+            )
+        )
+    yield fixture_temp_dir_copy
+
+
+@pytest.fixture
+def fixture_sqlite(fixture_gen_rc_sqlite: str, monkeypatch: pytest.MonkeyPatch) -> fixture_gen_rc_sqlite:
+    monkeypatch.setenv(
+        "AUTOSUBMIT_CONFIGURATION", os.path.join(fixture_gen_rc_sqlite, ".autosubmitrc")
+    )
+    print(f'fixture_gen_rc_sqlite: {fixture_gen_rc_sqlite}')
+    yield fixture_gen_rc_sqlite
+
 
 @pytest.fixture(scope='function')
 def autosubmit_exp(autosubmit: Autosubmit, request: pytest.FixtureRequest) -> Callable:

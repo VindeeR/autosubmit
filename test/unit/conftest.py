@@ -1,4 +1,5 @@
 # Fixtures available to multiple test files must be created in this file.
+import tempfile
 from contextlib import suppress
 
 import pytest
@@ -27,6 +28,49 @@ class AutosubmitExperiment:
     aslogs_dir: Path
     status_dir: Path
     platform: ParamikoPlatform
+
+
+@pytest.fixture(scope="session")
+def fixture_temp_dir_copy() -> str:
+    """
+    Fixture that copies the contents of the FAKE_EXP_DIR to a temporary directory with rsync
+    """
+    with tempfile.TemporaryDirectory() as tempdir:
+        # Copy all files recursively
+        yield tempdir
+
+
+@pytest.fixture(scope="session")
+def fixture_gen_rc_sqlite(fixture_temp_dir_copy: str) -> str:
+    """
+    Fixture that generates a .autosubmitrc file in the temporary directory
+    """
+    rc_file = Path(fixture_temp_dir_copy) / ".autosubmitrc"
+    with open(rc_file, "w") as f:
+        f.write(
+            "\n".join(
+                [
+                    "[database]",
+                    f"path = {fixture_temp_dir_copy}",
+                    "filename = autosubmit.db",
+                    "backend = sqlite",
+                    "[local]",
+                    f"path = {fixture_temp_dir_copy}",
+                    "[globallogs]",
+                    f"path = {fixture_temp_dir_copy}/logs",
+                    "[historicdb]",
+                    f"path = {fixture_temp_dir_copy}/metadata/data",
+                    "[structures]",
+                    f"path = {fixture_temp_dir_copy}/metadata/structures",
+                    "[historiclog]",
+                    f"path = {fixture_temp_dir_copy}/metadata/logs",
+                    "[graph]",
+                    f"path = {fixture_temp_dir_copy}/metadata/graph",
+                ]
+            )
+        )
+    yield fixture_temp_dir_copy
+
 
 @pytest.fixture(scope='function')
 def autosubmit_exp(autosubmit: Autosubmit, request: pytest.FixtureRequest) -> Callable:

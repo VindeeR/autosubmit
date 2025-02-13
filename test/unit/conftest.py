@@ -72,6 +72,16 @@ def fixture_gen_rc_sqlite(fixture_temp_dir_copy: str) -> str:
     yield fixture_temp_dir_copy
 
 
+@pytest.fixture
+def fixture_sqlite(fixture_gen_rc_sqlite: str, monkeypatch: pytest.MonkeyPatch) -> fixture_gen_rc_sqlite:
+    monkeypatch.setenv(
+        "AUTOSUBMIT_CONFIGURATION", os.path.join(fixture_gen_rc_sqlite, ".autosubmitrc")
+    )
+    # print(f'fixture_gen_rc_sqlite: {fixture_gen_rc_sqlite}')
+    # print(f'monkeypatch: {monkeypatch.context}')
+    yield fixture_gen_rc_sqlite
+
+
 @pytest.fixture(scope='function')
 def autosubmit_exp(autosubmit: Autosubmit, request: pytest.FixtureRequest) -> Callable:
     """Create an instance of ``Autosubmit`` with an experiment."""

@@ -222,13 +222,15 @@ jobs:
         with:
           context: .
           file: ./docker/Dockerfile
-          push: true
-          tags: autosubmit/autosubmit:latest
+          push: false
 
-#      - name: Build and push the second Docker image
-#        uses: docker/build-push-action@v3
-#        with:
-#          context: .
-#          file: ./Dockerfile2'
-#          push: true
-#          tags: autosubmit/slurm-openssh-container:latest
+      - name: Run container and get output
+        run: |
+          docker run --name test-container -d autosubmit/autosubmit:latest
+          sleep 5  # Wait for the container to start (adjust if needed)
+          docker logs test-container  # Or any other way to extract info
+
+      - name: Pull and run external image
+        run: |
+          docker pull autosubmit/slurm-openssh-container:23-02-7-1
+          docker run -h slurmctld -p 2222:2222 autosubmit/slurm-openssh-container:23-02-7-1

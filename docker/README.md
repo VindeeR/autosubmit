@@ -68,8 +68,6 @@ Create an external DB, for example:
 
 ```bash
 $ docker run --rm \
-  -v /tmp/autosubmit/database:/app/autosubmit/database \
-  -v /tmp/autosubmit/experiments:/app/autosubmit/experiments \
   ${USER}/autosubmit:latest \
   autosubmit install
 ```
@@ -78,8 +76,6 @@ Create a dummy experiment:
 
 ```bash
 $ docker run --rm \
-  -v /tmp/autosubmit/database:/app/autosubmit/database \
-  -v /tmp/autosubmit/experiments:/app/autosubmit/experiments \
   ${USER}/autosubmit:latest \
   autosubmit expid -H local -d test --dummy
 ```
@@ -88,8 +84,6 @@ Confirm any container created with the image can access the experiments:
 
 ```bash
 $ docker run --rm \
-  -v /tmp/autosubmit/database:/app/autosubmit/database \
-  -v /tmp/autosubmit/experiments:/app/autosubmit/experiments \
   ${USER}/autosubmit:latest \
   autosubmit describe
 ```
@@ -98,8 +92,6 @@ To delete an experiment (use `-ti` if you do not pass `-f`):
 
 ```bash
 $ docker run --rm \
-  -v /tmp/autosubmit/database:/app/autosubmit/database \
-  -v /tmp/autosubmit/experiments:/app/autosubmit/experiments \
   ${USER}/autosubmit:latest \
   autosubmit delete -f a000
 ```
@@ -117,9 +109,9 @@ $ docker run --rm \
   -ti \
   -p 2222:22 \
   -e DISPLAY=$DISPLAY \
-  -v $(pwd -P)/id_rsa:/home/autosubmit/.ssh/id_rsa \
-  -v $(pwd -P)/id_rsa.pub:/home/autosubmit/.ssh/id_rsa.pub \
-  -v $(pwd -P)/authorized_keys:/home/autosubmit/.ssh/authorized_keys \
+  -v ~/.ssh//id_rsa:/home/autosubmit/.ssh/id_rsa \
+  -v ~/.ssh//id_rsa.pub:/home/autosubmit/.ssh/id_rsa.pub \
+  -v ~/.ssh//authorized_keys:/home/autosubmit/.ssh/authorized_keys \
   -v /tmp/.X11-unix/:/tmp/.X11-unix/ \
   ${USER}/autosubmit:latest /bin/bash
 ```

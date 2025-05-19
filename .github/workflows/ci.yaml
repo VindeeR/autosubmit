@@ -233,4 +233,4 @@ jobs:
       - name: Pull and run external image
         run: |
           docker pull autosubmit/slurm-openssh-container:23-02-7-1
-          docker run -h slurmctld -p 2222:2222 autosubmit/slurm-openssh-container:23-02-7-1
+          docker run -d -h slurmctld -p 2222:2222 autosubmit/slurm-openssh-container:23-02-7-1

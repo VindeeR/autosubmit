@@ -216,7 +216,6 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           registry: docker.io
 
-      # First Docker build (for Dockerfile autosubmit)
       - name: Build and push the first Docker image
         uses: docker/build-push-action@v3
         with:
@@ -224,13 +223,18 @@ jobs:
           file: ./docker/Dockerfile
           push: false
 
-      - name: Run container and get output
-        run: |
-          docker run --name test-container -d autosubmit/autosubmit:latest
-          sleep 5  # Wait for the container to start (adjust if needed)
-          docker logs test-container  # Or any other way to extract info
-
       - name: Pull and run external image
         run: |
           docker pull autosubmit/slurm-openssh-container:23-02-7-1
-          docker run -d -h slurmctld -p 2222:2222 autosubmit/slurm-openssh-container:23-02-7-1
+          docker run --name slurm-container -d -h slurmctld -p 2222:2222 autosubmit/slurm-openssh-container:23-02-7-1
+          sleep 5  # Wait for the container to start (adjust if needed)
+
+      - name: Link containers
+        run: |
+          docker run --name autosubmit-container -d --rm -ti -p 8080:22 --link slurm-container autosubmit/autosubmit /bin/bash
+
+      - name: Link containers
+        run: |
+          docker run -d --rm -ti -p 8080:22 --link slurm-container autosubmit/autosubmit /bin/bash
+          docker cp slurm-container:/root/.ssh/container_root_pubkey ~/.ssh/container_root_pubkey
+          docker cp ~/.ssh/container_root_pubkey autosubmit-container:/root/.ssh/container_root_pubkey

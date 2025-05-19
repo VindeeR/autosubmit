@@ -214,6 +214,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: docker.io
+
+      - name: Debug Docker Credentials
+        run:
+          echo "DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}"
+          echo "DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}"
 
       # First Docker build (for Dockerfile autosubmit)
       - name: Build and push the first Docker image

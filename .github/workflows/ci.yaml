@@ -237,5 +237,5 @@ jobs:
 
       - name: Link containers
         run: |
-          docker cp slurm-container:/root/.ssh/container_root_pubkey ~/.ssh/container_root_pubkey
-          docker cp ~/.ssh/container_root_pubkey autosubmit-container:/root/.ssh/container_root_pubkey
+          docker cp slurm-container:/root/.ssh/container_root_pubkey /tmp/files/container_root_pubkey
+          docker cp /tmp/files/container_root_pubkey autosubmit-container:/root/.ssh/container_root_pubkey

@@ -222,8 +222,7 @@ jobs:
         with:
           context: .
           file: ./docker/Dockerfile
-          push: true
-          tags: autosubmit/autosubmit:latest
+          push: false
 
 #      - name: Build and push the second Docker image
 #        uses: docker/build-push-action@v3

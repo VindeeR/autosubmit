@@ -233,7 +233,7 @@ jobs:
         run: |
           docker run --name autosubmit-container -d --rm -ti -p 8080:22 --link slurm-container autosubmit/autosubmit:latest /bin/bash
           sleep 5  # Wait for the container to start (adjust if needed)
-          docker logs test-container  # Or any other way to extract info
+          docker logs autosubmit-container  # Or any other way to extract info
 
       - name: Link containers
         run: |

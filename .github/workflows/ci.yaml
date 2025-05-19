@@ -221,7 +221,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: /autosubmit/docker/Dockerfile
+          file: ./docker/Dockerfile
           push: true
           tags: autosubmit/autosubmit:latest
 

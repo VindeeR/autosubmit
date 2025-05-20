@@ -227,13 +227,15 @@ jobs:
         run: |
           docker pull autosubmit/slurm-openssh-container:23-02-7-1
           docker run --name slurm-container -d -h slurmctld -p 2222:2222 autosubmit/slurm-openssh-container:23-02-7-1
-          sleep 5  # Wait for the container to start (adjust if needed)
+          sleep 5
+          # docker logs autosubmit-container
 
       - name: Run container and get output
         run: |
+          docker pull autosubmit/autosubmit:latest
           docker run --name autosubmit-container -d --rm -ti -p 8080:22 --link slurm-container autosubmit/autosubmit:latest /bin/bash
-          sleep 5  # Wait for the container to start (adjust if needed)
-          docker logs autosubmit-container  # Or any other way to extract info
+          sleep 5
+          # docker logs autosubmit-container
 
       - name: Copy access key
         run: |

@@ -11,18 +11,8 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Tests for the Autosubmit Slurm platform."""
-
-import pytest
-
-from textwrap import dedent
-
-from autosubmit.platforms.slurmplatform import SlurmPlatform
-
-
-@pytest.fixture
-def slurm_platform(autosubmit_config) -> SlurmPlatform:
-    """Fixture to create a Slurm platform object."""
-    as_conf = autosubmit_config('a000', {})
-    return SlurmPlatform(as_conf.expid, 'TestSlurmPlatform', as_conf.experiment_data)
+"""Integration tests for Autosubmit platforms."""

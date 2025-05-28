@@ -36,4 +36,19 @@ jobs:
         run: |
           docker cp slurm-container:/root/.ssh/container_root_pubkey /tmp/container_root_pubkey
           docker cp /tmp/container_root_pubkey autosubmit-container:/root/.ssh/container_root_pubkey
-          docker exec -it autosubmit-container ping -c 10 127.0.0.2:2222
+
+      - name: ping slurm
+        run: |
+          docker exec -it autosubmit-container ping -c 10 127.17.0.3 -p 2222
+
+      - name: install autosubmit
+        run: |
+          docker exec -it autosubmit-container autosubmit --version
+          docker exec -it autosubmit-container autosubmit install
+
+      - name: execute
+        run: |
+          docker exec -it autosubmit-container autosubmit expid -H local -d test -min
+          docker exec -it autosubmit-container autosubmit create a000 -np
+          docker exec -it autosubmit-container autosubmit run a000
+

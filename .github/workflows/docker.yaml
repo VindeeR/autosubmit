@@ -39,7 +39,9 @@ jobs:
 
       - name: ping slurm
         run: |
-          docker exec autosubmit-container ping -c 1 137.13.0.3 -p 2222
+          docker ps -a
+          docker images
+          docker exec autosubmit-container ping -c 1 slurm-container -p 2222
 
       - name: version autosubmit
         run: |

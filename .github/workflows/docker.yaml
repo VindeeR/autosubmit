@@ -22,7 +22,7 @@ jobs:
       autosubmit:
         image: autosubmit/autosubmit
         ports:
-          - 8080:22
+          - 2022:22
         options: --name autosubmit-container --link slurm-container autosubmit/autosubmit:latest
 
     steps:
@@ -39,24 +39,75 @@ jobs:
 
       - name: ping slurm
         run: |
-          docker exec -it autosubmit-container ping -c 10 slurm-container -p 2222
-          docker exec -it autosubmit-container ssh root@slurm-container -p 2222 -i /root/.ssh/container_root_pubkey sinfo
+          docker exec autosubmit-container ping -c 1 137.13.0.3 -p 2222
+
+      - name: version autosubmit
+        run: |
+          docker exec autosubmit-container autosubmit --version
+
+      - name: config and install autosubmit
+        run: |
+          docker exec autosubmit-container autosubmit configure
+          docker exec autosubmit-container autosubmit install
 
       - name: install autosubmit
         run: |
-          docker exec -it autosubmit-container autosubmit --version
-          docker exec -it autosubmit-container autosubmit install
+          docker exec autosubmit-container autosubmit install
 
       - name: configure host
         run: |
-          docker exec -it autosubmit-container echo -e $"Host gen1\n  HostName slurm-container\n  User root\n  IdentityFile /root/.ssh/container_root_pubkey\n  Port 2222\n   ForwardX11 yes" >> /root/.ssh/config
+          docker exec autosubmit-container echo -e $"Host gen1\n  HostName slurm-container\n  User root\n  IdentityFile /root/.ssh/container_root_pubkey\n  Port 2222\n   ForwardX11 yes" >> /root/.ssh/config
 
       - name: execute
         run: |
-          docker exec -it autosubmit-container autosubmit expid -H local -d test -min
-          docker exec -it autosubmit-container rm /app/autosubmit/experiments/a000/conf/minimal.yml
-          docker exec -it autosubmit-container mkdir /app/autosubmit/experiments/a000/proj
-          docker exec -it autosubmit-container echo -e $"CONFIG:\n   AUTOSUBMIT_VERSION: '4.1.14'\n   TOTALJOBS: 1\n   MAXWAITINGJOBS: 1\nDEFAULT:\n   EXPID: 'a000'\n   HPCARCH: 'MARENOSTRUM5'\n   CUSTOM_CONFIG: '%PROJDIR%/'\nPROJECT:\n   PROJECT_TYPE: None\n   PROJECT_DESTINATION: ''\nGIT:\n   PROJECT_ORIGIN: ''\n   PROJECT_BRANCH: ''\n   PROJECT_COMMIT: ''\n   PROJECT_SUBMODULES: ''\n   FETCH_SINGLE_BRANCH:\nLOCAL:\n   PROJECT_PATH: ./\nPLATFORMS:\n   MARENOSTRUM5:\n     TYPE: slurm\n     HOST: gen1\n     PROJECT: /\n     # HPC_PROJECT_ROOT: /gpfs/projects\n     USER: root\n     QUEUE: normal\n     MAX_WALLCLOCK: 02:00\n     SCRATCH_DIR: /\n     PROCESSORS_PER_NODE: 1\nJOBS:\n   SIM:\n     SCRIPT: |\n       sleep 5\n     WALLCLOCK: '00:10'\n     RUNNING: chunk\n     CHECK: on_submission\n   POST:\n     SCRIPT: |\n         sleep 5\n     RUNNING: chunk\n     WALLCLOCK: '00:05'\n     CHECK: on_submission\n   TA:\n     SCRIPT: |\n         sleep 5\n     RUNNING: once\n     WALLCLOCK: '00:05'\n     CHECK: on_submission\nEXPERIMENT:\n   DATELIST: 19880101\n   MEMBERS: fc0\n   CHUNKSIZEUNIT: month\n   CHUNKSIZE: 1\n   NUMCHUNKS: 1 # <- CHANGE THIS IF YOU WANT TO TEST\n   CALENDAR: standard\n   SPLITSIZEUNIT: day\n   SPLITSIZE: 1\n   SPLITPOLICY: flexible" >> /app/autosubmit/experiments/a000/conf/minimal.yml
-          docker exec -it autosubmit-container autosubmit create a000 -np
-          docker exec -it autosubmit-container autosubmit run a000
+          docker exec autosubmit-container autosubmit expid -H local -d test -min
+          docker exec autosubmit-container rm /app/autosubmit/experiments/a000/conf/minimal.yml
+          docker exec autosubmit-container mkdir /app/autosubmit/experiments/a000/proj
+          docker exec autosubmit-container echo -e $"CONFIG:\n   AUTOSUBMIT_VERSION: '4.1.14'\n   TOTALJOBS: 1\n   MAXWAITINGJOBS: 1\nDEFAULT:\n   EXPID: 'a000'\n   HPCARCH: 'MARENOSTRUM5'\n   CUSTOM_CONFIG: '%PROJDIR%/'\nPROJECT:\n   PROJECT_TYPE: None\n   PROJECT_DESTINATION: ''\nGIT:\n   PROJECT_ORIGIN: ''\n   PROJECT_BRANCH: ''\n   PROJECT_COMMIT: ''\n   PROJECT_SUBMODULES: ''\n   FETCH_SINGLE_BRANCH:\nLOCAL:\n   PROJECT_PATH: ./\nPLATFORMS:\n   MARENOSTRUM5:\n     TYPE: slurm\n     HOST: gen1\n     PROJECT: /\n     # HPC_PROJECT_ROOT: /gpfs/projects\n     USER: root\n     QUEUE: normal\n     MAX_WALLCLOCK: 02:00\n     SCRATCH_DIR: /\n     PROCESSORS_PER_NODE: 1\nJOBS:\n   SIM:\n     SCRIPT: |\n       sleep 5\n     WALLCLOCK: '00:10'\n     RUNNING: chunk\n     CHECK: on_submission\n   POST:\n     SCRIPT: |\n         sleep 5\n     RUNNING: chunk\n     WALLCLOCK: '00:05'\n     CHECK: on_submission\n   TA:\n     SCRIPT: |\n         sleep 5\n     RUNNING: once\n     WALLCLOCK: '00:05'\n     CHECK: on_submission\nEXPERIMENT:\n   DATELIST: 19880101\n   MEMBERS: fc0\n   CHUNKSIZEUNIT: month\n   CHUNKSIZE: 1\n   NUMCHUNKS: 1 # <- CHANGE THIS IF YOU WANT TO TEST\n   CALENDAR: standard\n   SPLITSIZEUNIT: day\n   SPLITSIZE: 1\n   SPLITPOLICY: flexible" >> /app/autosubmit/experiments/a000/conf/minimal.yml
+          docker exec autosubmit-container autosubmit create a000 -np
+          docker exec autosubmit-container autosubmit run a000
 
+
+#      - name: Set up Python
+#        uses: actions/setup-python@v5
+#        with:
+#          python-version: ${{ matrix.python-version }}
+#
+#      - name: Install system dependencies
+#        run: sudo apt-get install -y curl git graphviz rsync
+#
+#      - name: Install dependencies
+#        run: |
+#          python -m pip install --upgrade pip packaging setuptools twine
+#          pip install --upgrade -e .[all]
+#
+#      - name: Set up Git
+#        run: |
+#          # From: https://stackoverflow.com/questions/62960533/how-to-use-git-commands-during-a-github-action
+#          # Set up dummy configuration for integration tests.
+#          git --version
+#          git config --global user.email "test@bsc.es"
+#          git config --global user.name "GitHub Actions"
+
+      # In GitHub Actions we run all the integration tests, including those that require
+      # dependencies such as Docker (see `-m ''`, which means all markers). Read the
+      # CONTRIBUTING.md file for details how to set up your environment to run these.
+#      - name: Integration tests
+#        run: |
+#          pytest \
+#            --cov=autosubmit --cov-config=.coveragerc \
+#            --cov-report=xml:test/coverage.xml --cov-append \
+#            test/integration \
+#            -m ''
+#
+#      - name: Coverage report
+#        run: |
+#          coverage xml
+#          coverage report
+#
+#      - name: Upload coverage artifact
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: coverage_integration_py-${{ matrix.python-version }}
+#          path: coverage.xml
+#          retention-days: 7

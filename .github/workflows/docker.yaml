@@ -53,12 +53,13 @@ jobs:
 #          ssh root@localhost -p 2222 -i /tmp/container_root_pubkey
 
       - name: multiple command
+        uses: appleboy/ssh-action@master
         with:
           host: localhost
           username: root
           key: /tmp/container_root_pubkey
           port: 2222
-          run: |
+          script: |
             sinfo
 
       - name: execute

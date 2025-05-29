@@ -45,21 +45,22 @@ jobs:
           sudo bash -c 'mkdir /home/runner/.ssh/'
           sudo bash -c 'echo -e $"Host gen1\n  HostName localhost\n  User root\n  IdentityFile /tmp/container_root_pubkey\n  Port 2222\n   ForwardX11 yes" >> /home/runner/.ssh/config'
 
-      - name: docker check
-        run: |
-          sleep 5
-          docker ps -a
-          docker images
-          docker logs slurm-container
-          docker inspect slurm-container
-          docker network ls
+#      - name: docker check
+#        run: |
+#          sleep 5
+#          docker ps -a
+#          docker images
+#          docker logs slurm-container
+#          docker inspect slurm-container
+#          docker network ls
 
       - name: ssh access
         run: |
           cat /home/runner/.ssh/config
           cat /tmp/container_root_pubkey
 #          ssh gen1
-#          ssh root@localhost -p 2222 -i /tmp/container_root_pubkey sinfo
+          ssh root@localhost -p 2222
+          ssh root@localhost -p 2222 -i /tmp/container_root_pubkey
 
       - name: execute
         run: |

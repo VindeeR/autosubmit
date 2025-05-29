@@ -58,8 +58,8 @@ jobs:
         run: |
           cat /home/runner/.ssh/config
           cat /tmp/container_root_pubkey
-          ssh gen1
-          ssh root@localhost -p 2222 -i /tmp/container_root_pubkey sinfo
+#          ssh gen1
+#          ssh root@localhost -p 2222 -i /tmp/container_root_pubkey sinfo
 
       - name: execute
         run: |

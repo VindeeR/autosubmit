@@ -16,7 +16,7 @@ jobs:
         image: autosubmit/slurm-openssh-container:23-02-7-1
         ports:
           - 2222:2222
-        options: --name slurm-container
+        options: --name slurm-container --restart unless-stopped
 
     steps:
       - name: Checkout repository

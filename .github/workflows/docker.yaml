@@ -16,7 +16,7 @@ jobs:
         image: autosubmit/slurm-openssh-container:23-02-7-1
         ports:
           - 2222:2222
-        options: --name slurm-container
+        options: -h slurmctld --name slurm-container
 
     steps:
       - name: Checkout repository
@@ -44,13 +44,13 @@ jobs:
           sudo bash -c 'mkdir /home/runner/.ssh/'
           sudo bash -c 'echo -e $"Host gen1\n  HostName localhost\n  User root\n  IdentityFile /tmp/container_root_pubkey\n  Port 2222\n   ForwardX11 yes" >> /home/runner/.ssh/config'
 
-      - name: docker check
-        run: |
-          sleep 5
-          docker ps -a
-          docker images
-          docker logs slurm-container
-          docker exec -it slurm-container /bin/bash
+#      - name: docker check
+#        run: |
+#          sleep 5
+#          docker ps -a
+#          docker images
+#          docker logs slurm-container
+#          docker exec -it slurm-container /bin/bash
 #          docker inspect slurm-container
 #          docker network ls
 

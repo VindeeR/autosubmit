@@ -58,7 +58,7 @@ jobs:
           username: root
           key: /tmp/container_root_pubkey
           port: 2222
-          script: |
+          run: |
             sinfo
 
       - name: execute

@@ -53,7 +53,6 @@ jobs:
 #          ssh root@localhost -p 2222 -i /tmp/container_root_pubkey
 
       - name: multiple command
-        uses: appleboy/ssh-action@master
         with:
           host: localhost
           username: root
@@ -64,6 +63,7 @@ jobs:
 
       - name: execute
         run: |
+          ssh -T root@localhost
           autosubmit expid -H local -d test -min
           rm /home/runner/autosubmit/a000/conf/minimal.yml
           mkdir /home/runner/autosubmit/a000/proj

@@ -27,9 +27,9 @@ jobs:
 
       - name: Copy access key
         run: |
+          chmod 644 /home/
           docker cp slurm-container:/root/.ssh/container_root_pubkey /home/container_root_pubkey
           chmod 600 /home/container_root_pubkey
-          chmod 644 /home/
 
       - name: version autosubmit
         run: |

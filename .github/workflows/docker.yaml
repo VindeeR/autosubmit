@@ -28,48 +28,39 @@ jobs:
       - name: Copy access key
         run: |
           docker cp slurm-container:/root/.ssh/container_root_pubkey /tmp/container_root_pubkey
+          docker cp /tmp/container_root_pubkey autosubmit-container:/root/.ssh/container_root_pubkey
+
+      - name: ping slurm
+        run: |
+          docker ps -a
+          docker images
+          docker exec autosubmit-container ping -c 1 slurm-container -p 2222
 
       - name: version autosubmit
         run: |
-          pip install autosubmit
-          autosubmit --version
+          docker exec autosubmit-container autosubmit --version
 
       - name: config and install autosubmit
         run: |
-          autosubmit configure
-          autosubmit install
+          docker exec autosubmit-container autosubmit configure
+          docker exec autosubmit-container autosubmit install
+
+      - name: install autosubmit
+        run: |
+          docker exec autosubmit-container autosubmit install
 
       - name: configure host
         run: |
-          sudo bash -c 'mkdir /home/runner/.ssh/'
-          sudo bash -c 'echo -e $"Host gen1\n  HostName localhost\n  User root\n  IdentityFile /tmp/container_root_pubkey\n  Port 2222\n   ForwardX11 yes" >> /home/runner/.ssh/config'
-
-      - name: docker check
-        run: |
-          sleep 5
-          docker ps -a
-          docker images
-          docker logs slurm-container
-          docker exec -it slurm-container /bin/bash
-          docker inspect slurm-container
-          docker network ls
-
-      - name: ssh access
-        run: |
-          cat /home/runner/.ssh/config
-          cat /tmp/container_root_pubkey
-          ssh gen1
-          ssh root@localhost -p 2222 -i /tmp/container_root_pubkey sinfo
+          docker exec autosubmit-container echo -e $"Host gen1\n  HostName slurm-container\n  User root\n  IdentityFile /root/.ssh/container_root_pubkey\n  Port 2222\n   ForwardX11 yes" >> /root/.ssh/config
 
       - name: execute
         run: |
-          autosubmit expid -H local -d test -min
-          rm /home/runner/autosubmit/a000/conf/minimal.yml
-          mkdir /home/runner/autosubmit/a000/proj
-          sudo bash -c 'echo -e $"CONFIG:\n   AUTOSUBMIT_VERSION: '4.1.14'\n   TOTALJOBS: 1\n   MAXWAITINGJOBS: 1\nDEFAULT:\n   EXPID: 'a000'\n   HPCARCH: 'MARENOSTRUM5'\nPROJECT:\n   PROJECT_TYPE: None\n   PROJECT_DESTINATION: git_project\nGIT:\n   PROJECT_ORIGIN: ''\n   PROJECT_BRANCH: ''\n   PROJECT_COMMIT: ''\n   PROJECT_SUBMODULES: ''\n   FETCH_SINGLE_BRANCH: TRUE\n\nLOCAL:\n   PROJECT_PATH: ./\n\nPLATFORMS:\n   MARENOSTRUM5:\n     TYPE: slurm\n     HOST: gen1\n     PROJECT: /\n     # HPC_PROJECT_ROOT: /gpfs/projects\n     USER: root\n     QUEUE: normal\n     MAX_WALLCLOCK: 02:00\n     SCRATCH_DIR: /\n     PROCESSORS_PER_NODE: 1\n\nJOBS:\n   SIM:\n     SCRIPT: |\n       sleep 5\n     WALLCLOCK: "00:10"\n     RUNNING: chunk\n     CHECK: on_submission\n   POST:\n     SCRIPT: |\n         sleep 5\n     RUNNING: chunk\n     WALLCLOCK: "00:05"\n     CHECK: on_submission\n   TA:\n     SCRIPT: |\n         sleep 5\n     RUNNING: once\n     WALLCLOCK: "00:05"\n     CHECK: on_submission\n\nEXPERIMENT:\n   DATELIST: 19880101\n   MEMBERS: fc0\n   CHUNKSIZEUNIT: month\n   CHUNKSIZE: 1\n   NUMCHUNKS: 1\n   CALENDAR: standard\n   SPLITSIZEUNIT: day\n   SPLITSIZE: 1\n   SPLITPOLICY: flexible" >> /home/runner/autosubmit/a000/conf/minimal.yml'
-          cat /home/runner/autosubmit/a000/conf/minimal.yml
-          autosubmit create a000 -np
-          autosubmit run a000
+          docker exec autosubmit-container autosubmit expid -H local -d test -min
+          docker exec autosubmit-container rm /app/autosubmit/experiments/a000/conf/minimal.yml
+          docker exec autosubmit-container mkdir /app/autosubmit/experiments/a000/proj
+          docker exec autosubmit-container echo -e $"CONFIG:\n   AUTOSUBMIT_VERSION: '4.1.14'\n   TOTALJOBS: 1\n   MAXWAITINGJOBS: 1\nDEFAULT:\n   EXPID: 'a000'\n   HPCARCH: 'MARENOSTRUM5'\n   CUSTOM_CONFIG: '%PROJDIR%/'\nPROJECT:\n   PROJECT_TYPE: None\n   PROJECT_DESTINATION: ''\nGIT:\n   PROJECT_ORIGIN: ''\n   PROJECT_BRANCH: ''\n   PROJECT_COMMIT: ''\n   PROJECT_SUBMODULES: ''\n   FETCH_SINGLE_BRANCH:\nLOCAL:\n   PROJECT_PATH: ./\nPLATFORMS:\n   MARENOSTRUM5:\n     TYPE: slurm\n     HOST: gen1\n     PROJECT: /\n     # HPC_PROJECT_ROOT: /gpfs/projects\n     USER: root\n     QUEUE: normal\n     MAX_WALLCLOCK: 02:00\n     SCRATCH_DIR: /\n     PROCESSORS_PER_NODE: 1\nJOBS:\n   SIM:\n     SCRIPT: |\n       sleep 5\n     WALLCLOCK: '00:10'\n     RUNNING: chunk\n     CHECK: on_submission\n   POST:\n     SCRIPT: |\n         sleep 5\n     RUNNING: chunk\n     WALLCLOCK: '00:05'\n     CHECK: on_submission\n   TA:\n     SCRIPT: |\n         sleep 5\n     RUNNING: once\n     WALLCLOCK: '00:05'\n     CHECK: on_submission\nEXPERIMENT:\n   DATELIST: 19880101\n   MEMBERS: fc0\n   CHUNKSIZEUNIT: month\n   CHUNKSIZE: 1\n   NUMCHUNKS: 1 # <- CHANGE THIS IF YOU WANT TO TEST\n   CALENDAR: standard\n   SPLITSIZEUNIT: day\n   SPLITSIZE: 1\n   SPLITPOLICY: flexible" >> /app/autosubmit/experiments/a000/conf/minimal.yml
+          docker exec autosubmit-container autosubmit create a000 -np
+          docker exec autosubmit-container autosubmit run a000
 
 
 #      - name: Set up Python

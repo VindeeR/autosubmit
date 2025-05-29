@@ -52,15 +52,6 @@ jobs:
 #          ssh root@localhost -p 2222
 #          ssh root@localhost -p 2222 -i /tmp/container_root_pubkey
 
-      - name: multiple command
-        with:
-          host: localhost
-          username: root
-          key: /tmp/container_root_pubkey
-          port: 2222
-        run: |
-          sinfo
-
       - name: execute
         run: |
           ssh -T root@localhost

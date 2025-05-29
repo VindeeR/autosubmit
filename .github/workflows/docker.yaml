@@ -45,22 +45,21 @@ jobs:
           sudo bash -c 'mkdir /home/runner/.ssh/'
           sudo bash -c 'echo -e $"Host gen1\n  HostName localhost\n  User root\n  IdentityFile /tmp/container_root_pubkey\n  Port 2222\n   ForwardX11 yes" >> /home/runner/.ssh/config'
 
-#      - name: ssh access
-#        run: |
-#          cat /home/runner/.ssh/config
-#          cat /tmp/container_root_pubkey
+      - name: ssh access
+        run: |
+          cat /home/runner/.ssh/config
+          cat /tmp/container_root_pubkey
 #          ssh root@localhost -p 2222
 #          ssh root@localhost -p 2222 -i /tmp/container_root_pubkey
 
       - name: multiple command
-        uses: appleboy/ssh-action@master
         with:
           host: localhost
           username: root
           key: /tmp/container_root_pubkey
           port: 2222
-          script: |
-            sinfo
+        run: |
+          sinfo
 
       - name: execute
         run: |

@@ -52,7 +52,7 @@ jobs:
 
       - name: SSH to SLURM environment
         run: |
-          ssh -tt root@localhost -p 2222 -i /tmp/container_root_pubkey sinfo
+          ssh -tt root@localhost -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 -i /tmp/container_root_pubkey sinfo
 
       - name: Set up Python
         uses: actions/setup-python@v5

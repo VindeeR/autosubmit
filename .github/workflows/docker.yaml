@@ -27,8 +27,8 @@ jobs:
 
       - name: Copy access key
         run: |
-          docker cp slurm-container:/root/.ssh/container_root_pubkey /root/.ssh/container_root_pubkey
-          chmod 600 /root/.ssh/container_root_pubkey
+          docker cp slurm-container:/root/.ssh/container_root_pubkey /tmp/container_root_pubkey
+          chmod 600 /tmp/container_root_pubkey
 
       - name: version autosubmit
         run: |
@@ -43,20 +43,20 @@ jobs:
       - name: configure host
         run: |
           sudo bash -c 'mkdir /home/runner/.ssh/'
-          sudo bash -c 'echo -e $"Host gen1\n  HostName localhost\n  User root\n  IdentityFile /root/.ssh/container_root_pubkey\n  Port 2222\n   ForwardX11 yes" >> /home/runner/.ssh/config'
+          sudo bash -c 'echo -e $"Host gen1\n  HostName localhost\n  User root\n  IdentityFile /tmp/container_root_pubkey\n  Port 2222\n   ForwardX11 yes" >> /home/runner/.ssh/config'
 
       - name: ssh access
         run: |
           cat /home/runner/.ssh/config
-          cat /root/.ssh/container_root_pubkey
+          cat /tmp/container_root_pubkey
 
       - name: ssh connection test
         run: |
           ssh-keygen -f "/home/edoria/.ssh/known_hosts" -R "[localhost]:2222"
-          ssh root@localhost -p 2222 -i /root/.ssh/container_root_pubkey sinfo
+          ssh root@localhost -p 2222 -i /tmp/container_root_pubkey sinfo
           yes
-          ssh -tt root@localhost -p 2222 -i /root/.ssh/container_root_pubkey sinfo
-          ssh -tt root@localhost -o UserKnownHostsFile=/root/.ssh/known_hosts -tt -p 2222 -i /root/.ssh/container_root_pubkey sinfo
+          ssh -tt root@localhost -p 2222 -i /tmp/container_root_pubkey sinfo
+          ssh -tt root@localhost -o UserKnownHostsFile=/tmp/known_hosts -tt -p 2222 -i /tmp/container_root_pubkey sinfo
 
       - name: execute
         run: |

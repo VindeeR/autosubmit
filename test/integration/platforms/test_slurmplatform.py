@@ -21,8 +21,8 @@ from getpass import getuser
 
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 
-from autosubmit.platforms.slurmplatform import SlurmPlatform
-from conftest import AutosubmitExperimentFixture
+from autosubmit.autosubmit.platforms.slurmplatform import SlurmPlatform
+from autosubmit.test.conftest import AutosubmitExperimentFixture
 
 _EXPID = "t000"
 _PLATFORM_NAME = 'TEST_SLURM'

@@ -1503,11 +1503,11 @@ class Autosubmit:
             raise AutosubmitCritical("Ensure no processes are running in the experiment directory", 7076)
 
         experiment_path = Path(f"{BasicConfig.LOCAL_ROOT_DIR}/{expid}")
-        
+
         if experiment_path.exists():
             if force or Autosubmit._user_yes_no_query(f"Do you want to delete {expid} ?"):
                 Log.debug('Enter Autosubmit._delete_expid {0}', expid)
-                
+
                 # Try to delete the experiment details
                 try:
                     ExperimentDetails(expid).delete_details()
@@ -2166,7 +2166,7 @@ class Autosubmit:
             return job_list, submitter , exp_history, host , as_conf, platforms_to_test, packages_persistence, False
         else:
             return job_list, submitter, None, None, as_conf, platforms_to_test, packages_persistence, True
-        
+
     @staticmethod
     def get_iteration_info(as_conf,job_list):
         """
@@ -3151,7 +3151,8 @@ class Autosubmit:
             # print("Warning calc took {0} seconds".format(time.time() - time_0))
         except BaseException as e:
             raise AutosubmitCritical(
-                "An error has occurred while printing the workflow status. Check if you have X11 redirection and an img viewer correctly set",
+                "An error has occurred while printing the workflow status. Check if you have X11 redirection and an "
+                "img viewer correctly set",
                 7000, str(e))
 
         return True
@@ -4055,12 +4056,12 @@ class Autosubmit:
     @staticmethod
     def pkl_fix(expid):
         """
-        Tries to find a backup of the pkl file and restores it. Verifies that autosubmit is not running on this experiment.  
+        Tries to find a backup of the pkl file and restores it. Verifies that autosubmit is not running on this experiment.
 
         :param expid: experiment identifier
         :type expid: str
         :return:
-        :rtype: 
+        :rtype:
         """
         exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, expid)
         tmp_path = os.path.join(exp_path, BasicConfig.LOCAL_TMP_DIR)
@@ -4142,7 +4143,7 @@ class Autosubmit:
         :param expid: experiment identifier
         :type expid: str
         :return:
-        :rtype:        
+        :rtype:
         """
         os.umask(0) # Overrides user permissions
         current_time = int(time.time())

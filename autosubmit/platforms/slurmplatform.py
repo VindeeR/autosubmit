@@ -73,7 +73,7 @@ class SlurmPlatform(ParamikoPlatform):
         self.job_status['QUEUING'] = ['PENDING', 'CONFIGURING', 'RESIZING']
         self.job_status['FAILED'] = ['FAILED', 'CANCELLED', 'CANCELLED+', 'NODE_FAIL',
                                      'PREEMPTED', 'SUSPENDED', 'TIMEOUT', 'OUT_OF_MEMORY', 'OUT_OF_ME+', 'OUT_OF_ME']
-        self._pathdir = "\$HOME/LOG_" + self.expid
+        self._pathdir = "\\$HOME/LOG_" + self.expid
         self._allow_arrays = False
         self._allow_wrappers = True
         self.update_cmds()
@@ -81,9 +81,9 @@ class SlurmPlatform(ParamikoPlatform):
         exp_id_path = os.path.join(self.config.get("LOCAL_ROOT_DIR"), self.expid)
         tmp_path = os.path.join(exp_id_path, "tmp")
         self._submit_script_path = os.path.join(
-            tmp_path, self.config.get("LOCAL_ASLOG_DIR"), "submit_" + self.name + ".sh") # noqa
+            tmp_path, self.config.get("LOCAL_ASLOG_DIR"), "submit_" + self.name + ".sh")  # noqa
         self._submit_script_base_name = os.path.join(
-            tmp_path, self.config.get("LOCAL_ASLOG_DIR"), "submit_") # noqa
+            tmp_path, self.config.get("LOCAL_ASLOG_DIR"), "submit_")  # noqa
 
     def create_a_new_copy(self):
         """
@@ -151,7 +151,7 @@ class SlurmPlatform(ParamikoPlatform):
                     duplicated_jobs_already_checked = True
                     with suppress(Exception):
                         for package_ in valid_packages_to_submit:
-                            if hasattr(package_,"name"):
+                            if hasattr(package_, "name"):
                                 job_names.append(package_.name)  # wrapper_name
                             else:
                                 job_names.append(package_.jobs[0].name)  # job_name
@@ -196,14 +196,14 @@ class SlurmPlatform(ParamikoPlatform):
                             f"Are you sure that [{self.type.upper()}] scheduler is the "
                             f"correct type for platform [{self.name.upper()}]?.\n Please, double check that "
                             f"{self.type.upper()} is loaded for {self.name.upper()} before "
-                            f"autosubmit launch any job.",7070
+                            f"autosubmit launch any job.", 7070
                         ) from e
                     raise AutosubmitError(
                         "Submission failed, this can be due a failure on the platform", 6015, str(e)) from e
                 if jobs_id is None or len(jobs_id) <= 0:
                     raise AutosubmitError(
                         "Submission failed, this can be due a failure on the platform",
-                        6015,f"Jobs_id {jobs_id}")
+                        6015, f"Jobs_id {jobs_id}")
                 if hold:
                     sleep(10)
                 jobid_index = 0
@@ -229,7 +229,7 @@ class SlurmPlatform(ParamikoPlatform):
                                 retries = retries - 1
                             if not can_continue:
                                 package.jobs[0].platform.send_command(
-                                    package.jobs[0].platform.cancel_cmd+f" {current_package_id}")
+                                    package.jobs[0].platform.cancel_cmd + f" {current_package_id}")
                                 jobid_index += 1
                                 continue
                             if not self.hold_job(package.jobs[0]):
@@ -246,7 +246,7 @@ class SlurmPlatform(ParamikoPlatform):
                         if len(jobid) > 1:  # Cancel each job that is not the associated
                             ids_to_check = [package.jobs[0].id]
                             if package.jobs[0].het:
-                                for i in range(1,package.jobs[0].het.get("HETSIZE",1)): # noqa
+                                for i in range(1, package.jobs[0].het.get("HETSIZE", 1)):  # noqa
                                     ids_to_check.append(str(int(ids_to_check[0]) + i))
                             # TODO to optimize cancel all jobs at once
                             for id_ in [jobid for jobid in jobid if jobid not in ids_to_check]:
@@ -267,7 +267,7 @@ class SlurmPlatform(ParamikoPlatform):
             raise
         except Exception as e:
             raise AutosubmitError(f"{self.name} submission failed", 6015, str(e)) from e
-        return save,valid_packages_to_submit
+        return save, valid_packages_to_submit
 
     def generate_submit_script(self) -> None:
         """
@@ -470,7 +470,7 @@ class SlurmPlatform(ParamikoPlatform):
         """
         return output.strip().split(' ')[0].strip()
 
-    def parse_Alljobs_output(self, output: str, job_id: int) -> Union[list[str], str]: # noqa
+    def parse_Alljobs_output(self, output: str, job_id: int) -> Union[list[str], str]:  # noqa
         """
         Filter one or more status of a specific Job ID.
 
@@ -553,7 +553,7 @@ class SlurmPlatform(ParamikoPlatform):
         else:
             return export + self.get_submit_cmd_x11(job.x11_options.strip(""), job_script.strip(""))
 
-    def get_checkjob_cmd(self, job_id: str) -> str: # noqa
+    def get_checkjob_cmd(self, job_id: str) -> str:  # noqa
         """
         Generates sacct command to the job selected.
 
@@ -565,7 +565,7 @@ class SlurmPlatform(ParamikoPlatform):
         """
         return f'sacct -n -X --jobs {job_id} -o "State"'
 
-    def get_checkAlljobs_cmd(self, jobs_id: str): # noqa
+    def get_checkAlljobs_cmd(self, jobs_id: str):  # noqa
         """
         Generates sacct command to all the jobs passed down.
 
@@ -601,7 +601,7 @@ class SlurmPlatform(ParamikoPlatform):
         """
         return f'squeue -j {job_id} -o %A,%R'
 
-    def get_jobid_by_jobname_cmd(self, job_name: str) -> str: # noqa
+    def get_jobid_by_jobname_cmd(self, job_name: str) -> str:  # noqa
         """
         Looks for a job based on its name.
 
@@ -652,10 +652,10 @@ class SlurmPlatform(ParamikoPlatform):
         """
         reason = [x.split(',')[1] for x in output.splitlines()
                   if x.split(',')[0] == str(job_id)]
-        if isinstance(reason,list):
+        if isinstance(reason, list):
             # convert reason to str
             return ''.join(reason)
-        return reason # noqa F501
+        return reason  # noqa F501
 
     def get_queue_status(self, in_queue_jobs: List['Job'], list_queue_jobid: str, as_conf: AutosubmitConfig) -> None:
         """
@@ -692,7 +692,7 @@ class SlurmPlatform(ParamikoPlatform):
                 else:
                     job.new_status = Status.HELD
 
-    def wrapper_header(self,**kwargs: Any) -> str:
+    def wrapper_header(self, **kwargs: Any) -> str:
         """
         It generates the header of the wrapper configuring it to execute the Experiment.
 

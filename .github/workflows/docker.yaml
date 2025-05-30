@@ -30,16 +30,6 @@ jobs:
           docker cp slurm-container:/root/.ssh/container_root_pubkey /tmp/container_root_pubkey
           chmod 600 /tmp/container_root_pubkey
 
-      - name: version autosubmit
-        run: |
-          pip install autosubmit
-          autosubmit --version
-
-      - name: config and install autosubmit
-        run: |
-          autosubmit configure
-          autosubmit install
-
       - name: configure host
         run: |
           sudo bash -c 'mkdir /home/runner/.ssh/'

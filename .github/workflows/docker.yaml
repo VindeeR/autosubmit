@@ -52,7 +52,6 @@ jobs:
 
       - name: ssh connection test
         run: |
-          ssh-keygen -f "/root/.ssh/known_hosts" -R "[localhost]:2222"
           ssh root@localhost -p 2222 -i /tmp/container_root_pubkey sinfo
           yes
           ssh -tt root@localhost -p 2222 -i /tmp/container_root_pubkey sinfo

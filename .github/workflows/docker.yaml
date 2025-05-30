@@ -42,7 +42,7 @@ jobs:
 
       - name: SSH to SLURM environment
         run: |
-          ssh -tt root@localhost -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 -i /tmp/container_root_pubkey sinfo
+          ssh -tt root@localhost -p 2222 -i /tmp/container_root_pubkey sinfo
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -71,16 +71,5 @@ jobs:
             --cov=autosubmit --cov-config=.coveragerc \
             --cov-report=xml:test/coverage.xml --cov-append \
             test/integration/platforms/test_slurmplatform.py \
+            test/unit/platforms/test_locplatform.py \
             -m ''
-
-      - name: Coverage report
-        run: |
-          coverage xml
-          coverage report
-
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage_integration_py-${{ matrix.python-version }}
-          path: coverage.xml
-          retention-days: 7

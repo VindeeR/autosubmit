@@ -75,9 +75,6 @@ jobs:
           git config --global user.email "test@bsc.es"
           git config --global user.name "GitHub Actions"
 
-       In GitHub Actions we run all the integration tests, including those that require
-       dependencies such as Docker (see `-m ''`, which means all markers). Read the
-       CONTRIBUTING.md file for details how to set up your environment to run these.
       - name: Integration tests
         run: |
           pytest \

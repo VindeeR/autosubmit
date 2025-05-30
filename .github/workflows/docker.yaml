@@ -50,9 +50,9 @@ jobs:
           cat /home/runner/.ssh/config
           cat /tmp/container_root_pubkey
 
-      - name: ssh connection test
+      - name: SSH to SLURM environment
         run: |
-          ssh -tt root@localhost -o UserKnownHostsFile=/tmp/known_hosts -tt -p 2222 -i /tmp/container_root_pubkey sinfo
+          ssh -tt root@localhost -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 -i /tmp/container_root_pubkey sinfo
 
       - name: execute
         run: |

@@ -33,7 +33,7 @@ jobs:
       - name: configure host
         run: |
           sudo bash -c 'mkdir /home/runner/.ssh/'
-          sudo bash -c 'echo -e $"Host gen1\n  HostName localhost\n  User root\n  IdentityFile /tmp/container_root_pubkey\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n  Port 2222\n   ForwardX11 yes" >> /home/runner/.ssh/config'
+          sudo bash -c 'echo -e $"Host gen1\n  HostName localhost\n  User root\n  IdentityFile /tmp/container_root_pubkey\n  Port 2222\n   ForwardX11 yes" >> /home/runner/.ssh/config'
 
       - name: ssh access
         run: |

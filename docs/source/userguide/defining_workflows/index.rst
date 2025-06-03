@@ -33,6 +33,8 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmdquiet:: bash -c 'echo -e $"JOBS:\n    One:\n       FILE: one.sh\n\n    Two:\n      FILE: two.sh\n      DEPENDENCIES: One" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml'
 
+.. runcmd:: bash -c 'echo -e $"JOBS:\n    One:\n       FILE: one.sh\n\n    Two:\n      FILE: two.sh\n      DEPENDENCIES: One" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml'
+
 .. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 The resulting workflow can be seen in Figure :numref:`simple`

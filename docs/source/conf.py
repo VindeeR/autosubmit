@@ -37,7 +37,7 @@ extensions = [
     'sphinx_reredirects',
     'sphinx.ext.graphviz',
     'autosubmit_variables',
-    'helloworld',
+    'runcmdquiet',
     'runcmd'
 ]
 

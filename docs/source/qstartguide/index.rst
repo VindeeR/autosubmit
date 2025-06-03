@@ -43,7 +43,7 @@ Description of most used commands
 
     * - Command
       - Short description
-    * - **EXPID**
+    * - **expid**
       - Creates a new experiment and generates a new entry in the database by giving it a serial id composed of 4 letters. In addition, it also creates the folder experiment and the basic folder structure.
     * - **create <EXPID>**
       - Generates the experiment workflow.

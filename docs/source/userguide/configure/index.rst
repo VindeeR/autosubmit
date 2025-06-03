@@ -201,13 +201,42 @@ How to configure email notifications
 
 Example:
 
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/autosubmit_a000.yml
+.. code-block:: yaml
+
+    mail:
+        # Enable mail notifications for remote_failures
+        # Default:True
+        NOTIFY_ON_REMOTE_FAIL: True
+        # Enable mail notifications
+        # Default: False
+        NOTIFICATIONS: True
+        # Mail address where notifications will be received
+        TO:
+            - jsmith@example.com
+            - rlewis@example.com
+
 
 **2.** Define for which jobs you want to be notified. Edit ``jobs_<EXPID>.yml``.  You will be notified every time the job changes its status to one of the statuses defined on the parameter ``NOTIFY_ON``. You can define more than one job status separated by a whitespace, a comma (`,`), or using a list.
 
 Example:
 
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. code-block:: yaml
+
+    JOBS:
+        LOCAL_SETUP:
+            FILE: LOCAL_SETUP.sh
+            PLATFORM: LOCAL
+            NOTIFY_ON: FAILED COMPLETED
+        EXAMPLE_JOB:
+            FILE: EXAMPLE_JOB.sh
+            PLATFORM: LOCAL
+            NOTIFY_ON: FAILED, COMPLETED
+        EXAMPLE_JOB_2:
+            FILE: EXAMPLE_JOB_2.sh
+            PLATFORM: LOCAL
+            NOTIFY_ON:
+                - FAILED
+                - COMPLETED
 
 .. _add-new-plat-exp:
 

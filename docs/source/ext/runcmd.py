@@ -164,11 +164,11 @@ class RunCmdDirective(code.CodeBlock):
 
         # Dedent the output if required
         if dedent_output > 0:
-            output = "\n".join([x[dedent_output:] for x in output.split("\n")])
+            output = "\n\nOutput:\n".join([x[dedent_output:] for x in output.split("\n")])
 
         # Add the prompt to our output if required
         if prompt:
-            output = "$ {}\n{}".format(command, output)
+            output = f"$ {command}\n\nOutput:\n{output}"
 
         # Do our "replace" syntax on the command output
         for items in reader:

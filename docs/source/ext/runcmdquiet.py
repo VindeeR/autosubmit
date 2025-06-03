@@ -112,15 +112,6 @@ class RunCmdDirective(code.CodeBlock):
         "working-directory": directives.unchanged
     }
 
-    def run(self):
-        syntax = self.options.get("syntax", "bash")
-
-        self.arguments[0] = syntax
-        # self.content = output
-        node = super(RunCmdDirective, self).run()
-
-        return node
-
 
 def setup(app):
     app.add_directive("runcmdquiet", RunCmdDirective)

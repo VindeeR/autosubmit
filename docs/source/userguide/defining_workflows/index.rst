@@ -31,11 +31,9 @@ be finished before launching the job that has the DEPENDENCIES attribute.
       FILE: two.sh
       DEPENDENCIES: One
 
-.. runcmdquiet:: bash -c 'echo -e $"Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes" >> /home/docs/autosubmit/a000/conf/test1.yml'
+.. runcmdquiet:: bash -c 'echo -e $"JOBS:\n    One:\n       FILE: one.sh\n\n    Two:\n      FILE: two.sh\n      DEPENDENCIES: One" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml'
 
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/test1.yml
-
-.. runcmd:: ls /home/docs/autosubmit/a000/conf/
+.. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 The resulting workflow can be seen in Figure :numref:`simple`
 

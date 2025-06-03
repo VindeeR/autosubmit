@@ -31,8 +31,15 @@ be finished before launching the job that has the DEPENDENCIES attribute.
       FILE: two.sh
       DEPENDENCIES: One
 
+.. runcmdquiet:: Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes >> /home/docs/autosubmit/a000/conf/test1.yml
 
-The resulting workflow can be seen in Fi165gure :numref:`simple`
+.. runcmd:: Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes >> /home/docs/autosubmit/a000/conf/test.yml
+
+.. runcmd:: cat /home/docs/autosubmit/a000/conf/test1.yml
+
+.. runcmd:: ls /home/docs/autosubmit/a000/conf/
+
+The resulting workflow can be seen in Figure :numref:`simple`
 
 .. figure:: fig/simple.png
    :name: simple
@@ -51,6 +58,16 @@ divide member execution on different chunks.
 
 To set at what level a job has to run you have to use the RUNNING attribute. It has four possible values: once, date,
 member and chunk corresponding to running once, once per startdate, once per member or once per chunk respectively.
+
+.. code-block:: yaml
+    EXPERIMENT:
+      DATELIST: 19900101 20000101
+      MEMBERS: Member1 Member2
+      CHUNKSIZEUNIT: month
+      CHUNKSIZE: '4'
+      NUMCHUNKS: '2'
+      CHUNKINI: ''
+      CALENDAR: standard
 
 .. code-block:: yaml
     

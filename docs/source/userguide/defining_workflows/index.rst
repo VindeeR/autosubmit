@@ -31,9 +31,9 @@ be finished before launching the job that has the DEPENDENCIES attribute.
       FILE: two.sh
       DEPENDENCIES: One
 
-.. runcmdquiet:: Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes >> /home/docs/autosubmit/a000/conf/test1.yml
+.. runcmdquiet:: echo -e $"Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes" >> /home/docs/autosubmit/a000/conf/test1.yml
 
-.. runcmd:: Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes >> /home/docs/autosubmit/a000/conf/test.yml
+.. runcmd:: echo -e $"Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes" >> /home/docs/autosubmit/a000/conf/test.yml
 
 .. runcmd:: cat /home/docs/autosubmit/a000/conf/test1.yml
 

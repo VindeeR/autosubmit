@@ -137,7 +137,7 @@ class RunCmdDirective(code.CodeBlock):
         # allow the directive to receive a working directory, so that we
         # change to that working directory before running the desired command.
         # The working directory is omitted from the final output.
-        working_directory = self.options.get('working-directory', 'source/')
+        working_directory = self.options.get('working-directory', '')
         if working_directory == '':
             # subprocess default value, so that we can disable it if needed.
             working_directory = None
@@ -155,7 +155,7 @@ class RunCmdDirective(code.CodeBlock):
         # Grab our custom commands
         syntax = self.options.get("syntax", "bash")
         replace = self.options.get("replace", '')
-        # reader = csv.reader([replace], delimiter=",", escapechar="\\")
+        reader = csv.reader([replace], delimiter=",", escapechar="\\")
         # # prompt = "prompt" in self.options
         # # We patched this so that the prompt is displayed by default, similar
         # # to how ``{code-block} console`` works.

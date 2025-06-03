@@ -47,6 +47,22 @@ class Singleton(_Singleton("SingletonMeta", (object,), {})):
     pass
 
 
+class CMDCache(Singleton):
+    cache = {}
+    exclude_cache_cmd = {hash("cat output.txt")}
+
+    def get(self, cmd, working_directory):
+        h = hash(cmd)
+        if h in self.exclude_cache_cmd:
+            return run_command(cmd, working_directory)
+        elif h in self.cache:
+            return self.cache[h]
+        else:
+            result = run_command(cmd, working_directory)
+            self.cache[h] = result
+            return result
+
+
 def run_command(command, working_directory):
     true_cmd = shlex.split(command)
     try:
@@ -111,6 +127,66 @@ class RunCmdDirective(code.CodeBlock):
         "dedent-output": int,
         "working-directory": directives.unchanged
     }
+
+    def run(self):
+        # Grab a cache singleton instance
+        cache = CMDCache()
+
+        # The examples in our User Guide are stored in ``src/_includes/cwl``.
+        # For convenience, instead of including that in every command, we
+        # allow the directive to receive a working directory, so that we
+        # change to that working directory before running the desired command.
+        # The working directory is omitted from the final output.
+        working_directory = self.options.get('working-directory', '')
+        if working_directory == '':
+            # subprocess default value, so that we can disable it if needed.
+            working_directory = None
+        else:
+            # You can run Sphinx from the root directory, with `make watch`
+            # for instance, or from the src directory (RTD does that).
+            working_directory_path = Path(working_directory)
+            if not working_directory_path.exists() and str(working_directory_path).startswith('src/'):
+                working_directory = Path(working_directory[4:])
+
+        # Get the command output
+        command = " ".join(self.arguments)
+        output = cache.get(command, working_directory)
+
+        # Grab our custom commands
+        syntax = self.options.get("syntax", "bash")
+        replace = self.options.get("replace", '')
+        reader = csv.reader([replace], delimiter=",", escapechar="\\")
+        # # prompt = "prompt" in self.options
+        # # We patched this so that the prompt is displayed by default, similar
+        # # to how ``{code-block} console`` works.
+
+        # Do our "replace" syntax on the command output
+        for items in reader:
+            for regex in items:
+                if regex != "":
+                    match = RE_SPLIT.match(regex)
+                    p = match.group("pattern")
+                    # Let's unescape the escape chars here as we don't need them to be
+                    # escaped in the replacement at this point
+                    r = match.group("replacement").replace("\\", "")
+                    output = re.sub(p, r, output)
+
+        # Note: Sphinx's CodeBlock directive expects an array of command-line
+        #       output lines: https://github.com/sphinx-doc/sphinx/blob/c51a88da8b7b40e8d8cbdb1fce85ca2346b2b59a/sphinx/directives/code.py#L114
+        #       But the runcmd original code was simply wrapping a string
+        #       containing \n in the text as a one-element array, e.g.
+        #       ["cwltool --debug ...\ncwltool Version..."].
+        #       That caused the output to be correctly rendered, but the
+        #       emphasize-lines directive parameter to fail if the lines were
+        #       anything greater than 0 (as the self.content array had 1 elem).
+        #       See: https://github.com/common-workflow-language/user_guide/issues/269
+        output = output.split("\n")
+
+        # Set up our arguments to run the CodeBlock parent run function
+        self.arguments[0] = syntax
+        node = super(RunCmdDirective, self).run()
+
+        return node
 
 
 def setup(app):

@@ -50,6 +50,13 @@ help:
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 	@echo "  coverage   to run coverage check of the documentation (if enabled)"
 
+
+html_coverage:
+	coverage run $$(which $(SPHINXBUILD)) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	coverage combine
+	coverage html
+	@echo
+	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html. Coverage in $(BUILDDIR)/htmlcov."
 clean:
 	rm -rf $(BUILDDIR)/*
 

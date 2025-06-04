@@ -22,7 +22,9 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 
 .. runcmdquiet:: bash -c 'echo -e $"JOBS:\n    One:\n       FILE: one.sh\n\n    Two:\n      FILE: two.sh\n      DEPENDENCIES: One" > /home/docs/autosubmit/a000/conf/jobs_a000.yml'
+
 .. runcmdquiet:: autosubmit create a000 -o png --hide
+
 .. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -iname "*a000_*.png" -true -exec mv -- {} /home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/4/docs/source/userguide/defining_workflows/fig/simple.png \;
 
 .. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml

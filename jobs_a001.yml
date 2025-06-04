@@ -1,0 +1,7 @@
+JOBS:
+  One:
+    FILE: one.sh
+
+  Two:
+    FILE: two.sh
+    DEPENDENCIES: One

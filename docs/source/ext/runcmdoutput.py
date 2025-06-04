@@ -201,6 +201,6 @@ class RunCmdDirective(code.CodeBlock):
 
 
 def setup(app):
-    app.add_directive("runcmdquiet", RunCmdDirective)
+    app.add_directive("runcmdoutput", RunCmdDirective)
 
     return {"version": __version__}

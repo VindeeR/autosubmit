@@ -20,14 +20,49 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
+.. runcmdquiet:: autosubmit expid -dm -H "local" -d "Tutorial"
 
-.. runcmdquiet:: bash -c 'echo -e $"JOBS:\n    One:\n       FILE: one.sh\n\n    Two:\n      FILE: two.sh\n      DEPENDENCIES: One" > /home/docs/autosubmit/a000/conf/jobs_a000.yml'
+.. runcmd:: ls
 
-.. runcmdquiet:: autosubmit create a000 -o png --hide
+.. runcmd:: pwd
 
-.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -iname "*a000_*.png" -true -exec mv -- {} /home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/4/docs/source/userguide/defining_workflows/fig/simple.png \;
+.. runcmd:: ls /home/docs/autosubmit/a001/conf/
 
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: rm /home/docs/autosubmit/a001/conf/jobs_a001.yml
+
+.. runcmd:: ls /home/docs/autosubmit/a001/conf/
+
+.. runcmd:: echo -e "Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes" > /home/docs/autosubmit/a001/conf/jobs_a001.yml
+
+.. runcmd:: ls /home/docs/autosubmit/a001/conf/
+
+.. runcmd:: $(echo -e "Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes" > /home/docs/autosubmit/a001/conf/jobs_a001.yml)
+
+.. runcmd:: ls /home/docs/autosubmit/a001/conf/
+
+.. runcmd:: cat /home/docs/autosubmit/a001/conf/jobs_a001.yml
+
+.. runcmdquiet:: bash -c 'echo -e $"Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes" >> /home/docs/autosubmit/a001/conf/jobs_a001.yml'
+
+.. runcmd:: cat /home/docs/autosubmit/a001/conf/jobs_a001.yml
+
+.. runcmd:: ls /home/docs/autosubmit/a001/conf/
+
+.. runcmdquiet:: echo -e $"Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes" >> /home/docs/autosubmit/a001/conf/jobs_a001.yml
+
+.. runcmd:: cat /home/docs/autosubmit/a001/conf/jobs_a001.yml
+
+.. runcmd:: echo -e -n $"JOBS:\n  One:\n    FILE: one.sh\n\n  Two:\n    FILE: two.sh\n    DEPENDENCIES: One\n" > /home/docs/autosubmit/a001/conf/jobs_a001.yml
+
+.. runcmd:: cat /home/docs/autosubmit/a001/conf/jobs_a001.yml
+
+.. runcmdquiet:: autosubmit create a001 -o png --hide
+
+.. runcmd:: cat /home/docs/autosubmit/a001/conf/jobs_a001.yml
+
+.. runcmd:: ls /home/docs/autosubmit/a001/plot/
+
+.. runcmdquiet:: find /home/docs/autosubmit/a001/plot/ -iname "*a001*.png" -true -exec mv -- {} /home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/4/docs/source/userguide/defining_workflows/fig/simple.png \;
 
 The resulting workflow can be seen in Figure :numref:`simple`
 

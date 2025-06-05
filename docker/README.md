@@ -68,8 +68,6 @@ Create an external DB, for example:
 
 ```bash
 $ docker run --rm \
-  -v /tmp/autosubmit/database:/app/autosubmit/database \
-  -v /tmp/autosubmit/experiments:/app/autosubmit/experiments \
   ${USER}/autosubmit:latest \
   autosubmit install
 ```
@@ -78,8 +76,6 @@ Create a dummy experiment:
 
 ```bash
 $ docker run --rm \
-  -v /tmp/autosubmit/database:/app/autosubmit/database \
-  -v /tmp/autosubmit/experiments:/app/autosubmit/experiments \
   ${USER}/autosubmit:latest \
   autosubmit expid -H local -d test --dummy
 ```
@@ -88,8 +84,6 @@ Confirm any container created with the image can access the experiments:
 
 ```bash
 $ docker run --rm \
-  -v /tmp/autosubmit/database:/app/autosubmit/database \
-  -v /tmp/autosubmit/experiments:/app/autosubmit/experiments \
   ${USER}/autosubmit:latest \
   autosubmit describe
 ```
@@ -98,8 +92,6 @@ To delete an experiment (use `-ti` if you do not pass `-f`):
 
 ```bash
 $ docker run --rm \
-  -v /tmp/autosubmit/database:/app/autosubmit/database \
-  -v /tmp/autosubmit/experiments:/app/autosubmit/experiments \
   ${USER}/autosubmit:latest \
   autosubmit delete -f a000
 ```

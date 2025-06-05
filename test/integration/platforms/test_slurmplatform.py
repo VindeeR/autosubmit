@@ -81,7 +81,7 @@ def test_run_simple_workflow(autosubmit_exp: AutosubmitExperimentFixture):
                 'SCRATCH_DIR': '/tmp/scratch',
                 'TEMP_DIR': '',
                 'TYPE': 'slurm',
-                'USER': getuser()
+                'USER': 'root'
             }
         }
     })

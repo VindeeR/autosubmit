@@ -20,8 +20,21 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmd:: bash -c 'cat > /home/docs/autosubmit/a000/conf/jobs_a001.yml <<- "JOBS:   One:  FILE: one.sh  Two:  FILE: two.sh DEPENDENCIES: One"'
+.. runcmd:: bash -c '/home/docs/autosubmit/a000/conf/jobs_a001.yml << "JOBS:"'
 
+.. runcmd:: bash -c '/home/docs/autosubmit/a000/conf/jobs_a001.yml << "  One:"'
+
+.. runcmd:: bash -c '/home/docs/autosubmit/a000/conf/jobs_a001.yml << "    FILE: one.sh  "'
+
+.. runcmd:: bash -c '/home/docs/autosubmit/a000/conf/jobs_a001.yml <<-EOF'
+
+.. runcmd:: bash -c '"JOBS:" >> /home/docs/autosubmit/a000/conf/jobs_a001.yml'
+
+.. runcmd:: bash -c 'echo "  One:" >> /home/docs/autosubmit/a000/conf/jobs_a001.yml'
+
+.. runcmd:: bash -c 'echo -e "    FILE: one.sh  " >> /home/docs/autosubmit/a000/conf/jobs_a001.yml'
+
+.. runcmd:: bash -c 'EOF ->> /home/docs/autosubmit/a000/conf/jobs_a001.yml'
 
 .. runcmd:: find /home/docs/autosubmit/a000/ -iname "*a00*.yml"
 

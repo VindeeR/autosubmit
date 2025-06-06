@@ -105,7 +105,7 @@ Run and monitoring
 
 While the experiment is running, it can be visualized via ``autosubmit monitor <EXPID>``.
 
-.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -maxdepth 1 -daystart -mtime 0 -iname "*a000_*.png" -true -exec mv -- {} /home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/4/docs/source/qstartguide/dummy.pdf \;
+.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -maxdepth 1 -daystart -mtime 0 -iname "*a000_*.png" -true -exec mv -- {} ./qstartguide/dummy.pdf \;
 
 .. figure:: dummy.pdf
    :name: dummy_workflow

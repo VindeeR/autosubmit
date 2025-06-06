@@ -24,19 +24,21 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: cat '/home/docs/autosubmit/a001/conf/jobs_a001.yml'
 
-.. runcmd:: pwd
+.. runcmd:: ls userguide/defining_workflows/
 
-.. runcmd:: ./home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/4/docs/source/userguide/defining_workflows/bash/bash.sh
+.. runcmd:: ls userguide/defining_workflows/bash/
+
+.. runcmd:: ./userguide/defining_workflows/bash/bash.sh
 
 .. runcmd:: cat '/home/docs/autosubmit/a001/conf/jobs_a001.yml'
 
-.. runcmd:: echo -e $"JOBS:\n \\ One:\n \\ \\ \\ FILE: one.sh\n \p Two:\n    FILE: two.sh\n    DEPENDENCIES: One" > "home/docs/autosubmit/a001/conf/jobs_a001.yml"
+.. runcmd:: bash -c 'echo -e $"JOBS:\n  One:\n    FILE: one.sh\n  Two:\n    FILE: two.sh\n    DEPENDENCIES: One"' > "home/docs/autosubmit/a001/conf/jobs_a001.yml"
 
 .. runcmd:: cat '/home/docs/autosubmit/a001/conf/jobs_a001.yml'
 
 .. runcmdquiet:: autosubmit create a001 -o png --hide
 
-.. runcmdquiet:: find /home/docs/autosubmit/a001/plot/ -iname "*a001*.png" -true -exec mv -- {} /home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/4/docs/source/userguide/defining_workflows/fig/simple.png \;
+.. runcmdquiet:: find /home/docs/autosubmit/a001/plot/ -iname "*a001*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
 
 The resulting workflow can be seen in Figure :numref:`simple`
 

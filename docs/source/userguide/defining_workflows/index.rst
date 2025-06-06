@@ -22,7 +22,7 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmdquiet:: autosubmit expid -dm -H "local" -d "Tutorial"
 
-.. runcmd:: cat '/home/docs/autosubmit/a001/config/jobs_a001.yml'
+.. runcmd:: ls '/home/docs/autosubmit/a001/config/'
 
 .. runcmdquiet:: autosubmit create a001 -o png --hide
 

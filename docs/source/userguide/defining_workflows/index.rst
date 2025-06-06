@@ -36,9 +36,17 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a001.yml'
 
+.. runcmd:: find / -iname "*a001*"
+
+.. runcmd:: find / -iname "*a000*"
+
+.. runcmd:: find . -iname "*a001*"
+
+.. runcmd:: find . -iname "*a000*"
+
 .. runcmdquiet:: autosubmit create a000 -o png --hide
 
-.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -iname "*a001*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
+.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -iname "*a000*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
 
 The resulting workflow can be seen in Figure :numref:`simple`
 

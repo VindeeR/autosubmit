@@ -32,6 +32,10 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a001.yml'
 
+.. runcmd:: echo '/home/docs/autosubmit/a000/conf/jobs_a001.yml' > /home/docs/autosubmit/a000/conf/jobs_a001.yml
+
+.. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a001.yml'
+
 .. runcmdquiet:: autosubmit create a000 -o png --hide
 
 .. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -iname "*a000*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;

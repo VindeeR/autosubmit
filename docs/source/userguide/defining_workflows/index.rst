@@ -20,25 +20,11 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmd:: bash -c '/home/docs/autosubmit/a000/conf/jobs_a001.yml << "JOBS:"'
+.. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a000.yml'
 
-.. runcmd:: bash -c '/home/docs/autosubmit/a000/conf/jobs_a001.yml << "  One:"'
+.. runcmd:: bash -c 'echo -e "JOBS:\n  One:\n    FILE: one.sh\n  Two:\n    FILE: two.sh\n    DEPENDENCIES: One" > /home/docs/autosubmit/a000/conf/jobs_a000.yml'
 
-.. runcmd:: bash -c '/home/docs/autosubmit/a000/conf/jobs_a001.yml << "    FILE: one.sh  "'
-
-.. runcmd:: bash -c '/home/docs/autosubmit/a000/conf/jobs_a001.yml <<-EOF'
-
-.. runcmd:: bash -c '"JOBS:" >> /home/docs/autosubmit/a000/conf/jobs_a001.yml'
-
-.. runcmd:: bash -c 'echo "  One:" >> /home/docs/autosubmit/a000/conf/jobs_a001.yml'
-
-.. runcmd:: bash -c 'echo -e "    FILE: one.sh  " >> /home/docs/autosubmit/a000/conf/jobs_a001.yml'
-
-.. runcmd:: bash -c 'EOF ->> /home/docs/autosubmit/a000/conf/jobs_a001.yml'
-
-.. runcmd:: find /home/docs/autosubmit/a000/ -iname "*a00*.yml"
-
-.. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a001.yml'
+.. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a000.yml'
 
 .. runcmdquiet:: autosubmit create a000 -o png --hide
 

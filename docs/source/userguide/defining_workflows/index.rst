@@ -20,13 +20,13 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmd:: bash -c 'cat > /home/docs/autosubmit/a000/conf/jobs_a001.yml << EOF
-JOBS:
-  One:
-    FILE: one.sh
-  Two:
-    FILE: two.sh
-    DEPENDENCIES: One\n
+.. runcmd:: bash -c 'cat > /home/docs/autosubmit/a000/conf/jobs_a001.yml << EOF \
+JOBS: \
+  One: \
+    FILE: one.sh \
+  Two: \
+    FILE: two.sh\
+    DEPENDENCIES: One\n \
 EOF'
 
 

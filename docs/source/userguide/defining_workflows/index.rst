@@ -28,7 +28,7 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: ls '/home/docs/autosubmit/a000/conf/'
 
-.. runcmd:: bash -c touch ./home/docs/autosubmit/a000/conf/jobs_a001.yml
+.. runcmd:: bash -c 'touch ./home/docs/autosubmit/a000/conf/jobs_a001.yml'
 
 .. runcmd:: ls '/home/docs/autosubmit/a000/conf/'
 

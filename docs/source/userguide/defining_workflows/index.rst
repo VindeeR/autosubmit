@@ -30,19 +30,11 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: bash -c 'mkdir -p /home/docs/autosubmit/a000/conf/'
 
-.. runcmd:: bash -c 'touch /home/docs/autosubmit/a000/conf/jobs_a001.yml'
+.. runcmd:: bash -c 'touch /home/docs/autosubmit/a000/conf/jobs_a001.yml << "JOBS:\n  One:\n    FILE: one.sh\n  Two:\n    FILE: two.sh\n    DEPENDENCIES: One"'
 
-.. runcmd:: ls '/home/docs/autosubmit/a000/conf/'
+.. runcmd:: find /home/docs/autosubmit/a000/ -iname "*a00*.yml"
 
 .. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a001.yml'
-
-.. runcmd:: find / -iname "*a001*"
-
-.. runcmd:: find / -iname "*a000*"
-
-.. runcmd:: find . -iname "*a001*"
-
-.. runcmd:: find . -iname "*a000*"
 
 .. runcmdquiet:: autosubmit create a000 -o png --hide
 

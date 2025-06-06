@@ -28,7 +28,11 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a001.yml'
 
-.. runcmd:: exec su /home/docs/autosubmit/a000/conf/jobs_a001.yml > /home/docs/autosubmit/a000/conf/jobs_a001.yml
+.. runcmd:: chmod +rwx /home/docs/autosubmit/a000/conf/jobs_a001.yml
+
+.. runcmd:: chmod +rwx /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd:: /home/docs/autosubmit/a000/conf/jobs_a001.yml > /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a000.yml'
 

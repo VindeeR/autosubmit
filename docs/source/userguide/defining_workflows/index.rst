@@ -20,19 +20,23 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
+.. runcmd:: bash -c 'echo -e "JOBS:\n\tOne:\n\t\tFILE: one.sh\n\tTwo:\n\t\tFILE: two.sh\n\t\tDEPENDENCIES: One" > /home/docs/autosubmit/a000/conf/jobs_a001.yml'
 
-.. code-block:: yaml
+.. runcmd:: find /home/docs/autosubmit/a000/conf/ -iname "*a001*.yml"
 
-  JOBS:
-    One:
-      FILE: one.sh
+.. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a000.yml'
 
-    Two:
-      FILE: two.sh
-      DEPENDENCIES: One
+.. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a001.yml'
 
+.. runcmd:: cp /home/docs/autosubmit/a000/conf/jobs_a001.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
-The resulting workflow can be seen in Fi165gure :numref:`simple`
+.. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a000.yml'
+
+.. runcmdquiet:: autosubmit create a000 -o png --hide
+
+.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -iname "*a000*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
+
+The resulting workflow can be seen in Figure :numref:`simple`
 
 .. figure:: fig/simple.png
    :name: simple
@@ -51,6 +55,16 @@ divide member execution on different chunks.
 
 To set at what level a job has to run you have to use the RUNNING attribute. It has four possible values: once, date,
 member and chunk corresponding to running once, once per startdate, once per member or once per chunk respectively.
+
+.. code-block:: yaml
+    EXPERIMENT:
+      DATELIST: 19900101 20000101
+      MEMBERS: Member1 Member2
+      CHUNKSIZEUNIT: month
+      CHUNKSIZE: '4'
+      NUMCHUNKS: '2'
+      CHUNKINI: ''
+      CALENDAR: standard
 
 .. code-block:: yaml
     

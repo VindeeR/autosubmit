@@ -22,11 +22,15 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a000.yml'
 
-.. runcmd:: bash -c 'echo -e "JOBS:\n\tOne:\n\t\tFILE: one.sh\n\tTwo:\n\t\tFILE: two.sh\n\t\tDEPENDENCIES: One" > /home/docs/autosubmit/a000/conf/jobs_a000.yml'
+.. runcmd:: bash -c 'echo -e "JOBS:\n\tOne:\n\t\tFILE: one.sh\n\tTwo:\n\t\tFILE: two.sh\n\t\tDEPENDENCIES: One" > /home/docs/autosubmit/a000/conf/jobs_a001.yml'
 
 .. runcmd:: bash -c 'echo -e "JOBS:\n\tOne:\n\t\tFILE: one.sh\n\tTwo:\n\t\tFILE: two.sh\n\t\tDEPENDENCIES: One"'
 
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -iname "*a000*.yml"
+
 .. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a000.yml'
+
+.. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a001.yml'
 
 .. runcmdquiet:: autosubmit create a000 -o png --hide
 

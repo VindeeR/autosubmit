@@ -20,17 +20,19 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmdquiet:: autosubmit expid -dm -H "local" -d "Tutorial"
+.. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a000.yml'
 
-.. runcmd:: cat '/home/docs/autosubmit/a001/conf/jobs_a001.yml'
+.. runcmd:: ls '/home/docs/autosubmit/a000/conf/'
 
-.. runcmd:: sudo ./userguide/defining_workflows/bash/bash.sh
+.. runcmd:: bash -c 'echo -e $"JOBS:\n  One:\n    FILE: one.sh\n  Two:\n    FILE: two.sh\n    DEPENDENCIES: One"' > "home/docs/autosubmit/a000/conf/jobs_a001.yml"
 
-.. runcmd:: cat '/home/docs/autosubmit/a001/conf/jobs_a001.yml'
+.. runcmd:: ls '/home/docs/autosubmit/a000/conf/'
 
-.. runcmdquiet:: autosubmit create a001 -o png --hide
+.. runcmd:: cat '/home/docs/autosubmit/a000/conf/jobs_a001.yml'
 
-.. runcmdquiet:: find /home/docs/autosubmit/a001/plot/ -iname "*a001*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
+.. runcmdquiet:: autosubmit create a000 -o png --hide
+
+.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -iname "*a001*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
 
 The resulting workflow can be seen in Figure :numref:`simple`
 

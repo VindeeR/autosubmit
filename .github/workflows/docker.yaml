@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       slurm:
-        image: autosubmit/slurm-openssh-container:23-02-7-1
+        image: autosubmit/slurm-openssh-container:25-05-0-1
         ports:
           - 2222:2222
         options: -h slurmctld --name slurm-container

@@ -52,7 +52,7 @@ def test_create_platform(autosubmit_exp):
                 'SCRATCH_DIR': '/tmp/scratch/',
                 'TEMP_DIR': '',
                 'TYPE': 'slurm',
-                'USER': getuser()
+                'USER': 'root'
             }
         }
     })

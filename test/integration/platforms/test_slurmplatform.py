@@ -45,7 +45,7 @@ def test_create_platform(autosubmit_exp):
         'PLATFORMS': {
             _PLATFORM_NAME: {
                 'ADD_PROJECT_TO_HOST': False,
-                'HOST': 'localDocker',
+                'HOST': 'gen1',
                 'MAX_WALLCLOCK': '00:03',
                 'PROJECT': 'group',
                 'QUEUE': 'gp_debug',

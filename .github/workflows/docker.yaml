@@ -53,6 +53,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip packaging setuptools twine
+          pip install pytest
+          pip install pytest-cov
+          pytest --cov=./ --cov-report=xml
           pip install --upgrade -e .[all]
 
       - name: Integration tests

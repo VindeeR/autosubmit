@@ -45,7 +45,7 @@ def test_create_platform(autosubmit_exp):
         'PLATFORMS': {
             _PLATFORM_NAME: {
                 'ADD_PROJECT_TO_HOST': False,
-                'HOST': 'gen1',
+                'HOST': 'localDocker',
                 'MAX_WALLCLOCK': '00:03',
                 'PROJECT': 'group',
                 'QUEUE': 'gp_debug',
@@ -74,7 +74,7 @@ def test_run_simple_workflow(autosubmit_exp: AutosubmitExperimentFixture):
         'PLATFORMS': {
             _PLATFORM_NAME: {
                 'ADD_PROJECT_TO_HOST': False,
-                'HOST': 'gen1',
+                'HOST': 'localDocker',
                 'MAX_WALLCLOCK': '00:03',
                 'PROJECT': 'group',
                 'QUEUE': 'gp_debug',

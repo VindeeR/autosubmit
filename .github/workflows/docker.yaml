@@ -65,8 +65,7 @@ jobs:
           pytest \
             --cov=autosubmit --cov-config=.coveragerc \
             --cov-report=xml:test/coverage.xml --cov-append \
-            test/unit/platforms/test_locplatform.py \
-            test/integration/platforms/test_slurmplatform.py \
+            test/integration/platforms/ \
             -m ''
 
       - name: Codecov upload

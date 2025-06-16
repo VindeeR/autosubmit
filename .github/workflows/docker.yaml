@@ -52,6 +52,14 @@ jobs:
           python -m pip install --upgrade pip packaging setuptools twine
           pip install --upgrade -e .[all]
 
+      - name: Set up Git
+        run: |
+          # From: https://stackoverflow.com/questions/62960533/how-to-use-git-commands-during-a-github-action
+          # Set up dummy configuration for integration tests.
+          git --version
+          git config --global user.email "test@bsc.es"
+          git config --global user.name "GitHub Actions"
+
       - name: Integration tests
         run: |
           pytest \

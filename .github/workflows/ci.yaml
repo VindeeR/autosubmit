@@ -243,7 +243,7 @@ jobs:
             --cov=autosubmit --cov-config=.coveragerc \
             --cov-report=xml:test/coverage.xml --cov-append \
             test/integration \
-            -m 'slurm'
+            -m ''
 
   test-misc:
     runs-on: ubuntu-latest

@@ -225,10 +225,6 @@ jobs:
           python -m pip install --upgrade pip packaging
           pip install --upgrade -e .[all]
 
-      - name: Install test dependencies
-        run: |
-          pip install pytest pytest-cov pytest-xdist
-
       - name: Set up Git
         run: |
           # From: https://stackoverflow.com/questions/62960533/how-to-use-git-commands-during-a-github-action
@@ -243,7 +239,7 @@ jobs:
             --cov=autosubmit --cov-config=.coveragerc \
             --cov-report=xml:test/coverage.xml --cov-append \
             test/integration \
-            -m ''
+            -m 'slurm'
 
   test-misc:
     runs-on: ubuntu-latest

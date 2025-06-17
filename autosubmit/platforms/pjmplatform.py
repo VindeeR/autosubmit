@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     # Avoid circular imports
     from autosubmit.job.job import Job
 
+
 class PJMPlatform(ParamikoPlatform):
     """
     Class to manage jobs to host using PJM scheduler
@@ -41,7 +42,6 @@ class PJMPlatform(ParamikoPlatform):
     :param expid: experiment's identifier
     :type expid: str
     """
-
 
     def __init__(self, expid, name, config):
         ParamikoPlatform.__init__(self, expid, name, config)
@@ -55,15 +55,15 @@ class PJMPlatform(ParamikoPlatform):
         self.cancel_cmd = None
         self._header = PJMHeader()
         self._wrapper = PJMWrapperFactory(self)
-        #https://software.fujitsu.com/jp/manual/manualfiles/m220008/j2ul2452/02enz007/j2ul-2452-02enz0.pdf page 16
+        # https://software.fujitsu.com/jp/manual/manualfiles/m220008/j2ul2452/02enz007/j2ul-2452-02enz0.pdf page 16
         self.job_status = dict()
         self.job_status['COMPLETED'] = ['EXT']
-        self.job_status['RUNNING'] = ['RNO','RNE','RUN']
-        self.job_status['QUEUING'] = ['ACC','QUE', 'RNA', 'RNP','HLD'] # TODO NOT SURE ABOUT HOLD HLD
-        self.job_status['FAILED'] = ['ERR','CCL','RJT']
+        self.job_status['RUNNING'] = ['RNO', 'RNE', 'RUN']
+        self.job_status['QUEUING'] = ['ACC', 'QUE', 'RNA', 'RNP', 'HLD']  # TODO NOT SURE ABOUT HOLD HLD
+        self.job_status['FAILED'] = ['ERR', 'CCL', 'RJT']
         self._pathdir = "\\$HOME/LOG_" + self.expid
         self._allow_arrays = False
-        self._allow_wrappers = True # NOT SURE IF WE NEED WRAPPERS
+        self._allow_wrappers = True  # NOT SURE IF WE NEED WRAPPERS
         self.update_cmds()
         self.config = config
         exp_id_path = os.path.join(self.config.get("LOCAL_ROOT_DIR"), self.expid)
@@ -81,7 +81,7 @@ class PJMPlatform(ParamikoPlatform):
             os.remove(self._submit_script_path)
         self._submit_script_path = self._submit_script_base_name + os.urandom(16).hex() + ".sh"
 
-    def submit_error(self,output):
+    def submit_error(self, output):
         """
         Check if the output of the submit command contains an error message.
         :param output: output of the submit cmd
@@ -89,9 +89,7 @@ class PJMPlatform(ParamikoPlatform):
         """
         return not all(part.lower() in output.lower() for part in ["pjsub", "[INFO] PJM 0000"])
 
-
-
-    def process_batch_ready_jobs(self,valid_packages_to_submit,failed_packages,error_message="",hold=False):
+    def process_batch_ready_jobs(self, valid_packages_to_submit, failed_packages, error_message="", hold=False):
         """
         Retrieve multiple jobs identifiers.
         :param valid_packages_to_submit:
@@ -101,7 +99,7 @@ class PJMPlatform(ParamikoPlatform):
         :return:
         """
         try:
-            valid_packages_to_submit = [ package for package in valid_packages_to_submit ]
+            valid_packages_to_submit = [package for package in valid_packages_to_submit]
             if len(valid_packages_to_submit) > 0:
                 try:
                     jobs_id = self.submit_Script(hold=hold)
@@ -109,7 +107,7 @@ class PJMPlatform(ParamikoPlatform):
                     jobnames = [job.name for job in valid_packages_to_submit[0].jobs]
                     for jobname in jobnames:
                         jobid = self.get_jobid_by_jobname(jobname)
-                        #cancel bad submitted job if jobid is encountered
+                        # cancel bad submitted job if jobid is encountered
                         for id_ in jobid:
                             self.cancel_job(id_)
                     jobs_id = None
@@ -124,32 +122,40 @@ class PJMPlatform(ParamikoPlatform):
                     else:
                         e.message = ""
                         has_message_bad_parameters = False
-                    if has_trace_bad_parameters or has_message_bad_parameters or e.message.lower().find("invalid partition") != -1 or e.message.lower().find("invalid qos") != -1 or e.message.lower().find("scheduler is not installed") != -1 or e.message.lower().find("failed") != -1 or e.message.lower().find("not available") != -1:
+                    if has_trace_bad_parameters or has_message_bad_parameters or e.message.lower().find(
+                            "invalid partition") != -1 or e.message.lower().find(
+                            "invalid qos") != -1 or e.message.lower().find(
+                            "scheduler is not installed") != -1 or e.message.lower().find(
+                            "failed") != -1 or e.message.lower().find("not available") != -1:
                         error_msg = ""
                         for package_tmp in valid_packages_to_submit:
                             for job_tmp in package_tmp.jobs:
                                 if job_tmp.section not in error_msg:
                                     error_msg += job_tmp.section + "&"
                         if has_trace_bad_parameters:
-                            error_message+="Check job and queue specified in your JOBS definition in YAML. Sections that could be affected: {0}".format(error_msg[:-1])
+                            error_message += "Check job and queue specified in your JOBS definition in YAML. Sections that could be affected: {0}".format(
+                                error_msg[:-1])
                         else:
-                            error_message+="\ncheck that {1} platform has set the correct scheduler. Sections that could be affected: {0}".format(
-                                    error_msg[:-1], self.name)
+                            error_message += "\ncheck that {1} platform has set the correct scheduler. Sections that could be affected: {0}".format(
+                                error_msg[:-1], self.name)
 
                         if e.trace is None:
                             e.trace = ""
-                        raise AutosubmitCritical(error_message,7014,e.message+"\n"+str(e.trace))
+                        raise AutosubmitCritical(error_message, 7014, e.message + "\n" + str(e.trace))
                 except IOError as e:
                     raise AutosubmitError(
                         "IO issues ", 6016, str(e))
                 except BaseException as e:
                     if str(e).find("scheduler") != -1:
-                        raise AutosubmitCritical("Are you sure that [{0}] scheduler is the correct type for platform [{1}]?.\n Please, double check that {0} is loaded for {1} before autosubmit launch any job.".format(self.type.upper(),self.name.upper()),7070)
+                        raise AutosubmitCritical(
+                            "Are you sure that [{0}] scheduler is the correct type for platform [{1}]?.\n Please, double check that {0} is loaded for {1} before autosubmit launch any job.".format(
+                                self.type.upper(), self.name.upper()), 7070)
                     raise AutosubmitError(
                         "Submission failed, this can be due a failure on the platform", 6015, str(e))
                 if jobs_id is None or len(jobs_id) <= 0:
                     raise AutosubmitError(
-                        "Submission failed, this can be due a failure on the platform", 6015,"Jobs_id {0}".format(jobs_id))
+                        "Submission failed, this can be due a failure on the platform", 6015,
+                        "Jobs_id {0}".format(jobs_id))
                 i = 0
                 if hold:
                     sleep(10)
@@ -164,7 +170,7 @@ class PJMPlatform(ParamikoPlatform):
             raise
         except Exception as e:
             raise AutosubmitError("{0} submission failed".format(self.name), 6015, str(e))
-        return save,valid_packages_to_submit
+        return save, valid_packages_to_submit
 
     def generate_submit_script(self):
         # remove file
@@ -192,7 +198,6 @@ class PJMPlatform(ParamikoPlatform):
         """
         self.get_submit_cmd(script_name, job, hold=hold, export=export)
         return None
-
 
     def submit_Script(self, hold=False):
         # type: (bool) -> Union[List[str], str]
@@ -228,6 +233,7 @@ class PJMPlatform(ParamikoPlatform):
             raise
         except Exception as e:
             raise AutosubmitError("Submit script is not found, retry again in next AS iteration", 6008, str(e))
+
     def check_remote_log_dir(self):
         """
         Creates log dir on remote host
@@ -242,8 +248,9 @@ class PJMPlatform(ParamikoPlatform):
                     Log.debug('{0} has been created on {1} .',
                               self.remote_log_dir, self.host)
                 else:
-                    raise AutosubmitError("SFTP session not active ", 6007, "Could not create the DIR {0} on HPC {1}'.format(self.remote_log_dir, self.host)".format(
-                        self.remote_log_dir, self.host))
+                    raise AutosubmitError("SFTP session not active ", 6007,
+                                          "Could not create the DIR {0} on HPC {1}'.format(self.remote_log_dir, self.host)".format(
+                                              self.remote_log_dir, self.host))
             except BaseException as e:
                 raise AutosubmitError(
                     "SFTP session not active ", 6007, str(e))
@@ -271,7 +278,7 @@ class PJMPlatform(ParamikoPlatform):
             self.send_command(cmd)
             job_status = self.check_job(job, submit_hold_check=True)
             if job_status == Status.RUNNING:
-                self.send_command("{0} {1}".format(self.cancel_cmd,job.id))
+                self.send_command("{0} {1}".format(self.cancel_cmd, job.id))
                 return False
             elif job_status == Status.FAILED:
                 return False
@@ -279,7 +286,7 @@ class PJMPlatform(ParamikoPlatform):
             self.send_command(cmd)
         except BaseException as e:
             try:
-                self.send_command("{0} {1}".format(self.cancel_cmd,job.id))
+                self.send_command("{0} {1}".format(self.cancel_cmd, job.id))
                 raise AutosubmitError(
                     "Can't hold jobid:{0}, canceling job".format(job.id), 6000, str(e))
             except BaseException as e:
@@ -304,11 +311,18 @@ class PJMPlatform(ParamikoPlatform):
         try:
             if len(reason.split('(', 1)) > 1:
                 reason = reason.split('(', 1)[1].split(')')[0]
-                if 'Invalid' in reason or reason in ['ANOTHER JOB STARTED','DELAY','DEADLINE SCHEDULE STARTED','ELAPSE LIMIT EXCEEDED','FILE IO ERROR','GATE CHECK','IMPOSSIBLE SCHED','INSUFF CPU','INSUFF MEMORY','INSUFF NODE','INSUFF','INTERNAL ERROR','INVALID HOSTFILE','LIMIT OVER MEMORY','LOST COMM','NO CURRENT DIR','NOT EXIST','RSCGRP NOT EXIST','RSCGRP STOP','RSCUNIT','USER','EXCEED','WAIT SCHED']:
+                if 'Invalid' in reason or reason in ['ANOTHER JOB STARTED', 'DELAY', 'DEADLINE SCHEDULE STARTED',
+                                                     'ELAPSE LIMIT EXCEEDED', 'FILE IO ERROR', 'GATE CHECK',
+                                                     'IMPOSSIBLE SCHED', 'INSUFF CPU', 'INSUFF MEMORY', 'INSUFF NODE',
+                                                     'INSUFF', 'INTERNAL ERROR', 'INVALID HOSTFILE',
+                                                     'LIMIT OVER MEMORY', 'LOST COMM', 'NO CURRENT DIR', 'NOT EXIST',
+                                                     'RSCGRP NOT EXIST', 'RSCGRP STOP', 'RSCUNIT', 'USER', 'EXCEED',
+                                                     'WAIT SCHED']:
                     return True
             return False
         except Exception as e:
             return False
+
     def get_queue_status(self, in_queue_jobs: List['Job'], list_queue_jobid, as_conf):
         if not in_queue_jobs:
             return
@@ -318,15 +332,17 @@ class PJMPlatform(ParamikoPlatform):
         for job in in_queue_jobs:
             reason = self.parse_queue_reason(queue_status, job.id)
             if job.queuing_reason_cancel(reason):
-                Log.printlog(f"Job {job.name} will be cancelled and set to FAILED as it was queuing due to {reason}",6000)
+                Log.printlog(f"Job {job.name} will be cancelled and set to FAILED as it was queuing due to {reason}",
+                             6000)
                 self.send_command(self.cancel_cmd + " {0}".format(job.id))
                 job.new_status = Status.FAILED
                 job.update_status(as_conf)
             elif reason.find('ASHOLD') != -1:
                 job.new_status = Status.HELD
                 if not job.hold:
-                    self.send_command("{0} {1}".format(self.cancel_cmd,job.id))
+                    self.send_command("{0} {1}".format(self.cancel_cmd, job.id))
                     job.new_status = Status.QUEUING  # If it was HELD and was released, it should be QUEUING next.
+
     def parse_Alljobs_output(self, output, job_id):
         status = ""
         try:
@@ -357,6 +373,7 @@ class PJMPlatform(ParamikoPlatform):
             job_list_cmd = job_list_cmd[:-1]
 
         return job_list_cmd
+
     def _check_jobid_in_queue(self, ssh_output, job_list_cmd):
         for job in job_list_cmd.split('+'):
             if job not in ssh_output:
@@ -381,7 +398,6 @@ class PJMPlatform(ParamikoPlatform):
         else:
             export += " ; "
 
-
         with suppress(BaseException):
             lang = locale.getlocale()[1]
             if lang is None:
@@ -394,18 +410,19 @@ class PJMPlatform(ParamikoPlatform):
                 else:
                     submit_script_file.write((export + self._submit_hold_cmd + job_script + "\n").encode(lang))
 
-
     def get_checkAlljobs_cmd(self, jobs_id):
         # jobs_id = "jobid1+jobid2+jobid3"
         # -H == sacct
         if jobs_id[-1] == ",":
-            jobs_id = jobs_id[:-1] # deletes comma
-        return "pjstat -H -v --choose jid,st,ermsg --filter \"jid={0}\" > as_checkalljobs.txt ; pjstat -v --choose jid,st,ermsg --filter \"jid={0}\" >> as_checkalljobs.txt ; cat as_checkalljobs.txt ; rm as_checkalljobs.txt".format(jobs_id)
+            jobs_id = jobs_id[:-1]  # deletes comma
+        return "pjstat -H -v --choose jid,st,ermsg --filter \"jid={0}\" > as_checkalljobs.txt ; pjstat -v --choose jid,st,ermsg --filter \"jid={0}\" >> as_checkalljobs.txt ; cat as_checkalljobs.txt ; rm as_checkalljobs.txt".format(
+            jobs_id)
 
     def get_checkjob_cmd(self, job_id):
         return f"pjstat -H -v --choose st --filter \"jid={job_id}\" > as_checkjob.txt ; pjstat -v --choose st --filter \"jid={job_id}\" >> as_checkjob.txt ; cat as_checkjob.txt ; rm as_checkjob.txt"
 
-        #return 'pjstat -v --choose jid,st,ermsg --filter \"jid={0}\"'.format(job_id)
+        # return 'pjstat -v --choose jid,st,ermsg --filter \"jid={0}\"'.format(job_id)
+
     def get_queue_status_cmd(self, job_id):
         return self.get_checkAlljobs_cmd(job_id)
 
@@ -414,12 +431,10 @@ class PJMPlatform(ParamikoPlatform):
             job_name = job_name[:-1]
         return 'pjstat -v --choose jid,st,ermsg --filter \"jnam={0}\"'.format(job_name)
 
-
-
     def cancel_job(self, job_id):
-        return '{0} {1}'.format(self.cancel_cmd,job_id)
+        return '{0} {1}'.format(self.cancel_cmd, job_id)
 
-    #def get_job_energy_cmd(self, job_id):
+    # def get_job_energy_cmd(self, job_id):
     #    return 'sacct -n --jobs {0} -o JobId%25,State,NCPUS,NNodes,Submit,Start,End,ConsumedEnergy,MaxRSS%25,AveRSS%25'.format(job_id)
 
     def parse_queue_reason(self, output, job_id):
@@ -461,8 +476,8 @@ class PJMPlatform(ParamikoPlatform):
     #PJM -e {kwargs["name"]}.err
     #
     ###############################################################################
-    
-    
+
+
     #
         """).ljust(13)
         else:
@@ -478,7 +493,6 @@ class PJMPlatform(ParamikoPlatform):
             if language is None or len(language) == 0 or "bash" in language:
                 language = "#!/usr/bin/env python3"
             return language + wr_header
-
 
     @staticmethod
     def allocated_nodes():

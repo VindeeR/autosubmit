@@ -1,3 +1,18 @@
+### 4.1.15: Unreleased
+
+**Bug fixes:**
+
+- Corrected the logic for handling `ZombieProcess` errors in `psutil` calls done in `autosubmit stop`, which
+  prevented the command from working correctly if the experiment process appeared after a zombie in the list #2394
+- Fixed an issue with Autosubmit's CITATION.cff that prevented Zenodo from automatically
+  adding new deposits via its webhook #2401
+- Deleted command `autosubmit test` that was not working in Autosubmit 4 #2386
+- Removed PBS and SGE platforms as they are not working in AS4 #2349
+
+**Enhancements:**
+
+- EDITO Autosubmit-Demo container updated to install API in different environment #2398
+
 ### 4.1.14: Bug fixes, enhancements, and new features
 
 **Bug fixes:**

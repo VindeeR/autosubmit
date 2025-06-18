@@ -38,7 +38,6 @@ extensions = [
     'sphinx.ext.graphviz',
     'sphinx.ext.coverage',
     'autosubmit_variables',
-    'runcmdoutput',
     'runcmdquiet',
     'runcmd'
 ]

@@ -53,6 +53,7 @@ help:
 
 html_coverage:
 	coverage run $$(which $(SPHINXBUILD)) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	coverage --version
 	coverage combine
 	coverage xml
 	@echo

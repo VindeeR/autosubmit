@@ -31,13 +31,15 @@ be finished before launching the job that has the DEPENDENCIES attribute.
       FILE: two.sh
       DEPENDENCIES: One
 
-.. runcmdquiet:: echo -e $"Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes" >> /home/docs/autosubmit/a000/conf/test1.yml
+.. runcmdquiet:: echo -e $"JOBS:\n One:\n  FILE: one.sh\n\n Two:\n  FILE: two.sh\n  DEPENDENCIES: One\n" >> /home/docs/autosubmit/a000/conf/job_a000.yml
 
-.. runcmd:: echo -e $"Host gen1\n HostName localhost\n User root\nStrictHostKeyChecking no\n UserKnownHostsFile /dev/null\n IdentityFile /tmp/container_root_pubkey\n Port 2222\n ForwardX11 yes" >> /home/docs/autosubmit/a000/conf/test.yml
+.. runcmd:: cat /home/docs/autosubmit/a000/conf/job_a000.yml
 
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/test1.yml
+.. runcmdquiet:: rm -rf /home/docs/autosubmit/a000/plot/
 
-.. runcmd:: ls /home/docs/autosubmit/a000/conf/
+.. runcmdquiet:: autosubmit monitor a000
+
+.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -iname "*a000_*.png" -true -exec mv -- {} /home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/4/docs/source/qstartguide/dummy.pdf \;
 
 The resulting workflow can be seen in Figure :numref:`simple`
 

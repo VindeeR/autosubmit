@@ -39,7 +39,7 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmdquiet:: autosubmit monitor a000
 
-.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -iname "*a000_*.png" -true -exec mv -- {} /home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/4/docs/source/qstartguide/dummy.pdf \;
+.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -iname "*a000_*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
 
 The resulting workflow can be seen in Figure :numref:`simple`
 

@@ -24,6 +24,10 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
+.. runcmdquiet:: rm -rf /home/docs/autosubmit/a000/plot/
+
+.. runcmdquiet:: autosubmit monitor a000
+
 .. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -maxdepth 1 -daystart -mtime 0 -iname -iname "*a000_*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
 
 The resulting workflow can be seen in Figure :numref:`simple`
@@ -46,14 +50,16 @@ divide member execution on different chunks.
 To set at what level a job has to run you have to use the RUNNING attribute. It has four possible values: once, date,
 member and chunk corresponding to running once, once per startdate, once per member or once per chunk respectively.
 
+.. code-block:: yaml
 
-.. runcmdquiet:: echo -e $"JOBS:\n One:\n  FILE: one.sh\n\n Two:\n  FILE: two.sh\n  DEPENDENCIES: One\n" >> /home/docs/autosubmit/a000/conf/job_a000.yml
-
-.. runcmdquiet:: echo -e $"EXPERIMENT:\n DATELIST: 19900101 20000101:\n MEMBERS: Member1 Member2\n CHUNKSIZEUNIT: month\n \n CHUNKSIZEUNIT: month \n CHUNKSIZE: '4' \n NUMCHUNKS: '2' \n CHUNKINI: '' \n CALENDAR: standard"\n" >> /home/docs/autosubmit/a000/conf/expdef_a000.yml
-
-.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -maxdepth 1 -daystart -mtime 0 -iname -iname "*a000_*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
-
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
+    EXPERIMENT:
+      DATELIST: 19900101 20000101
+      MEMBERS: Member1 Member2
+      CHUNKSIZEUNIT: month
+      CHUNKSIZE: '4'
+      NUMCHUNKS: '2'
+      CHUNKINI: ''
+      CALENDAR: standard
 
 .. code-block:: yaml
     

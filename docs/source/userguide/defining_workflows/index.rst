@@ -20,15 +20,15 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmdquiet:: echo -e $"JOBS:\n One:\n  FILE: one.sh\n\n Two:\n  FILE: two.sh\n  DEPENDENCIES: One\n" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. code-block:: yaml
 
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    JOBS:
+        One:
+            FILE: one.sh
 
-.. runcmdquiet:: rm -rf /home/docs/autosubmit/a000/plot/
-
-.. runcmdquiet:: autosubmit monitor a000
-
-.. runcmdquiet:: find /home/docs/autosubmit/a000/plot/ -maxdepth 1 -daystart -mtime 0 -iname -iname "*a000_*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
+        Two:
+            FILE: two.sh
+            DEPENDENCIES: One
 
 The resulting workflow can be seen in Figure :numref:`simple`
 

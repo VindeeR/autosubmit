@@ -20,17 +20,15 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-
 .. code-block:: yaml
 
-  JOBS:
-    One:
-      FILE: one.sh
+    JOBS:
+        One:
+            FILE: one.sh
 
-    Two:
-      FILE: two.sh
-      DEPENDENCIES: One
-
+        Two:
+            FILE: two.sh
+            DEPENDENCIES: One
 
 The resulting workflow can be seen in Figure :numref:`simple`
 
@@ -51,6 +49,17 @@ divide member execution on different chunks.
 
 To set at what level a job has to run you have to use the RUNNING attribute. It has four possible values: once, date,
 member and chunk corresponding to running once, once per startdate, once per member or once per chunk respectively.
+
+.. code-block:: yaml
+
+    EXPERIMENT:
+      DATELIST: 19900101 20000101
+      MEMBERS: Member1 Member2
+      CHUNKSIZEUNIT: month
+      CHUNKSIZE: '4'
+      NUMCHUNKS: '2'
+      CHUNKINI: ''
+      CALENDAR: standard
 
 .. code-block:: yaml
     

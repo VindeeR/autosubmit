@@ -51,7 +51,7 @@ help:
 	@echo "  coverage   to run coverage check of the documentation (if enabled)"
 
 
-html_coverage:
+xml_coverage:
 	coverage run $$(which $(SPHINXBUILD)) -b xml $(ALLSPHINXOPTS) $(BUILDDIR)/xml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html. Coverage in $(BUILDDIR)/htmlcov."

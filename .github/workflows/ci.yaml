@@ -211,30 +211,39 @@ jobs:
   test-docs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
     strategy:
       matrix:
         python-version: [ "3.9" ]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install system dependencies
         run: sudo apt-get install -y curl graphviz rsync
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip packaging setuptools twine
           pip install --upgrade -e .[all]
+
       # Run regression tests
       - name: Build docs
         run: |
-          cd docs && make html_coverage
+          cd docs && make xml_coverage
+
       - name: Coverage report
         run: |
+          cd docs
           coverage xml
           coverage report
+
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:

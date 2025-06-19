@@ -53,11 +53,8 @@ help:
 
 html_coverage:
 	coverage run $$(which $(SPHINXBUILD)) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
-	coverage --version
 	coverage combine
 	coverage xml
-	@echo
-	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html. Coverage in $(BUILDDIR)/htmlcov."
 clean:
 	rm -rf $(BUILDDIR)/*
 

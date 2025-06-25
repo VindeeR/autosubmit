@@ -16,6 +16,7 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 """Integration tests for the Slurm platform."""
+from pathlib import Path
 
 import pytest
 from autosubmitconfigparser.config.configcommon import AutosubmitConfig
@@ -85,6 +86,43 @@ def test_run_simple_workflow(autosubmit_exp: AutosubmitExperimentFixture):
             }
         }
     })
+    _create_slurm_platform(exp.as_conf)
 
     exp.autosubmit._check_ownership_and_set_last_command(exp.as_conf, exp.expid, 'run')
+    assert 0 == exp.autosubmit.run_experiment(_EXPID)
+
+
+@pytest.mark.slurm
+def test_run_simple_workflow(autosubmit_exp: AutosubmitExperimentFixture):
+    """Runs a simple Bash script using Slurm."""
+    exp = autosubmit_exp(_EXPID, experiment_data={
+        'JOBS': {
+            'SIM': {
+                'PLATFORM': _PLATFORM_NAME,
+                'RUNNING': 'once',
+                'SCRIPT': 'echo "This is job ${SLURM_JOB_ID} EOM"'
+            }
+        },
+        'PLATFORMS': {
+            _PLATFORM_NAME: {
+                'ADD_PROJECT_TO_HOST': False,
+                'HOST': 'localDocker',
+                'MAX_WALLCLOCK': '00:03',
+                'PROJECT': 'group',
+                'QUEUE': 'gp_debug',
+                'SCRATCH_DIR': '/tmp/scratch/',
+                'TEMP_DIR': '',
+                'TYPE': 'slurm',
+                'USER': 'root'
+            }
+        }
+    })
+    _create_slurm_platform(exp.as_conf)
+
+    experiment_path = Path(f"{exp.as_conf.basic_config.LOCAL_ROOT_DIR}/{_EXPID}")
+    structure_db_path = Path(f"{exp.as_conf.basic_config.STRUCTURES_DIR}/structure_{_EXPID}.db")
+    job_data_db_path = Path(f"{exp.as_conf.basic_config.JOBDATA_DIR}/job_data_{_EXPID}")
+
+    exp.autosubmit._check_ownership_and_set_last_command(exp.as_conf, exp.expid, 'run')
+    exp.autosubmit._perform_deletion(exp.exp_path, structure_db_path, job_data_db_path, _EXPID)
     assert 0 == exp.autosubmit.run_experiment(_EXPID)

@@ -85,7 +85,6 @@ def test_run_simple_workflow(autosubmit_exp: AutosubmitExperimentFixture):
             }
         }
     })
-    _create_slurm_platform(exp.as_conf)
 
     exp.autosubmit._check_ownership_and_set_last_command(exp.as_conf, exp.expid, 'run')
     assert 0 == exp.autosubmit.run_experiment(_EXPID)

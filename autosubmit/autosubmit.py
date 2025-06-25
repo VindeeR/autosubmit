@@ -193,11 +193,10 @@ class Autosubmit:
                 description='Main executable for autosubmit. ')
             parser.add_argument('-v', '--version', dest='version', action='store_true')
 
-            parser.add_argument('-lf', '--logfile', choices=('NO_LOG', 'INFO', 'WARNING', 'DEBUG'),
-                                default='DEBUG', type=str,
+            log_levels = ('NO_LOG', 'INFO', 'WARNING', 'DEBUG', 'ERROR')
+            parser.add_argument('-lf', '--logfile', choices=log_levels, default='DEBUG', type=str,
                                 help="sets file's log level.")
-            parser.add_argument('-lc', '--logconsole', choices=('NO_LOG', 'INFO', 'WARNING', 'DEBUG'),
-                                default='WARNING', type=str,
+            parser.add_argument('-lc', '--logconsole', choices=log_levels, default='WARNING', type=str,
                                 help="sets console's log level")
 
             subparsers = parser.add_subparsers(dest='command')
@@ -316,9 +315,9 @@ class Autosubmit:
             subparser.add_argument('expid', help='experiment identifier')
             subparser.add_argument('-ft', '--filter_type', type=str, help='Select the job type to filter '
                                                                           'the list of jobs')
-            subparser.add_argument('-fp', '--filter_period', type=int, help='Select the period to filter jobs '
-                                                                            'from current time to the past '
-                                                                            'in number of hours back')
+            subparser.add_argument('-fp', '--filter_period', type=int,
+                                   help='Select the period to filter jobs from current time to the past in'
+                                        'number of hours back (must be greater than 0)')
             subparser.add_argument('-o', '--output', choices=('pdf', 'png', 'ps', 'svg'), default='pdf',
                                    help='type of output for generated plot')
             subparser.add_argument('--section_summary', action='store_true', default=False,
@@ -832,14 +831,10 @@ class Autosubmit:
         Log.set_console_level(console_level)
         if args.command != "configure":
             if not BasicConfig.CONFIG_FILE_FOUND:
-                raise AutosubmitCritical(
-                    'No configuration file(autosubmitrc) found in this filesystem. Please run "autosubmit configure" first.',
-                    7006)
+                raise AutosubmitCritical('No configuration file(autosubmitrc) found in this filesystem. Please run "autosubmit configure" first.', 7006)
             if args.command != "install":
                 if not os.path.exists(BasicConfig.DB_PATH):
-                    raise AutosubmitCritical(
-                        'Experiments database not found in this filesystem. Please run "autosubmit install" first.',
-                        7072)
+                    raise AutosubmitCritical('Experiments database not found in this filesystem. Please run "autosubmit install" first.', 7072)
                 else:
                     permissions = os.access(BasicConfig.DB_PATH, os.R_OK)  # Check for read access
                     if not permissions:
@@ -849,6 +844,7 @@ class Autosubmit:
                     if not permissions:
                         raise AutosubmitCritical(f'Experiments database {BasicConfig.DB_PATH} not writable.'
                                                  f' Please check permissions.', 7007)
+
 
         expid_less = ["expid", "describe", "testcase", "install", "-v",
                       "readme", "changelog", "configure", "unarchive",
@@ -3451,11 +3447,11 @@ class Autosubmit:
             experiments_ids = []
             basic_conf = BasicConfig()
             for f in Path(basic_conf.LOCAL_ROOT_DIR).glob("????"):
-                try:
+                # If it reaches there it means that f.owner() doesn't exist
+                # anymore( owner is an id) so we just skip it and continue.
+                with suppress(Exception):
                     if f.is_dir() and f.owner() == get_from_user:
                         experiments_ids.append(f.name)
-                except Exception:
-                    pass  # if it reaches there it means that f.owner() doesn't exist anymore( owner is an id) so we just skip it and continue
         else:
             experiments_ids = experiments_ids.split(' ')
         for experiment_id in experiments_ids:
@@ -3474,8 +3470,7 @@ class Autosubmit:
                         "The user does not exist anymore in the system, using id instead")
                     continue
 
-                created = datetime.datetime.fromtimestamp(
-                    os.path.getmtime(as_conf.conf_folder_yaml))
+                created = datetime.datetime.fromtimestamp(os.path.getmtime(as_conf.conf_folder_yaml))
 
                 if as_conf.get_svn_project_url():
                     model = as_conf.get_svn_project_url()
@@ -3503,10 +3498,11 @@ class Autosubmit:
                 Log.result("Branch: {0}", branch)
                 Log.result("HPC: {0}", hpc)
                 Log.result("Description: {0}", description[0][0])
-            except BaseException as e:
+            except Exception:
                 not_described_experiments.append(experiment_id)
         if len(not_described_experiments) > 0:
-            Log.printlog(f"Could not describe the following experiments:\n{not_described_experiments}", Log.WARNING)
+            Log.printlog(f"Could not describe the following experiments:\n"
+                         f"{not_described_experiments}", Log.WARNING)
         if len(experiments_ids) == 1:
             # for backward compatibility or GUI
             return user, created, model, branch, hpc

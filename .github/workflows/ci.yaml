@@ -237,11 +237,7 @@ jobs:
         run: |
           coverage html
           coverage report
-          coverage run pytest \
-            --cov=autosubmit --cov-config=.coveragerc \
-            --cov-report=xml:test/coverage.xml --cov-append \
-            test/integration \
-            -m 'slurm'
+          coverage run -m pytest -m 'slurm' test/integration
           coverage html
           coverage report
 

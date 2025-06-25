@@ -235,14 +235,16 @@ jobs:
 
       - name: Integration tests
         run: |
+          coverage run pytest \
+            --cov=autosubmit --cov-config=.coveragerc \
+            --cov-report=xml:test/coverage.xml --cov-append \
+            test/integration \
+            -m 'slurm'
           coverage html
-          pytest \
+          coverage run pytest \
             -m 'slurm' \
             test/integration
           coverage html
-          ssh localDocker -p 2222 -i /tmp/container_root_pubkey ls /tmp/scratch/group/root/
-          ssh localDocker -p 2222 -i /tmp/container_root_pubkey ls /tmp/scratch/group/root/t000/
-          ssh localDocker -p 2222 -i /tmp/container_root_pubkey ls /tmp/scratch/group/root/t000/LOG_t000
 
   test-misc:
     runs-on: ubuntu-latest

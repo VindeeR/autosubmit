@@ -235,14 +235,15 @@ jobs:
 
       - name: Integration tests
         run: |
+          coverage html
+          coverage report
           coverage run pytest \
+            --cov=autosubmit --cov-config=.coveragerc \
+            --cov-report=xml:test/coverage.xml --cov-append \
             test/integration \
             -m 'slurm'
           coverage html
-          coverage run pytest \
-            -m 'slurm' \
-            test/integration
-          coverage html
+          coverage report
 
   test-misc:
     runs-on: ubuntu-latest

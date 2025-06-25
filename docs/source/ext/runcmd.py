@@ -125,7 +125,8 @@ class RunCmdDirective(code.CodeBlock):
         "replace": directives.unchanged,
         "prompt": directives.flag,
         "dedent-output": int,
-        "working-directory": directives.unchanged
+        "working-directory": directives.unchanged,
+        "silent": directives.flag,
     }
 
     def run(self):
@@ -182,7 +183,8 @@ class RunCmdDirective(code.CodeBlock):
                     output = re.sub(p, r, output)
 
         # Note: Sphinx's CodeBlock directive expects an array of command-line
-        #       output lines: https://github.com/sphinx-doc/sphinx/blob/c51a88da8b7b40e8d8cbdb1fce85ca2346b2b59a/sphinx/directives/code.py#L114
+        #       output lines:
+        # https://github.com/sphinx-doc/sphinx/blob/c51a88da8b7b40e8d8cbdb1fce85ca2346b2b59a/sphinx/directives/code.py#L114
         #       But the runcmd original code was simply wrapping a string
         #       containing \n in the text as a one-element array, e.g.
         #       ["cwltool --debug ...\ncwltool Version..."].

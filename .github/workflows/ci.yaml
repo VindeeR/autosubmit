@@ -175,7 +175,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage_regression_py-${{ matrix.python-version }}
-          path: coverage.xml
+          path: docs/coverage.xml
           retention-days: 7
 
   test-slurm:
@@ -240,6 +240,9 @@ jobs:
             --cov-report=xml:test/coverage.xml --cov-append \
             test/integration \
             -m 'slurm'
+          ssh localDocker -p 2222 -i /tmp/container_root_pubkey ls /tmp/scratch/group/root/
+          ssh localDocker -p 2222 -i /tmp/container_root_pubkey ls /tmp/scratch/group/root/t000/
+          ssh localDocker -p 2222 -i /tmp/container_root_pubkey ls /tmp/scratch/group/root/t000/LOG_t000
 
   test-misc:
     runs-on: ubuntu-latest

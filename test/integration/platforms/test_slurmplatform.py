@@ -44,7 +44,7 @@ def test_create_platform(autosubmit_exp):
         'PLATFORMS': {
             _PLATFORM_NAME: {
                 'ADD_PROJECT_TO_HOST': False,
-                'HOST': 'gen1',
+                'HOST': 'localDocker',
                 'MAX_WALLCLOCK': '00:03',
                 'PROJECT': 'group',
                 'QUEUE': 'gp_debug',
@@ -60,7 +60,6 @@ def test_create_platform(autosubmit_exp):
     # TODO: add more assertion statements...
 
 
-@pytest.mark.slurm
 def test_run_simple_workflow(autosubmit_exp: AutosubmitExperimentFixture):
     """Runs a simple Bash script using Slurm."""
     exp = autosubmit_exp(_EXPID, experiment_data={
@@ -78,13 +77,14 @@ def test_run_simple_workflow(autosubmit_exp: AutosubmitExperimentFixture):
                 'MAX_WALLCLOCK': '00:03',
                 'PROJECT': 'group',
                 'QUEUE': 'gp_debug',
-                'SCRATCH_DIR': '/tmp/scratch',
+                'SCRATCH_DIR': '/tmp/scratch/',
                 'TEMP_DIR': '',
                 'TYPE': 'slurm',
                 'USER': 'root'
             }
         }
     })
+    _create_slurm_platform(exp.as_conf)
 
     exp.autosubmit._check_ownership_and_set_last_command(exp.as_conf, exp.expid, 'run')
     assert 0 == exp.autosubmit.run_experiment(_EXPID)

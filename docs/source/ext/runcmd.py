@@ -125,7 +125,7 @@ class RunCmdDirective(code.CodeBlock):
         "replace": directives.unchanged,
         "prompt": directives.flag,
         "dedent-output": int,
-        "working-directory": directives.unchanged
+        "working-directory": directives.unchanged,
     }
 
     def run(self):
@@ -153,21 +153,20 @@ class RunCmdDirective(code.CodeBlock):
         output = cache.get(command, working_directory)
 
         # Grab our custom commands
-        syntax = self.options.get("syntax", "bash")
+        syntax = self.options.get("syntax", "console")
         replace = self.options.get("replace", '')
         reader = csv.reader([replace], delimiter=",", escapechar="\\")
         # prompt = "prompt" in self.options
         # We patched this so that the prompt is displayed by default, similar
         # to how ``{code-block} console`` works.
-        prompt = True
         dedent_output = self.options.get("dedent-output", 0)
 
         # Dedent the output if required
         if dedent_output > 0:
-            output = "\n\nOutput:\n".join([x[dedent_output:] for x in output.split("\n")])
+            output = ""
 
         # Add the prompt to our output if required
-        if prompt:
+        if 'prompt' not in self.options:
             output = f"$ {command}\n\nOutput:\n{output}"
 
         # Do our "replace" syntax on the command output
@@ -182,7 +181,8 @@ class RunCmdDirective(code.CodeBlock):
                     output = re.sub(p, r, output)
 
         # Note: Sphinx's CodeBlock directive expects an array of command-line
-        #       output lines: https://github.com/sphinx-doc/sphinx/blob/c51a88da8b7b40e8d8cbdb1fce85ca2346b2b59a/sphinx/directives/code.py#L114
+        #       output lines:
+        #       https://github.com/sphinx-doc/sphinx/blob/c51a88da8b7b40e8d8cbdb1fce85ca2346b2b59a/sphinx/directives/code.py#L114
         #       But the runcmd original code was simply wrapping a string
         #       containing \n in the text as a one-element array, e.g.
         #       ["cwltool --debug ...\ncwltool Version..."].

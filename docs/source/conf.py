@@ -38,7 +38,6 @@ extensions = [
     'sphinx.ext.graphviz',
     'sphinx.ext.coverage',
     'autosubmit_variables',
-    'runcmdquiet',
     'runcmd'
 ]
 
@@ -124,9 +123,9 @@ pygments_style = 'sphinx'
 todo_include_todos = False
 
 autodoc_mock_imports = ["portalocker", "argparse", "python-dateutil", "py3dotplus", "pyparsing",
-                        'numpy', 'matplotlib', 'matplotlib.pyplot', 'matplotlib.gridspec', 'matplotlib.patches', 'paramiko',
-                        'mock', "networkx", 'networkx.algorithms.dag', 'bscearth.utils', 'bscearth.utils.config_parser',
-                        'bscearth.utils.date']
+                        'numpy', 'matplotlib', 'matplotlib.pyplot', 'matplotlib.gridspec', 'matplotlib.patches',
+                        'paramiko', 'mock', "networkx", 'networkx.algorithms.dag', 'bscearth.utils',
+                        'bscearth.utils.config_parser', 'bscearth.utils.date']
 
 redirects = {
     'devguide/variables': '../userguide/variables.html'
@@ -171,11 +170,6 @@ html_context = {
     'doc_path': 'docs/source/'
 }
 
-# Configuration of sphinx.ext.coverage
-coverage_show_missing_items = True
-coverage_skip_undoc_in_source = True
-coverage_statistics_to_report = True
-
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
 
@@ -206,8 +200,6 @@ html_css_files = [
     'css/autosubmit.css',
     'custom.css'
 ]
-
-suppress_warnings = ['misc.highlighting_failure', 'ref.doc']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied

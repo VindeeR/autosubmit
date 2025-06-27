@@ -165,11 +165,11 @@ class RunCmdDirective(code.CodeBlock):
 
         # Dedent the output if required
         if dedent_output > 0:
-            output = ""
+            output = "\n\nOutput:\n".join([x[dedent_output:] for x in output.split("\n")])
 
         # silence the output if required
-        if dedent_output > 0:
-            output = "\n\nOutput:\n".join([x[dedent_output:] for x in output.split("\n")])
+        if silent_output > 0:
+            output = ""
 
         # Add the prompt to our output if required
         if 'prompt' not in self.options:

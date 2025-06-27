@@ -165,7 +165,7 @@ class RunCmdDirective(code.CodeBlock):
 
         # Dedent the output if required
         if dedent_output > 0:
-            output = "\n\nOutput:\n".join([x[dedent_output:] for x in output.split("\n")])
+            output = "\n".join([x[dedent_output:] for x in output.split("\n")])
 
         # silence the output if required
         if silent_output > 0:

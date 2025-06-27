@@ -92,7 +92,9 @@ The output of the command will show the <EXPID> of the experiment and generate t
 
 Then, execute ``autosubmit create <EXPID> -np`` and Autosubmit will generate the workflow graph.
 
-.. runcmdquiet:: autosubmit create a000 -o png --hide
+.. runcmd:: autosubmit create a000 -o png --hide
+    :silent-output: 1
+    :prompt:
 
 Run and monitoring
 ==================
@@ -104,6 +106,10 @@ Run and monitoring
  - Third, it manages all the **workflow steps by following the dependencies defined by the user** until all jobs are in COMPLETED or FAILED status. There can be jobs left in **WAITING** status if their dependencies are in **FAILED** status.
 
 While the experiment is running, it can be visualized via ``autosubmit monitor <EXPID>``.
+
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -iname "*a000_*.png" -true -exec mv -- {} ./qstartguide/dummy.png \;
+    :silent-output: 1
+    :prompt:
 
 .. figure:: dummy.png
    :name: dummy_workflow

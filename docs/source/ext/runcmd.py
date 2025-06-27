@@ -124,7 +124,7 @@ class RunCmdDirective(code.CodeBlock):
         "syntax": directives.unchanged,
         "replace": directives.unchanged,
         "prompt": directives.flag,
-        "dedent-output": int,
+        "silent-output": int,
         "working-directory": directives.unchanged,
     }
 
@@ -159,10 +159,10 @@ class RunCmdDirective(code.CodeBlock):
         # prompt = "prompt" in self.options
         # We patched this so that the prompt is displayed by default, similar
         # to how ``{code-block} console`` works.
-        dedent_output = self.options.get("dedent-output", 0)
+        silent_output = self.options.get("silent-output", 0)
 
         # Dedent the output if required
-        if dedent_output > 0:
+        if silent_output > 0:
             output = ""
 
         # Add the prompt to our output if required

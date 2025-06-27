@@ -96,9 +96,26 @@ Then, execute ``autosubmit create <EXPID> -np`` and Autosubmit will generate the
     :silent-output: 1
     :prompt:
 
+
 .. runcmd:: autosubmit create a000 -o png --hide
     :dedent-output: 1
     :prompt:
+
+
+.. runcmd:: autosubmit create a000 -o png --hide
+    :prompt:
+
+
+.. runcmd:: autosubmit create a000 -o png --hide
+
+
+.. runcmd:: autosubmit create a000 -o png --hide
+    :silent-output: 1
+
+
+.. runcmd:: autosubmit create a000 -o png --hide
+    :dedent-output: 1
+
 
 Run and monitoring
 ==================

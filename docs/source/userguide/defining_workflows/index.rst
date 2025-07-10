@@ -38,7 +38,7 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
 
-.. runcmd:: rm -rf /home/docs/autosubmit/a000/plot/
+.. runcmd:: rm -rf /home/docs/autosubmit/a000/plot/*
 
 .. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
 

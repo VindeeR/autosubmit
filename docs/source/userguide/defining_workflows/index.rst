@@ -31,12 +31,6 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     EOF" > /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd::
-    sleep 1 && cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd::
-    sleep 1
-
-.. runcmd::
     cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd::
@@ -52,7 +46,9 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
 
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -iname "*a000_*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
+.. runcmd:: ls -l /home/docs/autosubmit/a000/
+
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "*a000_*.png" -mtime 1 -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
 
 .. code-block:: yaml
 

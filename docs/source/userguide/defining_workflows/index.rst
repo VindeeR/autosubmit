@@ -20,17 +20,8 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmd:: chmod 777 /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd:: chmod 777 /home/docs/autosubmit/a000/conf/expdef_a000.yml
-
-.. runcmd:: ls -l /home/docs/autosubmit/a000/conf/
-
-.. runcmd:: rm /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd:: ls -l /home/docs/autosubmit/a000/conf/
-
 .. runcmd::
+
     cat << EOF > /home/docs/autosubmit/a000/conf/jobs_a000.yml
     JOBS:
       ONE:
@@ -39,10 +30,6 @@ be finished before launching the job that has the DEPENDENCIES attribute.
         FILE: two.sh
         DEPENDENCIES: One
     EOF
-
-.. runcmd:: ls -l /home/docs/autosubmit/a000/conf/
-
-.. runcmd::
 
     sleep 1 && cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
@@ -53,6 +40,10 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 .. runcmd::
 
     cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd::
+
+    ls -l /home/docs/autosubmit/a000/conf/
 
 .. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
 

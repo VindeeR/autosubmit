@@ -31,7 +31,6 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 .. runcmd:: ls -l /home/docs/autosubmit/a000/conf/
 
 .. runcmd::
-
     cat << EOF > /home/docs/autosubmit/a000/conf/jobs_a000.yml
     JOBS:
       ONE:
@@ -43,7 +42,17 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: ls -l /home/docs/autosubmit/a000/conf/
 
-.. runcmd:: sleep 1 && cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd::
+
+    sleep 1 && cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd::
+
+    sleep 1
+
+.. runcmd::
+
+    cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
 

@@ -28,7 +28,7 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: rm -rf /home/docs/autosubmit/a000/plot/
 
-.. runcmd:: autosubmit monitor a000
+.. runcmd:: autosubmit monitor a000 --hide -o png
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -maxdepth 1 -daystart -mtime 0 -iname -iname "*a000_*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
     :silent-output: 0

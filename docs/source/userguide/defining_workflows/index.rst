@@ -32,20 +32,6 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     EOF'
 
 .. runcmd::
-    VAR=$(cat <<< 'EOF'
-    JOBS:
-       ONE:
-         FILE: one.s
-       TWO:
-         FILE: two.sh
-         DEPENDENCIES: One
-    EOF)
-
-.. runcmd::
-    echo "$VAR"
-    echo $VAR
-
-.. runcmd::
     read -r -d '' var1 <<- 'EOF'
     JOBS:
        ONE:

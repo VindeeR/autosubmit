@@ -21,13 +21,13 @@ It is important to remember when defining workflows that DEPENDENCIES on autosub
 be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd::
-    cat << EOF
-    > JOBS:
-    >   ONE:
-    >     FILE: one.s
-    >   TWO:
-    >     FILE: two.sh
-    >     DEPENDENCIES: One
+    cat << EOF |
+     JOBS: |
+       ONE: |
+         FILE: one.s |
+       TWO: |
+         FILE: two.sh |
+         DEPENDENCIES: One |
     EOF > /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd::
@@ -37,19 +37,10 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     rm -rf /home/docs/autosubmit/a000/plot/*
 
 .. runcmd::
-    ls /home/docs/autosubmit/a000/plot/
-
-.. runcmd::
     autosubmit monitor a000 --hide -o png
 
 .. runcmd::
-    find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -mtime 1
-
-.. runcmd::
     find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
-
-.. runcmd::
-    ls ./userguide/defining_workflows/fig/simple.png
 
 
 .. code-block:: yaml

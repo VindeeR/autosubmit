@@ -20,6 +20,16 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
+.. runcmd:: ls /home/docs/autosubmit/
+
+.. runcmd:: ls /home/docs/autosubmit/a000/
+
+.. runcmd:: ls /home/docs/autosubmit/a000/conf/
+
+.. runcmd:: ls /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd:: pwd
+
 .. runcmd:: rm -rf /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd:: echo -e $"JOBS:\n One:\n  FILE: one.sh\n\n Two:\n  FILE: two.sh\n  DEPENDENCIES: One\n" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml

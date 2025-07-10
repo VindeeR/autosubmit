@@ -38,9 +38,15 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     :silent-output: 0
     :prompt:
 
+.. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
+
 .. runcmd:: rm -rf /home/docs/autosubmit/a000/plot/
 
+.. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
+
 .. runcmd:: autosubmit monitor a000 --hide -o png
+
+.. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -iname "*a000_*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
     :silent-output: 0

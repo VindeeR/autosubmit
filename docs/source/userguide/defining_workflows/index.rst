@@ -35,8 +35,6 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 .. runcmd:: ls -l /home/docs/autosubmit/a000/conf/
 
 .. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
-    :silent-output: 0
-    :prompt:
 
 .. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
 
@@ -49,8 +47,6 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 .. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -iname "*a000_*.png" -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
-    :silent-output: 0
-    :prompt:
 
 .. code-block:: yaml
 

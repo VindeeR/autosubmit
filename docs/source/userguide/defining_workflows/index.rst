@@ -37,19 +37,22 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     rm -rf /home/docs/autosubmit/a000/plot/*
 
 .. runcmd::
+    ls /home/docs/autosubmit/a000/plot/
+
+.. runcmd::
     autosubmit monitor a000 --hide -o png
 
 .. runcmd::
-    ls /home/docs/autosubmit/a000/plot/
+    find /home/docs/autosubmit/a000/plot/ -type f -iname "*a000_*.png" -mtime 1 -true
 
 .. runcmd::
-    autosubmit create a000 --hide -o png
-
-.. runcmd::
-    ls /home/docs/autosubmit/a000/plot/
+    ls ./userguide/defining_workflows/fig/simple.png \;
 
 .. runcmd::
     find /home/docs/autosubmit/a000/plot/ -type f -iname "*a000_*.png" -mtime 1 -true -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
+
+.. runcmd::
+    ls ./userguide/defining_workflows/fig/simple.png \;
 
 
 .. code-block:: yaml

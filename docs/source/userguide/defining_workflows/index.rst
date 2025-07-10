@@ -21,14 +21,14 @@ It is important to remember when defining workflows that DEPENDENCIES on autosub
 be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd::
-    cat << "EOF
-    JOBS:
-      ONE:
-        FILE: one.s
-      TWO:
-        FILE: two.sh
-        DEPENDENCIES: One
-    EOF" > /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    cat << EOF
+    > JOBS:
+    >   ONE:
+    >     FILE: one.s
+    >   TWO:
+    >     FILE: two.sh
+    >     DEPENDENCIES: One
+    EOF > /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd::
     cat /home/docs/autosubmit/a000/conf/jobs_a000.yml

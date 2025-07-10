@@ -38,7 +38,7 @@ be finished before launching the job that has the DEPENDENCIES attribute.
          FILE: one.s
        TWO:
          FILE: two.sh
-         DEPENDENCIES: One"
+         DEPENDENCIES: One
     EOF
 
 .. runcmd::
@@ -51,7 +51,7 @@ be finished before launching the job that has the DEPENDENCIES attribute.
          FILE: one.s
        TWO:
          FILE: two.sh
-         DEPENDENCIES: One"
+         DEPENDENCIES: One
     EOF
 
 .. runcmd::

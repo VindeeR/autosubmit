@@ -30,7 +30,16 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: ls -l /home/docs/autosubmit/a000/conf/
 
-.. runcmd:: echo -e $"JOBS:\n One:\n  FILE: one.sh\n\n Two:\n  FILE: two.sh\n  DEPENDENCIES: One\n" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd::
+
+    cat << EOF > /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    JOBS:
+      ONE:
+        FILE: one.s
+      TWO:
+        FILE: two.sh
+        DEPENDENCIES: One
+    EOF
 
 .. runcmd:: ls -l /home/docs/autosubmit/a000/conf/
 

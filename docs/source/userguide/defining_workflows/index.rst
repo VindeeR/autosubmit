@@ -32,6 +32,49 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     EOF' > /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd::
+    cat <<< ' |
+    EOF
+    JOBS:
+       ONE:
+         FILE: one.s
+       TWO:
+         FILE: two.sh
+         DEPENDENCIES: One
+    EOF' > /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd::
+    cat <<< ' > /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    EOF
+    JOBS:
+       ONE:
+         FILE: one.s
+       TWO:
+         FILE: two.sh
+         DEPENDENCIES: One
+    EOF'
+
+.. runcmd::
+    cat <<< EOF > /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    JOBS:
+       ONE:
+         FILE: one.s
+       TWO:
+         FILE: two.sh
+         DEPENDENCIES: One
+    EOF
+
+.. runcmd::
+    read var1 <<< "JOBS:
+       ONE:
+         FILE: one.s
+       TWO:
+         FILE: two.sh
+         DEPENDENCIES: One"
+
+.. runcmd::
+    echo $var1
+
+.. runcmd::
     cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd::

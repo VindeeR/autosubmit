@@ -21,28 +21,6 @@ It is important to remember when defining workflows that DEPENDENCIES on autosub
 be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd::
-    cat <<< '
-    EOF
-    JOBS:
-       ONE:
-         FILE: one.s
-       TWO:
-         FILE: two.sh
-         DEPENDENCIES: One
-    EOF' > /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd::
-    cat <<< ' |
-    EOF
-    JOBS:
-       ONE:
-         FILE: one.s
-       TWO:
-         FILE: two.sh
-         DEPENDENCIES: One
-    EOF' > /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd::
     cat <<< ' > /home/docs/autosubmit/a000/conf/jobs_a000.yml
     EOF
     JOBS:
@@ -54,22 +32,41 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     EOF'
 
 .. runcmd::
-    cat <<< EOF > /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    VAR=$(cat <<< 'EOF'
     JOBS:
        ONE:
          FILE: one.s
        TWO:
          FILE: two.sh
          DEPENDENCIES: One
-    EOF
+    EOF)
 
 .. runcmd::
-    read var1 <<< "JOBS:
+    echo "$VAR"
+    echo $VAR
+
+.. runcmd::
+    read -r -d '' var1 <<- 'EOF'
+    JOBS:
        ONE:
          FILE: one.s
        TWO:
          FILE: two.sh
          DEPENDENCIES: One"
+    EOF
+
+.. runcmd::
+    echo var1
+
+.. runcmd::
+    read -r -d '' var1 << 'EOF'
+    JOBS:
+       ONE:
+         FILE: one.s
+       TWO:
+         FILE: two.sh
+         DEPENDENCIES: One"
+    EOF
 
 .. runcmd::
     echo $var1

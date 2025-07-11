@@ -23,16 +23,12 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 .. runcmd:: mv ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
     :prompt:
 
-.. runcmd::
-    :silent-output: 0
-    :prompt:
-    autosubmit monitor a000 --hide -o png
 
-.. runcmd::
+.. runcmd:: autosubmit monitor a000 --hide -o png
     :silent-output: 0
     :prompt:
 
-    autosubmit monitor a000 --hide -o png
+
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
     :silent-output: 0

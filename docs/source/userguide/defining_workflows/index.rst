@@ -70,9 +70,11 @@ member and chunk corresponding to running once, once per startdate, once per mem
 
 .. runcmd:: mv ./userguide/defining_workflows/code/experiment_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
 
-.. runcmd:: autosubmit monitor a000 --hide -o png
+.. runcmd:: autosubmit create a000 --hide -o png
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
+
+.. runcmd:: ls /home/docs/autosubmit/a000/plot/
 
 .. code-block:: yaml
 

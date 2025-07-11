@@ -64,6 +64,10 @@ To set at what level a job has to run you have to use the RUNNING attribute. It 
 member and chunk corresponding to running once, once per startdate, once per member or once per chunk respectively.
 
 
+.. runcmd:: rm /home/docs/autosubmit/a000/plot/*
+    :silent-output: 1
+    :prompt:
+
 .. runcmd:: mv ./userguide/defining_workflows/code/jobs_startdate.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
     :silent-output: 1
     :prompt:
@@ -76,7 +80,7 @@ member and chunk corresponding to running once, once per startdate, once per mem
     :silent-output: 1
     :prompt:
 
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
     :silent-output: 1
     :prompt:
 

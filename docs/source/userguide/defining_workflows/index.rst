@@ -23,16 +23,6 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 .. runcmd:: mv ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
     :prompt:
 
-.. runcmd:: autosubmit monitor a000 --hide -o png
-    :silent-output: 0
-    :prompt:
-
-.. runcmd:: autosubmit monitor a000 --hide -o png
-    :silent-output: 0
-
-.. runcmd:: autosubmit monitor a000 --hide -o png
-    :prompt:
-
 .. runcmd::
     :silent-output: 0
     :prompt:

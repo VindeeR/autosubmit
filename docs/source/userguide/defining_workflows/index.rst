@@ -30,7 +30,25 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: pwd
 
-.. literalinclude:: ../../doc/source/userguide/defining_workflows/code/simple_job.yml
+.. runcmd:: pwd
+
+.. literalinclude:: /simple_job.yml
+
+.. literalinclude:: /code/simple_job.yml
+
+.. literalinclude:: /defining_workflows/code/simple_job.yml
+
+.. literalinclude:: /userguide/defining_workflows/code/simple_job.yml
+
+.. literalinclude:: /source/userguide/defining_workflows/code/simple_job.yml
+
+.. literalinclude:: /docs/source/userguide/defining_workflows/code/simple_job.yml
+
+.. literalinclude:: ../docs/source/userguide/defining_workflows/code/simple_job.yml
+
+.. literalinclude:: ../../docs/source/userguide/defining_workflows/code/simple_job.yml
+
+.. literalinclude:: /home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/6/docs/source/userguide/defining_workflows/code/simple_job.yml
 
 
 .. code-block:: yaml

@@ -28,7 +28,25 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
 
+.. literalinclude:: simple_job.yml
+    :language: yaml
+    :lines: 0-45
+    :tab-width: 0
+
+.. literalinclude:: ./simple_job.yml
+    :language: yaml
+    :lines: 0-45
+    :tab-width: 0
+
 .. literalinclude:: code/simple_job.yml
+    :language: yaml
+    :lines: 0-45
+    :tab-width: 0
+
+.. literalinclude:: ./code/simple_job.yml
+    :language: yaml
+    :lines: 0-45
+    :tab-width: 0
 
 .. code-block:: yaml
 

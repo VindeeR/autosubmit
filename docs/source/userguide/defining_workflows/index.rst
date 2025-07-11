@@ -20,23 +20,7 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmd:: rm /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd:: echo -e $"JOBS:\n One:\n FILE: one.sh\n\n Two:\n FILE: two.sh\n DEPENDENCIES: One\n" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd:: cat ./jobs_a000.yml
-
-.. runcmd:: echo -e $"JOB:" >| ./jobs_a000.yml
-
-.. runcmd:: echo -e $" ONE:" >> ./jobs_a000.yml
-
-.. runcmd:: echo -e $"  FILE: one.sh" >> ./jobs_a000.yml
-
-.. runcmd:: cat ./jobs_a000.yml
-
-.. runcmd:: cat ./jobs_a000.yml /home/docs/autosubmit/a000/conf/
-
-.. runcmd:: ls /home/docs/autosubmit/a000/conf/
+.. runcmd:: mv userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd::
     rm -rf /home/docs/autosubmit/a000/plot/*
@@ -46,6 +30,8 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd::
     find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
+
+.. literalinclude:: simple_job.yml
 
 
 .. code-block:: yaml

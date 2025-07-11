@@ -32,6 +32,12 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     :prompt:
     find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
 
+.. figure:: fig/simple.png
+   :name: simple
+   :width: 100%
+   :align: center
+   :alt: simple workflow plot
+
 .. code-block:: yaml
 
   JOBS:

@@ -20,6 +20,17 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
+.. runcmd:: mv ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: autosubmit monitor a000 --hide -o png
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
+    :silent-output: 1
+    :prompt:
 
 .. code-block:: yaml
 
@@ -51,6 +62,27 @@ divide member execution on different chunks.
 
 To set at what level a job has to run you have to use the RUNNING attribute. It has four possible values: once, date,
 member and chunk corresponding to running once, once per startdate, once per member or once per chunk respectively.
+
+
+.. runcmd:: rm -rf /home/docs/autosubmit/a000/plot/*
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: mv ./userguide/defining_workflows/code/jobs_startdate.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: mv ./userguide/defining_workflows/code/experiment_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: autosubmit create a000 --hide -o png
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
+    :silent-output: 1
+    :prompt:
 
 .. code-block:: yaml
 

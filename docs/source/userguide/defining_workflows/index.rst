@@ -20,10 +20,11 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmd:: mv ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
-    rm -rf /home/docs/autosubmit/a000/plot/*
-
-.. runcmd:: autosubmit monitor a000 --hide -o png
+.. runcmd::
+    :silent-output: 0
+    :prompt:
+    mv ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    autosubmit monitor a000 --hide -o png
     find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
 
 .. code-block:: yaml

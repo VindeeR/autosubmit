@@ -22,22 +22,15 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: rm /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
-.. runcmd:: cat << 'EOF' > /home/docs/autosubmit/a000/conf/jobs_a000.yml
-    cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: echo -e "JOB:" >| ./jobs_a000.yml
 
-.. runcmd:: echo -e "JOB:\n ONE:\n  FILE: one.sh" >| /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: echo -e " ONE:" >> ./jobs_a000.yml
 
-.. runcmd:: echo -e "JOB:\n ONE:\n  FILE: one.sh" >| /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: echo -e "  FILE: one.sh" >> ./jobs_a000.yml
 
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml << this is foo
+.. runcmd:: cat ./jobs_a000.yml
 
-.. runcmd:: echo -e "JOB:" >| /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd:: echo -e " ONE:" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd:: echo -e "  FILE: one.sh" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: cat ./jobs_a000.yml /home/docs/autosubmit/a000/conf/
 
 .. runcmd:: ls /home/docs/autosubmit/a000/conf/
 

@@ -169,7 +169,7 @@ class RunCmdDirective(code.CodeBlock):
 
         # silence the output if required
         if silent_output > 0:
-            output = ""
+            output = "$"
 
         # Add the prompt to our output if required
         if 'prompt' not in self.options:

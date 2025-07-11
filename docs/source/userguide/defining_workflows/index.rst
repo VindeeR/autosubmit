@@ -30,25 +30,32 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: pwd
 
-.. runcmd:: pwd
+.. include:: /simple_job.yml
+    :encoding: yaml
 
-.. literalinclude:: /simple_job.yml
+.. include:: /code/simple_job.yml
+    :encoding: yaml
 
-.. literalinclude:: /code/simple_job.yml
+.. include:: /defining_workflows/code/simple_job.yml
+    :encoding: yaml
 
-.. literalinclude:: /defining_workflows/code/simple_job.yml
+.. include:: /userguide/defining_workflows/code/simple_job.yml
+    :encoding: yaml
 
-.. literalinclude:: /userguide/defining_workflows/code/simple_job.yml
+.. include:: /source/userguide/defining_workflows/code/simple_job.yml
+    :encoding: yaml
 
-.. literalinclude:: /source/userguide/defining_workflows/code/simple_job.yml
+.. include:: /docs/source/userguide/defining_workflows/code/simple_job.yml
+    :encoding: yaml
 
-.. literalinclude:: /docs/source/userguide/defining_workflows/code/simple_job.yml
+.. include:: ../docs/source/userguide/defining_workflows/code/simple_job.yml
+    :encoding: yaml
 
-.. literalinclude:: ../docs/source/userguide/defining_workflows/code/simple_job.yml
+.. include:: ../../docs/source/userguide/defining_workflows/code/simple_job.yml
+    :encoding: yaml
 
-.. literalinclude:: ../../docs/source/userguide/defining_workflows/code/simple_job.yml
-
-.. literalinclude:: /home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/6/docs/source/userguide/defining_workflows/code/simple_job.yml
+.. include:: /home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/6/docs/source/userguide/defining_workflows/code/simple_job.yml
+    :encoding: yaml
 
 
 .. code-block:: yaml

@@ -167,13 +167,13 @@ class RunCmdDirective(code.CodeBlock):
         if dedent_output > 0:
             output = "\n".join([x[dedent_output:] for x in output.split("\n")])
 
-        # silence the output if required
-        if silent_output > 0:
-            output = ""
-
         # Add the prompt to our output if required
         if 'prompt' not in self.options:
             output = f"$ {command}\n\nOutput:\n{output}"
+
+        # silence the output if required
+        if silent_output > 0:
+            output = ""
 
         # Do our "replace" syntax on the command output
         for items in reader:

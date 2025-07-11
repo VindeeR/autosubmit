@@ -20,48 +20,17 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmd:: mv ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml && autosubmit monitor a000 --hide -o png && find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
-    :silent-output: 1
-    :prompt:
-
-.. figure:: fig/simple.png
-   :name: simple
-   :width: 100%
-   :align: center
-   :alt: simple workflow plot
-
-1
-
-.. runcmd:: rm ./userguide/defining_workflows/fig/simple.png
-
 .. runcmd:: mv ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
-    autosubmit monitor a000 --hide -o png
-    find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
     :silent-output: 1
     :prompt:
 
-.. figure:: fig/simple.png
-   :name: simple
-   :width: 100%
-   :align: center
-   :alt: simple workflow plot
-
-2
-
-.. runcmd:: rm ./userguide/defining_workflows/fig/simple.png
-
-.. runcmd::
+.. runcmd:: autosubmit monitor a000 --hide -o png
     :silent-output: 1
     :prompt:
-    mv ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
-    autosubmit monitor a000 --hide -o png
-    find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
 
-.. figure:: fig/simple.png
-   :name: simple
-   :width: 100%
-   :align: center
-   :alt: simple workflow plot
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
+    :silent-output: 1
+    :prompt:
 
 .. code-block:: yaml
 

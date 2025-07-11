@@ -20,38 +20,26 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmd::
-    rm /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: rm /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
-.. runcmd::
-    cat << 'EOF' > /home/docs/autosubmit/a000/conf/jobs_a001.yml
-    cat /home/docs/autosubmit/a000/conf/jobs_a001.yml
-
-.. runcmd::
-    echo -e "JOB:\n ONE:\n  FILE: one.sh" >| /home/docs/autosubmit/a000/conf/jobs_a001.yml
-    cat /home/docs/autosubmit/a000/conf/jobs_a001.yml
-
-.. runcmd::
-    echo -e "JOB:\n ONE:\n  FILE: one.sh" >| /home/docs/autosubmit/a000/conf/jobs_a001.yml
-    cat /home/docs/autosubmit/a000/conf/jobs_a001.yml
-
-.. runcmd::
-    cat /home/docs/autosubmit/a000/conf/jobs_a001.yml << this is foo
-
-.. runcmd::
-    echo -e "JOB:" >| /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd::
-    echo -e " ONE:" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd::
-    echo -e "  FILE: one.sh" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd::
+.. runcmd:: cat << 'EOF' > /home/docs/autosubmit/a000/conf/jobs_a000.yml
     cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
-.. runcmd::
-    ls /home/docs/autosubmit/a000/conf/
+.. runcmd:: echo -e "JOB:\n ONE:\n  FILE: one.sh" >| /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd:: echo -e "JOB:\n ONE:\n  FILE: one.sh" >| /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml << this is foo
+
+.. runcmd:: echo -e "JOB:" >| /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd:: echo -e " ONE:" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd:: echo -e "  FILE: one.sh" >> /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd:: ls /home/docs/autosubmit/a000/conf/
 
 .. runcmd::
     rm -rf /home/docs/autosubmit/a000/plot/*

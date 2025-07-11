@@ -21,42 +21,10 @@ It is important to remember when defining workflows that DEPENDENCIES on autosub
 be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: mv ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd:: rm -rf /home/docs/autosubmit/a000/plot/*
+    rm -rf /home/docs/autosubmit/a000/plot/*
 
 .. runcmd:: autosubmit monitor a000 --hide -o png
-
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
-
-.. runcmd:: pwd
-
-.. include:: /simple_job.yml
-    :encoding: yaml
-
-.. include:: /code/simple_job.yml
-    :encoding: yaml
-
-.. include:: /defining_workflows/code/simple_job.yml
-    :encoding: yaml
-
-.. include:: /userguide/defining_workflows/code/simple_job.yml
-    :encoding: yaml
-
-.. include:: /source/userguide/defining_workflows/code/simple_job.yml
-    :encoding: yaml
-
-.. include:: /docs/source/userguide/defining_workflows/code/simple_job.yml
-    :encoding: yaml
-
-.. include:: ../docs/source/userguide/defining_workflows/code/simple_job.yml
-    :encoding: yaml
-
-.. include:: ../../docs/source/userguide/defining_workflows/code/simple_job.yml
-    :encoding: yaml
-
-.. include:: /home/docs/checkouts/readthedocs.org/user_builds/autosubmit-local-test/checkouts/6/docs/source/userguide/defining_workflows/code/simple_job.yml
-    :encoding: yaml
-
+    find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
 
 .. code-block:: yaml
 

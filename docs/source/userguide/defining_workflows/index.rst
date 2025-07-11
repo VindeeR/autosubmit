@@ -65,16 +65,24 @@ member and chunk corresponding to running once, once per startdate, once per mem
 
 
 .. runcmd:: rm -rf /home/docs/autosubmit/a000/plot/*
+    :silent-output: 1
+    :prompt:
 
 .. runcmd:: mv ./userguide/defining_workflows/code/jobs_startdate.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    :silent-output: 1
+    :prompt:
 
 .. runcmd:: mv ./userguide/defining_workflows/code/experiment_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
+    :silent-output: 1
+    :prompt:
 
 .. runcmd:: autosubmit create a000 --hide -o png
+    :silent-output: 1
+    :prompt:
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
-
-.. runcmd:: ls /home/docs/autosubmit/a000/plot/
+    :silent-output: 1
+    :prompt:
 
 .. code-block:: yaml
 

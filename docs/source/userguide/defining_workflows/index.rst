@@ -43,6 +43,8 @@ be finished before launching the job that has the DEPENDENCIES attribute.
       DEPENDENCIES: One
 
 
+.. runcmd:: ls /home/docs/autosubmit/a000/plot/
+
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
     :silent-output: 1
     :prompt:
@@ -177,6 +179,8 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 .. runcmd:: autosubmit monitor a000 --hide -o png
 
+.. runcmd:: ls /home/docs/autosubmit/a000/plot/
+
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
 
 The resulting workflow can be seen in Figure :numref:`dprevious`
@@ -241,6 +245,8 @@ jobs to be finished. That is the case of the postprocess combine dependency on t
 .. runcmd:: autosubmit create a000 --hide -o png
     :silent-output: 1
     :prompt:
+
+.. runcmd:: ls /home/docs/autosubmit/a000/plot/
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
     :silent-output: 1

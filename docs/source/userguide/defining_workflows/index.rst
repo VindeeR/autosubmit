@@ -139,22 +139,6 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 .. runcmd:: mv -f ./userguide/defining_workflows/code/jobs_dependecy_previous.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
-.. runcmd:: cat ./userguide/defining_workflows/code/exp_dependecy_previous.yml
-
-.. runcmd:: cp -f ./userguide/defining_workflows/code/exp_dependecy_previous.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
-
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
-
-.. runcmd:: mv -f /home/docs/autosubmit/a000/conf/expdef_a000.yml ./
-
-.. runcmd:: ls /home/docs/autosubmit/a000/conf/
-
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
-
-.. runcmd:: mv -f ./userguide/defining_workflows/code/exp_dependecy_previous.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
-
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
-
 .. code-block:: yaml
 
     EXPERIMENT:
@@ -183,8 +167,6 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 
 .. runcmd:: autosubmit monitor a000 --hide -o png
-
-.. runcmd:: ls /home/docs/autosubmit/a000/plot/
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
 
@@ -216,10 +198,6 @@ In the other case, a job depending on a lower running level job, the higher leve
 jobs to be finished. That is the case of the postprocess combine dependency on the next example.
 
 .. runcmd:: mv ./userguide/defining_workflows/code/jobs_startdate.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
-    :silent-output: 1
-    :prompt:
-
-.. runcmd:: mv ./userguide/defining_workflows/code/exp_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
     :silent-output: 1
     :prompt:
 

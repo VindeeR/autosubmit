@@ -22,7 +22,7 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 
 .. runcmd:: ls ./userguide/defining_workflows/code/
 
-.. runcmd:: mv ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: mv -v ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
     :silent-output: 1
     :prompt:
 
@@ -48,6 +48,8 @@ be finished before launching the job that has the DEPENDENCIES attribute.
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
     :silent-output: 1
     :prompt:
+
+.. runcmd:: rm -v /home/docs/autosubmit/a000/plot/
 
 .. runcmd:: ls /home/docs/autosubmit/a000/plot/
 
@@ -175,7 +177,7 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
       RUNNING: chunk
 
 
-.. runcmd:: autosubmit monitor a000 --hide -o png -v
+.. runcmd:: autosubmit monitor a000 --hide -o png
 
 .. runcmd:: ls /home/docs/autosubmit/a000/plot/
 

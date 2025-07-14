@@ -63,11 +63,11 @@ divide member execution on different chunks.
 To set at what level a job has to run you have to use the RUNNING attribute. It has four possible values: once, date,
 member and chunk corresponding to running once, once per startdate, once per member or once per chunk respectively.
 
-.. runcmd:: mv -vf ./userguide/defining_workflows/code/jobs_startdate.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: mv ./userguide/defining_workflows/code/jobs_startdate.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
     :silent-output: 1
     :prompt:
 
-.. runcmd:: mv -vf ./userguide/defining_workflows/code/exp_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
+.. runcmd:: mv ./userguide/defining_workflows/code/exp_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
     :silent-output: 1
     :prompt:
 
@@ -133,6 +133,14 @@ Dependencies with previous jobs
 Autosubmit can manage dependencies between jobs that are part of different chunks, members or startdates. The next
 example will show how to make a simulation job wait for the previous chunk of the simulation. To do that, we add
 sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much dependencies as you like separated by spaces
+
+.. runcmd:: mv ./userguide/defining_workflows/code/job_dependencies_running.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: mv ./userguide/defining_workflows/code/exp_dependencies_running.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
+    :silent-output: 1
+    :prompt:
 
 
 .. code-block:: yaml

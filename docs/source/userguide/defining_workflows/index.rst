@@ -464,7 +464,7 @@ an integer I for this attribute and the job will run only once for each I iterat
           RUNNING: member
 
 
-.. runcmd:: autosubmit monitor a000 --hide -o png
+.. runcmd:: autosubmit create a000 --hide -o png
 
 .. runcmd:: ls /home/docs/autosubmit/a000/plot/
 

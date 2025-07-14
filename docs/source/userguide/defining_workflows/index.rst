@@ -198,9 +198,9 @@ on the next example.
 In the other case, a job depending on a lower running level job, the higher level job will wait for ALL the lower level
 jobs to be finished. That is the case of the postprocess combine dependency on the next example.
 
-.. runcmd:: autosubmit refresh a001
-
 .. runcmd:: mv -vf ./userguide/defining_workflows/code/job_dependencies_running.yml /home/docs/autosubmit/a001/conf/jobs_a001.yml
+
+.. runcmd:: autosubmit monitor a001 --hide -o png
 
 .. code-block:: yaml
 
@@ -224,8 +224,6 @@ jobs to be finished. That is the case of the postprocess combine dependency on t
         DEPENDENCIES: postprocess
         RUNNING: member
 
-
-.. runcmd:: autosubmit monitor a001 --hide -o png
 
 .. runcmd:: find /home/docs/autosubmit/a001/plot/ -type f -iname "a001_*.png" -exec mv -vf -- {} ./userguide/defining_workflows/fig/dependencies_running.png \;
 

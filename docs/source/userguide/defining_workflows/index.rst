@@ -468,7 +468,7 @@ an integer I for this attribute and the job will run only once for each I iterat
 
 .. runcmd:: ls /home/docs/autosubmit/a000/plot/
 
-.. runcmd:: find /home/docs/autosubmit/a000/plot/
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000*.png"
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000*.png" -exec mv -- {} ./userguide/defining_workflows/fig/frequency.png \;
     :silent-output: 1

@@ -119,7 +119,7 @@ member and chunk corresponding to running once, once per startdate, once per mem
 
 .. runcmd:: ls ./userguide/defining_workflows/code/
 
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -v -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
 
 .. runcmd:: ls /home/docs/autosubmit/a000/plot/
 
@@ -179,11 +179,11 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 .. runcmd:: ls /home/docs/autosubmit/a000/plot/
 
-.. runcmd:: find/home/docs/autosubmit/a000/ -v -type f -iname "a000_*.png"
+.. runcmd:: find/home/docs/autosubmit/a000/ -type f -iname "a000_*.png"
 
-.. runcmd:: find/home/docs/autosubmit/a000/plot/ -v -type f -iname "a000_*.png"
+.. runcmd:: find/home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png"
 
-.. runcmd:: find/home/docs/autosubmit/a000/plot/ -v -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
+.. runcmd:: find/home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
 
 The resulting workflow can be seen in Figure :numref:`dprevious`
 
@@ -252,7 +252,7 @@ jobs to be finished. That is the case of the postprocess combine dependency on t
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png"
 
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -v -type f -iname "a000_*.png" -exec mv -vf -- {} ./userguide/defining_workflows/fig/running.png \;
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -vf -- {} ./userguide/defining_workflows/fig/running.png \;
 
 The resulting workflow can be seen in Figure :numref:`dependencies`
 

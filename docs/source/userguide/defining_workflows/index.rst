@@ -137,17 +137,15 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 .. runcmd:: cat ./userguide/defining_workflows/code/jobs_dependecy_previous.yml
 
-.. runcmd:: mv ./userguide/defining_workflows/code/jobs_dependecy_previous.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: mv -f ./userguide/defining_workflows/code/jobs_dependecy_previous.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd:: cat ./userguide/defining_workflows/code/exp_dependecy_previous.yml
 
-.. runcmd:: mv ./userguide/defining_workflows/code/exp_dependecy_previous.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
+.. runcmd:: mv -f ./userguide/defining_workflows/code/exp_dependecy_previous.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
 
 .. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
-
-.. runcmd:: ls /home/docs/autosubmit/a000/conf/
 
 .. code-block:: yaml
 
@@ -178,19 +176,7 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 .. runcmd:: autosubmit monitor a000 --hide -o png
 
-.. runcmd:: ls /home/docs/autosubmit/a000/
-
-.. runcmd:: ls /home/docs/autosubmit/a000/status/
-
-.. runcmd:: cat /home/docs/autosubmit/a000/status/a000_202*
-
-.. runcmd:: ls /home/docs/autosubmit/a000/plot/
-
-.. runcmd:: find / -type f -iname "a000_*.png"
-
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
-
-.. runcmd:: cat /home/docs/autosubmit/a000/status/*
 
 The resulting workflow can be seen in Figure :numref:`dprevious`
 

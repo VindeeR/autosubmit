@@ -436,7 +436,7 @@ an integer I for this attribute and the job will run only once for each I iterat
     :silent-output: 1
     :prompt:
 
-.. runcmd:: autosubmit create a000 --hide -o png
+.. runcmd:: sleep 1
     :silent-output: 1
     :prompt:
 
@@ -463,6 +463,10 @@ an integer I for this attribute and the job will run only once for each I iterat
           DEPENDENCIES: postprocess
           RUNNING: member
 
+
+.. runcmd:: autosubmit create a000 --hide -o png
+    :silent-output: 1
+    :prompt:
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000*.png" -exec mv -- {} ./userguide/defining_workflows/fig/frequency.png \;
     :silent-output: 1

@@ -432,6 +432,14 @@ an integer I for this attribute and the job will run only once for each I iterat
    You don't need to adjust the frequency to be a divisor of the total jobs. A job will always execute at the last
    iteration of its running level
 
+.. runcmd:: mv ./userguide/defining_workflows/code/job_frequency.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: autosubmit create a000 --hide -o png
+    :silent-output: 1
+    :prompt:
+
 .. code-block:: yaml
 
     JOBS:
@@ -454,6 +462,11 @@ an integer I for this attribute and the job will run only once for each I iterat
           FILE: combine.sh
           DEPENDENCIES: postprocess
           RUNNING: member
+
+
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000*.png" -exec mv -- {} ./userguide/defining_workflows/fig/frequency.png \;
+    :silent-output: 1
+    :prompt:
 
 
 The resulting workflow can be seen in Figure :numref:`frequency`

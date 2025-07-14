@@ -20,10 +20,13 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmd:: mv -v ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml && autosubmit monitor a000 --hide -o png
+.. runcmd:: mv -v ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
     :silent-output: 1
     :prompt:
 
+.. runcmd:: autosubmit monitor a000 --hide -o png
+    :silent-output: 1
+    :prompt:
 
 .. code-block:: yaml
 
@@ -462,8 +465,8 @@ an integer I for this attribute and the job will run only once for each I iterat
 
 
 .. runcmd:: autosubmit create a000 --hide -o png
-    :silent-output: 1
-    :prompt:
+
+.. runcmd:: ls /home/docs/autosubmit/a000/plot/
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000*.png" -exec mv -- {} ./userguide/defining_workflows/fig/frequency.png \;
     :silent-output: 1

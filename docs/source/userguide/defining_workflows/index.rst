@@ -182,7 +182,7 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 .. runcmd:: ls /home/docs/autosubmit/a000/status/
 
-.. runcmd:: ls /home/docs/autosubmit/a000/status/a000_202*
+.. runcmd:: cat /home/docs/autosubmit/a000/status/a000_202*
 
 .. runcmd:: ls /home/docs/autosubmit/a000/plot/
 

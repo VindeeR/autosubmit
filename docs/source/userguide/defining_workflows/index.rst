@@ -74,9 +74,9 @@ member and chunk corresponding to running once, once per startdate, once per mem
 
 .. runcmd:: ls ./userguide/defining_workflows/code/
 
-.. runcmd:: mv -v ./userguide/defining_workflows/code/jobs_startdate.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: mv -vf ./userguide/defining_workflows/code/jobs_startdate.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
-.. runcmd:: mv -v ./userguide/defining_workflows/code/exp_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
+.. runcmd:: mv -vf ./userguide/defining_workflows/code/exp_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
 
 .. runcmd:: ls ./userguide/defining_workflows/code/
 
@@ -215,7 +215,7 @@ jobs to be finished. That is the case of the postprocess combine dependency on t
 
 .. runcmd:: ls ./userguide/defining_workflows/code/
 
-.. runcmd:: mv -v ./userguide/defining_workflows/code/job_dependencies_running.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: mv -vf ./userguide/defining_workflows/code/job_dependencies_running.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd:: ls ./userguide/defining_workflows/code/
 
@@ -252,7 +252,7 @@ jobs to be finished. That is the case of the postprocess combine dependency on t
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png"
 
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -v -type f -iname "a000_*.png" -exec mv -v -- {} ./userguide/defining_workflows/fig/running.png \;
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -v -type f -iname "a000_*.png" -exec mv -vf -- {} ./userguide/defining_workflows/fig/running.png \;
 
 The resulting workflow can be seen in Figure :numref:`dependencies`
 

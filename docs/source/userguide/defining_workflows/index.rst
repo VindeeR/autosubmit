@@ -68,9 +68,13 @@ member and chunk corresponding to running once, once per startdate, once per mem
     :silent-output: 1
     :prompt:
 
+.. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
+
 .. runcmd:: mv ./userguide/defining_workflows/code/exp_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
     :silent-output: 1
     :prompt:
+
+.. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
 
 .. code-block:: yaml
 
@@ -141,9 +145,13 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 .. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
+.. runcmd:: cat ./userguide/defining_workflows/code/expdef_a000.yml
+
 .. runcmd:: cat ./userguide/defining_workflows/code/exp_dependecy_previous.yml
 
 .. runcmd:: rm -rf /home/docs/autosubmit/a000/conf/expdef_a000.yml
+
+.. runcmd:: cat ./userguide/defining_workflows/code/expdef_a000.yml
 
 .. runcmd:: mv -f ./userguide/defining_workflows/code/exp_dependecy_previous.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
 

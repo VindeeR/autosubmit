@@ -12,3 +12,8 @@ JOBS:
     FILE: postprocess.sh
     DEPENDENCIES: sim
     RUNNING: chunk
+
+  COMBINE:
+    FILE: combine.sh
+    DEPENDENCIES: postprocess
+    RUNNING: member

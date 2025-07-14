@@ -107,6 +107,8 @@ member and chunk corresponding to running once, once per startdate, once per mem
     :silent-output: 1
     :prompt:
 
+.. runcmd:: ls /home/docs/autosubmit/a000/plot/
+
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
     :silent-output: 1
     :prompt:
@@ -213,6 +215,14 @@ on the next example.
 In the other case, a job depending on a lower running level job, the higher level job will wait for ALL the lower level
 jobs to be finished. That is the case of the postprocess combine dependency on the next example.
 
+.. runcmd:: mv ./userguide/defining_workflows/code/jobs_startdate.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: mv ./userguide/defining_workflows/code/exp_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
+    :silent-output: 1
+    :prompt:
+
 .. code-block:: yaml
 
     JOBS:
@@ -235,6 +245,14 @@ jobs to be finished. That is the case of the postprocess combine dependency on t
         DEPENDENCIES: postprocess
         RUNNING: member
 
+
+.. runcmd:: autosubmit create a000 --hide -o png
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
+    :silent-output: 1
+    :prompt:
 
 The resulting workflow can be seen in Figure :numref:`dependencies`
 

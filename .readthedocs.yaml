@@ -20,7 +20,6 @@ build:
       # refs:
       # - https://earth.bsc.es/gitlab/es/autosubmit/-/merge_requests/340/
       # - https://yaml.readthedocs.io/en/latest/api.html
-      - sudo apt-get install sqlite3
       - pip uninstall ruamel.yaml.clib -y
       - autosubmit configure
       - autosubmit install

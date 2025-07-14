@@ -103,14 +103,12 @@ member and chunk corresponding to running once, once per startdate, once per mem
 
 
 .. runcmd:: ls -v /home/docs/autosubmit/a000/plot/
-    :prompt:
 
 .. runcmd:: autosubmit create a000 --hide -o png
     :silent-output: 1
     :prompt:
 
 .. runcmd:: ls -v /home/docs/autosubmit/a000/plot/
-    :prompt:
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
     :silent-output: 1
@@ -145,13 +143,10 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
     :prompt:
 
 .. runcmd:: ls -v /home/docs/autosubmit/a000/plot/
-    :prompt:
 
 .. runcmd:: rm /home/docs/autosubmit/a000/conf/expdef_a000.yml
-    :prompt:
 
 .. runcmd:: ls -v /home/docs/autosubmit/a000/plot/
-    :prompt:
 
 .. runcmd:: mv ./userguide/defining_workflows/code/exp_dependecy_previous.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
     :silent-output: 1
@@ -189,14 +184,12 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 
 .. runcmd:: ls -v /home/docs/autosubmit/a000/plot/
-    :prompt:
 
 .. runcmd:: autosubmit monitor a000 --hide -o png
     :silent-output: 1
     :prompt:
 
 .. runcmd:: ls -v /home/docs/autosubmit/a000/plot/
-    :prompt:
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
     :silent-output: 1

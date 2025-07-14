@@ -142,6 +142,9 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
     :silent-output: 1
     :prompt:
 
+.. runcmd:: cat /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
 
 .. code-block:: yaml
 
@@ -174,7 +177,9 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
     :silent-output: 1
     :prompt:
 
-.. runcmd:: find/home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
+.. runcmd:: ls /home/docs/autosubmit/a000/plot/
+
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
     :silent-output: 1
     :prompt:
 
@@ -210,6 +215,10 @@ jobs to be finished. That is the case of the postprocess combine dependency on t
     :silent-output: 1
     :prompt:
 
+.. runcmd:: autosubmit create a000 --hide -o png
+    :silent-output: 1
+    :prompt:
+
 .. code-block:: yaml
 
     JOBS:
@@ -232,10 +241,6 @@ jobs to be finished. That is the case of the postprocess combine dependency on t
         DEPENDENCIES: postprocess
         RUNNING: member
 
-
-.. runcmd:: autosubmit create a000 --hide -o png
-    :silent-output: 1
-    :prompt:
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -vf -- {} ./userguide/defining_workflows/fig/running.png \;
     :silent-output: 1

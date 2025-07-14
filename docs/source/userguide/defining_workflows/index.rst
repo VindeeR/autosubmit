@@ -43,14 +43,6 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     :silent-output: 1
     :prompt:
 
-.. runcmd:: chmod 777 /home/docs/autosubmit/a000/conf/*
-
-.. runcmd:: chmod 777 /home/docs/autosubmit/a000/conf/
-
-.. runcmd:: chmod -R 777 /home/docs/autosubmit/a000/conf/*
-
-.. runcmd:: chmod -R 777 /home/docs/autosubmit/a000/conf/
-
 The resulting workflow can be seen in Figure :numref:`simple`
 
 .. figure:: fig/simple.png
@@ -145,13 +137,13 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 .. runcmd:: mv -f ./userguide/defining_workflows/code/jobs_dependecy_previous.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
-.. runcmd:: ls -l /home/docs/autosubmit/a000/conf/
-
 .. runcmd:: cat ./userguide/defining_workflows/code/exp_dependecy_previous.yml
 
 .. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
 
-.. runcmd:: rm -f /home/docs/autosubmit/a000/conf/expdef_a000.yml
+.. runcmd:: mv -f /home/docs/autosubmit/a000/conf/expdef_a000.yml /
+
+.. runcmd:: ls /home/docs/autosubmit/a000/conf/
 
 .. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
 

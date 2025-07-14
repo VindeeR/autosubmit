@@ -165,7 +165,7 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
       RUNNING: chunk
 
 
-.. runcmd:: autosubmit monitor a001 --hide -o png
+.. runcmd:: autosubmit create a001 --hide -o png
 
 .. runcmd:: find /home/docs/autosubmit/a001/plot/ -type f -iname "a001_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
 
@@ -199,7 +199,7 @@ jobs to be finished. That is the case of the postprocess combine dependency on t
 
 .. runcmd:: mv -vf ./userguide/defining_workflows/code/job_dependencies_running.yml /home/docs/autosubmit/a001/conf/jobs_a001.yml
 
-.. runcmd:: autosubmit create a001 --hide -o png
+.. runcmd:: autosubmit monitor a001 --hide -o png
 
 .. code-block:: yaml
 

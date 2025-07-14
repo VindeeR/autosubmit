@@ -139,13 +139,19 @@ Autosubmit can manage dependencies between jobs that are part of different chunk
 example will show how to make a simulation job wait for the previous chunk of the simulation. To do that, we add
 sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much dependencies as you like separated by spaces
 
-.. runcmd:: ls -l /home/docs/autosubmit/a000/plot/*
+.. runcmd:: ls /home/docs/autosubmit/a000/plot/
+
+.. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
 
 .. runcmd:: rm -rf /home/docs/autosubmit/a000/plot/*
 
 .. runcmd:: mv ./userguide/defining_workflows/code/jobs_dependecy_previous.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. runcmd:: mv ./userguide/defining_workflows/code/exp_dependecy_previous.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
+
+.. runcmd:: ls /home/docs/autosubmit/a000/plot/
+
+.. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
 
 .. runcmd:: ls -l /home/docs/autosubmit/a000/plot/*
 
@@ -178,6 +184,10 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 
 .. runcmd:: autosubmit create a000 --hide -o png
+
+.. runcmd:: ls /home/docs/autosubmit/a000/plot/
+
+.. runcmd:: ls -l /home/docs/autosubmit/a000/plot/
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
 

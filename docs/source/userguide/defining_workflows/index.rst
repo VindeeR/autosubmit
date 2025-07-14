@@ -134,9 +134,9 @@ Autosubmit can manage dependencies between jobs that are part of different chunk
 example will show how to make a simulation job wait for the previous chunk of the simulation. To do that, we add
 sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much dependencies as you like separated by spaces
 
-.. runcmd:: mv ./userguide/defining_workflows/code/job_dependecy_previous.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: mv ./userguide/defining_workflows/code/job_dependecy_previous.yml /home/docs/autosubmit/a001/conf/jobs_a001.yml
 
-.. runcmd:: mv ./userguide/defining_workflows/code/exp_dependecy_previous.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
+.. runcmd:: mv ./userguide/defining_workflows/code/exp_dependecy_previous.yml /home/docs/autosubmit/a001/conf/expdef_a001.yml
 
 .. code-block:: yaml
 
@@ -165,9 +165,9 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
       RUNNING: chunk
 
 
-.. runcmd:: autosubmit create a000 --hide -o png
+.. runcmd:: autosubmit create a001 --hide -o png
 
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
+.. runcmd:: find /home/docs/autosubmit/a001/plot/ -type f -iname "a001_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
 
 The resulting workflow can be seen in Figure :numref:`dprevious`
 
@@ -196,9 +196,9 @@ on the next example.
 In the other case, a job depending on a lower running level job, the higher level job will wait for ALL the lower level
 jobs to be finished. That is the case of the postprocess combine dependency on the next example.
 
-.. runcmd:: mv -vf ./userguide/defining_workflows/code/job_dependencies_running.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+.. runcmd:: mv -vf ./userguide/defining_workflows/code/job_dependencies_running.yml /home/docs/autosubmit/a001/conf/jobs_a001.yml
 
-.. runcmd:: autosubmit monitor a000 --hide -o png
+.. runcmd:: autosubmit monitor a001 --hide -o png
 
 .. code-block:: yaml
 
@@ -223,7 +223,7 @@ jobs to be finished. That is the case of the postprocess combine dependency on t
         RUNNING: member
 
 
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -vf -- {} ./userguide/defining_workflows/fig/dependencies_running.png \;
+.. runcmd:: find /home/docs/autosubmit/a001/plot/ -type f -iname "a001_*.png" -exec mv -vf -- {} ./userguide/defining_workflows/fig/dependencies_running.png \;
 
 The resulting workflow can be seen in Figure :numref:`dependencies`
 

@@ -28,10 +28,6 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     :silent-output: 1
     :prompt:
 
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
-    :silent-output: 1
-    :prompt:
-
 .. code-block:: yaml
 
   JOBS:
@@ -42,6 +38,10 @@ be finished before launching the job that has the DEPENDENCIES attribute.
       FILE: two.sh
       DEPENDENCIES: One
 
+
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
+    :silent-output: 1
+    :prompt:
 
 The resulting workflow can be seen in Figure :numref:`simple`
 
@@ -76,14 +76,6 @@ member and chunk corresponding to running once, once per startdate, once per mem
     :silent-output: 1
     :prompt:
 
-.. runcmd:: autosubmit create a000 --hide -o png
-    :silent-output: 1
-    :prompt:
-
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
-    :silent-output: 1
-    :prompt:
-
 .. code-block:: yaml
 
     EXPERIMENT:
@@ -114,6 +106,14 @@ member and chunk corresponding to running once, once per startdate, once per mem
           DEPENDENCIES: member
           RUNNING: chunk
 
+
+.. runcmd:: autosubmit create a000 --hide -o png
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
+    :silent-output: 1
+    :prompt:
 
 The resulting workflow can be seen in Figure :numref:`running` for a experiment with 2 startdates, 2 members and 2 chunks.
 
@@ -151,13 +151,7 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
     :silent-output: 1
     :prompt:
 
-.. runcmd:: autosubmit create a000 --hide -o png
-    :silent-output: 1
-    :prompt:
-
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
-    :silent-output: 1
-    :prompt:
+.. runcmd:: ls -l /home/docs/autosubmit/a000/plot/*
 
 
 .. code-block:: yaml
@@ -186,6 +180,16 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
       DEPENDENCIES: sim
       RUNNING: chunk
 
+
+.. runcmd:: autosubmit create a000 --hide -o png
+    :silent-output: 1
+    :prompt:
+
+.. runcmd:: ls -l /home/docs/autosubmit/a000/plot/*
+
+.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
+    :silent-output: 1
+    :prompt:
 
 The resulting workflow can be seen in Figure :numref:`dprevious`
 

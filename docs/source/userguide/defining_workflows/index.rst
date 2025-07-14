@@ -20,13 +20,9 @@ first one.
 It is important to remember when defining workflows that DEPENDENCIES on autosubmit always refer to jobs that should
 be finished before launching the job that has the DEPENDENCIES attribute.
 
-.. runcmd:: ls ./userguide/defining_workflows/code/
-
 .. runcmd:: mv -v ./userguide/defining_workflows/code/simple_job.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
     :silent-output: 1
     :prompt:
-
-.. runcmd:: ls ./userguide/defining_workflows/code/
 
 .. runcmd:: autosubmit monitor a000 --hide -o png
     :silent-output: 1
@@ -43,15 +39,9 @@ be finished before launching the job that has the DEPENDENCIES attribute.
       DEPENDENCIES: One
 
 
-.. runcmd:: ls /home/docs/autosubmit/a000/plot/
-
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/simple.png \;
     :silent-output: 1
     :prompt:
-
-.. runcmd:: rm -v /home/docs/autosubmit/a000/plot/
-
-.. runcmd:: ls /home/docs/autosubmit/a000/plot/
 
 The resulting workflow can be seen in Figure :numref:`simple`
 
@@ -73,14 +63,13 @@ divide member execution on different chunks.
 To set at what level a job has to run you have to use the RUNNING attribute. It has four possible values: once, date,
 member and chunk corresponding to running once, once per startdate, once per member or once per chunk respectively.
 
-
-.. runcmd:: ls ./userguide/defining_workflows/code/
-
 .. runcmd:: mv -vf ./userguide/defining_workflows/code/jobs_startdate.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+    :silent-output: 1
+    :prompt:
 
 .. runcmd:: mv -vf ./userguide/defining_workflows/code/exp_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
-
-.. runcmd:: ls ./userguide/defining_workflows/code/
+    :silent-output: 1
+    :prompt:
 
 .. code-block:: yaml
 
@@ -117,13 +106,9 @@ member and chunk corresponding to running once, once per startdate, once per mem
     :silent-output: 1
     :prompt:
 
-.. runcmd:: ls /home/docs/autosubmit/a000/plot/
-
-.. runcmd:: ls ./userguide/defining_workflows/code/
-
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/running.png \;
-
-.. runcmd:: ls /home/docs/autosubmit/a000/plot/
+    :silent-output: 1
+    :prompt:
 
 The resulting workflow can be seen in Figure :numref:`running` for a experiment with 2 startdates, 2 members and 2 chunks.
 
@@ -178,14 +163,12 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 
 .. runcmd:: autosubmit monitor a000 --hide -o png
-
-.. runcmd:: ls /home/docs/autosubmit/a000/plot/
-
-.. runcmd:: find/home/docs/autosubmit/a000/ -type f -iname "a000_*.png"
-
-.. runcmd:: find/home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png"
+    :silent-output: 1
+    :prompt:
 
 .. runcmd:: find/home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -- {} ./userguide/defining_workflows/fig/dependencies_previous.png \;
+    :silent-output: 1
+    :prompt:
 
 The resulting workflow can be seen in Figure :numref:`dprevious`
 
@@ -215,11 +198,9 @@ In the other case, a job depending on a lower running level job, the higher leve
 jobs to be finished. That is the case of the postprocess combine dependency on the next example.
 
 
-.. runcmd:: ls ./userguide/defining_workflows/code/
-
 .. runcmd:: mv -vf ./userguide/defining_workflows/code/job_dependencies_running.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd:: ls ./userguide/defining_workflows/code/
+    :silent-output: 1
+    :prompt:
 
 .. code-block:: yaml
 
@@ -248,13 +229,9 @@ jobs to be finished. That is the case of the postprocess combine dependency on t
     :silent-output: 1
     :prompt:
 
-.. runcmd:: ls /home/docs/autosubmit/a000/plot/
-
-.. runcmd:: find /home/docs/autosubmit/a000/ -type f -iname "a000_*.png"
-
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png"
-
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000_*.png" -exec mv -vf -- {} ./userguide/defining_workflows/fig/running.png \;
+    :silent-output: 1
+    :prompt:
 
 The resulting workflow can be seen in Figure :numref:`dependencies`
 

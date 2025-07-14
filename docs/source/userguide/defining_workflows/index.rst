@@ -137,7 +137,6 @@ Autosubmit can manage dependencies between jobs that are part of different chunk
 example will show how to make a simulation job wait for the previous chunk of the simulation. To do that, we add
 sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much dependencies as you like separated by spaces
 
-.. runcmd:: mv -f ./userguide/defining_workflows/code/jobs_dependecy_previous.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
 .. code-block:: yaml
 

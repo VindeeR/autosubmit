@@ -139,9 +139,11 @@ sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much depende
 
 .. runcmd:: cat ./userguide/defining_workflows/code/exp_dependecy_previous.yml
 
+.. runcmd:: cp -f ./userguide/defining_workflows/code/exp_dependecy_previous.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
+
 .. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
 
-.. runcmd:: mv -f /home/docs/autosubmit/a000/conf/expdef_a000.yml /
+.. runcmd:: mv -f /home/docs/autosubmit/a000/conf/expdef_a000.yml ./
 
 .. runcmd:: ls /home/docs/autosubmit/a000/conf/
 

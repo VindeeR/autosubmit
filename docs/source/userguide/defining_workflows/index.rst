@@ -68,13 +68,9 @@ member and chunk corresponding to running once, once per startdate, once per mem
     :silent-output: 1
     :prompt:
 
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
-
 .. runcmd:: mv ./userguide/defining_workflows/code/exp_startdate.yml /home/docs/autosubmit/a000/conf/expdef_a000.yml
     :silent-output: 1
     :prompt:
-
-.. runcmd:: cat /home/docs/autosubmit/a000/conf/expdef_a000.yml
 
 .. code-block:: yaml
 
@@ -140,6 +136,10 @@ example will show how to make a simulation job wait for the previous chunk of th
 sim-1 on the DEPENDENCIES attribute. As you can see, you can add as much dependencies as you like separated by spaces
 
 .. runcmd:: mv -f ./userguide/defining_workflows/code/jobs_dependecy_previous.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd:: ls -l /home/docs/autosubmit/a000/conf/
+
+.. runcmd:: ls -l /home/docs/autosubmit/a000/conf/*
 
 .. runcmd:: cat ./userguide/defining_workflows/code/exp_dependecy_previous.yml
 

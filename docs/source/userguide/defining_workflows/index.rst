@@ -389,12 +389,6 @@ The amount of calls is strongly related to the ``FROM_STEP`` value.
   ## compute some more stuff
   as_checkpoint
 
-.. runcmd:: autosubmit delete a000 -f
-
-.. runcmd:: autosubmit expid -dm -H "local" -d "Tutorial"
-
-.. runcmd:: autosubmit create a000 --hide -o png
-
 
 To select an specific task, you have to combine the ``STATUS`` and ``CHUNKS_TO`` , ``MEMBERS_TO`` and ``DATES_TO``, ``SPLITS_TO`` keywords.
 
@@ -435,12 +429,6 @@ an integer I for this attribute and the job will run only once for each I iterat
    You don't need to adjust the frequency to be a divisor of the total jobs. A job will always execute at the last
    iteration of its running level
 
-.. runcmd:: mv ./userguide/defining_workflows/code/job_frequency.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
-
-.. runcmd:: ls ./userguide/defining_workflows/code/
-
-.. runcmd:: ls /home/docs/autosubmit/a000/conf/
-
 .. code-block:: yaml
 
     JOBS:
@@ -463,16 +451,6 @@ an integer I for this attribute and the job will run only once for each I iterat
           FILE: combine.sh
           DEPENDENCIES: postprocess
           RUNNING: member
-
-
-.. runcmd:: autosubmit monitor a000 --hide -o png
-
-.. runcmd:: ls /home/docs/autosubmit/a000/plot/
-
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000*.png"
-
-.. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000*.png" -exec mv -- {} ./userguide/defining_workflows/fig/frequency.png \;
-
 
 The resulting workflow can be seen in Figure :numref:`frequency`
 

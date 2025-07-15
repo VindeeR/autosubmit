@@ -389,7 +389,7 @@ The amount of calls is strongly related to the ``FROM_STEP`` value.
   ## compute some more stuff
   as_checkpoint
 
-.. runcmd:: autosubmit delete a000
+.. runcmd:: autosubmit delete a000 -f
 
 
 To select an specific task, you have to combine the ``STATUS`` and ``CHUNKS_TO`` , ``MEMBERS_TO`` and ``DATES_TO``, ``SPLITS_TO`` keywords.

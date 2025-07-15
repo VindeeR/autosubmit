@@ -390,8 +390,6 @@ The amount of calls is strongly related to the ``FROM_STEP`` value.
   as_checkpoint
 
 .. runcmd:: autosubmit delete a000
-    :silent-output: 1
-    :prompt:
 
 
 To select an specific task, you have to combine the ``STATUS`` and ``CHUNKS_TO`` , ``MEMBERS_TO`` and ``DATES_TO``, ``SPLITS_TO`` keywords.
@@ -423,8 +421,6 @@ To select an specific task, you have to combine the ``STATUS`` and ``CHUNKS_TO``
 
 
 .. runcmd:: autosubmit expid -dm -H "local" -d "Tutorial"
-    :silent-output: 1
-    :prompt:
 
 Job frequency
 ~~~~~~~~~~~~~
@@ -438,12 +434,6 @@ an integer I for this attribute and the job will run only once for each I iterat
    iteration of its running level
 
 .. runcmd:: mv ./userguide/defining_workflows/code/job_frequency.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
-    :silent-output: 1
-    :prompt:
-
-.. runcmd:: sleep 1
-    :silent-output: 1
-    :prompt:
 
 .. code-block:: yaml
 
@@ -476,8 +466,6 @@ an integer I for this attribute and the job will run only once for each I iterat
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000*.png"
 
 .. runcmd:: find /home/docs/autosubmit/a000/plot/ -type f -iname "a000*.png" -exec mv -- {} ./userguide/defining_workflows/fig/frequency.png \;
-    :silent-output: 1
-    :prompt:
 
 
 The resulting workflow can be seen in Figure :numref:`frequency`

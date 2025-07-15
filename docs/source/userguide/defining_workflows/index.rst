@@ -28,6 +28,26 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     :silent-output: 1
     :prompt:
 
+.. literalinclude:: ./userguide/defining_workflows/code/simple_job.yml
+   :language: yaml
+   :linenos:
+
+
+.. literalinclude:: ./userguide/defining_workflows/code/simple_job.yml
+   :language: yml
+   :linenos:
+
+
+.. literalinclude:: userguide/defining_workflows/code/simple_job.yml
+   :language: yml
+   :linenos:
+
+
+.. literalinclude:: /userguide/defining_workflows/code/simple_job.yml
+   :language: yml
+   :linenos:
+
+
 .. code-block:: yaml
 
   JOBS:

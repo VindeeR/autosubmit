@@ -437,6 +437,10 @@ an integer I for this attribute and the job will run only once for each I iterat
 
 .. runcmd:: mv ./userguide/defining_workflows/code/job_frequency.yml /home/docs/autosubmit/a000/conf/jobs_a000.yml
 
+.. runcmd:: ls ./userguide/defining_workflows/code/
+
+.. runcmd:: ls /home/docs/autosubmit/a000/conf/
+
 .. code-block:: yaml
 
     JOBS:
@@ -461,7 +465,7 @@ an integer I for this attribute and the job will run only once for each I iterat
           RUNNING: member
 
 
-.. runcmd:: autosubmit create a000 --hide -o png
+.. runcmd:: autosubmit monitor a000 --hide -o png
 
 .. runcmd:: ls /home/docs/autosubmit/a000/plot/
 

@@ -391,6 +391,8 @@ The amount of calls is strongly related to the ``FROM_STEP`` value.
 
 .. runcmd:: autosubmit delete a000 -f
 
+.. runcmd:: autosubmit create a000 --hide -o png
+
 
 To select an specific task, you have to combine the ``STATUS`` and ``CHUNKS_TO`` , ``MEMBERS_TO`` and ``DATES_TO``, ``SPLITS_TO`` keywords.
 

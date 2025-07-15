@@ -24,30 +24,6 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     :silent-output: 1
     :prompt:
 
-.. runcmd:: autosubmit monitor a000 --hide -o png
-    :silent-output: 1
-    :prompt:
-
-.. literalinclude:: ./userguide/defining_workflows/code/simple_job.yml
-   :language: yaml
-   :linenos:
-
-
-.. literalinclude:: ./userguide/defining_workflows/code/simple_job.yml
-   :language: yml
-   :linenos:
-
-
-.. literalinclude:: userguide/defining_workflows/code/simple_job.yml
-   :language: yml
-   :linenos:
-
-
-.. literalinclude:: /userguide/defining_workflows/code/simple_job.yml
-   :language: yml
-   :linenos:
-
-
 .. code-block:: yaml
 
   JOBS:
@@ -413,6 +389,10 @@ The amount of calls is strongly related to the ``FROM_STEP`` value.
   ## compute some more stuff
   as_checkpoint
 
+.. runcmd:: autosubmit delete a000
+    :silent-output: 1
+    :prompt:
+
 
 To select an specific task, you have to combine the ``STATUS`` and ``CHUNKS_TO`` , ``MEMBERS_TO`` and ``DATES_TO``, ``SPLITS_TO`` keywords.
 
@@ -440,6 +420,11 @@ To select an specific task, you have to combine the ``STATUS`` and ``CHUNKS_TO``
         B:
           SPLIT_TO: "2"
           STATUS: "RUNNING"
+
+
+.. runcmd:: autosubmit expid -dm -H "local" -d "Tutorial"
+    :silent-output: 1
+    :prompt:
 
 Job frequency
 ~~~~~~~~~~~~~

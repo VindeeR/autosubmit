@@ -21,6 +21,9 @@ build:
       # - https://earth.bsc.es/gitlab/es/autosubmit/-/merge_requests/340/
       # - https://yaml.readthedocs.io/en/latest/api.html
       - pip uninstall ruamel.yaml.clib -y
+      - mktemp -d
+      - AUTOSUBMIT_CONFIGURATION=$(mktemp -d)
+      - echo $AUTOSUBMIT_CONFIGURATION
       - autosubmit configure
       - autosubmit install
 

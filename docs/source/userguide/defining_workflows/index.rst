@@ -24,6 +24,10 @@ be finished before launching the job that has the DEPENDENCIES attribute.
     :silent-output: 1
     :prompt:
 
+.. runcmd:: autosubmit monitor a000 --hide -o png
+    :silent-output: 1
+    :prompt:
+
 .. code-block:: yaml
 
   JOBS:

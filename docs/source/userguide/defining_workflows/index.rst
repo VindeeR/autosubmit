@@ -391,6 +391,8 @@ The amount of calls is strongly related to the ``FROM_STEP`` value.
 
 .. runcmd:: autosubmit delete a000 -f
 
+.. runcmd:: autosubmit expid -dm -H "local" -d "Tutorial"
+
 .. runcmd:: autosubmit create a000 --hide -o png
 
 
@@ -421,8 +423,6 @@ To select an specific task, you have to combine the ``STATUS`` and ``CHUNKS_TO``
           SPLIT_TO: "2"
           STATUS: "RUNNING"
 
-
-.. runcmd:: autosubmit expid -dm -H "local" -d "Tutorial"
 
 Job frequency
 ~~~~~~~~~~~~~

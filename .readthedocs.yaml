@@ -25,6 +25,9 @@ build:
       - AUTOSUBMIT_CONFIGURE=$(mktemp -d) autosubmit install
       - chmod +x ./docs/source/env.sh
       - ./docs/source/env.sh
+      - ls
+      - ls tmp/
+      - ls $AUTOSUBMIT_CONFIGURE
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

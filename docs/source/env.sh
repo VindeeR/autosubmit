@@ -1,6 +1,8 @@
 # shellcheck disable=SC2155
 export AUTOSUBMIT_CONFIGURATION=$(mktemp -d)
 
+echo $AUTOSUBMIT_CONFIGURATION
+
 touch $AUTOSUBMIT_CONFIGURATION/.autosubmitrc
 
 cat <<EOF > $AUTOSUBMIT_CONFIGURATION/.autosubmitrc

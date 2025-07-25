@@ -22,6 +22,7 @@ build:
       # - https://yaml.readthedocs.io/en/latest/api.html
       - pip uninstall ruamel.yaml.clib -y
       - tmp_configure=$(mktemp -d)
+      - echo tmp_configure
       - AUTOSUBMIT_CONFIGURE=$tmp_configure autosubmit configure
       - AUTOSUBMIT_CONFIGURE=$tmp_configure autosubmit install
 

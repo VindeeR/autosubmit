@@ -67,7 +67,6 @@ member and chunk corresponding to running once, once per startdate, once per mem
       NUMCHUNKS: '2'
       CHUNKINI: ''
       CALENDAR: standard
-      
     JOBS:
       ONCE:
           FILE: Once.sh

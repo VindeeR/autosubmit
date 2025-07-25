@@ -26,6 +26,7 @@ build:
       - ls
       - ls autosubmit/
       - ls /home/docs/
+      - ls /home/docs/autosubmit/
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

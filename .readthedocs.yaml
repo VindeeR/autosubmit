@@ -12,6 +12,7 @@ build:
     python: "3.9"
   apt_packages:
     - graphviz
+    - sqlite3
   jobs:
     post_install:
       # ruamel.yaml.clib appears to cause the build to fail when
@@ -20,8 +21,13 @@ build:
       # - https://earth.bsc.es/gitlab/es/autosubmit/-/merge_requests/340/
       # - https://yaml.readthedocs.io/en/latest/api.html
       - pip uninstall ruamel.yaml.clib -y
-      - autosubmit configure
-      - autosubmit install
+      - AUTOSUBMIT_CONFIGURE=$(mktemp -d) autosubmit configure
+      - AUTOSUBMIT_CONFIGURE=$(mktemp -d) autosubmit install
+      - chmod +x ./docs/source/env.sh
+      - ./docs/source/env.sh
+      - ls
+      - ls /tmp/
+      - ls $AUTOSUBMIT_CONFIGURE
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

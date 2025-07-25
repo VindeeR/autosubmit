@@ -81,12 +81,12 @@ class AutosubmitFigureDirective(code.CodeBlock):
         if self.options.get('name'):
             path_from = f"{self.env.srcdir}/{self.options.get('path')}/code/job_{self.options.get('name')}.yml"
             if Path(path_from).is_file():
-                path_to = f"/home/docs/autosubmit/a000/conf/jobs_a000.yml"
+                path_to = f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/conf/jobs_a000.yml"
                 shutil.move(path_from, path_to)
 
             path_from = f"{self.env.srcdir}/{self.options.get('path')}/code/exp_{self.options.get('name')}.yml"
             if Path(path_from).is_file():
-                path_to = f"/home/docs/autosubmit/a000/conf/expdef_a000.yml"
+                path_to = f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/conf/expdef_a000.yml"
                 shutil.move(path_from, path_to)
 
         command: str = f"autosubmit {self.options.get('command')} {self.options.get('expid')} --hide -o {self.options.get('type', 'png')}"
@@ -103,9 +103,9 @@ class AutosubmitFigureDirective(code.CodeBlock):
             state_machine=self.state_machine
         ).run()
 
-        for f in Path("/home/docs/autosubmit/a000/plot/").glob('*'):
+        for f in Path("{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/plot/").glob('*'):
             if f.is_file():
-                path_from = f"/home/docs/autosubmit/a000/plot/{f.name}"
+                path_from = f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/plot/{f.name}"
                 path_to = f"{self.env.srcdir}/{self.options.get('path')}/{self.options.get('figure')}"
                 shutil.move(path_from, path_to)
 

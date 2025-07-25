@@ -66,22 +66,42 @@ watch: clean
 			--watch='source' \
 			$(SPHINXOPTS) $(O)
 
+set_up:
+	@export AUTOSUBMIT_CONFIGURATION=$$(mktemp -d); \
+	touch $$AUTOSUBMIT_CONFIGURATION/.autosubmitrc; \
+	cat <<EOF > $$AUTOSUBMIT_CONFIGURATION/.autosubmitrc; \
+[database] \
+path = $$AUTOSUBMIT_CONFIGURATION/autosubmit \
+filename = autosubmit.db \
+[local] \
+path = $$AUTOSUBMIT_CONFIGURATION/autosubmit \
+[globallogs] \
+path = $$AUTOSUBMIT_CONFIGURATION/autosubmit/logs \
+[structures] \
+path = $$AUTOSUBMIT_CONFIGURATION/autosubmit/metadata/structures \
+[historicdb] \
+path = $$AUTOSUBMIT_CONFIGURATION/autosubmit/metadata/data \
+[historiclog] \
+path = $$AUTOSUBMIT_CONFIGURATION/autosubmit/metadata/logs \
+EOF; \
+	echo "AUTOSUBMIT_CONFIGURATION is set to: $$AUTOSUBMIT_CONFIGURATION"
+
 xml_coverage:
 	coverage run $$(which $(SPHINXBUILD)) -b xml $(ALLSPHINXOPTS) $(BUILDDIR)/xml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html. Coverage in $(BUILDDIR)/htmlcov."
 
-html:
+html: set_up
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
-dirhtml:
+dirhtml: set_up
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."
 
-singlehtml:
+singlehtml: set_up
 	$(SPHINXBUILD) -b singlehtml $(ALLSPHINXOPTS) $(BUILDDIR)/singlehtml
 	@echo
 	@echo "Build finished. The HTML page is in $(BUILDDIR)/singlehtml."
@@ -128,12 +148,12 @@ devhelp:
 	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/autosubmit"
 	@echo "# devhelp"
 
-epub:
+epub: set_up
 	$(SPHINXBUILD) -b epub $(ALLSPHINXOPTS) $(BUILDDIR)/epub
 	@echo
 	@echo "Build finished. The epub file is in $(BUILDDIR)/epub."
 
-latex:
+latex: set_up
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILDDIR)/latex
 	@echo
 	@echo "Build finished; the LaTeX files are in $(BUILDDIR)/latex."

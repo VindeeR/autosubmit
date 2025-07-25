@@ -24,8 +24,11 @@ build:
       - mktemp -d
       - AUTOSUBMIT_CONFIGURATION=$(mktemp -d)
       - echo $AUTOSUBMIT_CONFIGURATION
+      - export AUTOSUBMIT_CONFIGURATION=$(mktemp -d)
+      - echo $AUTOSUBMIT_CONFIGURATION
       - autosubmit configure
       - autosubmit install
+      - ls tmp/
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

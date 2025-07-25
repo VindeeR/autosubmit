@@ -1,8 +1,9 @@
-export AUTOSUBMIT_CONFIGURATION=$$(mktemp -d)
+# shellcheck disable=SC2155
+export AUTOSUBMIT_CONFIGURATION=$(mktemp -d)
 
 touch $$AUTOSUBMIT_CONFIGURATION/.autosubmitrc
 
-cat <<EOF > $$AUTOSUBMIT_CONFIGURATION/.autosubmitrc
+cat <<EOF > $AUTOSUBMIT_CONFIGURATION/.autosubmitrc
 [database]
 path = $$AUTOSUBMIT_CONFIGURATION/autosubmit
 filename = autosubmit.db

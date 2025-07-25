@@ -76,7 +76,7 @@ class AutosubmitFigureDirective(code.CodeBlock):
 
     def run(self):
         caption = self.options.get('caption')
-        AUTOSUBMIT_CONFIGURATION = 'home/docs/autosubmit'
+        AUTOSUBMIT_CONFIGURATION = 'home/docs'
         if 'AUTOSUBMIT_CONFIGURATION' in os.environ:
             AUTOSUBMIT_CONFIGURATION = os.environ['AUTOSUBMIT_CONFIGURATION']
 

@@ -23,8 +23,7 @@ build:
       - pip uninstall ruamel.yaml.clib -y
       - AUTOSUBMIT_CONFIGURE=$(mktemp -d) autosubmit configure
       - AUTOSUBMIT_CONFIGURE=$(mktemp -d) autosubmit install
-      - ls home/docs/autosubmit/docs/source/env.sh
-      - ls /home/docs/autosubmit/docs/source/env.sh
+      - ls /home/docs/autosubmit/docs/source/
       - chmod +x /home/docs/autosubmit/docs/source/env.sh
       - ./home/docs/autosubmit/docs/source/env.sh
 

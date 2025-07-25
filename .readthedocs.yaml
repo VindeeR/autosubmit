@@ -21,10 +21,9 @@ build:
       # - https://earth.bsc.es/gitlab/es/autosubmit/-/merge_requests/340/
       # - https://yaml.readthedocs.io/en/latest/api.html
       - pip uninstall ruamel.yaml.clib -y
-      - tmp_configure=$(mktemp -d)
-      - echo $tmp_configure
-      - AUTOSUBMIT_CONFIGURE=$tmp_configure autosubmit configure
-      - AUTOSUBMIT_CONFIGURE=$tmp_configure autosubmit install
+      - ls /autosubmit/
+      - AUTOSUBMIT_CONFIGURE=$(mktemp -d) autosubmit configure
+      - AUTOSUBMIT_CONFIGURE=$(mktemp -d) autosubmit install
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

@@ -5,6 +5,9 @@
 # Required
 version: 2
 
+env:
+  - AUTOSUBMIT_CONFIGURATION=$(mktemp -d)
+
 # Set the version of Python and other tools you might need
 build:
   os: ubuntu-22.04

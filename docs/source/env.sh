@@ -5,16 +5,16 @@ touch $AUTOSUBMIT_CONFIGURATION/.autosubmitrc
 
 cat <<EOF > $AUTOSUBMIT_CONFIGURATION/.autosubmitrc
 [database]
-path = $$AUTOSUBMIT_CONFIGURATION/autosubmit
+path = $AUTOSUBMIT_CONFIGURATION/autosubmit
 filename = autosubmit.db
 [local]
-path = $$AUTOSUBMIT_CONFIGURATION/autosubmit
+path = $AUTOSUBMIT_CONFIGURATION/autosubmit
 [globallogs]
-path = $$AUTOSUBMIT_CONFIGURATION/autosubmit/logs
+path = $AUTOSUBMIT_CONFIGURATION/autosubmit/logs
 [structures]
-path = $$AUTOSUBMIT_CONFIGURATION/autosubmit/metadata/structures
+path = $AUTOSUBMIT_CONFIGURATION/autosubmit/metadata/structures
 [historicdb]
-path = $$AUTOSUBMIT_CONFIGURATION/autosubmit/metadata/data
+path = $AUTOSUBMIT_CONFIGURATION/autosubmit/metadata/data
 [historiclog]
-path = $$AUTOSUBMIT_CONFIGURATION/autosubmit/metadata/logs
+path = $AUTOSUBMIT_CONFIGURATION/autosubmit/metadata/logs
 EOF

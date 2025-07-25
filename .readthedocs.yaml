@@ -23,15 +23,8 @@ build:
       - pip uninstall ruamel.yaml.clib -y
       - AUTOSUBMIT_CONFIGURE=$(mktemp -d) autosubmit configure
       - AUTOSUBMIT_CONFIGURE=$(mktemp -d) autosubmit install
-      - ls ./
-      - find -iname "*env.sh*"
-      - ls /home/
-      - ls /home/docs/
-      - ls /home/docs/autosubmit/
-      - ls /home/docs/autosubmit/docs/
-      - ls /home/docs/autosubmit/docs/source/
-      - chmod +x /home/docs/autosubmit/docs/source/env.sh
-      - ./home/docs/autosubmit/docs/source/env.sh
+      - chmod +x ./docs/source/env.sh
+      - ./docs/source/env.sh
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

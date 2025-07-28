@@ -1,6 +1,8 @@
 # shellcheck disable=SC2155
 export AUTOSUBMIT_CONFIGURATION=$(mktemp -d)
 
+touch $AUTOSUBMIT_CONFIGURATION/.autosubmitrc
+
 AS_CONFIG="[database]
 path = $AUTOSUBMIT_CONFIGURATION/autosubmit
 filename = autosubmit.db
@@ -20,10 +22,8 @@ path = $AUTOSUBMIT_CONFIGURATION/autosubmit/metadata/data
 [historiclog]
 path = $AUTOSUBMIT_CONFIGURATION/autosubmit/metadata/logs"
 
-cat <<EOF > ~/.autosubmitrc
-$AS_CONFIG
+cat <<EOF >> ~/.autosubmitrc
+echo $AS_CONFIG
 EOF
 
-mv ~/.autosubmitrc $AUTOSUBMIT_CONFIGURATION/.autosubmitrc
-
-mkdir $AUTOSUBMIT_CONFIGURATION/autosubmit/
+cat $AUTOSUBMIT_CONFIGURATION/.autosubmitrc

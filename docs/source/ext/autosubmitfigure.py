@@ -1,4 +1,3 @@
-import os
 import re
 import shutil
 
@@ -6,7 +5,6 @@ from docutils import nodes
 from docutils.parsers.rst import directives
 from pathlib import Path
 from sphinx.directives import code
-from sphinx.util.fileutil import copy_asset
 
 from docs.source.ext.runcmd import RunCmdDirective
 
@@ -80,16 +78,24 @@ class AutosubmitFigureDirective(code.CodeBlock):
         for f in Path("/tmp/").glob('*'):
             if "tmp." in f.name:
                 AUTOSUBMIT_CONFIGURATION = f.absolute()
+            else:
+                AUTOSUBMIT_CONFIGURATION = '~'
 
         if self.options.get('name'):
             path_from = f"{self.env.srcdir}/{self.options.get('path')}/code/job_{self.options.get('name')}.yml"
-            if Path(path_from).is_file():
-                path_to = f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/conf/jobs_a000.yml"
+            path_to = f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/conf/jobs_a000.yml"
+            print(path_from)
+            print(path_to)
+            print(Path(path_from).is_file())
+            print(Path(path_to).is_file())
+            if Path(path_from).is_file() and Path(path_to).is_file():
                 shutil.move(path_from, path_to)
 
             path_from = f"{self.env.srcdir}/{self.options.get('path')}/code/exp_{self.options.get('name')}.yml"
-            if Path(path_from).is_file():
-                path_to = f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/conf/expdef_a000.yml"
+            path_to = f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/conf/expdef_a000.yml"
+            print(path_from)
+            print(path_to)
+            if Path(path_from).is_file() and Path(path_to).is_file():
                 shutil.move(path_from, path_to)
 
         command: str = f"autosubmit {self.options.get('command')} {self.options.get('expid')} --hide -o {self.options.get('type', 'png')}"

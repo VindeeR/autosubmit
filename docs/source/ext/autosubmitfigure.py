@@ -1,6 +1,9 @@
+import os
 import re
 import shutil
+from os.path import expanduser
 
+from IPython.testing.decorators import skipif
 from docutils import nodes
 from docutils.parsers.rst import directives
 from pathlib import Path
@@ -74,27 +77,18 @@ class AutosubmitFigureDirective(code.CodeBlock):
 
     def run(self):
         caption = self.options.get('caption')
-
         for f in Path("/tmp/").glob('*'):
             if "tmp." in f.name:
                 AUTOSUBMIT_CONFIGURATION = f.absolute()
-            else:
-                AUTOSUBMIT_CONFIGURATION = '~'
 
         if self.options.get('name'):
             path_from = f"{self.env.srcdir}/{self.options.get('path')}/code/job_{self.options.get('name')}.yml"
             path_to = f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/conf/jobs_a000.yml"
-            print(path_from)
-            print(path_to)
-            print(Path(path_from).is_file())
-            print(Path(path_to).is_file())
             if Path(path_from).is_file() and Path(path_to).is_file():
                 shutil.move(path_from, path_to)
 
             path_from = f"{self.env.srcdir}/{self.options.get('path')}/code/exp_{self.options.get('name')}.yml"
             path_to = f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/conf/expdef_a000.yml"
-            print(path_from)
-            print(path_to)
             if Path(path_from).is_file() and Path(path_to).is_file():
                 shutil.move(path_from, path_to)
 
@@ -112,10 +106,10 @@ class AutosubmitFigureDirective(code.CodeBlock):
             state_machine=self.state_machine
         ).run()
 
-        for f in Path("{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/plot/").glob('*'):
+        for f in Path(f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/plot/").glob('*'):
+            path_from = f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/plot/{f.name}"
+            path_to = f"{self.env.srcdir}/{self.options.get('path')}/{self.options.get('figure')}"
             if f.is_file():
-                path_from = f"{AUTOSUBMIT_CONFIGURATION}/autosubmit/a000/plot/{f.name}"
-                path_to = f"{self.env.srcdir}/{self.options.get('path')}/{self.options.get('figure')}"
                 shutil.move(path_from, path_to)
 
         figure_node = nodes.figure()

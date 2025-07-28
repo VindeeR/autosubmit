@@ -1,3 +1,7 @@
+autosubmit configure
+
+autosubmit install
+
 # shellcheck disable=SC2155
 export AUTOSUBMIT_CONFIGURATION=$(mktemp -d)
 
@@ -28,8 +32,4 @@ EOF
 
 mkdir "$AUTOSUBMIT_CONFIGURATION"/autosubmit
 
-autosubmit configure
-
-autosubmit install
-
-autosubmit expid -d "test descript"
+mv ~/autosubmit/autosubmit.db "$AUTOSUBMIT_CONFIGURATION"/autosubmit

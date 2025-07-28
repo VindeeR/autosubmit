@@ -4,7 +4,6 @@ User Guide
 
 .. toctree::
    /userguide/create/index
-   /userguide/configure/index
    /userguide/defining_workflows/index
    /userguide/wrappers/index
    /userguide/run/index

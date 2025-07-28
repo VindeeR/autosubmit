@@ -76,9 +76,10 @@ class AutosubmitFigureDirective(code.CodeBlock):
 
     def run(self):
         caption = self.options.get('caption')
-        AUTOSUBMIT_CONFIGURATION = os.environ['AUTOSUBMIT_CONFIGURATION']
-        if 'AUTOSUBMIT_CONFIGURATION' in os.environ:
-            AUTOSUBMIT_CONFIGURATION = os.environ['AUTOSUBMIT_CONFIGURATION']
+
+        for f in Path("/tmp/").glob('*'):
+            if "tmp." in f.name:
+                AUTOSUBMIT_CONFIGURATION = f.absolute()
 
         if self.options.get('name'):
             path_from = f"{self.env.srcdir}/{self.options.get('path')}/code/job_{self.options.get('name')}.yml"

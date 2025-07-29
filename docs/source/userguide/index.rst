@@ -3,6 +3,7 @@ User Guide
 ##########
 
 .. toctree::
+   /userguide/configure/index.rst
    /userguide/create/index
    /userguide/defining_workflows/index
    /userguide/wrappers/index

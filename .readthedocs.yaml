@@ -16,6 +16,7 @@ build:
   apt_packages:
     - graphviz
     - sqlite3
+    - IPython
   jobs:
     post_install:
       - autosubmit --version

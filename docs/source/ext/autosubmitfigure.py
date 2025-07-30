@@ -55,18 +55,18 @@ class AutosubmitFigureDirective(code.CodeBlock):
             path_from = f"{self.env.srcdir}/{self.options.get('path')}/code/job_{self.options.get('name')}.yml"
             path_to = f"{self.env.app.outdir.parent}/autosubmit/autosubmit/a000/conf/jobs_a000.yml"
             print("============================1============================")
+            print(path_from)
+            print(path_to)
             if Path(path_from).is_file() and Path(path_to).is_file():
-                print(path_from)
-                print(path_to)
                 shutil.copy(path_from, path_to)
 
             path_from = f"{self.env.srcdir}/{self.options.get('path')}/code/exp_{self.options.get('name')}.yml"
             path_to = f"{self.env.app.outdir.parent}/autosubmit/autosubmit/a000/conf/expdef_a000.yml"
             print("============================2============================")
+            print(path_from)
+            print(path_to)
             print("============================2============================")
             if Path(path_from).is_file() and Path(path_to).is_file():
-                print(path_from)
-                print(path_to)
                 shutil.copy(path_from, path_to)
 
         command: str = f"autosubmit {self.options.get('command')} {self.options.get('expid')} --hide -o {self.options.get('type', 'png')}"
@@ -84,14 +84,14 @@ class AutosubmitFigureDirective(code.CodeBlock):
         ).run()
 
         for f in Path(f"{self.env.app.outdir.parent}/autosubmit/autosubmit/a000/plot/").glob('*'):
-            print("============================3============================")
-            print("============================3============================")
-            print("============================3============================")
             path_from = f"{self.env.app.outdir.parent}/autosubmit/autosubmit/a000/plot/{f.name}"
             path_to = f"{self.env.srcdir}/{self.options.get('path')}/{self.options.get('figure')}"
+            print("============================3============================")
+            print("============================3============================")
+            print(path_from)
+            print(path_to)
+            print("============================3============================")
             if f.is_file():
-                print(path_from)
-                print(path_to)
                 shutil.move(path_from, path_to)
 
         figure_node = nodes.figure()

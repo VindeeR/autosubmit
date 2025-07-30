@@ -31,6 +31,27 @@ be finished before launching the job that has the DEPENDENCIES attribute.
       DEPENDENCIES: One
 
 
+.. runcmd:: ls
+
+.. runcmd:: pwd
+
+.. runcmd:: ls build/html/_images/
+
+.. runcmd:: ls build/autosubmit/autosubmit/a000/plot/
+
+.. runcmd:: cat build/autosubmit/autosubmit/a000/conf/jobs_a000.yml
+
+.. runcmd:: cat build/autosubmit/autosubmit/a000/conf/expdef_a000.yml
+
+.. runcmd:: ls -lh source/userguide/defining_workflows/fig/
+
+.. runcmd:: ls source/
+
+.. runcmd:: ls ~/
+
+.. runcmd:: ls /
+
+
 .. autosubmitfigure::
     :command: create
     :expid: a000
@@ -67,7 +88,7 @@ member and chunk corresponding to running once, once per startdate, once per mem
       NUMCHUNKS: '2'
       CHUNKINI: ''
       CALENDAR: standard
-
+      
     JOBS:
       ONCE:
           FILE: Once.sh

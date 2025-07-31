@@ -19,6 +19,7 @@ build:
   jobs:
     build:
       html:
+        - cd docs
         - make html
     post_install:
       - autosubmit --version

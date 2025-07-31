@@ -17,6 +17,9 @@ build:
     - graphviz
     - sqlite3
   jobs:
+    build:
+      html:
+        - make html
     post_install:
       - autosubmit --version
       - autosubmit configure

@@ -1,5 +1,3 @@
-import os
-import re
 import shutil
 
 from docutils import nodes

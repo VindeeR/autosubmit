@@ -172,7 +172,7 @@ class RunCmdDirective(code.CodeBlock):
 
         # Add the prompt to our output if required
         if 'prompt' not in self.options:
-            output = f"$ {command}\n\n{output}"
+            output = f"$ {command}\n\nOutput:\n{output}"
 
         # Do our "replace" syntax on the command output
         for items in reader:

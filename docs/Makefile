@@ -109,13 +109,12 @@ watch: clean
 			$(SPHINXOPTS) $(O)
 
 xml_coverage:
+	$cd ..
 	coverage run $$(which $(SPHINXBUILD)) -b xml $(ALLSPHINXOPTS) $(BUILDDIR)/xml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html. Coverage in $(BUILDDIR)/htmlcov."
 
 html:
-	@echo $(ALLSPHINXOPTS)
-	@echo $(BUILDDIR)/xml
 	$(SPHINXBUILD) -M html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."

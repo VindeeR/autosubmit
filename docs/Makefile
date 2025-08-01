@@ -115,7 +115,7 @@ xml_coverage:
 
 html:
 	@echo "$(READTHEDOCS_OUTPUT)"
-	$(SPHINXBUILD) -M html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	$(SPHINXBUILD) -M html $(ALLSPHINXOPTS) ../../_readthedocs/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 

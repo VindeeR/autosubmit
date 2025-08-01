@@ -114,8 +114,7 @@ xml_coverage:
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html. Coverage in $(BUILDDIR)/htmlcov."
 
 html:
-	@echo "$(READTHEDOCS_OUTPUT)"
-	$(SPHINXBUILD) -M html $(ALLSPHINXOPTS) ../../_readthedocs/html
+	$(SPHINXBUILD) -M html $(ALLSPHINXOPTS) $(READTHEDOCS_OUTPUT)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 

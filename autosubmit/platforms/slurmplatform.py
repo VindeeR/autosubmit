@@ -26,13 +26,12 @@ from contextlib import suppress
 from time import sleep
 from typing import List, Union, Any, TYPE_CHECKING
 
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-
+from autosubmit.config.configcommon import AutosubmitConfig
 from autosubmit.job.job_common import Status
+from autosubmit.log.log import AutosubmitCritical, AutosubmitError, Log
 from autosubmit.platforms.headers.slurm_header import SlurmHeader
 from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.wrappers.wrapper_factory import SlurmWrapperFactory
-from log.log import AutosubmitCritical, AutosubmitError, Log
 
 if TYPE_CHECKING:
     # Avoid circular imports
@@ -666,7 +665,7 @@ class SlurmPlatform(ParamikoPlatform):
         :param list_queue_jobid: List of Job IDs concatenated.
         :type list_queue_jobid: str
         :param as_conf: experiment configuration.
-        :type as_conf: autosubmitconfigparser.config.AutosubmitConfig
+        :type as_conf: autosubmit.config.AutosubmitConfig
 
         :rtype:None
         """

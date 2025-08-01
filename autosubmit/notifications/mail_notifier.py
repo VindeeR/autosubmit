@@ -27,9 +27,8 @@ from tempfile import TemporaryDirectory
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-
-from log.log import AutosubmitError, Log
+from autosubmit.config.basicconfig import BasicConfig
+from autosubmit.log.log import AutosubmitError, Log
 
 if TYPE_CHECKING:
     from autosubmit.platforms.platform import Platform

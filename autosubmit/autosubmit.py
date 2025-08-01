@@ -40,9 +40,9 @@ from pathlib import Path
 from time import sleep
 from typing import Dict, Set, Tuple, Union, Any, List, Optional
 
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
+from autosubmit.config.basicconfig import BasicConfig
+from autosubmit.config.configcommon import AutosubmitConfig
+from autosubmit.config.yamlparser import YAMLParserFactory
 from bscearth.utils.date import date2str
 from portalocker import Lock
 from portalocker.exceptions import BaseLockException
@@ -80,7 +80,7 @@ from autosubmit.notifications.notifier import Notifier
 from autosubmit.platforms.paramiko_submitter import ParamikoSubmitter
 from autosubmit.platforms.platform import Platform
 from autosubmit.platforms.submitter import Submitter
-from log.log import Log, AutosubmitError, AutosubmitCritical
+from autosubmit.log.log import Log, AutosubmitError, AutosubmitCritical
 
 dialog = None
 
@@ -1184,7 +1184,7 @@ class Autosubmit:
             local: bool=False,
             parameters: Dict[str, Union[Dict, List, str]] = None
     ) -> None:
-        """Retrieve the configuration from autosubmitconfigparser package.
+        """Retrieve the configuration from autosubmit.config package.
 
         :param exp_id: Experiment ID
         :param dummy: Whether the experiment is a dummy one or not.
@@ -1234,13 +1234,13 @@ class Autosubmit:
                             yield '.'.join([*keys, key]).upper(), value
                         else:
                             yield key, value
-        template_files = [file.name for file in (read_files('autosubmitconfigparser.config')/'files').iterdir() if file.is_file()]
+        template_files = [file.name for file in (read_files('autosubmit.config')/'files').iterdir() if file.is_file()]
         if parameters is None:
             parameters = {}
         parameter_comments = dict(_recurse_into_parameters(parameters))
 
         for as_conf_file in template_files:
-            origin = str(read_files('autosubmitconfigparser.config')/f'files/{as_conf_file}')
+            origin = str(read_files('autosubmit.config')/f'files/{as_conf_file}')
             target = None
 
             if dummy:
@@ -2011,7 +2011,7 @@ class Autosubmit:
         :return: a tuple
         """
         host = platform.node()
-        # Init the autosubmitconfigparser and check that every file exists and it is a valid configuration.
+        # Init the AutosubmitConfig and check that every file exists, and it is a valid configuration.
         as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
         as_conf.check_conf_files(running_time=True, force_load=True)
         if not recover:
@@ -2310,7 +2310,6 @@ class Autosubmit:
                         job_list.update_list(as_conf, submitter=submitter)
                         job_list.save()
                         # Submit jobs that are ready to run
-                        #Log.debug(f"FD submit: {fd_show.fd_table_status_str()}")
                         if len(job_list.get_ready()) > 0:
                             Autosubmit.submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence, hold=False)
                             job_list.update_list(as_conf, submitter=submitter)
@@ -2344,13 +2343,9 @@ class Autosubmit:
                             job_list.save()
                             as_conf.save()
                         time.sleep(safetysleeptime)
-                        #Log.debug(f"FD endsubmit: {fd_show.fd_table_status_str()}")
-
-
                     except AutosubmitError as e:  # If an error is detected, restore all connections and job_list
                         Log.error("Trace: {0}", e.trace)
                         Log.error("{1} [eCode={0}]", e.code, e.message)
-                        # Log.debug("FD recovery: {0}".format(log.fd_show.fd_table_status_str()))
                         # No need to wait until the remote platform reconnection
                         recovery = False
                         as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())

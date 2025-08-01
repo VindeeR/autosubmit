@@ -25,10 +25,9 @@ from shutil import rmtree
 from time import time
 from typing import List, Optional, Union
 
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-
-from log.log import Log, AutosubmitCritical
+from autosubmit.config.basicconfig import BasicConfig
+from autosubmit.config.configcommon import AutosubmitConfig
+from autosubmit.log.log import Log, AutosubmitCritical
 
 Log.get_logger("Autosubmit")
 

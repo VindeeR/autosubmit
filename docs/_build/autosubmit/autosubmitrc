@@ -1,0 +1,18 @@
+ [database]
+ path = /home/edoria/Desktop/vinderRepoAuto/autosubmit/docs/_build/autosubmit/autosubmit
+ filename = autosubmit.db
+ 
+ [local]
+ path = /home/edoria/Desktop/vinderRepoAuto/autosubmit/docs/_build/autosubmit/autosubmit
+ 
+ [globallogs]
+ path = /home/edoria/Desktop/vinderRepoAuto/autosubmit/docs/_build/autosubmit/autosubmit/logs
+ 
+ [structures]
+ path = /home/edoria/Desktop/vinderRepoAuto/autosubmit/docs/_build/autosubmit/autosubmit/metadata/structures
+ 
+ [historicdb]
+ path = /home/edoria/Desktop/vinderRepoAuto/autosubmit/docs/_build/autosubmit/autosubmit/metadata/data
+ 
+ [historiclog]
+ path = /home/edoria/Desktop/vinderRepoAuto/autosubmit/docs/_build/autosubmit/autosubmit/metadata/logs

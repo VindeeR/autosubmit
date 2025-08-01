@@ -13,6 +13,9 @@ build:
   apt_packages:
     - graphviz
   jobs:
+    build:
+      html:
+        - make html -C ./docs/
     post_install:
       - autosubmit --version
       - autosubmit configure

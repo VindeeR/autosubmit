@@ -15,19 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-import builtins
 import inspect
 import os
 import pwd
 import re
-import sys
 import tempfile
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from textwrap import dedent
 from time import time
-from typing import Any
 
 import pytest
 from bscearth.utils.date import date2str
@@ -35,18 +32,18 @@ from mock import Mock, MagicMock
 from mock.mock import patch
 
 from autosubmit.autosubmit import Autosubmit
+from autosubmit.config.configcommon import AutosubmitConfig
+from autosubmit.config.configcommon import BasicConfig, YAMLParserFactory
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_list import JobList
 from autosubmit.job.job_list_persistence import JobListPersistencePkl
 from autosubmit.job.job_utils import calendar_chunk_section
 from autosubmit.job.job_utils import get_job_package_code, SubJob, SubJobManager
+from autosubmit.log.log import AutosubmitCritical
 from autosubmit.platforms.platform import Platform
 from autosubmit.platforms.psplatform import PsPlatform
 from autosubmit.platforms.slurmplatform import SlurmPlatform
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-from autosubmitconfigparser.config.configcommon import BasicConfig, YAMLParserFactory
-from log.log import AutosubmitCritical
 
 """Tests for the Autosubmit ``Job`` class."""
 
@@ -155,7 +152,7 @@ class TestJob:
 
         assert initial_fail_count + 1 == incremented_fail_count
 
-    @patch('autosubmitconfigparser.config.basicconfig.BasicConfig')
+    @patch('autosubmit.config.basicconfig.BasicConfig')
     def test_header_tailer(self, mocked_global_basic_config: Mock):
         """Test if header and tailer are being properly substituted onto the final .cmd file without
         a bunch of mocks
@@ -535,7 +532,7 @@ CONFIG:
             checked = job.check_script(config, parameters)
             assert checked
 
-    @patch('autosubmitconfigparser.config.basicconfig.BasicConfig')
+    @patch('autosubmit.config.basicconfig.BasicConfig')
     def test_header_tailer(self, mocked_global_basic_config: Mock):
         """Test if header and tailer are being properly substituted onto the final .cmd file without
         a bunch of mocks
@@ -675,6 +672,11 @@ CONFIG:
 DEFAULT:
     EXPID: {expid}
     HPCARCH: local
+PROJECT:
+    PROJECT_TYPE: local
+    PROJECT_DIRECTORY: local_project
+LOCAL:
+    PROJECT_PATH: ''
 JOBS:
     A:
         FILE: a
@@ -1737,7 +1739,7 @@ def test_custom_directives(tmpdir, custom_directives, test_type, result_by_lines
         experiment_data['PLATFORMS']['dummy_platform']['APP_CUSTOM_DIRECTIVES'] = custom_directives
         experiment_data['JOBS']['RANDOM-SECTION']['CUSTOM_DIRECTIVES'] = "%CURRENT_APP_CUSTOM_DIRECTIVES%"
     job, as_conf, parameters = create_job_and_update_parameters(autosubmit_config, experiment_data, "slurm")
-    mocker.patch('autosubmitconfigparser.config.configcommon.AutosubmitConfig.reload')
+    mocker.patch('autosubmit.config.configcommon.AutosubmitConfig.reload')
     template_content, _ = job.update_content(as_conf, parameters)
     for directive in result_by_lines:
         pattern = r'^\s*' + re.escape(directive) + r'\s*$'  # Match Start line, match directive, match end line

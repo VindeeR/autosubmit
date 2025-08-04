@@ -1,31 +1,50 @@
+# Copyright 2015-2025 Earth Sciences Department, BSC-CNS
+#
+# This file is part of Autosubmit.
+#
+# Autosubmit is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Autosubmit is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
+
+import datetime
+import getpass
 import locale
+import os
+import random
+import re
+import select
+import socket
+import sys
+import threading
+import time
 from contextlib import suppress
 from pathlib import Path
+from threading import Thread
 from time import sleep
-import sys
-import socket
-import os
 from typing import List, TYPE_CHECKING, Union
+
+import Xlib.support.connect as xlib_connect
 import paramiko
-import datetime
-import select
-import re
-import random
+from paramiko.agent import Agent
+from paramiko.ssh_exception import (SSHException)
+
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_common import Type
+from autosubmit.log.log import AutosubmitError, AutosubmitCritical, Log
 from autosubmit.platforms.platform import Platform
-from log.log import AutosubmitError, AutosubmitCritical, Log
-from paramiko.ssh_exception import (SSHException)
-import Xlib.support.connect as xlib_connect
-from threading import Thread
-import threading
-import getpass
-from paramiko.agent import Agent
-import time
 
 if TYPE_CHECKING:
     # Avoid circular imports
-    from autosubmitconfigparser.config.configcommon import AutosubmitConfig
+    from autosubmit.config.configcommon import AutosubmitConfig
     from autosubmit.job.job import Job
 
 
@@ -36,6 +55,19 @@ def threaded(fn):
         return thread
 
     return wrapper
+
+
+def _create_ssh_client() -> paramiko.SSHClient:
+    """Create a Paramiko SSH Client.
+    Sets up all the attributes required by Autosubmit in the :class:`paramiko.SSHClient`.
+    This code is in a separated function for composition and to make it easier
+    to write tests that mock the SSH client (as having this function makes it
+    a lot easier).
+    """
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    return ssh
+
 
 # noinspection PyMethodParameters
 class ParamikoPlatform(Platform):
@@ -295,8 +327,7 @@ class ParamikoPlatform(Platform):
             except Exception as e:
                 Log.warning(f"X11 display not found: {e}")
                 self.local_x11_display = None
-            self._ssh = paramiko.SSHClient()
-            self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            self._ssh = _create_ssh_client()
             self._ssh_config = paramiko.SSHConfig()
             if as_conf:
                 self.map_user_config_file(as_conf)

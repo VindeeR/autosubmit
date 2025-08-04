@@ -26,11 +26,11 @@ from pathlib import Path
 from textwrap import dedent
 
 import pytest
-from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmit.config.basicconfig import BasicConfig
 
 from autosubmit.autosubmit import Autosubmit
 from autosubmit.experiment.experiment_common import new_experiment, copy_experiment
-from log.log import AutosubmitCritical, AutosubmitError
+from autosubmit.log.log import AutosubmitCritical, AutosubmitError
 
 _EXPID = 't000'
 _DESCRIPTION = "for testing"

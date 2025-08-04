@@ -15,26 +15,29 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-# Fixtures available to multiple test files must be created in this file.
+"""Fixtures available to multiple test files must be created in this file."""
+
 import os
 import pwd
 from dataclasses import dataclass
 from datetime import datetime
 from fileinput import FileInput
 from pathlib import Path
+from random import randrange
 from random import seed, randint, choice
 from re import sub
 from textwrap import dedent
 from time import time
-from typing import TYPE_CHECKING, Any, Dict, Protocol, Optional, Type, List
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Protocol, Tuple, Type
 
 import pytest
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
 from pytest_mock import MockerFixture
 from ruamel.yaml import YAML
+from testcontainers.sftp import DockerContainer, wait_for_logs
 
 from autosubmit.autosubmit import Autosubmit
+from autosubmit.config.basicconfig import BasicConfig
+from autosubmit.config.configcommon import AutosubmitConfig
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
 from autosubmit.platforms.slurmplatform import SlurmPlatform, ParamikoPlatform
@@ -101,6 +104,7 @@ def _initialize_autosubmitrc(folder: Path) -> Path:
 
 class AutosubmitExperimentFixture(Protocol):
     """Type for ``autosubmit_exp`` fixture."""
+
     def __call__(
             self,
             expid: Optional[str] = None,
@@ -139,7 +143,7 @@ def autosubmit_exp(
     def _create_autosubmit_exp(
             expid: Optional[str] = None,
             experiment_data: Optional[Dict] = None,
-            wrapper = False,
+            wrapper=False,
             *_,
             **kwargs
     ):
@@ -290,8 +294,14 @@ def autosubmit() -> Autosubmit:
 # Copied from the autosubmit config parser, that I believe is a revised one from the create_as_conf
 class AutosubmitConfigFactory(Protocol):
 
-    def __call__(self, expid: str, experiment_data: Optional[Dict] = None, *args: Any,
-                 **kwargs: Any) -> AutosubmitConfig: ...
+    def __call__(
+            self,
+            expid: str,
+            experiment_data: Optional[Dict] = None,
+            include_basic_config: bool = True,
+            *args: Any,
+            **kwargs: Any
+    ) -> AutosubmitConfig: ...
 
 
 @pytest.fixture(scope="function")
@@ -339,6 +349,7 @@ def autosubmit_config(
     def _create_autosubmit_config(
             expid: str,
             experiment_data: Dict = None,
+            include_basic_config: bool = True,
             *_,
             **kwargs
     ) -> AutosubmitConfig:
@@ -352,6 +363,8 @@ def autosubmit_config(
 
         :param expid: Experiment ID
         :param experiment_data: YAML experiment data dictionary
+        :param include_basic_config: Whether to include ``BasicConfig`` attributes or not (for some platforms).
+        Enabled by default.
         """
         if not expid:
             raise ValueError("No value provided for expid")
@@ -396,9 +409,10 @@ def autosubmit_config(
         # Populate the configuration object's ``experiment_data`` dictionary with the values
         # in ``BasicConfig``. For some reason, some platforms use variables like ``LOCAL_ROOT_DIR``
         # from the configuration object, instead of using ``BasicConfig``.
-        for k, v in {k: v for k, v in basic_config.__class__.__dict__.items() if not k.startswith('__')}.items():
-            config.experiment_data[k] = v
-        config.experiment_data.update(experiment_data)
+        if include_basic_config:
+            for k, v in {k: v for k, v in basic_config.__class__.__dict__.items() if not k.startswith('__')}.items():
+                config.experiment_data[k] = v
+            config.experiment_data.update(experiment_data)
 
         # Default values for experiment data
         # TODO: This probably has a way to be initialized in config-parser?
@@ -591,3 +605,27 @@ def create_jobs(
         return jobs
 
     return _create_jobs(mocker, request.param[0], request.param[1])
+
+
+@pytest.fixture(scope="function")
+def git_server(tmp_path) -> Generator[Tuple[DockerContainer, Path, str], None, None]:
+    # Start a container to server it -- otherwise, we would have to use
+    # `git -c protocol.file.allow=always submodule ...`, and we cannot
+    # change how Autosubmit uses it in `autosubmit create` (due to bad
+    # code design choices).
+
+    git_repos_path = tmp_path / 'git_repos'
+    git_repos_path.mkdir(exist_ok=True, parents=True)
+
+    http_port = randrange(4000, 4500)
+
+    image = 'githttpd/githttpd:latest'
+    with DockerContainer(image=image, remove=True) \
+            .with_bind_ports(80, http_port) \
+            .with_volume_mapping(str(git_repos_path), '/opt/git-server', mode='rw') as container:
+        wait_for_logs(container, "Command line: 'httpd -D FOREGROUND'")
+
+        # The docker image ``githttpd/githttpd`` creates an HTTP server for Git
+        # repositories, using the volume bound onto ``/opt/git-server`` as base
+        # for any subdirectory, the Git URL becoming ``git/{subdirectory-name}}``.
+        yield container, git_repos_path, f'http://localhost:{http_port}/git'

@@ -40,9 +40,9 @@ from pathlib import Path
 from time import sleep
 from typing import Dict, Set, Tuple, Union, Any, List, Optional
 
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
+from autosubmit.config.basicconfig import BasicConfig
+from autosubmit.config.configcommon import AutosubmitConfig
+from autosubmit.config.yamlparser import YAMLParserFactory
 from bscearth.utils.date import date2str
 from portalocker import Lock
 from portalocker.exceptions import BaseLockException
@@ -50,7 +50,6 @@ from pyparsing import nestedExpr
 from ruamel.yaml import YAML
 
 import autosubmit.helpers.autosubmit_helper as AutosubmitHelper
-import autosubmit.history.utils as HUtils
 import autosubmit.statistics.utils as StatisticsUtils
 from autosubmit.database.db_common import create_db
 from autosubmit.database.db_common import delete_experiment, get_experiment_descrip
@@ -60,7 +59,7 @@ from autosubmit.database.db_structure import get_structure
 from autosubmit.experiment.detail_updater import ExperimentDetails
 from autosubmit.experiment.experiment_common import copy_experiment
 from autosubmit.experiment.experiment_common import new_experiment
-from autosubmit.git.autosubmit_git import AutosubmitGit
+from autosubmit.git.autosubmit_git import AutosubmitGit, check_unpushed_changes, clean_git
 from autosubmit.helpers.processes import process_id
 from autosubmit.helpers.utils import check_jobs_file_exists, get_rc_path
 from autosubmit.helpers.utils import strtobool
@@ -81,7 +80,7 @@ from autosubmit.notifications.notifier import Notifier
 from autosubmit.platforms.paramiko_submitter import ParamikoSubmitter
 from autosubmit.platforms.platform import Platform
 from autosubmit.platforms.submitter import Submitter
-from log.log import Log, AutosubmitError, AutosubmitCritical
+from autosubmit.log.log import Log, AutosubmitError, AutosubmitCritical
 
 dialog = None
 
@@ -719,9 +718,7 @@ class Autosubmit:
             expid = args.expid
         if args.command != "configure" and args.command != "install":
             Autosubmit._init_logs(args, args.logconsole, args.logfile, expid)
-
         if args.command == 'run':
-            AutosubmitGit.check_unpushed_changes(expid)
             return Autosubmit.run_experiment(args.expid, args.notransitive,args.start_time,args.start_after, args.run_only_members, args.profile)
         elif args.command == 'expid':
             return Autosubmit.expid(args.description,args.HPC,args.copy, args.dummy,args.minimal_configuration,args.git_repo,args.git_branch,args.git_as_conf,args.operational,args.testcase,args.evaluation,args.use_local_minimal) != ''
@@ -1187,7 +1184,7 @@ class Autosubmit:
             local: bool=False,
             parameters: Dict[str, Union[Dict, List, str]] = None
     ) -> None:
-        """Retrieve the configuration from autosubmitconfigparser package.
+        """Retrieve the configuration from autosubmit.config package.
 
         :param exp_id: Experiment ID
         :param dummy: Whether the experiment is a dummy one or not.
@@ -1237,13 +1234,13 @@ class Autosubmit:
                             yield '.'.join([*keys, key]).upper(), value
                         else:
                             yield key, value
-        template_files = [file.name for file in (read_files('autosubmitconfigparser.config')/'files').iterdir() if file.is_file()]
+        template_files = [file.name for file in (read_files('autosubmit.config')/'files').iterdir() if file.is_file()]
         if parameters is None:
             parameters = {}
         parameter_comments = dict(_recurse_into_parameters(parameters))
 
         for as_conf_file in template_files:
-            origin = str(read_files('autosubmitconfigparser.config')/f'files/{as_conf_file}')
+            origin = str(read_files('autosubmit.config')/f'files/{as_conf_file}')
             target = None
 
             if dummy:
@@ -2014,7 +2011,7 @@ class Autosubmit:
         :return: a tuple
         """
         host = platform.node()
-        # Init the autosubmitconfigparser and check that every file exists and it is a valid configuration.
+        # Init the AutosubmitConfig and check that every file exists, and it is a valid configuration.
         as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
         as_conf.check_conf_files(running_time=True, force_load=True)
         if not recover:
@@ -2240,6 +2237,16 @@ class Autosubmit:
                     raise
                 except Exception as e:
                     raise AutosubmitCritical("Error in run initialization", 7014, str(e))  # Changing default to 7014
+
+                as_conf_config = as_conf.experiment_data.get('CONFIG', {})
+                git_operational_check_enabled = as_conf_config.get('GIT_OPERATIONAL_CHECK_ENABLED', True)
+
+                if git_operational_check_enabled:
+                    Log.debug('Checking for dirty local Git repository')
+                    check_unpushed_changes(expid, as_conf)
+                else:
+                    Log.warning('Git operational check disabled by user')
+
                 Log.debug("Running main running loop")
                 did_run = False
                 #########################
@@ -2303,7 +2310,6 @@ class Autosubmit:
                         job_list.update_list(as_conf, submitter=submitter)
                         job_list.save()
                         # Submit jobs that are ready to run
-                        #Log.debug(f"FD submit: {fd_show.fd_table_status_str()}")
                         if len(job_list.get_ready()) > 0:
                             Autosubmit.submit_ready_jobs(as_conf, job_list, platforms_to_test, packages_persistence, hold=False)
                             job_list.update_list(as_conf, submitter=submitter)
@@ -2337,13 +2343,9 @@ class Autosubmit:
                             job_list.save()
                             as_conf.save()
                         time.sleep(safetysleeptime)
-                        #Log.debug(f"FD endsubmit: {fd_show.fd_table_status_str()}")
-
-
                     except AutosubmitError as e:  # If an error is detected, restore all connections and job_list
                         Log.error("Trace: {0}", e.trace)
                         Log.error("{1} [eCode={0}]", e.code, e.message)
-                        # Log.debug("FD recovery: {0}".format(log.fd_show.fd_table_status_str()))
                         # No need to wait until the remote platform reconnection
                         recovery = False
                         as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
@@ -2952,9 +2954,8 @@ class Autosubmit:
                 if project_type == "git":
                     Log.info("Registering commit SHA...")
                     autosubmit_config.set_git_project_commit(autosubmit_config)
-                    autosubmit_git = AutosubmitGit(expid)
                     Log.info("Cleaning GIT directory...")
-                    if not autosubmit_git.clean_git(autosubmit_config):
+                    if not clean_git(autosubmit_config):
                         return False
                     Log.result("Git project cleaned!\n")
                 else:
@@ -4515,7 +4516,7 @@ class Autosubmit:
                     as_conf.reload(force_load=True,only_experiment_data=True)
                     # Getting output type provided by the user in config, 'pdf' as default
                     try:
-                        if not Autosubmit._copy_code(as_conf, expid, as_conf.experiment_data.get("PROJECT",{}).get("PROJECT_TYPE","none"), False):
+                        if not Autosubmit._copy_code(as_conf, expid, as_conf.get_project_type(), False):
                             return False
                     except AutosubmitCritical as e:
                         raise

@@ -21,11 +21,11 @@ from pathlib import Path
 
 import pytest
 
+from autosubmit.config.basicconfig import BasicConfig
+from autosubmit.config.configcommon import AutosubmitConfig
+from autosubmit.config.yamlparser import YAMLParserFactory
+from autosubmit.log.log import AutosubmitCritical
 from autosubmit.migrate.migrate import Migrate
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
-from log.log import AutosubmitCritical
 
 
 @pytest.mark.skip('This test requires a running SSH server, with password-less authentication')

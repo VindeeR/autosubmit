@@ -1,19 +1,17 @@
-#!/usr/bin/env python3
-
-# Copyright 2015-2020 Earth Sciences Department, BSC-CNS
-
+# Copyright 2015-2025 Earth Sciences Department, BSC-CNS
+#
 # This file is part of Autosubmit.
-
+#
 # Autosubmit is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-
+#
 # Autosubmit is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -22,15 +20,15 @@ import sys
 from time import sleep
 from typing import Union, Any
 
+from autosubmit.config.basicconfig import BasicConfig
+from autosubmit.config.configcommon import AutosubmitConfig
 from autosubmit.database.db_common import check_experiment_exists
 from autosubmit.history.experiment_history import ExperimentHistory
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
-from log.log import AutosubmitCritical, Log
+from autosubmit.log.log import AutosubmitCritical, Log
 
 
 def handle_start_time(start_time: str) -> None:
-    """ Wait until the supplied time. """
+    """Wait until the supplied time."""
     if start_time:
         Log.info("User provided starting time has been detected.")
         # current_time = time()
@@ -40,15 +38,14 @@ def handle_start_time(start_time: str) -> None:
             parsed_time = datetime.datetime.strptime(start_time, "%H:%M:%S")
             target_date = datetime.datetime(datetime_now.year, datetime_now.month,
                                             datetime_now.day, parsed_time.hour, parsed_time.minute, parsed_time.second)
-        except Exception as e:
+        except (ValueError, TypeError, OverflowError, NotImplementedError):
             try:
                 # Trying second parse y-m-d H:M:S
                 target_date = datetime.datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-            except Exception as e:
-                target_date = None
+            except (ValueError, TypeError, OverflowError, NotImplementedError) as e:
                 Log.critical(
                     "The string input provided as the starting time of your experiment must have the format 'H:M:S' or "
-                    f"'yyyy-mm-dd H:M:S'. Your input was '{start_time}'.")
+                    f"'yyyy-mm-dd H:M:S'. Your input was '{start_time}': {str(e)}")
                 return
         # Must be in the future
         if target_date < datetime.datetime.now():
@@ -68,7 +65,7 @@ def handle_start_time(start_time: str) -> None:
 
 
 def handle_start_after(start_after: str, expid: str) -> None:
-    """ Wait until the start_after experiment has finished."""
+    """Wait until the start_after experiment has finished."""
     if start_after:
         Log.info("User provided expid completion trigger has been detected.")
         # The user tries to be tricky
@@ -78,7 +75,7 @@ def handle_start_after(start_after: str, expid: str) -> None:
                 "your experiment will run again after it has been completed. Good luck!")
         # Check if experiment exists. If False or None, it does not exist
         if not check_experiment_exists(start_after):
-            return None
+            return
         # Historical Database: We use the historical database to retrieve the current progress
         # data of the supplied expid (start_after)
         exp_history = ExperimentHistory(start_after, jobdata_dir_path=BasicConfig.JOBDATA_DIR,
@@ -114,10 +111,10 @@ def get_allowed_members(run_members: str, as_conf: AutosubmitConfig) -> Union[li
     """
     if run_members is not None:
         allowed_members = run_members.split()
-        rmember = [rmember for rmember in allowed_members if rmember not in as_conf.get_member_list()]
-        if len(rmember) > 0:
+        runs_missing = [run_member for run_member in allowed_members if run_member not in as_conf.get_member_list()]
+        if len(runs_missing) > 0:
             raise AutosubmitCritical(
-                f"Some of the members ({str(rmember)}) in the list of allowed members you supplied do not exist in "
+                f"Some of the members ({str(runs_missing)}) in the list of allowed members you supplied do not exist in "
                 f"the current list of members specified in the conf files."
                 f"\nCurrent list of members: {str(as_conf.get_member_list())}")
         if len(allowed_members) == 0:

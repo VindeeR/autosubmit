@@ -11,6 +11,9 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
 from contextlib import suppress
@@ -20,7 +23,7 @@ from typing import List, Optional
 
 from psutil import process_iter, ZombieProcess
 
-from log.log import Log
+from autosubmit.log.log import Log
 
 """Functions to handle linux processes."""
 
@@ -94,6 +97,10 @@ def _match_autosubmit_cmdline(cmdline: List[str], command='run', expid: Optional
 
     >>> _match_autosubmit_cmdline(['autosubmit', 'running', 'a000'])
 
+    >>> _match_autosubmit_cmdline(['autosubmit', 'a000', 'run'])
+    #
+    >>> _match_autosubmit_cmdline(['autosubmit', 'run', 'a001'])
+
     >>> _match_autosubmit_cmdline(['autosubmit', 'run', 'experiment'])
 
     >>> _match_autosubmit_cmdline(['autosubmit', 'run', 'a000'], 'create')
@@ -128,9 +135,6 @@ def _match_autosubmit_cmdline(cmdline: List[str], command='run', expid: Optional
         return None
 
     if filtered_list[1] != command:
-        return None
-
-    if not _match_expid(filtered_list[2]):
         return None
 
     return filtered_list[2]

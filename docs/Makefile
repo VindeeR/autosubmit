@@ -28,7 +28,7 @@ I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) source
 # are exported to other targets. Use this feature with care!
 as_setup: .EXPORT_ALL_VARIABLES
 	$(eval AUTOSUBMIT_DIRECTORY := $(shell realpath -m $(BUILDDIR)/autosubmit))
-	rm -rf $(AUTOSUBMIT_DIRECTORY)
+	rm -rf $(BUILDDIR)
 	$(eval AUTOSUBMIT_CONFIGURATION := $(AUTOSUBMIT_DIRECTORY)/autosubmitrc)
 	mkdir -p $(AUTOSUBMIT_DIRECTORY)/autosubmit
 	@echo "Autosubmit home: [$(AUTOSUBMIT_DIRECTORY)]"
@@ -114,6 +114,7 @@ xml_coverage:
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html. Coverage in $(BUILDDIR)/htmlcov."
 
 html:
+	@echo "Current directory is $$(pwd)"
 	@echo "Build Started. The HTML pages are in $(BUILDDIR)/html."
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo

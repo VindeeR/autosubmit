@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License 
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>. 
 
+from random import sample
 from typing import Generator, Tuple
 from unittest.mock import Mock
 
@@ -26,15 +27,13 @@ from testcontainers.core.waiting_utils import wait_for_logs
 from autosubmit.job.job_common import Status
 from autosubmit.notifications.mail_notifier import MailNotifier
 from autosubmit.platforms.platform import Platform
-from test.integration.test_utils.networking import get_free_port
 
 
 @pytest.fixture(scope="module")
 def fake_smtp_server() -> Generator[Tuple[int, str], None, None]:
     """Start fake SMTP server container.
     :return: A tuple with the SMTP port, and the SMTP test server API base URL """
-    smtp_port = get_free_port()
-    api_port = get_free_port()
+    smtp_port, api_port = sample(range(3500, 4000), 2)
     with DockerContainer(image="mailhog/mailhog", remove=True) \
             .with_bind_ports(1025, smtp_port) \
             .with_bind_ports(8025, api_port) as container:

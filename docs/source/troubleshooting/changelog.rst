@@ -594,7 +594,7 @@ In the following example, we want to launch the next member SIM after the last S
     :expid: a000
     :type: png
     :path: troubleshooting
-    :figure: fig/new_dependencies_1.png
+    :figure: fig/new_format_dependencies.png
     :name: new_format_dependencies
     :width: 100%
     :align: center

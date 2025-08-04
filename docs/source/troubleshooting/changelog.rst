@@ -524,6 +524,16 @@ New format
         RUNNING: chunk
 
 
+.. autosubmitfigure::
+    :command: create
+    :expid: a000
+    :type: png
+    :path: troubleshooting
+    :figure: fig/new_dependencies.png
+    :name: new_dependencies
+    :width: 100%
+    :align: center
+    :alt: new_dependencies
 
 
 Example 1: New format with specific dependencies

@@ -117,6 +117,11 @@ html:
 	@echo "Current directory is $$(pwd)"
 	@echo "Build Started. The HTML pages are in $(BUILDDIR)/html."
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	$$ls
+	$$ls build
+	$$ls source
+	$$ls source/troubleshooting/
+	$$ls source/troubleshooting/fig
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 

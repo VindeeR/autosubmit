@@ -176,7 +176,7 @@ def test_compress_file(
 
         # Log connection error: Simulate an error while sending email
         (Exception("SMTP server error"),
-         'Trace:SMTP server error\nAn error has occurred while sending a warning mail about remote_platform')
+         'Trace:SMTP server error\nAn error has occurred while sending a mail for the job Job1')
     ],
     ids=[
         "Normal case: No errors",

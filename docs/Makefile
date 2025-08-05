@@ -5,7 +5,7 @@
 SPHINXOPTS    = -W
 SPHINXBUILD   = sphinx-build
 PAPER         =
-SOURCEDIR     = _source
+SOURCEDIR     = source
 BUILDDIR      = _build
 
 # User-friendly check for sphinx-build
@@ -118,7 +118,7 @@ html:
 	@echo "Build Started. The HTML pages are in $(BUILDDIR)/html."
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo "Current directory is $$(ls)"
-	@echo "Current directory is $$(ls build)"
+	@echo "Current directory is $$(ls _build)"
 	@echo "Current directory is $$(ls source)"
 	@echo "Current directory is $$(ls source/troubleshooting)"
 	@echo "Current directory is $$(ls source/troubleshooting/fig)"

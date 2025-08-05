@@ -6,7 +6,7 @@ SPHINXOPTS    = -W
 SPHINXBUILD   = sphinx-build
 PAPER         =
 SOURCEDIR     = source
-BUILDDIR      = _build
+BUILDDIR      = build
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -114,14 +114,8 @@ xml_coverage:
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html. Coverage in $(BUILDDIR)/htmlcov."
 
 html:
-	@echo "Current directory is $$(pwd)"
-	@echo "Build Started. The HTML pages are in $(BUILDDIR)/html."
-	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)
-	@echo "Current directory is $$(ls)"
-	@echo "Current directory is $$(ls _build)"
-	@echo "Current directory is $$(ls source)"
-	@echo "Current directory is $$(ls source/troubleshooting)"
-	@echo "Current directory is $$(ls source/troubleshooting/fig)"
+	@echo "$(READTHEDOCS_OUTPUT)"
+	$(SPHINXBUILD) -M html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 

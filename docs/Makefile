@@ -116,7 +116,7 @@ xml_coverage:
 html:
 	@echo "Current directory is $$(pwd)"
 	@echo "Build Started. The HTML pages are in $(BUILDDIR)/html."
-	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)
 	@echo "Current directory is $$(ls)"
 	@echo "Current directory is $$(ls _build)"
 	@echo "Current directory is $$(ls source)"

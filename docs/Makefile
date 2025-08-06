@@ -6,7 +6,7 @@ SPHINXOPTS    = -W
 SPHINXBUILD   = sphinx-build
 PAPER         =
 SOURCEDIR     = source
-BUILDDIR      = build
+BUILDDIR      := $(if $(READTHEDOCS_OUTPUT),$(READTHEDOCS_OUTPUT), build)
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -59,6 +59,10 @@ as_setup: .EXPORT_ALL_VARIABLES
 	@echo "Installing Autosubmit..."
 	AUTOSUBMIT_CONFIGURATION=$(AUTOSUBMIT_CONFIGURATION) autosubmit install
 	@echo "Autosubmit installed!"
+	AUTOSUBMIT_CONFIGURATION=$(AUTOSUBMIT_CONFIGURATION) autosubmit expid -dm -H "local" -d "Tutorial"
+	@echo "Autosubmit Experiment Created!"
+	AUTOSUBMIT_CONFIGURATION=$(AUTOSUBMIT_CONFIGURATION) autosubmit create a000 --hide -o png
+	@echo "Autosubmit Experiment a000 run!"
 
 # Automatically call Autosubmit's setup target.
 -include as_setup

@@ -50,6 +50,7 @@ from pyparsing import nestedExpr
 from ruamel.yaml import YAML
 
 import autosubmit.helpers.autosubmit_helper as AutosubmitHelper
+import autosubmit.history.utils as HUtils
 import autosubmit.statistics.utils as StatisticsUtils
 from autosubmit.database.db_common import create_db
 from autosubmit.database.db_common import delete_experiment, get_experiment_descrip
@@ -59,7 +60,7 @@ from autosubmit.database.db_structure import get_structure
 from autosubmit.experiment.detail_updater import ExperimentDetails
 from autosubmit.experiment.experiment_common import copy_experiment
 from autosubmit.experiment.experiment_common import new_experiment
-from autosubmit.git.autosubmit_git import AutosubmitGit, check_unpushed_changes, clean_git
+from autosubmit.git.autosubmit_git import AutosubmitGit
 from autosubmit.helpers.processes import process_id
 from autosubmit.helpers.utils import check_jobs_file_exists, get_rc_path
 from autosubmit.helpers.utils import strtobool
@@ -718,7 +719,9 @@ class Autosubmit:
             expid = args.expid
         if args.command != "configure" and args.command != "install":
             Autosubmit._init_logs(args, args.logconsole, args.logfile, expid)
+
         if args.command == 'run':
+            AutosubmitGit.check_unpushed_changes(expid)
             return Autosubmit.run_experiment(args.expid, args.notransitive,args.start_time,args.start_after, args.run_only_members, args.profile)
         elif args.command == 'expid':
             return Autosubmit.expid(args.description,args.HPC,args.copy, args.dummy,args.minimal_configuration,args.git_repo,args.git_branch,args.git_as_conf,args.operational,args.testcase,args.evaluation,args.use_local_minimal) != ''
@@ -1032,9 +1035,24 @@ class Autosubmit:
 
         :raises AutosubmitCritical: If the experiment does not exist or if there are insufficient permissions.
         """
+
+        if not expid_delete:
+            raise AutosubmitCritical("Experiment identifier is required for deletion.", 7011)
         experiment_path = Path(f"{BasicConfig.LOCAL_ROOT_DIR}/{expid_delete}")
         structure_db_path = Path(f"{BasicConfig.STRUCTURES_DIR}/structure_{expid_delete}.db")
         job_data_db_path = Path(f"{BasicConfig.JOBDATA_DIR}/job_data_{expid_delete}")
+        experiment_path = experiment_path.resolve()
+        structure_db_path = structure_db_path.resolve()
+        job_data_db_path = job_data_db_path.resolve()
+        if Path(BasicConfig.LOCAL_ROOT_DIR) == experiment_path or \
+                Path(BasicConfig.STRUCTURES_DIR) == structure_db_path or \
+                Path(BasicConfig.JOBDATA_DIR) == job_data_db_path:
+            raise AutosubmitCritical(f"Invalid paths for experiment deletion: {expid_delete}. "
+                                     "Paths must not be the root directories.", 7011)
+
+        if not experiment_path.is_relative_to(BasicConfig.LOCAL_ROOT_DIR):
+            raise AutosubmitCritical(f"Invalid paths for experiment deletion: {expid_delete}. "
+                                     "Paths must be within the configured directories.", 7011)
 
         if not experiment_path.exists():
             Log.printlog("Experiment directory does not exist.", Log.WARNING)
@@ -2237,16 +2255,6 @@ class Autosubmit:
                     raise
                 except Exception as e:
                     raise AutosubmitCritical("Error in run initialization", 7014, str(e))  # Changing default to 7014
-
-                as_conf_config = as_conf.experiment_data.get('CONFIG', {})
-                git_operational_check_enabled = as_conf_config.get('GIT_OPERATIONAL_CHECK_ENABLED', True)
-
-                if git_operational_check_enabled:
-                    Log.debug('Checking for dirty local Git repository')
-                    check_unpushed_changes(expid, as_conf)
-                else:
-                    Log.warning('Git operational check disabled by user')
-
                 Log.debug("Running main running loop")
                 did_run = False
                 #########################
@@ -2954,8 +2962,9 @@ class Autosubmit:
                 if project_type == "git":
                     Log.info("Registering commit SHA...")
                     autosubmit_config.set_git_project_commit(autosubmit_config)
+                    autosubmit_git = AutosubmitGit(expid)
                     Log.info("Cleaning GIT directory...")
-                    if not clean_git(autosubmit_config):
+                    if not autosubmit_git.clean_git(autosubmit_config):
                         return False
                     Log.result("Git project cleaned!\n")
                 else:

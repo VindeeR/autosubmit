@@ -18,6 +18,7 @@
 import os
 from getpass import getuser
 from pathlib import Path
+from random import randrange
 from tempfile import TemporaryDirectory, gettempdir
 
 import paramiko
@@ -27,15 +28,12 @@ from testcontainers.sftp import DockerContainer
 
 from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 from autosubmit.platforms.psplatform import PsPlatform
-from test.integration.test_utils.networking import get_free_port
 
 """Integration tests for the paramiko platform.
 
 Note that tests will start and destroy an SSH server. For unit tests, see ``paramiko_platform.py``
 in the ``test/unit`` directory."""
 
-
-_SSH_TIMEOUTS_IN_SECONDS = 90
 
 @pytest.mark.docker
 @pytest.mark.parametrize('filename, check', [
@@ -69,7 +67,7 @@ def test_send_file(mocker, filename, ps_platform, check):
     # To write in the /tmp (sticky bit, different uid/gid), reset it later (default pytest is 700)
     os.system(f'chmod 777 -R {str(rootdir)}')
 
-    ssh_port = get_free_port()
+    ssh_port = randrange(2500, 3000)
 
     try:
         image = 'lscr.io/linuxserver/openssh-server:latest'
@@ -84,19 +82,9 @@ def test_send_file(mocker, filename, ps_platform, check):
             wait_for_logs(container, 'sshd is listening on port 2222')
             _ssh = paramiko.SSHClient()
             _ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            _ssh.connect(
-                hostname=ps_platform.host,
-                username=ps_platform.user,
-                password='password',
-                port=ssh_port,
-                timeout=_SSH_TIMEOUTS_IN_SECONDS,
-                banner_timeout=_SSH_TIMEOUTS_IN_SECONDS,
-                auth_timeout=_SSH_TIMEOUTS_IN_SECONDS
-            )
-            ps_platform._ftpChannel = paramiko.SFTPClient.from_transport(
-                _ssh.get_transport(),
-                window_size=pow(4, 12),
-                max_packet_size=pow(4, 12))
+            _ssh.connect(hostname=ps_platform.host, username=ps_platform.user, password='password', port=ssh_port)
+            ps_platform._ftpChannel = paramiko.SFTPClient.from_transport(_ssh.get_transport(), window_size=pow(4, 12),
+                                                                      max_packet_size=pow(4, 12))
             ps_platform._ftpChannel.get_channel().settimeout(120)
             ps_platform.connected = True
             ps_platform.get_send_file_cmd = mocker.Mock()

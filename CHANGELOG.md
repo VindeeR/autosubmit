@@ -1,11 +1,5 @@
 ### 4.1.16: Unreleased
 
-**Bug fixes:**
-
-- Fixed issue with the verification of dirty Git local repositories in operational experiments #2446
-
-**Enhancements:**
-
 - autosubmit/autosubmit container now includes the `$USER` environment variable
   via its entrypoint #2359
 - Adding a Slurm Container to the CI/CD and creating tests to increase the
@@ -15,6 +9,8 @@
 - The autosubmit-config-parser GitHub project has been archived and its code moved
   to Autosubmit repository, merging the projects again #2052
 - Documentation about `FOR.NAME` with values that are not strings #2515
+- Adjusting the documentation to be done in an automatized and self-contained way facilitating 
+  and allowing reproducibility of the examples #2465
 
 ### 4.1.15: Bug fixes, enhancements, and new features
 
